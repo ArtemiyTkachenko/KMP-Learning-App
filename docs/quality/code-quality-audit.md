@@ -165,6 +165,16 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-DI-001` | Common Koin graph / startup timing | Low | High | `settings/AppearanceStateHolder.kt`, `ui/theme/AppearanceTheme.kt`, `AppRoot.kt`, `docs/architecture/overview.md` | Four written statements claimed the appearance preference is read while the host builds its Koin graph, which lazy `single` semantics make false. | Koin 4.2.2 declares `single(createdAtStart: Boolean = false)` and only definitions in `Module.eagerInstances` are instantiated by `createEagerInstances()`; no definition in this repository passes `createdAtStart`, and no host calls `koin.get<AppearanceStateHolder>()` during startup — the four `start*LocalDataGraph` functions resolve `CurriculumDataInitializer` and nothing else. The holder's first resolution is therefore `AppearanceTheme`'s own `remember { KoinPlatform.getKoinOrNull()?.getOrNull<AppearanceStateHolder>() }`, which makes `AppearanceTheme`'s "No storage I/O happens here" the exact opposite of what that composable does. The guarantee the comments were defending is unaffected: the read is synchronous inside `remember`, so it completes within the first composition and before the first frame, and there is still no light-to-dark flash and no startup step awaiting storage. | Restate all four to describe lazy first-resolution and say that *synchronous* rather than *early* is what prevents the flash. The graph is correct as it stands; only the explanation was wrong, and `StudyProgressStateHolder` and `SavedQuestionStateHolder` already describe their own laziness accurately. | Fixed |
 | `CQ-DI-002` | Common Koin graph / test coverage | Low | High | `SharedHostStartupTest.kt` | The graph test asserted singleton identity for three app-scoped holders but not for `AssessmentHistoryStore`, and never resolved two of the fifteen ViewModel bindings. | `sharedHostModulesResolveTheWholeProductGraph` already pinned one instance each of `SavedQuestionStateHolder`, `StudyProgressStateHolder` and `AppearanceStateHolder`, but not the completed-history cache that eleven consumers share and that the Part 2 and Part 3 conclusions rest on — so `single` becoming `factory` there would have left every history-derived surface with its own cache and no test would have failed. Switching the definition to `factory` was confirmed to leave the suite green before the assertion was added, and to fail at the new assertion afterwards. `AppShellViewModel` and `InterviewStartViewModel` were also the only two bindings no graph-level test resolved. | Assert one `AssessmentHistoryStore` beside the three existing identity assertions and resolve the two remaining ViewModels, in the one test that installs the real `assessmentDataModule`. No new test class; the existing graph check is the right owner. | Fixed |
 | `CQ-DI-003` | Navigation 3 / ViewModel store ownership | Low | High | `AppNavigator.kt`, `App.kt` | Two back-stack entries with an equal route would silently share one `ViewModelStore`, and `push` does not prevent one. | `ViewModelStoreNavEntryDecorator` scopes each store by `NavEntry.contentKey`, which `defaultContentKey` derives as `key.toString()`; `AppRoute` is a sealed interface of `data class`/`data object`, so two equal routes produce one key and, as `NavEntry`'s own documentation states, "NavEntries that share the same contentKey will be handled as sharing the same content and/or NavEntryDecorator state". `AppNavigator.push` appends unconditionally. Tracing every `navigator.push` call site in `App.kt` shows the hazard is currently unreachable: within one area, no destination reachable from a route can push that same route again, every attempt and result route carries a freshly generated `attemptId`, and the Practice Builder and Lesson reader are terminal with respect to the routes above them (`onNavigateLesson` replaces rather than pushes). The four areas hold independent stacks, so switching areas cannot collide either. | Leave as-is. The invariant holds today through the shape of the navigation graph rather than through a guard, and adding a duplicate check to `push` would be navigation work this chunk does not own. Recorded so that a future route addition — in particular any new path back to a Topic, Unit or Practice Builder route already on the stack — is understood to be a ViewModel-ownership change and not only a navigation one. | Accepted as-is |
+| `CQ-DATA-012` | Bundled content / coverage governance | Medium | High | `docs/content/question-bank-coverage.md`, `tools/learning_question_coverage.py`, `.github/workflows/main.yml` | The question-bank coverage snapshot is stale and nothing gates it. | The document headlines 442 Questions, 401 ACTIVE, 1 774 answer options, 563 sources and 78 empty Subtopics; the bundle holds 478, 437, 1 918, 635 and 69 (71 without an ACTIVE Question). Its generator is a fenced Python block a human pastes into a shell, while the sibling learning snapshot is generated by `tools/` and CI-gated with `--check`, and is current. | Move the generator into `tools/` with `--write`/`--check` and add it to the CI step that already runs its sibling. | Open |
+| `CQ-DATA-013` | Curriculum validation / diagnostics | Medium | High | `InitialCurriculumSmokeTest.kt`, `CurriculumDataInitializer.kt`, `AppRoot.kt` | The precise validation errors are discarded at every point where they would be read. | `CurriculumValidator` produces an entity-identified error per defect; the initializer joins them into one exception, `AppStartupStateHolder` catches it as `catch (_: Exception)` and shows a generic string, and `commonMain` has no logging. The gate that actually fires is `assertTrue(validator.validate(...).isEmpty())` with no message, so CI reports `Expected value to be true.` and names no Question. | Assert on the rendered error list rather than on `isEmpty()`. Runtime reporting of a rejected bundle belongs to Part 5. | Open |
+| `CQ-DATA-014` | Authored content / identity stability | Medium | High | `CurriculumValidator.kt`, `CurriculumImporter.kt`, `AssessmentReviewLoader.kt`, `docs/content/content-authoring.md` | Nothing compares one bundle revision to the next, so every identity-stability rule is convention-only. | The authoring contract requires a new `Question.id` or `AnswerOption.id` on a material change; the validator sees one document and the importer upserts by primary key without diffing. `AssessmentReviewLoader` reads `isCorrect` from the attempt and `isCorrectAnswer` from the current key, so a key changed under a stable ID makes review contradict itself. Four revisions of history show the convention kept — 0 Questions removed, 0 keys changed, 3 option texts refined under stable IDs. | Diff the bundle against its previous released revision at build time — ID sets, correct-answer sets, option-ID sets, `selectionMode` — and report a violation as an authoring error. | Open |
+| `CQ-DATA-015` | Assessment review / content evolution | Low | High | `assessment/session/AnswerOrder.kt`, `AssessmentReviewLoader.kt`, `SavedQuestionContentResolver.kt` | Review fidelity degrades silently when a Question's option set changes. | `withAnswersOrderedFor` shuffles the *current* option list from an `(attemptId, questionId)` seed while the KDoc claims the arrangement the learner actually answered; `getQuestionById` returns retired options too. Adding an option changes both set and order, so an older attempt shows an option the learner never saw, marked unselected. Unreachable on a fresh install. | Bound the KDoc claim to a stable option set, and decide whether the saved-question surface should exclude retired options. | Open |
+| `CQ-DATA-016` | Curriculum validation / status semantics | Low | High | `CurriculumValidator.kt` | `TOPIC_WITHOUT_QUESTIONS` is status-blind, so it cannot catch the case it exists to prevent. | `validateMinimumCoverage` builds `questionTopicIds` from every Question regardless of `status`, so a Topic whose Questions are all DEPRECATED passes. The bank shows the shape one level down: `notification_channels` and `dependency_configurations` are ACTIVE Subtopics whose only Questions are DEPRECATED. `LearningCurriculumValidator` makes the equivalent rules ACTIVE-only. | Count ACTIVE Questions in that one rule. Do not add a Subtopic equivalent — an empty ACTIVE Subtopic is recorded product state. | Open |
+| `CQ-DATA-017` | Topic discovery / content coverage | Low | High | `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt`, `TopicDetailScreen.kt` | Subtopic search surfaces Subtopics that Topic detail deliberately hides. | `readCatalog` indexes every ACTIVE Subtopic; `readCurriculum` keeps only Subtopics with an ACTIVE Question. 71 of 361 have none, so about a fifth of Subtopic hits push a route whose `targetIndex` resolves to `-1` and leaves the learner on the Subtopics tab with no row and no explanation. It degrades safely. | Index only practicable Subtopics, or say on the result row that the Subtopic has no questions yet. | Open |
+| `CQ-TEST-001` | Bundled-content tests / coupling | Low | High | `InitialCurriculumSmokeTest.kt`, `CurriculumLocalDataPathTest.kt`, `CurriculumImporterTest.kt` | Snapshot assertions mix content policy with incidental derived totals. | Three files independently pin bank-wide counts; adding one Question means editing about nine literals. Per-Topic ACTIVE targets, the SINGLE/MULTIPLE split and the first-row IDs are policy; `1_918`, `528`, `635` and `bundledQuestionsHaveReviewedE1503LevelDistribution` freeze consequence. | Keep the policy assertions. Re-express the derived totals as invariants against the authored collections instead of frozen numbers. | Open |
+| `CQ-DATA-018` | Content pipelines / failure modelling | Observation | High | `CurriculumImporter.kt`, `LearningContentLoader.kt` | The assessment pipeline models validation failure as data but lets decode failure escape untyped. | `LearningContentLoader` translates `SerializationException` into a typed `Decode` failure and explains why; the importer returns `Rejected(errors)` for validation only, and `CurriculumLocalDataPathTest` pins the raw `SerializationException` escaping. Both end at the same generic startup screen today. | Record only. Revisit with startup error reporting in Part 5. | Open |
+| `CQ-DATA-019` | Authored content / ordering contract | Observation | High | `curriculum/Curriculum.kt`, `CurriculumPersistenceMapper.kt`, `docs/content/question-audit-log.yml` | Array position is an ordering contract the assessment model never states. | `LearningCurriculum` documents it; `Curriculum` and its types do not, and `sortOrder` appears only as `mapIndexed`. Across four revisions 79 Questions were appended with zero index changes, which is what keeps `sort_order` stable on installed devices and the audit log's `n:` index valid. A mid-array insert would renumber every later row with no test failing. | Write the rule into `Curriculum`'s KDoc and `content-authoring.md`. | Open |
+| `CQ-DATA-020` | Learning content / source governance | Observation | High | `LearningCurriculumValidator.kt`, `InitialCurriculumContentQualityTest.kt`, `learning_curriculum.json` | Learning sources are ungated by design, and secondary sources are no longer exceptional. | The question bank has a 16-host allowlist; the learning document deliberately has none. Of 443 learning sources, 17 cite `martinfowler.com`, 7 cite `raw.githubusercontent.com` at the moving `androidx-main` branch, 2 `staltz.com`, 2 `blog.ploeh.dk`. Several are plainly primary for the claim. | Record the position deliberately; pin the raw GitHub citations to a tag or commit so the cited text cannot move. | Open |
 ## Audit Pass Log
 
 | Pass | Area | Status | Commit reviewed | Files reviewed | Findings | Fixes | Validation | Notes |
@@ -183,6 +193,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 3C | Study progress, recommendations and saved questions | Complete | `ef291a087206777d2d06c90bd13648e677a4f288` | 24 assigned production Kotlin files, 5 supporting contracts, 2 learner-owned entities plus their DAOs, 2 learner-state migrations, and 14 relevant test files | 3 | 2 | Two targeted repository commands including a deliberate REPLACE falsification run; six targeted derivation/policy commands; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 0, Medium 1, Low 2, Observation 0. Both learner-owned repositories satisfy their documented idempotency, re-add, ordering and orphan contracts; insert-ignore plus a stable-ID tie-break makes them correct under concurrent duplicate writes, which two new regressions now pin. The derivation layer keeps historical evidence and current content strictly apart and shares one exposure, weak-area and mistake definition per concept. `CQ-DATA-009` and `CQ-DATA-011` correct and complete the progress architecture document; `CQ-DATA-010` records per-stable-ID historical metadata resolution as needing measurement. No schema change. Part 3D is next. See review record below. |
 | Part 3D | Preference store contract | Complete | `a77156d64e56969bf769c2d26e40a10724ced283` | 5 assigned production Kotlin files, 3 supporting call sites, 4 platform implementations read for contract only, and 5 relevant test classes | 0 | 0 | One targeted appearance/preference command (22 tests, 5 classes); `git status --short` | High 0, Medium 0, Low 0, Observation 0 — **no material issue found**. The two-method storage contract, its no-throw and absence-is-null promises, the unrecognised-token degradation and the clear-on-System encoding all hold and are pinned by tests at the boundary every host implements. One key and two tokens are declared once in common code. Nothing changed. Part 3 is complete; Part 4A is next. See review record below. |
 | Part 4A | Common Koin graph and lifetimes | Complete | `a77156d64e56969bf769c2d26e40a10724ced283` | Seven common modules and all 45 definitions, 20 `koinViewModel` sites, 17 Compose resolution files, 4 host startup bridges read for contract only, 30 singleton classes read for fields, and 6 relevant test files | 3 | 2 | Six targeted graph/DI commands; a deliberate `factory` falsification run; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 0, Medium 0, Low 3, Observation 0. Every lifetime matches required ownership and no binding changed: 30 singles, 0 factories, 15 ViewModels (8 parameterized), 45 distinct binding keys and 45 distinct concrete constructions, no duplicates, no qualifiers, no cycles, no layer inversion, and no domain or data class reaching the container. `CQ-DI-001` corrects four statements that claimed a graph-build-time preference read that lazy `single` semantics make impossible; `CQ-DI-002` pins the shared history cache's singleton identity and the two ViewModel bindings no graph test resolved; `CQ-DI-003` records the duplicate-route ViewModelStore hazard as currently unreachable. Part 3 and Part 4A are complete; Part 4B is next. See review record below. |
+| Part 3A addendum | Bundled curriculum as production data | Complete | `6e198c5dc14140f80736fe7685e4334f9baef8be` | Both bundled JSON documents audited in full (478 Questions, 135 Lessons), 14 content-boundary production files re-read, 6 consumers, 8 tests and 5 authoring contracts | 10 | 0 | Whole-dataset programmatic checks over identity, references, answer semantics, status, ordering, content shape and four bundle revisions; `git status --short` clean; no Gradle task required because nothing executable changed | High 0, Medium 3, Low 4, Observations 3. Audit only: no production Kotlin, bundled JSON, test or content document was changed. Closes the content exclusion the Part 3A code review recorded. |
 
 ### Part 1A Review Record
 
@@ -1265,6 +1276,434 @@ was edited, and no Koin, platform or attempt-persistence code was touched.
   migration test was required; `CurriculumDatabaseMigrationTest` was read but not modified.
 - Not run: Android lint and the application-shell assemble tasks, because no Android-specific or
   host source changed and `:shared:check` already compiled every target.
+
+## Part 3A Content Addendum — Bundled Curriculum as Production Data
+
+The Part 3A record above audited the curriculum **code** and states explicitly that "the two
+bundled JSON resources and the exported Room schemas were read as data, not audited as content."
+This addendum closes that exclusion: it audits the authored curriculum itself as production data
+and asks what stops invalid or internally inconsistent content reaching a learner. It does not
+revisit, renumber or restate any Part 3A conclusion; where the two meet — import reconciliation,
+answer-option retirement, `CQ-BUG-004` — the earlier record stands and is cited rather than redone.
+
+- **Commit reviewed:** `6e198c5dc14140f80736fe7685e4334f9baef8be`, working tree clean at start.
+- **Authored data inspected in full:** `initial_curriculum.json` (17 Topics, 361 Subtopics, 478
+  Questions, 1 918 answer options, 528 correct-answer entries, 635 sources over 335 distinct URLs)
+  and `learning_curriculum.json` (30 Units, 135 Lessons, 402 Sections, 2 844 blocks, 443 sources).
+  Every check below was run programmatically over the whole document, not over a sample.
+- **Production files re-read for the content boundary (14):** `Curriculum`, `Topic`, `Subtopic`,
+  `Question`, `AnswerOption`, `SourceReference`, `ContentStatus`, `AnswerSelectionMode`,
+  `QuestionLevel`, `CurriculumJsonCodec`, `BundledCurriculumSource`, `CurriculumValidator`,
+  `AuthoredContentChecks`, `CurriculumValidationErrorCode`; plus `CurriculumImporter`,
+  `CurriculumPersistenceMapper`, `CurriculumDao`, `LocalCurriculumRepository` and
+  `CurriculumEntityMapper` for the invariants they assume, and `LearningCurriculumValidator`,
+  `LearningContentLoader` and `BundledLearningCurriculumSource` for the second pipeline.
+- **Consumers read for what they assume about content (6):** `AssessmentReviewLoader`,
+  `SavedQuestionContentResolver`, `AnswerOrder`, `AssessmentQuestionSelector`,
+  `TopicDetailViewModel`, `TopicBrowserViewModel`, plus `AppRoot`/`AppStartupStateHolder` for what
+  a rejected bundle actually shows a user.
+- **Tests read (8):** `InitialCurriculumSmokeTest`, `InitialCurriculumContentQualityTest`,
+  `CurriculumValidatorTest`, `CurriculumImporterTest`, `CurriculumLocalDataPathTest`,
+  `BundledLearningCurriculumTest`, `LearningCurriculumValidatorTest`, and the CI step in
+  `.github/workflows/main.yml`.
+- **Authoring contracts read for the invariants they claim (5):** `content-authoring.md`,
+  `question-validation.md`, `question-bank-coverage.md`, `learning-content-authoring.md`, and
+  `docs/architecture/persistence.md` on `sort_order` and curriculum retirement.
+- **Content edits made: none.** This pass is an audit. No production Kotlin, no bundled JSON, no
+  test and no content document was changed; only this ledger.
+
+### The authored-content model
+
+Authored content reaches a learner through six layers, and each owns a different guarantee.
+
+| Layer | Component | What it guarantees |
+| --- | --- | --- |
+| Authoring | `initial_curriculum.json`, reviewed against `content-authoring.md` and `question-validation.md` | Editorial meaning: the claim is true, the distractors are plausible, the source supports the claim. Not machine-checked. |
+| Serialization | `CurriculumJsonCodec` (`Json { encodeDefaults = true }`) | Shape and vocabulary. Unknown keys are **not** ignored, so a misspelled field fails rather than defaulting silently; a missing required field and an unrecognised enum token both fail. |
+| Validation | `CurriculumValidator` | Identity, referential integrity, hierarchy agreement, answer and source shape, placeholder absence. One deterministic pass; every defect reported, nothing repaired. |
+| Import | `CurriculumImporter` | Atomic whole-graph upsert with `PRAGMA defer_foreign_keys = ON`, and the one reconciliation the model performs: an incoming Question's answer-option set. |
+| Persistence | `topic`/`subtopic`/`question`/`answer_option`/`question_correct_answer`/`question_source` | Stable identity plus `sort_order`, so display order survives without depending on SQLite row order. |
+| Reconstruction | `CurriculumDao` + `LocalCurriculumRepository` | Eligibility. Every `getActive*` query joins Topic and Subtopic status, so status is enforced in SQL rather than by each caller. |
+
+Two properties of that chain are worth naming before the findings.
+
+**Status is a query-layer guarantee, not a data-layer one.** Nothing in the JSON or the validator
+forbids an ACTIVE Question under a DEPRECATED Subtopic; every active query joins
+`t.status = :activeStatus AND s.status = :activeStatus`, so retiring a parent retires everything
+under it without a content migration, and `getQuestionById`, `getTopicById` and `getSubtopicById`
+deliberately bypass the filter so history stays resolvable. This is the right place for the rule
+and it is applied consistently across all seven active-question queries.
+
+**Ordering is authored array position and nothing else.** No model type carries an order field;
+`toPersistenceSnapshot` assigns `sortOrder` with `mapIndexed`, and every ordered read has an
+explicit `ORDER BY sort_order`. `LearningCurriculum`'s KDoc states this contract for the learning
+document — "list position is the ordering contract and no sort-order field is stored" — while
+`Curriculum` states it nowhere.
+
+Invariants that exist only by convention, with no owner in code:
+
+- A Question is never *deleted* from the bundle; retirement is `ContentStatus.DEPRECATED`.
+  `docs/architecture/persistence.md` says absence is not a deletion signal and
+  `CurriculumImporterTest.absenceFromLaterCurriculumIsNotADeletionSignal` pins the importer's half
+  of it, but nothing checks the authored side.
+- New Questions are *appended*; existing array positions do not move.
+- A material change takes a new `Question.id` or `AnswerOption.id`.
+- `docs/content/question-bank-coverage.md` is regenerated in the same PR that changes the bank.
+
+### The shipped dataset
+
+Every identity, referential-integrity, answer-semantics, status and ordering check below was run
+over all 478 Questions and all 135 Lessons.
+
+**Identity — clean.** No duplicate Topic, Subtopic or Question ID; no duplicate answer ID inside a
+Question and none repeated across the whole bank either; no ID blank, whitespace-padded, or outside
+`[a-z0-9_]+`; no ID shared between the Topic, Subtopic and Question namespaces. Two ID schemes
+coexist — 90 Questions use the original `<subtopic>_NNN` form and the rest use descriptive slugs,
+of which 145 happen to begin with their `subtopicId` — but neither scheme is *read* anywhere, so a
+re-homed Question keeps a now-misleading prefix without any behavioural consequence. Answer-option
+suffix letters are demonstrably *not* positional: 156 Questions carry non-contiguous or unordered
+suffixes such as `a, b, e, f`, which is exactly what `content-authoring.md`'s "do not use list
+position or index as answer identity" asks for and is evidence the rule has been followed through
+several rounds of option replacement.
+
+**Referential integrity — clean.** Every Subtopic resolves to an existing Topic; every Question
+resolves to an existing Topic and Subtopic; every Question's `topicId` agrees with the Topic owning
+its Subtopic; every one of the 528 correct-answer entries names an option of its own Question;
+there are no orphaned entities. The learning document is equally clean: all 30 Unit home Topics,
+all primary and supporting Subtopic references and all `relatedLessonIds` resolve, with no
+duplicate Unit or Lesson ID.
+
+**Answer semantics — correct, including the case that looks wrong.** All 431 SINGLE Questions
+carry exactly one correct answer, which the validator enforces from both sides
+(`NO_CORRECT_ANSWERS` and `SELECTION_MODE_CORRECT_ANSWER_MISMATCH`). Of the 47 MULTIPLE Questions,
+38 have two correct answers, 6 have three, and 3 have exactly one. That last group is **not** a
+defect: `content-authoring.md` states that `selectionMode` "must not be inferred from
+`correctAnswerIds.size`: doing so exposes hidden answer-key information through the input
+controls. A MULTIPLE question with one correct answer is valid and still uses multi-selection
+controls", the PR checklist repeats it, and `question-bank-coverage.md` already counts the three.
+All 47 carry the "Select all that apply." prompt, enforced twice over by
+`InitialCurriculumSmokeTest.authoredMultipleQuestionsTellReaderToSelectAllThatApply` and
+`InitialCurriculumContentQualityTest.bundledMultipleSelectionQuestionsTellTheReaderTheModeExplicitly`.
+No Question keys every one of its options.
+
+**Status — internally consistent.** 437 ACTIVE and 41 DEPRECATED Questions; no DEPRECATED Topic or
+Subtopic exists at all, so no ACTIVE child currently sits under a retired parent. Two ACTIVE
+Subtopics — `notification_channels` and `dependency_configurations` — hold Questions of which every
+one is DEPRECATED, which is the shape `CQ-DATA-016` is about one level down.
+
+**Ordering — stable, and demonstrably so.** Comparing the working tree against `581748b`,
+`77408e5`, `87bc851` and `20347fb`: **no Question has ever been removed**, and **no surviving
+Question has ever changed array index** — 79 were appended over that range and every existing
+position held. That is what makes `sort_order` stable across releases on installed devices and what
+keeps the `n:` positional index in `docs/content/question-audit-log.yml` meaningful. The Subtopics
+array is grouped by Topic in 17 contiguous runs, so the globally-indexed `sortOrder` still produces
+the authored order within each Topic. The Questions array is *not* grouped — 478 Questions form 58
+Topic runs — but nothing depends on it, because `AssessmentQuestionSelector` shuffles its candidate
+pool before narrowing.
+
+**Content shape — clean.** No blank Topic, Subtopic, Question, answer, explanation or source text;
+no authoring placeholder; every Question has at least two options (472 have four, 6 have five), at
+least one correct answer, a non-blank explanation and at least one source; every one of the 635
+source URLs is a syntactically valid `https://` URL with a host and a path, and every host is on
+the 16-entry allowlist in `InitialCurriculumContentQualityTest`. No duplicated stem, no duplicated
+explanation, no two Questions sharing an identical option set. A Jaccard near-duplicate scan over
+all 114 003 stem pairs surfaced two above 0.62; both were inspected and both are false positives
+(`dagger_module_binding_declarations` versus `dagger_component_graph_root` ask about `@Module`
+versus `@Component`; `sharedflow_001` versus `di_scopes_001` share only the "Which statements
+about … Select all that apply." frame, and in each pair one member is already DEPRECATED). A
+0.9-threshold scan over option texts within each Question surfaced one pair, in
+`noinline_vs_crossinline_lambda`, which is a deliberate swapped-term distractor. **No content
+defect was found in the shipped dataset.**
+
+### Validator responsibility
+
+`CurriculumValidator` enforces 39 error codes across identity, hierarchy, answer shape,
+correct-answer references, selection-mode arity, explanation, sources and placeholders, in one
+non-failing-fast deterministic pass, and `CurriculumValidatorTest` covers it with 22 tests
+including ordering determinism, multi-error accumulation, the `TODO()`-is-not-a-placeholder
+carve-out and the DEPRECATED-is-not-itself-a-defect rule. The importer assumes exactly what the
+validator promises and says so: `CurriculumDao.deleteAnswerOptionsForQuestionExcept` documents
+that `keepAnswerIds` "is never empty… CurriculumValidator requires at least two answers per
+question", and `CurriculumEntityMapper` calls
+`AnswerSelectionMode.valueOf`/`QuestionLevel.valueOf` on the strength of the codec having already
+rejected an unknown token. Those assumptions hold.
+
+Three responsibility gaps remain, and each is a finding below rather than a restatement here:
+coverage counting ignores status (`CQ-DATA-016`), nothing validates one bundle revision against the
+previous one (`CQ-DATA-014`), and the precise diagnostics the validator produces are discarded at
+every point where a human would read them (`CQ-DATA-013`). A fourth item is a deliberate asymmetry
+rather than a gap: the assessment pipeline models a validation failure as data but lets a decode
+failure escape untyped, where the learning pipeline models both (`CQ-DATA-018`).
+
+Malformed curricula that pass validation today and would produce wrong behaviour: a Topic all of
+whose Questions are DEPRECATED (passes `TOPIC_WITHOUT_QUESTIONS`, then browses as a Topic with
+nothing to practise); an ACTIVE Question under a DEPRECATED Subtopic (passes, then becomes
+unreachable through every eligibility query while still resolving historically); and a Question
+whose entire option set is keyed (passes, and scores correct for a learner who selects everything).
+None of the three occurs in the shipped bank.
+
+### Bundled-content tests
+
+The suite divides cleanly, and the division is the point.
+
+**Semantic and invariant tests, all worth keeping.**
+`bundledInitialCurriculumPassesStructuralValidation` runs the real validator over the real bundle,
+and `bundledInitialQuestionsPreserveE0604ContentShape` asserts per-Question answerability.
+`InitialCurriculumContentQualityTest` enforces five editorial invariants no validator could own —
+unique stems, the MULTIPLE prompt, the approved-host list, the anti-cue keyed-answer length ratio,
+and the absolute-word distribution across keyed answers and distractors — and the last two are
+unusually good: they encode *why* the rule exists rather than a literal.
+`CurriculumImporterTest`'s 22 cases cover the evolution semantics directly, including re-homing,
+absence-is-not-deletion, retained historical options and untouched learner records.
+`LearningCurriculumValidatorTest` and `LearningContentLoader`'s all-or-nothing contract do the
+same for the second document.
+
+**Snapshot tests, mixed.** Some frozen numbers are content policy and belong in CI: the per-Topic
+ACTIVE counts in `bundledInitialQuestionDistributionMatchesCurrentTargets` express the
+"no Topic starves" intent, and the SINGLE/MULTIPLE split is a deliberate balance. Others freeze
+consequence: `1_918` answer options, `528` correct-answer rows and `635` sources in
+`CurriculumLocalDataPathTest` are derived totals that say nothing a per-row invariant would not say
+better, and `bundledQuestionsHaveReviewedE1503LevelDistribution` is named after the issue that
+produced it. `CQ-TEST-001` separates the two and recommends keeping the first group.
+
+**The gap on the other side.** Nothing automatically protects: that every ACTIVE Topic has at least
+one ACTIVE Question; that a Question is never removed between revisions; that a correct-answer key
+never changes under a stable ID; that the Questions array stays append-only; or that
+`docs/content/question-bank-coverage.md` matches the bank.
+
+### Historical and user-state compatibility
+
+Persisted learner state references curriculum identity in four places: `question_attempt` and
+`question_attempt_selected_answer` (foreign-keyed onto `question` and `answer_option`),
+`saved_question` and `mistake` resolution (by stable ID, no foreign key), and study progress (by
+Lesson ID). The contracts are explicit and mostly safe:
+
+| Content change | What happens | Safe? |
+| --- | --- | --- |
+| Text or explanation edited, ID kept | Attempt correctness is persisted occurrence data and is never recomputed; review and saved questions render the new text | Yes, and this is the documented minor-edit case |
+| `level` changed, ID kept | Persisted correctness unaffected; level-derived figures reclassify. Happened twice in history (`dependency_direction_domain_framework_types`, `parent_cancellation_propagates_children`) | Yes |
+| Question re-homed to another Subtopic | Validator accepts it, importer handles it since `CQ-BUG-004`; derived per-Subtopic figures move with the content. Happened eight times | Yes |
+| Options added or removed, ID kept | Removed-and-historically-selected options are retained and marked DEPRECATED; `getQuestionById` still returns them, so review keeps the original text. Added options change the derived review order — see `CQ-DATA-015` | Mostly |
+| Correct answer changed, ID kept | Review reports the persisted verdict beside the *current* key and can contradict itself — see `CQ-DATA-014`. Forbidden by `content-authoring.md`; never yet done | **No, and unenforced** |
+| Question becomes DEPRECATED | Dropped from eligibility, still resolvable by ID; saved questions and review unaffected | Yes |
+| Question deleted from the bundle | A fresh install never sees it; an upgraded install keeps the row ACTIVE and keeps serving it. Never yet done | **No, and unenforced** |
+| ID reused for different content | Nothing detects it; history silently re-points at the new meaning | **No, and unenforced** |
+
+The three unsafe rows share one cause and one fix direction, recorded once as `CQ-DATA-014`.
+
+### Findings
+
+Ordered by severity, then by confidence.
+
+- **`CQ-DATA-012` — Medium / High — the question-bank coverage snapshot is stale and ungated.**
+  `docs/content/question-bank-coverage.md` headlines 442 total Questions, 401 ACTIVE, 1 774 answer
+  options, 563 sources over 323 URLs and 78 empty Subtopics; the bundle holds 478, 437, 1 918, 635
+  over 335, and 69 Subtopics with no Question at all (71 with no ACTIVE Question, 290 with at least
+  one). The drift is exactly the two most recent authoring epics. Its generator is a fenced Python
+  block inside the Markdown that a human pastes into a shell, while the sibling snapshot
+  `docs/content/learning-question-coverage.md` is produced by `tools/learning_question_coverage.py`
+  and gated in CI by `python3 tools/learning_question_coverage.py --check` — and is current.
+  `content-authoring.md` instructs "regenerate its tables in the same PR that changes the bank",
+  which is a rule with no enforcement. **Failure mode:** the document exists so a later session
+  does not re-derive the coverage triage, and its Empty-subtopics section explicitly separates real
+  gaps from deliberate ones; planning an expansion against it now plans against a bank 36 Questions
+  out of date. **Direction:** move the generator into `tools/` with the same `--write`/`--check`
+  pair and add it to the CI step that already runs its sibling.
+
+- **`CQ-DATA-013` — Medium / High — validation diagnostics are discarded everywhere they would be
+  read.** `CurriculumValidator` produces a `CurriculumValidationError(code, entityId, message)` per
+  defect. `CurriculumDataInitializer` joins every message into one `IllegalStateException`;
+  `AppStartupStateHolder.initialize` catches it as `catch (_: Exception)` and renders the generic
+  `app_startup_error` string; `commonMain` contains no logging of any kind. The gate that will
+  actually fire is the build-time one, and it is
+  `assertTrue(CurriculumValidator().validate(initialCurriculum).isEmpty())` —
+  `InitialCurriculumSmokeTest`, no message argument. **Failure mode:** an author breaks one of 478
+  Questions and CI reports `Expected value to be true.`, naming neither the error code nor the
+  Question; the entity-identified error model the validator was built around is never surfaced to
+  anyone. **Direction:** assert on the rendered error list rather than on `isEmpty()`, which costs
+  one line and makes every one of the 39 codes diagnostic. What a rejected bundle should do at
+  runtime is a startup-reporting question and belongs to Part 5.
+
+- **`CQ-DATA-014` — Medium / High — nothing compares one bundle revision to the next, so every
+  identity-stability rule is convention-only.** `content-authoring.md` requires a new `Question.id`
+  with the old one DEPRECATED when the concept, claim, correct answer or scenario changes, and a
+  new `AnswerOption.id` when an option's meaning changes. `CurriculumValidator` validates one
+  document in isolation; `CurriculumImporter` upserts by primary key and never diffs against the
+  persisted copy. The convention has held — across `581748b` to the working tree no Question was
+  removed and no correct-answer key changed; three option texts were rewritten under a stable ID
+  (`di_scopes_001_b`, `di_hilt_viewmodel_scope_b`,
+  `compose_strong_skipping_instance_equality_b`) and all three are refinements of the same claim —
+  but nothing would detect a violation. **Failure mode:** `AssessmentReviewLoader.loadQuestion`
+  takes `isCorrect` from the persisted attempt and `isCorrectAnswer` from the *current*
+  `question.correctAnswerIds`, so a key changed under a stable ID makes the review screen tell a
+  learner they answered correctly while marking the option they chose incorrect. Deleting a
+  Question from the JSON is the same class: fresh installs lose it, upgraded installs keep serving
+  it ACTIVE, and the two populations diverge permanently. **Direction:** a build-time diff of the
+  bundle against its previous released revision — ID sets, correct-answer sets, option-ID sets,
+  `selectionMode` — reported as an authoring error. This is the single highest-value missing
+  guarantee in the content boundary.
+
+- **`CQ-DATA-015` — Low / High — review fidelity degrades silently when an option set changes.**
+  `AnswerOrder.withAnswersOrderedFor` shuffles the *current* option list with a seed derived from
+  `(attemptId, questionId)`, and `AssessmentReviewLoader`'s KDoc claims the result orders the
+  answers "exactly as they were ordered while the attempt was being taken". `getQuestionById`
+  returns ACTIVE and DEPRECATED options together. Adding an option to an existing Question
+  therefore changes both the set and the derived order, so review of an older attempt shows an
+  option the learner never saw, marked `wasSelected = false` and indistinguishable from one they
+  saw and rejected, in an arrangement they never saw. `SavedQuestionContentResolver` has the milder
+  form: a saved Question renders retired options as ordinary wrong answers. Unreachable on a fresh
+  install, because no shipped option is DEPRECATED. **Direction:** bound the KDoc claim to a stable
+  option set, and decide whether the historical resolver should exclude retired options for the
+  saved-question surface, which has no attempt whose arrangement it is reproducing.
+
+- **`CQ-DATA-016` — Low / High — the validator's one coverage rule is status-blind.**
+`CurriculumValidator.validateMinimumCoverage` builds `questionTopicIds` from
+`curriculum.questions` without filtering `status`, so `TOPIC_WITHOUT_QUESTIONS` passes for a Topic
+whose every Question is DEPRECATED — precisely the case it exists to prevent. The bank
+demonstrates the shape one level down: `notification_channels` and `dependency_configurations` are
+ACTIVE Subtopics whose only Questions are all DEPRECATED. Contrast `LearningCurriculumValidator`,
+which makes every minimum-content rule ACTIVE-only and says why. **Failure mode:** retiring the
+last live Question in a Topic ships a Topic that loads, lists Subtopics and offers nothing to
+practise, with no build failure. **Direction:** count ACTIVE Questions in that one rule. Do *not*
+add the Subtopic equivalent: an ACTIVE Subtopic with no Question is recorded product state, not a
+defect.
+
+- **`CQ-DATA-017` — Low / High — Topic search surfaces Subtopics no screen can show.**
+  `TopicBrowserViewModel.readCatalog` indexes every ACTIVE Subtopic for search, while
+  `TopicDetailViewModel.readCurriculum` deliberately drops Subtopics with no ACTIVE Question
+  ("Only Subtopics that can actually be practised become rows"). 71 of 361 ACTIVE Subtopics
+  currently have no ACTIVE Question, so roughly a fifth of Subtopic search hits push
+  `AppRoute.Topic(topicId, subtopicId)`, `TopicDetailTabs` resolves `targetIndex` to `-1`, and the
+  learner lands on the Subtopics tab at the top with no row and no explanation. The behaviour
+  degrades safely — the effect is explicitly written to handle `-1` — so this is a dead-end search
+  result, not a fault. The taxonomy being wider than the bank is a recorded product decision, so
+  the fix belongs to the search surface. **Direction:** either index only practicable Subtopics or
+  say on the result row that the Subtopic has no questions yet.
+
+- **`CQ-TEST-001` — Low / High — bundled-bank snapshot assertions mix content policy with
+  incidental totals.** `InitialCurriculumSmokeTest` pins 17/361/478/437/41/431/47, a whole-bank and
+  per-status level distribution, and a 17-entry per-Topic ACTIVE map; `CurriculumLocalDataPathTest`
+  independently pins 17/361/478, `1_918`, `528`, `635`, `23`, and a first-row ID at each level of
+  the hierarchy; `CurriculumImporterTest` pins 361/478 again. Adding one ACTIVE APPLIED Question to
+  `testing` requires editing roughly nine literals across three files. Policy worth keeping: the
+  per-Topic ACTIVE targets, the SINGLE/MULTIPLE split, and the first-row IDs, which are the only
+  thing pinning authored order end to end. Incidental: `1_918`, `528` and `635`, which are derived
+  totals, and `bundledQuestionsHaveReviewedE1503LevelDistribution`, which freezes the state one
+  issue happened to leave. **Direction:** keep the policy assertions as they are; re-express the
+  derived totals as invariants against the authored collections rather than as frozen numbers, so
+  ordinary authoring stops paying for them.
+
+- **`CQ-DATA-018` — Observation — the two pipelines model failure asymmetrically.**
+  `LearningContentLoader` catches `SerializationException` and rethrows
+  `LearningContentLoadException(LearningContentLoadFailure.Decode(cause))`, explaining that a
+  packaging fault and a content fault should not send a reader to the same file.
+  `CurriculumImporter` returns `CurriculumImportResult.Rejected(errors)` for validation but lets a
+  decode failure escape untyped, which `CurriculumLocalDataPathTest` pins as a raw
+  `SerializationException`. Both end at the same generic startup screen today, so nothing
+  user-visible differs. Recorded, not a defect on current evidence.
+
+- **`CQ-DATA-019` — Observation — array position is an ordering contract the assessment model does
+  not state.** `LearningCurriculum` documents it; `Curriculum`, `Topic`, `Subtopic` and `Question`
+  do not, and `sortOrder` appears only as `mapIndexed` inside `toPersistenceSnapshot`. The
+  convention has held perfectly — 79 Questions appended over four revisions with zero index changes
+  — and it is load-bearing twice over: it keeps `sort_order` stable on installed devices, and it
+  keeps the `n:` positional index in `docs/content/question-audit-log.yml` valid. A mid-array insert
+  would renumber `sort_order` for every later Question on every device and silently invalidate every
+  recorded `n`, with no test failing. The natural homes for the rule are `Curriculum`'s KDoc and
+  `content-authoring.md`.
+
+- **`CQ-DATA-020` — Observation — learning-content sources are ungated by design, and secondary
+  sources are no longer exceptional.** `InitialCurriculumContentQualityTest` enforces a 16-host
+  allowlist for the question bank. The learning document has no equivalent, deliberately:
+  `LearningCurriculumValidator.validateSources` and Rule 9 of `learning-content-authoring.md` both
+  argue that an allowlist would reject valid documentation. The consequence is visible in the data:
+  of 443 learning sources, 17 cite `martinfowler.com`, 7 cite `raw.githubusercontent.com` against
+  the moving `androidx-main` branch, 2 cite `staltz.com` and 2 cite `blog.ploeh.dk`, against a
+  contract that calls secondary sources exceptional. Several are plainly the primary source for the
+  claim they support. The branch-pinned raw URLs are the part with a mechanical answer — a tag or
+  commit pins the text the Lesson actually cites. Recorded so the position is a decision.
+
+### What is already strong
+
+- **The shipped data is clean on every mechanical axis.** Zero duplicate or malformed IDs at any
+  level, zero broken references, zero hierarchy disagreements, zero duplicate stems, explanations or
+  option sets, zero placeholders, and 635 well-formed allowlisted source URLs — verified over the
+  whole document, not sampled. The same holds for the learning document's 30 Units and 135 Lessons.
+- **Status enforcement lives in SQL.** All seven active-question queries and the active-subtopic
+  query join Topic and Subtopic status, so retiring a parent retires its children with no content
+  migration and no caller able to forget. The three by-ID resolvers bypass it on purpose, and
+  say so.
+- **Every ordered read orders explicitly.** No query anywhere relies on SQLite row order.
+- **Selection-mode semantics are right, including the counter-intuitive case.** SINGLE arity is
+  enforced from both directions, and MULTIPLE-with-one-correct is a reasoned product decision about
+  not leaking the key through the input controls — documented, counted, and prompt-enforced.
+- **The validator reports rather than repairs, exhaustively and deterministically.** One pass, every
+  independent defect, no trimming or de-duplication that would hide the defect it found — and 22
+  tests holding that shape, including determinism and the `TODO()` carve-out.
+- **The learning pipeline validates cross-document references at runtime, all-or-nothing.**
+  `LearningContentLoader` checks the learning document against the bundled `Curriculum` it was
+  authored against rather than the imported Room copy, and refuses partial success.
+- **Strict JSON.** No `ignoreUnknownKeys`, so a misspelled or stray field fails the build instead of
+  defaulting silently, and `@SerialName` pins every `LearningBlock` discriminator against class
+  renames.
+- **Authoring discipline is real and measurable.** Across four bundle revisions: no Question
+  deleted, no array position disturbed, no correct-answer key changed under a stable ID, and option
+  IDs left alone while option text was refined. The rules in `content-authoring.md` are being
+  followed; what is missing is anything that would notice if they stopped being.
+- **`CQ-BUG-004`'s fix and the answer-option reconciliation** remain the strongest part of the
+  import path and should not be disturbed by anything above.
+
+### Missing invariants
+
+**Enforced in code.** Non-blank and unique Topic/Subtopic/Question IDs; unique answer IDs within a
+Question; Subtopic → Topic and Question → Topic/Subtopic resolution; Question `topicId` agreeing
+with its Subtopic's owner; at least two answers; no duplicate option text within a Question; at
+least one correct answer; every correct-answer ID resolving to an option of that Question; no
+duplicate correct-answer ID; SINGLE carrying at most one correct answer; non-blank question text,
+explanation, answer text, source title and source URL; syntactically valid `http(s)` source URL; no
+unreachable-host URL; no authoring placeholder in any authored text; one Question never citing the
+same source URL twice; at least one Topic, Subtopic and Question; every Topic having at least one
+Question *of any status*. On the learning side, additionally: cross-document Topic and Subtopic
+resolution, `relatedLessonIds` resolution, no self-relation, primary/supporting overlap, comparison
+column-count agreement, and status-aware minimum content.
+
+**Enforced only by tests.** Unique question stems; the "Select all that apply." prompt; the
+approved source-host allowlist; the keyed-answer length ratio; absolute-word distribution across
+keyed answers and distractors; total and per-status Question counts; the per-Topic ACTIVE
+distribution and the per-Topic level distribution; total answer-option, correct-answer and source
+row counts; the first Topic, Subtopic and Question in authored order; and the learning document's
+per-Unit blueprint order and bridge composition.
+
+**Relying on authored-content convention alone.** A Question is never removed from the bundle; new
+Questions are appended and existing array positions never move; a material change takes a new
+`Question.id` with the old one DEPRECATED; an option whose meaning changes takes a new
+`AnswerOption.id`; a correct-answer key never changes under a stable ID; an ID is never reused for
+different content; every ACTIVE Topic keeps at least one ACTIVE Question; an ACTIVE Question is not
+left under a DEPRECATED Subtopic; no Question keys its entire option set;
+`docs/content/question-bank-coverage.md` is regenerated whenever the bank changes; and learning
+sources are authoritative.
+
+### Part 3A Content Addendum assessment
+
+The bundled curriculum can be trusted as a production-data boundary **for the content that is in it
+today, and not yet for the process that changes it.** Both halves of that sentence are supported by
+the same evidence. Every mechanical property that can be checked within a single revision is clean
+across all 478 Questions and all 135 Lessons, the validator that checks them is exhaustive,
+deterministic and well tested, and status and ordering are enforced in the one layer — SQL — where
+no caller can forget them. Nothing in the shipped data is wrong.
+
+What is missing is longitudinal. The contract that actually protects a learner's history is not
+"this document is internally consistent" but "this document means the same thing the last one did
+where the IDs agree", and that contract has no owner: no revision-to-revision diff, no check that a
+Question survived, no check that a key held. The evidence says the convention has been kept
+perfectly so far, which is exactly why the gap is easy to miss and cheap to close now.
+Alongside it, the two supporting weaknesses are about *knowing*: the coverage snapshot that guides
+the next expansion is 36 Questions out of date because its regeneration is manual, and the only
+gate that will ever report a content defect throws away the error model built to describe it.
+
+Fix `CQ-DATA-014`, `CQ-DATA-012` and `CQ-DATA-013` and the authored curriculum becomes a boundary
+that can be trusted across revisions rather than within one. Until then, its reliability rests on
+the author remembering the rules, which the history shows they have — every time so far.
 
 ## Part 3B Review Record
 
@@ -2814,8 +3253,42 @@ Needs measurement: 0
 Accepted as-is: 1
 Not a defect: 0
 
+Part 3A Content Addendum — Complete
+
+High: 0
+Medium: 3
+Low: 4
+Observations: 3
+
+Fixed: 0
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
 Part 4B — Next
 ```
+
+The Part 3A content addendum is complete. The two bundled JSON documents were audited as production
+data rather than as fixtures, in full and programmatically: 17 Topics, 361 Subtopics, 478 Questions,
+1 918 answer options, 528 correct-answer entries and 635 sources on the assessment side, and 30
+Units, 135 Lessons and 2 844 blocks on the learning side. Every mechanical property checkable within
+one revision is clean — no duplicate or malformed identity anywhere, no broken reference, no
+hierarchy disagreement, no duplicated stem, explanation or option set, no placeholder, and 635
+well-formed allowlisted source URLs — and the near-duplicate scans over stems and options surfaced
+only false positives. SINGLE arity is enforced from both directions; the three MULTIPLE Questions
+with one correct answer are a documented product decision about not leaking the key through the
+input controls, not a defect. Status and ordering are enforced in SQL, where no caller can forget
+them. The gap is longitudinal rather than structural: nothing compares one bundle revision to the
+next, so the rules that actually protect a learner's history — never delete a Question, never move
+an array position, never change a correct-answer key under a stable ID — have no owner in code, even
+though four revisions of history show every one of them kept. Ten findings are recorded, none fixed,
+because this pass is an audit: `CQ-DATA-012` (the coverage snapshot is 36 Questions stale and
+ungated), `CQ-DATA-013` (the only gate that fires throws away the error model built to describe the
+defect), `CQ-DATA-014` (no revision-to-revision diff), four Low findings and three Observations.
+**No content defect was found in the shipped dataset, and nothing was changed.** The exact next
+chunk remains **Part 4B — Host composition roots**, and the Part 3 synthesis is deliberately not
+written here.
 
 Part 4A is complete. The common Koin graph was re-inventoried from the working tree — seven modules,
 30 singles, no factories, 15 ViewModels of which 8 take runtime parameters, 20 `koinViewModel` sites,

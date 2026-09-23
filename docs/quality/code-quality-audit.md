@@ -175,6 +175,12 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-DATA-018` | Content pipelines / failure modelling | Observation | High | `CurriculumImporter.kt`, `LearningContentLoader.kt` | The assessment pipeline models validation failure as data but lets decode failure escape untyped. | `LearningContentLoader` translates `SerializationException` into a typed `Decode` failure and explains why; the importer returns `Rejected(errors)` for validation only, and `CurriculumLocalDataPathTest` pins the raw `SerializationException` escaping. Both end at the same generic startup screen today. | Record only. Revisit with startup error reporting in Part 5. | Open |
 | `CQ-DATA-019` | Authored content / ordering contract | Observation | High | `curriculum/Curriculum.kt`, `CurriculumPersistenceMapper.kt`, `docs/content/question-audit-log.yml` | Array position is an ordering contract the assessment model never states. | `LearningCurriculum` documents it; `Curriculum` and its types do not, and `sortOrder` appears only as `mapIndexed`. Across four revisions 79 Questions were appended with zero index changes, which is what keeps `sort_order` stable on installed devices and the audit log's `n:` index valid. A mid-array insert would renumber every later row with no test failing. | Write the rule into `Curriculum`'s KDoc and `content-authoring.md`. | Open |
 | `CQ-DATA-020` | Learning content / source governance | Observation | High | `LearningCurriculumValidator.kt`, `InitialCurriculumContentQualityTest.kt`, `learning_curriculum.json` | Learning sources are ungated by design, and secondary sources are no longer exceptional. | The question bank has a 16-host allowlist; the learning document deliberately has none. Of 443 learning sources, 17 cite `martinfowler.com`, 7 cite `raw.githubusercontent.com` at the moving `androidx-main` branch, 2 `staltz.com`, 2 `blog.ploeh.dk`. Several are plainly primary for the claim. | Record the position deliberately; pin the raw GitHub citations to a tag or commit so the cited text cannot move. | Open |
+| `CQ-DI-004` | Common Koin graph / override safety | Medium | High | `SharedHostStartupTest.kt`, `AndroidLocalData.kt`, `IosLocalData.kt`, `DesktopLocalData.kt`, `WebLocalData.kt` | Nothing can detect a duplicate or overriding definition, and the assertions that claim to cannot. | `koin-core` 4.2.2 `KoinApplication` declares `private var allowOverride = true`; `strictOverride()` flips it and no host and no test calls it, so `InstanceRegistry.saveMapping` replaces an existing index silently and logs only `warn("(+) override index ...")` — invisible, because no host installs a logger. A throwaway probe confirmed it: two modules each declaring `single { Probe(...) }` resolved through `koinApplication { }` yield one instance, the later definition winning. `SharedHostStartupTest`'s four identity assertions state the opposite mechanism ("a second binding would give them separately-cached histories that drift apart", "a duplicate definition would otherwise pass", "a second binding would silently break that", "a second instance would mean the startup screens and the shell could disagree"); a duplicate produces one winner, so `assertEquals(get(), get())` passes either way. What those assertions really pin is `single` not becoming `factory`, which is what the Part 4A falsification run demonstrated. | Call `strictOverride()` in the four `start*LocalDataGraph` functions and in the graph test so an unintended duplicate fails at startup, and correct the four assertion comments to say they pin scope rather than uniqueness. | Open |
+| `CQ-DI-005` | Common Koin graph / container boundary | Low | High | `ui/theme/AppearanceTheme.kt`, six journey integration tests | The appearance preference is the one dependency resolved from the global container rather than from the composition's Koin. | `AppearanceTheme` uses `KoinPlatform.getKoinOrNull()`, which is `KoinPlatformTools.defaultContext().getOrNull()` — the `GlobalContext`. Every other common-code resolution goes through `koinViewModel`/`koinInject`, which read `LocalKoinScopeContext`, the composition local that `KoinApplication { }` and `KoinContext { }` override. Six tests compose the real `App()` under `KoinApplication { ... }` — `FocusedLearningJourney`, `LearningProductionContentJourney`, `LearningReaderJourney`, `MixedInterviewJourney`, `ProgressLearningJourney`, `TopicDiscovery` — and all six omit `appearanceModule`; installing it would change nothing, because the holder would live in the composition's Koin while the lookup reads the global one those tests `stopKoin()`. `AppearanceThemeTest`'s helper states the coupling, so it is known rather than hidden. | Resolve the holder through the composition's scope with the same optional guard — preview-safety is orthogonal to which container is consulted — so a host that used `KoinApplication { }` instead of `startKoin` would not silently lose dark mode. | Open |
+| `CQ-DI-006` | Graph test / host contract documentation | Low | High | `SharedHostStartupTest.kt` | The graph test describes a three-module, one-platform-binding graph that has not existed for several epics. | The class KDoc reads "Every runtime host installs the same three shared modules plus exactly one platform `CurriculumDatabase` module"; hosts install seven common modules and two platform modules, and the test body installs all nine nine lines below the comment. The inline comment "The only binding a platform host adds on top of the shared modules" is contradicted three lines later by `jvmAppearanceModule`, which supplies `AppPreferenceStorage`. This is the one test whose stated job is to pin the host contract, and it misstates both dimensions a new host can get wrong. | Restate both comments from the module list the test already builds: seven common modules, and exactly two platform bindings, naming `CurriculumDatabase` and `AppPreferenceStorage`. | Open |
+| `CQ-DI-007` | Architecture documentation / DI narrative | Low | High | `docs/architecture/overview.md` | The DI narrative contradicts the same document's Runtime Host Coverage table. | Lines 17-23 still say Koin "is started by the Android `Application`, combines the shared curriculum module with the Android database module" and that "Compose injection, and ViewModel DSLs are deferred until a real requirement appears". Ninety lines later the host table correctly lists four hosts and all seven common modules plus two platform modules. Three claims are false: four hosts start Koin, the graph is seven common modules, and both deferred techniques are in use — `org.koin.core.module.dsl.viewModel` for fifteen definitions and Compose injection at twenty `koinViewModel` sites plus one `koinInject`. It reads as current restraint rather than as an E07-era note. | Rewrite the paragraph to match the host table, and restate the deferral sentence as what is still deferred: annotations, the compiler plugin, `singleOf`/`viewModelOf`, qualifiers and scopes. | Open |
+| `CQ-DI-008` | App scope / platform dispatcher semantics | Observation | High | `assessment/history/AppCoroutineScope.kt`, `ProgressStateHolder.kt`, `MistakeReviewStateHolder.kt` | `Dispatchers.Default` is a background pool on three targets and the browser's main thread on two. | `AppCoroutineScope` is `CoroutineScope(SupervisorJob() + Dispatchers.Default)`. On Kotlin/JS and Kotlin/Wasm that is the single-threaded event loop. On each `invalidate()` — every completed attempt — `ProgressStateHolder` re-derives the dashboard, `MistakeReviewStateHolder` rebuilds the queue, and `MistakeReviewService.load` issues one `getQuestionById` per unresolved mistake through `AssessmentReviewLoader`, each in its own read transaction. The holders are lazy `single`s, so this starts on the first visit to those areas and then continues for the process whether or not the screens are shown again. No measurement was taken on any host. | Record only; `CQ-DATA-010` owns the per-ID query cost it compounds. Revisit with Part 5 cross-cutting performance. | Open |
+| `CQ-DI-009` | Constructor defaults / graph opt-out | Observation | High | `AssessmentQuestionSelector.kt`, `LearningProgressService.kt`, `MistakeReviewStateHolder.kt` | Three constructors can supply a dependency the graph also owns. | `AssessmentQuestionSelector` and `LearningProgressService` default `performanceDerivation` to `LearningPerformanceDerivation(curriculumRepository)`; `MistakeReviewStateHolder` defaults `learningContentRepository` to `null`. All three are supplied explicitly by their modules, so production shares one stateless derivation and the mistake queue does get its study links. The null is the one that is not harmless in kind: it removes the study-Lesson link silently rather than failing, and six test call sites construct the holder without it. | Record only. Noted because a default that builds or omits a graph-owned dependency is how a future call site would silently opt out of the graph, invisibly at the call site. | Open |
 ## Audit Pass Log
 
 | Pass | Area | Status | Commit reviewed | Files reviewed | Findings | Fixes | Validation | Notes |
@@ -194,6 +200,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 3D | Preference store contract | Complete | `a77156d64e56969bf769c2d26e40a10724ced283` | 5 assigned production Kotlin files, 3 supporting call sites, 4 platform implementations read for contract only, and 5 relevant test classes | 0 | 0 | One targeted appearance/preference command (22 tests, 5 classes); `git status --short` | High 0, Medium 0, Low 0, Observation 0 — **no material issue found**. The two-method storage contract, its no-throw and absence-is-null promises, the unrecognised-token degradation and the clear-on-System encoding all hold and are pinned by tests at the boundary every host implements. One key and two tokens are declared once in common code. Nothing changed. Part 3 is complete; Part 4A is next. See review record below. |
 | Part 4A | Common Koin graph and lifetimes | Complete | `a77156d64e56969bf769c2d26e40a10724ced283` | Seven common modules and all 45 definitions, 20 `koinViewModel` sites, 17 Compose resolution files, 4 host startup bridges read for contract only, 30 singleton classes read for fields, and 6 relevant test files | 3 | 2 | Six targeted graph/DI commands; a deliberate `factory` falsification run; `:shared:jvmTest`; `:shared:check`; `git diff --check` | High 0, Medium 0, Low 3, Observation 0. Every lifetime matches required ownership and no binding changed: 30 singles, 0 factories, 15 ViewModels (8 parameterized), 45 distinct binding keys and 45 distinct concrete constructions, no duplicates, no qualifiers, no cycles, no layer inversion, and no domain or data class reaching the container. `CQ-DI-001` corrects four statements that claimed a graph-build-time preference read that lazy `single` semantics make impossible; `CQ-DI-002` pins the shared history cache's singleton identity and the two ViewModel bindings no graph test resolved; `CQ-DI-003` records the duplicate-route ViewModelStore hazard as currently unreachable. Part 3 and Part 4A are complete; Part 4B is next. See review record below. |
 | Part 3A addendum | Bundled curriculum as production data | Complete | `6e198c5dc14140f80736fe7685e4334f9baef8be` | Both bundled JSON documents audited in full (478 Questions, 135 Lessons), 14 content-boundary production files re-read, 6 consumers, 8 tests and 5 authoring contracts | 10 | 0 | Whole-dataset programmatic checks over identity, references, answer semantics, status, ordering, content shape and four bundle revisions; `git status --short` clean; no Gradle task required because nothing executable changed | High 0, Medium 3, Low 4, Observations 3. Audit only: no production Kotlin, bundled JSON, test or content document was changed. Closes the content exclusion the Part 3A code review recorded. |
+| Part 4A addendum | Common Koin graph and lifetimes | Complete | `8b2be06abc375fa930172a03a474280e55cb3445` | Seven common modules plus eight platform modules re-counted mechanically, 20 `koinViewModel` sites across 15 files, 4 host bridges and 4 platform roots, 30 singleton classes re-read for fields, 8 app-scoped holders, 12 Koin-touching test files, and 5 third-party libraries read from source | 6 | 0 | One throwaway duplicate-definition probe (`:shared:jvmTest`, passed, then deleted); `git status --short` clean; no other Gradle task, because no executable file changed | High 0, Medium 1, Low 3, Observations 2. Audit only: no Koin definition, module, host bridge, comment or test was changed. Adds the enforcement, implicit-contract and test-coverage layer the Part 4A record did not reach. |
 
 ### Part 1A Review Record
 
@@ -2705,6 +2712,418 @@ be brittle and would prove less.
   `:shared:check` already compiled every target including Android, iOS and both web targets.
 
 
+## Part 4A Addendum — Common Koin Graph and Lifetimes
+
+The Part 4A record above established that every binding's Koin lifetime matches the lifetime its
+behaviour requires, and it remains correct: this addendum re-derived the whole graph from the
+working tree independently and reached the same conclusion on all 45 definitions. It does not
+restate, renumber or revisit any Part 4A conclusion. What it adds is the layer Part 4A did not
+reach — what the graph's *protective machinery* actually protects, which lifetime contracts exist
+only as convention, and the two written descriptions of the graph that no longer describe it. Where
+the two records meet — `AssessmentHistoryStore` identity, `AppearanceTheme`'s optional lookup,
+`CQ-DI-003`'s route-equality hazard — the earlier record stands and is cited rather than redone.
+
+- **Commit reviewed:** `8b2be06abc375fa930172a03a474280e55cb3445`, working tree clean at start and
+  at finish.
+- **Graph re-derived, not carried forward.** Seven common modules, four platform database modules
+  and four platform preference modules read in full; every `single`, `factory` and `viewModel`
+  counted mechanically rather than taken from the Part 4A table. The totals agree: **30 `single`,
+  0 `factory`, 15 `viewModel` in common**, plus **8 platform `single`s** (one `CurriculumDatabase`
+  and one `AppPreferenceStorage` per host), and **20 `koinViewModel` sites across 15 files**, one
+  `koinInject` and one `KoinPlatform` lookup.
+- **Library behaviour verified against sources, not documentation.** `navigation3-runtime` 1.1.1
+  (`NavEntry.kt`, `EntryProvider.kt`, `DecoratedNavEntries.kt`),
+  `lifecycle-viewmodel-navigation3` 2.11.0-beta01 (`ViewModelStoreNavEntryDecorator.kt`),
+  `koin-core` 4.2.2 (`KoinApplication.kt`, `InstanceRegistry.kt`), `koin-core-viewmodel` 4.2.2
+  (`ModuleExt.kt`, `GetViewModel.kt`) and `koin-compose` 4.2.2 (`KoinApplication.kt`,
+  `ComposeContextWrapper.kt`) were extracted from the Gradle cache and read.
+- **Falsification run.** Koin's duplicate-definition behaviour was confirmed empirically with a
+  throwaway JVM test rather than argued from the source: two modules each declaring
+  `single { Probe(...) }`, resolved through `koinApplication { }`. The test passed — one instance,
+  the *second* definition winning — and was then deleted. `git status --short` is clean apart from
+  this document.
+- **Production code changed: none.** This pass is an audit. No Koin definition, no module, no host
+  bridge, no comment and no test was modified; only this ledger.
+
+### Dependency and lifetime map
+
+| Module | `single` | `viewModel` | Owns |
+| --- | ---: | ---: | --- |
+| `curriculumDataModule` | 3 | 0 | Publisher curriculum persistence and its startup import |
+| `learningContentModule` | 1 | 0 | The bundled publisher learning document |
+| `assessmentDataModule` | 11 | 0 | Attempt persistence, the history cache, the app scope, and the assessment/progress services |
+| `savedQuestionDataModule` | 1 | 0 | Learner-owned saved-Question persistence |
+| `lessonStudyDataModule` | 1 | 0 | Learner-owned studied-Lesson persistence |
+| `topicStudyPresentationModule` | 11 | 15 | App-scoped presentation state, its stateless resolvers, and every screen ViewModel |
+| `appearanceModule` | 2 | 0 | The appearance preference and its store |
+| `{android,ios,jvm,web}CurriculumDataModule` | 1 each | 0 | The one `CurriculumDatabase` binding |
+| `{android,ios,jvm,web}AppearanceModule` | 1 each | 0 | The one `AppPreferenceStorage` binding |
+
+Grouped by the lifetime each definition actually needs rather than by the module it sits in:
+
+**App-scoped mutable state (8).** `AppCoroutineScope`; `AssessmentHistoryStore`;
+`InterviewHistoryStateHolder`, `MistakeReviewStateHolder`, `ProgressStateHolder`,
+`SavedQuestionStateHolder`, `StudyProgressStateHolder`; `AppearanceStateHolder`. Each was opened
+and read for fields. None holds a Topic, Unit, Lesson, attempt or destination identity — the only
+per-identity state any of them keeps is `pendingQuestionIds` / `pendingLessonIds`, which are
+learner-owned rows mid-write, not navigation state. Two more objects are app-scoped *caches* rather
+than holders and belong here for the same reason: `CurriculumDataInitializer` (a `Mutex` plus a
+`MutableStateFlow<Boolean>` that coalesces in-process startup attempts) and
+`BundledLearningContentRepository` (a `Mutex` plus `private var content`, the once-per-process
+parse).
+
+**App-scoped stateless shared services (17).** `LearningPerformanceDerivation`,
+`AssessmentQuestionSelector`, `AssessmentEngine`, `StartAssessment`, `AssessmentRetakeService`,
+`AssessmentSessionLoader`, `LearningProgressService`, `AssessmentReviewLoader`,
+`MistakeReviewService`, `ContinueStudyingResolver`, `LearningRecommendationResolver`,
+`SavedQuestionContentResolver`, `PracticeTargetResolver`, `CurriculumImporter`, and
+`ThemePreferenceStore`, plus the two repositories that hold nothing. Every one was re-read for
+fields independently of the Part 4A pass: the only `var`s found anywhere are function locals
+(`AssessmentQuestionSelector`'s round counters) and the private `answered`/`correct` accumulator
+inside `LearningPerformanceDerivation`'s derivation, which is constructed per call. `single` here is
+reuse, not shared state.
+
+**Repositories and data infrastructure (5 common + 8 platform).** `CurriculumRepository`,
+`LearningContentRepository`, `AssessmentRepository`, `SavedQuestionRepository`,
+`LessonStudyRepository`, each `single<Interface> { LocalImpl(...) }`, plus `AssessmentAttemptStore`;
+and per host one `CurriculumDatabase` and one `AppPreferenceStorage`. Koin binds only the declared
+type, so the implementation classes are not separately resolvable and no feature can construct one:
+every `Local*Repository(` and `Bundled*Repository(` call in `commonMain` is inside its own module.
+
+**ViewModel-scoped state (15).** All fifteen `viewModel` definitions. Fourteen resolve under a
+`NavEntry`'s own `ViewModelStoreOwner`; `AppShellViewModel` resolves in `App.kt` above `NavDisplay`
+and is therefore owned by the host's store, which is the shell lifetime it wants.
+
+**Platform-provided (2 contracts).** `CurriculumDatabase` and `AppPreferenceStorage` are the
+*entire* set of bindings the common graph expects from outside. Nothing else crosses inward.
+
+### What the ViewModel lifetime actually is
+
+Worth stating precisely, because three of this addendum's findings depend on it. In Koin 4.2.2
+`Module.viewModel(qualifier, definition)` is literally `return factory(qualifier, definition)` —
+**a `viewModel` definition is a Koin factory.** No part of the ViewModel lifetime lives in the Koin
+container. It comes entirely from `resolveViewModel`, which builds a `KoinViewModelFactory` and
+calls `ViewModelProvider.create(viewModelStore, factory, extras)[vmClass]`, so the store decides
+identity and the class name is the key.
+
+The store, in turn, comes from `ViewModelStoreNavEntryDecorator`, which keys stores by
+`NavEntry.contentKey` and clears one on `onPop`. `defaultContentKey(key)` is `key.toString()`, and
+`AppRoute` is a sealed interface of `data class`/`data object`, so a route's *values* are its store
+key. Three consequences follow and all three hold in this graph:
+
+1. **A parameterized ViewModel cannot be re-parameterized in place.** `ViewModelProvider` returns
+   the existing instance for a key and ignores the `parametersOf` lambda entirely. This is safe here
+   only because a changed route value is a changed `contentKey` and therefore a different store —
+   which is exactly what makes `LearningLessonDestination`'s `replaceTop(LearningLesson(unitId,
+   lessonId))` re-create the reader's ViewModel with the new Lesson rather than reuse the old one.
+   Nothing in the code states this dependency.
+2. **Every entry's ViewModels are cleared on an area switch, not only on a pop.**
+   `PrepareBackStack` treats any `contentKey` absent from the current entry list as popped, and
+   `AppNavigator` hands `NavDisplay` a different one of its four stacks when the area changes. This
+   is the mechanism that makes the six app-scoped holders necessary rather than stylistic, and it
+   was verified in `DecoratedNavEntries.kt` rather than assumed.
+3. **Two `koinViewModel()` calls for the same class inside one entry return one instance.** The
+   `AssessmentLaunchViewModel` resolved by `AssessmentLaunchCoordinator`'s default parameter and
+   the one each of the five destinations resolves and passes in are the same object, because they
+   share a store and a default key. The "the default is never evaluated in production" reasoning in
+   the Part 4A record is correct but stronger than it needs to be: even if it were evaluated, it
+   could not produce a second launch ViewModel.
+
+### State-sharing boundaries, re-verified
+
+Each boundary was traced from the module to every consuming constructor rather than accepted from
+the earlier record.
+
+| Boundary | Shared owner | Consumers | Verdict |
+| --- | --- | --- | --- |
+| Assessment history | `AssessmentHistoryStore` | `AppShellViewModel`, `ProgressStateHolder`, `ProgressViewModel`, `MistakeReviewStateHolder`, `MistakeReviewViewModel`, `InterviewHistoryStateHolder`, `TopicBrowserViewModel`, `TopicDetailViewModel`, `AssessmentTakingViewModel`, `AssessmentQuestionSelector` (through `CompletedAssessmentHistory`) | Intentionally shared source of truth |
+| Saved Questions | `SavedQuestionStateHolder` | `FocusedResultViewModel`, `MixedInterviewResultViewModel`, `MistakeReviewViewModel`, `SavedQuestionsViewModel` | Intentionally shared source of truth |
+| Lesson study | `StudyProgressStateHolder` | `TopicBrowserViewModel`, `TopicDetailViewModel`, `LearningUnitViewModel`, `LearningLessonViewModel` | Intentionally shared source of truth |
+| Unresolved-mistake rule | `MistakeReviewService` over the shared cache | badge count, `ProgressStateHolder`'s count, `MistakeReviewStateHolder`'s queue | Duplicated *derivation*, one source — and it cannot disagree, because `countUnresolved` and `load` both delegate to the same pure `UnresolvedMistakeDerivation` over the same list |
+| Appearance | `AppearanceStateHolder` | `AppearanceTheme` (global lookup), `SettingsDestination` (`koinInject`) | Shared, but through two different containers — see `CQ-DI-005` |
+
+Nothing here is a duplicated cache. The one place two derivations of the same rule run
+independently — the Mistakes badge and the Progress dashboard's `unresolvedMistakeCount` — is safe
+by construction rather than by coincidence, and is recorded below as a strength.
+
+### Invalidation, traced
+
+Every write into the shared caches was traced to its call site:
+
+- `AssessmentHistoryStore.invalidate()` has exactly three callers:
+  `AssessmentTakingViewModel` on completion, and the Retry paths in `ProgressViewModel` and
+  `MistakeReviewViewModel`. Nothing outside the app writes the attempt tables, so "an attempt
+  completed" is a complete invalidation trigger — today.
+- `ProgressStateHolder.retryDerivation()` and `MistakeReviewStateHolder.retryDerivation()` exist
+  because a re-read of unchanged history is an equal `StateFlow` value that never re-emits; each
+  has exactly one caller, its own ViewModel's `retry`.
+- `SavedQuestionStateHolder.refresh()` is called by all four consuming ViewModels on `init` and on
+  retry; `StudyProgressStateHolder.refresh()` by all four Learn ViewModels on `init` and on retry.
+  Neither holder loads itself. Both start at `Loading` and stay there until some consumer asks.
+
+### Findings
+
+Ordered by severity, then by confidence.
+
+- **`CQ-DI-004` — Medium / High — nothing can detect a duplicate or overriding definition, and the
+  assertions that claim to cannot.** `koin-core` 4.2.2 `KoinApplication` declares
+  `private var allowOverride = true`; `strictOverride()` flips it and **no host, and no test, calls
+  it**. `InstanceRegistry.saveMapping` therefore replaces an existing index silently, logging only
+  `warn("(+) override index ...")` — and none of the four hosts installs a logger, so even that is
+  invisible. A throwaway probe confirmed the behaviour: two modules each declaring
+  `single { Probe(...) }`, resolved through `koinApplication { }`, produce **one** instance and the
+  *later* definition wins. **Why it matters:** `SharedHostStartupTest` carries four identity
+  assertions whose comments state the opposite mechanism — "a second binding would give them
+  separately-cached histories that drift apart", "a duplicate definition would otherwise pass", "a
+  second binding would silently break that", "a second instance would mean the startup screens and
+  the shell could disagree". A duplicate binding does not create two instances; it creates one
+  winner, so `assertEquals(koin.get<T>(), koin.get<T>())` passes either way. What those four
+  assertions actually protect is `single` becoming `factory` — which is real, and is exactly what
+  the Part 4A falsification run demonstrated — but it is not what they say they protect.
+  **Concrete failure mode:** a platform module, or a future feature module, binds
+  `AppPreferenceStorage`, `CurriculumDatabase` or any app-scoped holder a second time. Koin resolves
+  it, the whole suite stays green, and the host silently runs on the definition that happened to be
+  registered last — which for the two platform contracts is the one thing hosts are allowed to
+  differ on. **Direction:** call `strictOverride()` in the four `start*LocalDataGraph` functions and
+  in the graph test so an unintended duplicate fails at startup instead of winning, and correct the
+  four assertion comments to say they pin scope rather than uniqueness.
+
+- **`CQ-DI-005` — Low / High — the appearance preference is the one dependency resolved from the
+  global container rather than the composition's.** `AppearanceTheme` does
+  `remember { KoinPlatform.getKoinOrNull()?.getOrNull<AppearanceStateHolder>() }`, and
+  `KoinPlatform.getKoinOrNull()` is `KoinPlatformTools.defaultContext().getOrNull()` — the
+  `GlobalContext`. Every other resolution in common code goes through `koinViewModel`/`koinInject`,
+  which read `LocalKoinScopeContext`, a composition local that `KoinApplication { }` and
+  `KoinContext { }` override. **Why it matters:** the two are the same object only when the graph
+  was started with `startKoin`. **Concrete failure mode, already visible in this repository:** six
+  journey tests compose the real `App()` under `KoinApplication { ... }` — `LearningReaderJourney`,
+  `FocusedLearningJourney`, `ProgressLearningJourney`, `MixedInterviewJourney`,
+  `LearningProductionContentJourney` and `TopicDiscovery` — and every one of them omits
+  `appearanceModule` from its module list. It would make no difference if they installed it: the
+  holder would be in the composition's Koin and `AppearanceTheme` would still look in the global
+  one, which those tests deliberately `stopKoin()`. `AppearanceThemeTest`'s own helper states the
+  coupling — "`AppearanceTheme` looks the holder up in the global context, which is where every host
+  puts it, so these tests start one" — so this is a known constraint rather than a hidden one, but
+  it is a constraint the common graph should not have. A host that adopted the idiomatic Compose
+  Multiplatform `KoinApplication { }` composition root instead of `startKoin` would lose dark mode
+  with no error and no failing test. **Direction:** resolve the holder through the composition's
+  scope with a guard — the optional, preview-safe behaviour the existing seam correctly provides is
+  orthogonal to *which container* is consulted — and keep `AppearanceThemeTest`'s no-graph case,
+  which would then cover the composition-local path too.
+
+- **`CQ-DI-006` — Low / High — the graph test describes a three-module graph that has not existed
+  for several epics.** `SharedHostStartupTest`'s class KDoc reads "Every runtime host installs the
+  same **three** shared modules plus exactly one platform `CurriculumDatabase` module, then composes
+  `AppRoot`." The hosts install **seven** common modules and **two** platform modules, and the test
+  body itself installs all nine, nine lines below the comment. The inline comment on the database
+  binding — "The only binding a platform host adds on top of the shared modules" — is contradicted
+  three lines later by `jvmAppearanceModule`, which adds `AppPreferenceStorage`. **Why it matters:**
+  this is the one test whose stated job is to pin the host contract, and the contract it states is
+  wrong in both dimensions a host can get wrong: how many common modules to install, and how many
+  bindings to supply. **Concrete failure mode:** a new host is written against the comment, installs
+  `curriculumDataModule`/`learningContentModule`/`assessmentDataModule` and one database binding,
+  and fails at the first `koinViewModel` call on a surface nobody opened during bring-up.
+  **Direction:** restate both comments from the module list the test already builds — seven common
+  modules, and exactly two platform bindings, naming `CurriculumDatabase` and
+  `AppPreferenceStorage`.
+
+- **`CQ-DI-007` — Low / High — the architecture document's DI narrative contradicts its own host
+  table.** `docs/architecture/overview.md:17-23` still reads "The local curriculum data graph uses
+  Koin because E07 introduced concrete runtime dependencies... Koin is started by the Android
+  `Application`, combines the shared curriculum module with the Android database module, and uses
+  the classic DSL only. Koin annotations, compiler plugins, **Compose injection, and ViewModel DSLs
+  are deferred until a real requirement appears**." Ninety lines later the same document's Runtime
+  Host Coverage table correctly lists four hosts and names all seven common modules plus the two
+  platform modules. Three of the paragraph's claims are now false: Koin is started by four hosts,
+  not the Android `Application`; the graph is seven common modules, not "the shared curriculum
+  module"; and both deferred techniques are in use — `org.koin.core.module.dsl.viewModel` for
+  fifteen definitions, and Compose injection at twenty `koinViewModel` sites plus one `koinInject`.
+  **Why it matters:** this paragraph is the first description of DI a reader meets in the canonical
+  architecture document, and it reads as a deliberate, still-current restraint rather than as an
+  E07-era note nobody revisited. **Direction:** rewrite the paragraph to describe the graph the host
+  table already describes, and either delete the deferral sentence or restate it as what is still
+  deferred — annotations, the compiler plugin, `singleOf`/`viewModelOf`, qualifiers and scopes.
+
+- **`CQ-DI-008` — Observation / High — `AppCoroutineScope`'s dispatcher is the browser's main thread
+  on two of the five targets.** `AppCoroutineScope` is
+  `CoroutineScope(SupervisorJob() + Dispatchers.Default)`. On JVM, Android and Native that is a
+  background pool; on Kotlin/JS and Kotlin/Wasm `Dispatchers.Default` is the single-threaded event
+  loop, so every app-scoped derivation runs where the frame does. What runs there is not trivial:
+  on each `invalidate()` — that is, on every completed attempt — `ProgressStateHolder` re-derives
+  the whole dashboard, `MistakeReviewStateHolder` re-builds the queue, and
+  `MistakeReviewService.load` issues one `getQuestionById` per unresolved mistake through
+  `AssessmentReviewLoader`, each inside its own read transaction. The holders are lazy `single`s, so
+  this begins only after the learner first opens those areas, and then continues for the rest of the
+  process whether or not those screens are ever shown again. No measurement was taken on any host
+  and none is claimed; `CQ-DATA-010` already owns the per-ID query cost. Recorded here because it is
+  a *lifetime* property — the work is permanent by construction — and because the dispatcher choice
+  is uniform in the code while its meaning is not uniform across targets.
+
+- **`CQ-DI-009` — Observation / High — three constructors can supply a dependency the graph also
+  owns.** `AssessmentQuestionSelector` and `LearningProgressService` both default
+  `performanceDerivation` to `LearningPerformanceDerivation(curriculumRepository)`, and
+  `MistakeReviewStateHolder` defaults `learningContentRepository` to `null`. All three are supplied
+  explicitly by the modules — `performanceDerivation = get()` in both cases,
+  `learningContentRepository = get()` in the third — so production shares one derivation instance
+  and the mistake queue does get its study links. The derivation is stateless, so a second instance
+  would be harmless; the null is not harmless in the same way, because it silently removes the
+  study-Lesson link rather than failing, and six test call sites construct the holder without it.
+  Nothing is wrong today. Recorded because a constructor default that builds or omits a graph-owned
+  dependency is the mechanism by which a future call site would silently opt out of the graph, and
+  because the omission is invisible at the call site.
+
+### What is already strong
+
+- **No service-locator leakage whatsoever below the composition.** Twenty-four `commonMain` files
+  import anything from `org.koin`: the seven module files and seventeen Compose files. Re-checked
+  independently of the Part 4A pass — **no domain, data, repository, service, state-holder or
+  ViewModel class touches the container.** Every one takes its dependencies through its constructor,
+  which is why the test suite constructs them directly and why `AssessmentEngine`'s clock and ID
+  generator are constructor defaults rather than a global hook.
+- **No app-scoped object holds navigation identity.** All eight app-scoped mutable objects were
+  read for fields. None keeps a Topic, Unit, Lesson, attempt or destination ID. The only
+  per-identity state is a set of rows mid-write, which settles in both the success and the failure
+  path. This is the single property that makes a graph with thirty singletons safe.
+- **The narrowing of `CompletedAssessmentHistory` is real narrowing, not a shortcut.**
+  `AssessmentQuestionSelector` declares a one-method `fun interface` and the module hands it
+  `get<AssessmentHistoryStore>()`; `LearningRecommendationResolver` receives a lambda closed over
+  `MistakeReviewService.countUnresolved` rather than the service. Both closures capture singletons
+  and nothing from a composition or a destination, which is the distinction that matters.
+- **The unresolved-mistake rule is derived three times and cannot disagree.** The Mistakes badge,
+  the Progress dashboard's count and the queue itself all route through `MistakeReviewService`,
+  which delegates to the pure `UnresolvedMistakeDerivation` over the same cached list. Duplicated
+  derivation over one source is the right trade here, and it is what lets the badge live in a
+  ViewModel while the queue lives in an app-scoped holder without the two drifting.
+- **The publisher/learner module split is load-bearing and is tested by its own structure.**
+  `learningContentModule` owns the authored document; `lessonStudyDataModule` owns what the learner
+  did with it; `StudyProgressStateHolder` sits in neither, because it is the app-scoped projection
+  rather than either the content or the table. `SavedQuestionStateHolder` and
+  `SavedQuestionRepository` are split on exactly the same line. Both module comments state the rule
+  and both match the code.
+- **Decorator order is correct and deliberate.** `rememberSaveableStateHolderNavEntryDecorator()`
+  precedes `rememberViewModelStoreNavEntryDecorator()`, which the latter's own documentation
+  requires so entry-scoped ViewModels can reach a `SavedStateHandle`. The comment in `App.kt` says
+  why.
+- **All four hosts install a byte-for-byte identical common module list, in the same order**, each
+  adding exactly its two platform modules, each guarding `startKoin` with a null check, and each
+  resolving `CurriculumDataInitializer` from the container rather than constructing one. The
+  `GlobalContext` / `KoinPlatform` split between hosts is cosmetic and was verified as such:
+  `KoinPlatform.getKoin()` is `KoinPlatformTools.defaultContext().get()`, the same global context
+  `GlobalContext.get()` returns.
+- **The graph is a DAG with no layer inversion**, re-traced through all 45 definitions: platform
+  storage → repositories → derivations and services → app-scoped holders → ViewModels, with no edge
+  back up, and nothing under `data/**` importing Compose, navigation or `ViewModel`.
+
+### Lifetime contracts that are implicit
+
+Each of these is relied on by working code and is encoded nowhere — not in a type, not in a guard,
+not in an assertion.
+
+1. **A route's values are its `ViewModelStore` key.** `defaultContentKey` is `key.toString()`, so
+   adding a field to an `AppRoute` widens store identity and removing one narrows it. The Lesson
+   reader's `replaceTop` correctness depends on this entirely. `CQ-DI-003` records the converse
+   hazard — two equal routes sharing a store — but the positive direction is equally unstated.
+2. **`parametersOf` is ignored on a second resolution.** Every parameterized ViewModel is correct
+   only because its route value changes whenever its parameter does. A route that carried a
+   parameter the ViewModel reads but the route's `toString` did not distinguish would silently reuse
+   the previous instance.
+3. **An attempt completing is the only event that invalidates history.** A future writer of the
+   attempt tables — a sync, an import, a debug action — must call
+   `AssessmentHistoryStore.invalidate()`, and nothing would fail if it did not.
+4. **The two learner-owned holders never load themselves.** Both start at `Loading` and are
+   populated only because each consuming ViewModel calls `refresh()` in its `init`. A fifth Learn or
+   review surface that forgets would render a permanent spinner over state the app already holds.
+5. **Exactly two bindings are expected from outside the common graph.** `CurriculumDatabase` and
+   `AppPreferenceStorage`. This is stated in the Part 4A handoff and in the architecture document's
+   host table, but the graph itself expresses it only by failing to resolve.
+6. **Nothing ever tears the graph down.** No production `stopKoin`, no scope cancellation, no
+   database close. The absence of teardown is what makes the process-lifetime `SupervisorJob` and
+   the never-invalidated in-memory caches safe, and it is guaranteed only by each host's startup
+   guard.
+7. **`AppearanceTheme` requires the global context specifically.** See `CQ-DI-005`.
+
+### What the graph tests prove, and what they do not
+
+`SharedHostStartupTest.sharedHostModulesResolveTheWholeProductGraph` and
+`TopicStudyPresentationModuleTest` are the two graph-level tests, and both resolve through
+`koinApplication { }` with `koin.get<T>()`.
+
+**Proven.** Every binding resolves, including all fifteen ViewModel definitions and every
+parameterized one with representative parameters. Four singletons are pinned as `single` rather than
+`factory`. Parameter *semantics* are pinned where they are ordering-sensitive:
+`TopicStudyPresentationModuleTest` resolves `LearningLessonViewModel` with
+`parametersOf("unit_thinking_in_compose", "lesson_declarative_ui")` against the real bundled
+document and asserts both identities on the resulting state, so a transposition fails. Both Practice
+Builder source paths are covered. `SharedHostStartupTest`'s sibling composes `AppRoot` through the
+real Navigation 3 decorators to the Topic Browser, so entry-scoped resolution is exercised once.
+
+**Not proven, and not provable this way.** Because `viewModel {}` *is* `factory {}`, every
+`koin.get<SomeViewModel>()` in both tests constructs a raw instance with no `ViewModelStore`
+involved. Neither test can observe ViewModel scoping at all: not that two entries get different
+instances, not that one entry gets the same instance twice, not that a cleared entry clears its
+ViewModel, and not that `parametersOf` is ignored on a second resolution of a live store. The
+journey integration tests cover the *behavioural* consequence — navigating Topic → Unit → Lesson and
+asserting shipped content proves the right parameters reached the right entry — but no test asserts
+the lifetime property directly, and the journey tests would also pass if the store were the host's
+rather than the entry's. Duplicate definitions are undetectable for the separate reason in
+`CQ-DI-004`. And no test installs all seven common modules *and* composes across more than one
+navigation entry, so "all hosts install the same common product graph" is proven for module
+membership but not for anything that depends on entry ownership.
+
+### Handoffs
+
+- **Part 4B — host composition roots.** `CQ-DI-004` and `CQ-DI-006` both land there as well as
+  here: the `strictOverride()` decision belongs in the four `start*LocalDataGraph` functions, and
+  the two-binding contract the graph test misstates is the contract 4B must verify per host. The
+  Part 4A handoff list stands unchanged otherwise.
+- **Part 5 — cross-cutting.** `CQ-DI-008`'s permanent app-scoped derivation cost on the web targets,
+  alongside `CQ-DATA-010`'s per-ID query cost, which it compounds. Also `CQ-DI-009`'s constructor
+  defaults, which are an API-shape question rather than a graph question.
+- **Part 6 — test architecture.** The ViewModel-scoping gap above. If it is worth closing, the
+  cheapest honest test is a Compose one that composes two `NavEntry`s and asserts distinct
+  instances, not another `koin.get()` assertion.
+
+### Validation
+
+- `./gradlew :shared:jvmTest --tests '*TempOverrideProbeTest*'` — the throwaway duplicate-definition
+  probe described above. **Passed**, confirming one instance and last-definition-wins. The file was
+  then deleted; `git status --short` shows only this document.
+- No other Gradle task was run, and none is warranted: **no executable file changed in this pass.**
+  The Part 4A record's own validation — `:shared:jvmTest` and `:shared:check` both passing at
+  `a77156d`, with every KMP target compiled — covers the graph as it stands, and `git diff
+  a77156d..HEAD` shows the only production changes since were the three `CQ-DI-001` comment edits
+  and the `CQ-DI-002` test assertion, neither of which touches a binding.
+- `git status --short` — clean apart from `docs/quality/code-quality-audit.md`.
+
+### Part 4A Addendum assessment
+
+The common Koin graph is a reliable composition root, and the reason is structural rather than
+incidental: dependency ownership is expressed in constructors everywhere below the composition, so
+Koin is a wiring layer and not a runtime the code depends on. Thirty singletons would normally be a
+finding in itself; here it is not, because eight of them were read and found to hold nothing a
+screen owns, seventeen hold nothing at all, and the remaining five are the repositories. The one
+lifetime distinction the product genuinely needs — state that must survive a `NavEntry` being
+destroyed on an area switch versus state that must not — is drawn correctly at every one of the five
+sharing boundaries, and the module layout matches the ownership it claims, including the
+publisher-versus-learner line that two separate one-binding modules exist to keep.
+
+What the graph lacks is not correctness but *enforcement*. Every important property of it — that a
+route's fields are a store key, that only two bindings come from outside, that nothing tears the
+graph down, that an attempt completing is the sole invalidation trigger, that no definition is
+registered twice — is currently true by inspection and false by nothing. Koin's default
+`allowOverride = true` means the graph will accept a contradiction rather than report one, and the
+four assertions written to defend against exactly that describe a mechanism Koin does not have.
+That is the finding worth acting on: `CQ-DI-004` is cheap, and it converts the most load-bearing of
+the implicit contracts into a startup failure.
+
+The two documentation findings are small but sit in the two places a reader goes first — the
+canonical architecture document and the test that exists to pin the host contract — and both
+currently describe a graph from several epics ago. `CQ-DI-005` is the only finding that touches
+production behaviour, and it constrains the graph rather than breaking it: the common code can be
+started, but not *composed*, with a Koin instance that is not the global one.
+
+Part 4 is not synthesised here, and Part 4B is not begun.
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -3266,8 +3685,42 @@ Needs measurement: 0
 Accepted as-is: 0
 Not a defect: 0
 
+Part 4A Addendum — Complete
+
+High: 0
+Medium: 1
+Low: 3
+Observations: 2
+
+Fixed: 0
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
 Part 4B — Next
 ```
+
+The Part 4A addendum is complete. The common Koin graph was re-derived from the working tree
+independently of the Part 4A record and agrees with it on all 45 definitions: seven common modules,
+30 singles, no factories, 15 ViewModels, eight platform singles, and exactly two bindings expected
+from outside. Every lifetime still matches the ownership its behaviour requires, no app-scoped
+object holds navigation identity, no domain, data, service, state-holder or ViewModel class touches
+the container, and all four hosts install an identical common module list. What this pass adds is
+the layer above correctness. Koin 4.2.2 allows definition override by default and no host calls
+`strictOverride()`, so a duplicate binding silently wins rather than failing — confirmed with a
+throwaway probe — and the four identity assertions written to defend against exactly that describe a
+mechanism Koin does not have; they pin scope, not uniqueness. `AppearanceTheme` is the one
+dependency resolved from the global container rather than the composition's Koin, which is why six
+journey tests compose the real `App()` without an appearance module and could not use one if they
+installed it. The graph test's own KDoc still describes three shared modules and one platform
+binding, and the architecture document's DI narrative still describes an Android-only,
+curriculum-only graph with Compose injection and ViewModel DSLs deferred — both contradicted by code
+the same files sit beside. Six findings are recorded and none fixed, because this pass is an audit:
+`CQ-DI-004` (Medium), `CQ-DI-005`, `CQ-DI-006`, `CQ-DI-007` (Low) and `CQ-DI-008`, `CQ-DI-009`
+(Observations), together with seven lifetime contracts that working code relies on and nothing
+encodes. **No graph defect was found and nothing was changed.** The exact next chunk remains
+**Part 4B — Host composition roots**, and the Part 4 synthesis is deliberately not written here.
 
 The Part 3A content addendum is complete. The two bundled JSON documents were audited as production
 data rather than as fixtures, in full and programmatically: 17 Topics, 361 Subtopics, 478 Questions,

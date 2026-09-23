@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
@@ -36,6 +37,7 @@ import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
 import org.artkachenko.kmp_learning_app.lesson_study.repository.LessonStudyRepository
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewViewModel
+import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartViewModel
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
@@ -121,6 +123,19 @@ internal class SharedHostStartupTest {
                 koin.get<ProgressTopicViewModel> { parametersOf("topic") },
             )
             assertIs<MistakeReviewViewModel>(koin.get<MistakeReviewViewModel>())
+            // Exactly one completed-history cache. Every history-derived surface in the app — this
+            // badge, Progress, the mistake queue, the interview record, and the Practice Builder's
+            // preflight through AssessmentQuestionSelector — reads this one instance, and a second
+            // binding would give them separately-cached histories that drift apart after an attempt
+            // completes. Nothing else asserts it, so a duplicate definition would otherwise pass.
+            assertEquals(
+                koin.get<AssessmentHistoryStore>(),
+                koin.get<AssessmentHistoryStore>(),
+            )
+            // The shell badge and the interview record are the two ViewModels no other graph check
+            // resolves; both derive from the history cache above rather than reading it again.
+            assertIs<AppShellViewModel>(koin.get<AppShellViewModel>())
+            assertIs<InterviewStartViewModel>(koin.get<InterviewStartViewModel>())
             // The Practice Builder now stands between choosing a scope and taking an assessment,
             // so every targeted practice run starts here. It is safe to resolve where assessment
             // taking is not: its eligibility read goes to the selection boundary, which reads

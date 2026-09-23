@@ -12,10 +12,13 @@ import kotlinx.coroutines.flow.asStateFlow
  * scoped to Settings would be destroyed the moment Settings was popped, taking the app's theme with
  * it. It is a Koin `single`, so there is exactly one and every observer sees the same value.
  *
- * The stored preference is read once, synchronously, in the constructor. That is the point: the
- * holder is created while the host starts its graph, so by the time anything composes the answer is
- * already known and the app cannot open light and then flip to dark. It is a single key-value read
- * on every host — there is no startup step to add, and no composable performs storage I/O.
+ * The stored preference is read once, synchronously, in the constructor. A Koin `single` is lazy,
+ * so that happens when the holder is first resolved rather than while the host builds its graph: in
+ * the running app the first resolution is `AppearanceTheme`'s `remember` block, on the first
+ * composition. What matters is that the read is synchronous rather than asynchronous — it completes
+ * within that composition, so the effective theme is settled before the first frame and the app
+ * cannot open light and then flip to dark. It is one key-value read per process on every host, and
+ * `AppRoot` has no startup step waiting on it.
  */
 internal class AppearanceStateHolder(private val store: ThemePreferenceStore) {
 

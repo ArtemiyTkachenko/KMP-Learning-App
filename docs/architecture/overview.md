@@ -159,11 +159,14 @@ operating system exactly as it did before the preference existed.
 
 `AppearanceStateHolder` is a Koin `single`, so the preference outlives the Settings entry
 that changes it — a Settings-scoped ViewModel would take the application's theme with it
-when popped. It reads storage **once, synchronously, in its constructor**, while the host
-is building its graph: the preference is therefore already in memory before anything
-composes, which is what avoids both a light-to-dark flash and an asynchronous startup step
-in `AppRoot`. Its write is likewise undispatched, because it is one small key-value write
-and a closing app must not lose the choice to a coroutine that never ran.
+when popped. It reads storage **once, synchronously, in its constructor**. A Koin
+`single` is lazy, so that read happens on first resolution — `AppearanceTheme`'s
+`remember` block, on the first composition — rather than while the host builds its
+graph. Being synchronous is what matters: the read completes inside that composition,
+so the effective theme is settled before the first frame, which avoids both a
+light-to-dark flash and an asynchronous startup step in `AppRoot`. Its write is
+likewise undispatched, because it is one small key-value write and a closing app must
+not lose the choice to a coroutine that never ran.
 
 `AppearanceTheme` resolves the holder from the running application graph and tolerates its
 absence: a preview or an isolated screen test has no graph, and then the system value

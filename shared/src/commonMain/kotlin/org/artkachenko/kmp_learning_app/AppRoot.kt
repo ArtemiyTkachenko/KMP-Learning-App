@@ -39,8 +39,8 @@ public fun AppRoot(initializer: AppStartupInitializer) {
     // composition keeps the same presentation defaults. Both go through AppearanceTheme, which is
     // the application's one theme decision: the loading, error and ready screens cannot disagree
     // about light or dark, and an explicit choice reaches all of them at once. The preference is
-    // already in memory before this composes — see AppearanceStateHolder — so there is no
-    // light-to-dark flash at startup and nothing here waits on storage.
+    // read synchronously the first time AppearanceTheme composes — see AppearanceStateHolder — so
+    // the effective theme is settled before the first frame and nothing here awaits storage.
     AppearanceTheme {
         when (startup.state) {
             AppStartupState.Loading -> ScreenLoading(

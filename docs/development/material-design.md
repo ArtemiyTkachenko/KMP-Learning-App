@@ -54,6 +54,47 @@ No literal `.dp` spacing in a screen when a scale step says the same thing. A pi
 exception `AppShapes` documents: `RoundedCornerShape(percent = 50)` locally, because a pill
 is a function of the element's own height.
 
+## Surfaces are three levels, not a spectrum
+
+The palette has a full Material container ramp, but the product only draws three levels, and a
+change picks one of them rather than a tone it likes the look of.
+
+| Level | Role | What belongs here |
+| --- | --- | --- |
+| 0 — page | `background` | The screen itself. Only `AppNavigationScaffold` paints it. |
+| 1 — ordinary content | `surfaceContainerLow` | Most Cards: a list row, a review question, `SecondarySummaryCard`. |
+| 2 — raised / interactive | `surfaceContainer` and above | The one surface on a screen that outranks the rest: `PrimarySummaryCard`, a weak `PerformanceCard`, a code block, a menu or sheet. |
+
+Level 2 is a claim about importance, so a screen that puts everything on it has said nothing. If two
+sibling cards both want it, neither should have it.
+
+The two themes reach the separation differently, and neither is the other inverted. **Light is
+tonal**: the page is the brightest surface — a cool off-white, never white — and each level above it
+is a deeper, bluer tint, so layering never becomes white on white and never needs a shadow to be
+legible. **Dark is luminance**: the page is near black and each level is lifted toward light, so
+separation comes from brightness rather than from borders, which is what keeps dark cards from
+flattening into grey rectangles.
+
+`AppColorSchemeTest` holds a floor on the step between consecutive levels. The ramp it replaced
+stepped as little as 4/255, which is below what a display in a lit room resolves — a card on a page
+and a card on a card read as one tone, and no call site was at fault.
+
+## Semantic colour is a mark, not a fill
+
+`AppSemanticColors` gives each of correct, partially-correct, and incorrect three values: a
+**container** for a block, an **on-container** for text in it, and a bare **accent** for a border, an
+icon, or a tag beside neutral text. The containers are the quietest member on purpose — pale tints
+in light, deep and desaturated in dark — because saturation belongs on the 1dp border and the line of
+tag text, not on the 200dp block. Six review cards should read as six results, not six alarms.
+
+`colorScheme.error` and `AppSemanticColors.incorrect` are deliberately the same colour in each
+theme, and a test asserts it. A product whose failed answer and failed operation are different reds
+has two error languages and teaches neither.
+
+`AppSemanticColors.heroGradientStart`/`heroGradientEnd` is a defined token with no call site yet. It
+carries no on-colour: both endpoints sit within the scheme's `primaryContainer` tone, so
+`onPrimaryContainer` is the text colour across the sweep.
+
 ## Adaptive layout
 
 **Never measure the window in a screen.** `AppNavigationScaffold` is the only composable

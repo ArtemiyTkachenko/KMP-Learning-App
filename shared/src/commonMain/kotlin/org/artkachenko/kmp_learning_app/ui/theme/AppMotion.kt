@@ -44,6 +44,15 @@ internal object AppMotion {
     const val ProgressDurationMillis: Int = 300
 
     /**
+     * New content arriving underneath something the learner is already reading.
+     *
+     * Longer than a state change because it is an arrival rather than an adjustment, and short
+     * enough that nothing has to be waited for: a reveal that runs past roughly a third of a second
+     * stops reading as the answer appearing and starts reading as the app thinking about it.
+     */
+    const val ContentRevealDurationMillis: Int = 280
+
+    /**
      * Colour, border, and other non-spatial properties.
      *
      * Effects are tweened rather than sprung on purpose: overshoot is meaningless for a colour —
@@ -52,6 +61,21 @@ internal object AppMotion {
      */
     fun <T> effectSpec(durationMillis: Int = StateChangeDurationMillis): FiniteAnimationSpec<T> =
         tween(durationMillis = durationMillis, easing = EmphasizedEasing)
+
+    /**
+     * Content entering the screen, optionally after [delayMillis].
+     *
+     * Decelerating rather than emphasized: this is content that was not there a moment ago, so it
+     * settles into place instead of travelling through. [delayMillis] is what lets several pieces
+     * of one reveal arrive in order without a coroutine orchestrating them — the stagger is part of
+     * the animation spec, so it cannot leave the interaction waiting on it.
+     */
+    fun <T> revealSpec(delayMillis: Int = 0): FiniteAnimationSpec<T> =
+        tween(
+            durationMillis = ContentRevealDurationMillis,
+            delayMillis = delayMillis,
+            easing = EmphasizedDecelerateEasing,
+        )
 
     /**
      * Anything that moves or resizes.

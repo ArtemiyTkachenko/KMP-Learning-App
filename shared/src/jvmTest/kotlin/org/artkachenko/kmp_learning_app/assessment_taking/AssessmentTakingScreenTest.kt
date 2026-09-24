@@ -9,6 +9,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertRangeInfoEquals
 import androidx.compose.ui.test.hasAnyDescendant
@@ -507,6 +508,79 @@ internal class AssessmentTakingScreenTest {
         onNodeWithText("Answer B").assertIsNotEnabled()
         onNodeWithText("Answer B").performClick()
         assertEquals(0, clicks)
+    }
+
+    /**
+     * Selection is still selection once the row owns its own interaction source.
+     *
+     * The press treatment is driven by a [androidx.compose.foundation.interaction.MutableInteractionSource]
+     * the row now supplies to `selectable`/`toggleable`, which is exactly the parameter that decides
+     * whether a click is delivered at all. What matters is not that the row shrinks, but that every
+     * option stays live and reports its own identity while the question is open — including the one
+     * already chosen, so a learner can change their mind.
+     */
+    @Test
+    fun anOpenQuestionLetsTheLearnerChangeTheirChoice() = runComposeUiTest {
+        val clicked = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = contentState(AnswerSelectionMode.SINGLE).copy(
+                        selectedAnswerIds = setOf("answer_a"),
+                        canSubmit = true,
+                    ),
+                    onAnswerClick = { clicked += it },
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithText("Answer B").assertIsEnabled().performClick()
+        onNodeWithText("Answer A").assertIsEnabled().performClick()
+        assertEquals(listOf("answer_b", "answer_a"), clicked)
+    }
+
+    /**
+     * The one control at the bottom is the question's next action throughout, so it has to still be
+     * the next action after the reveal. The label now crosses over inside an `AnimatedContent`
+     * rather than being replaced outright; what is asserted is the settled state and the callback,
+     * never the crossfade.
+     */
+    @Test
+    fun theRevealTurnsTheActionIntoContinuingRatherThanReplacingIt() = runComposeUiTest {
+        var submitCount = 0
+        var nextCount = 0
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = revealedState(
+                        mode = AnswerSelectionMode.SINGLE,
+                        selected = setOf("answer_a"),
+                        correct = listOf("answer_a"),
+                        isCorrect = true,
+                    ),
+                    onAnswerClick = {},
+                    onSubmit = { submitCount += 1 },
+                    onNext = { nextCount += 1 },
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithTag(AssessmentTakingSubmitTag)
+            .assertIsEnabled()
+            // The Button merges its descendants, so the settled label reads off the button node.
+            .assert(hasText("Next question"))
+            .performClick()
+        assertEquals(1, nextCount)
+        assertEquals(0, submitCount)
     }
 
     private fun contentState(mode: AnswerSelectionMode) = AssessmentTakingUiState.Content(

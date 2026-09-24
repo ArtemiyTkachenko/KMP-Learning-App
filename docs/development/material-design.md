@@ -210,6 +210,23 @@ short or heterogeneous lists, flat divider rows for the long ones.
   whose fill, shape, and word all change together, and publishes `stateDescription` plus
   `toggleableState` beside its action label, so assistive technology hears both what
   pressing it does and what is true now.
+- **One discrete state, one `Transition`.** Where several properties of a component are
+  decided by the same fact — an answer option's container, border, border width, label
+  colour, and control tints — name that fact as an enum and drive them from a single
+  `updateTransition`, not from one `animate*AsState` per property. Independent animations
+  on the same input drift apart under a fast state change and let a later edit teach one
+  property a rule the others do not know.
+- **A row that can be pressed responds to being pressed.** An option the learner is asked
+  to choose takes its own `MutableInteractionSource`, hands it to `selectable`/`toggleable`
+  so Material still draws the ripple from it, and reads `collectIsPressedAsState` for a
+  scale of about 0.98 in a `graphicsLayer`. Draw-layer only, so layout, hit testing, and
+  when the click callback runs are all untouched — a press treatment must never be
+  something the callback waits for. Never hand-roll a gesture detector for this.
+- **Stagger a reveal in the animation spec, not in a coroutine.** When several pieces of
+  one reveal should arrive in order, give one container the layout expansion and give the
+  children delayed specs through `AppMotion.revealSpec(delayMillis)` and
+  `Modifier.animateEnterExit`. The page then relayouts once, the order is still legible,
+  and nothing in the interaction is gated on an animation finishing.
 
 ## Deliberate deviations
 

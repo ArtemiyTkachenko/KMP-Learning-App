@@ -1,12 +1,21 @@
 package org.artkachenko.kmp_learning_app.assessment_taking
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,9 +45,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -62,6 +73,7 @@ import kmp_learning_app.shared.generated.resources.assessment_taking_start_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_submit
 import kmp_learning_app.shared.generated.resources.assessment_taking_submitting
 import org.artkachenko.kmp_learning_app.assessment_review.AnswerOutcome
+import org.artkachenko.kmp_learning_app.assessment_review.AnswerOutcomeColors
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionAnswerTag
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionExplanationBlock
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionOutcomeBadge
@@ -289,12 +301,19 @@ private fun QuestionContent(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-            // Entering rather than appearing. The verdict and the explanation are new content
-            // arriving under answers the learner is already looking at, so they decelerate into
-            // place; `key(question.id)` above resets this, so every question reveals once.
+            // Entering rather than appearing, and entering in order. The verdict and the
+            // explanation are new content arriving under answers the learner is already looking
+            // at, so they decelerate into place; `key(question.id)` above resets this, so every
+            // question reveals once.
+            //
+            // One `AnimatedVisibility` owns the expansion and the two children fade in behind it
+            // on staggered specs, rather than a container per piece: the page relayouts once while
+            // the verdict still reads as arriving before the paragraph explaining it. The stagger
+            // lives in the animation specs, so nothing in the interaction is waiting on a
+            // coroutine to finish before the learner can press Next.
             AnimatedVisibility(
                 visible = state.feedback != null,
-                enter = fadeIn(AppMotion.effectSpec()) + expandVertically(AppMotion.spatialSpec()),
+                enter = expandVertically(AppMotion.spatialSpec()),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
                     QuestionOutcomeBadge(
@@ -303,10 +322,34 @@ private fun QuestionContent(
                             selectedAnswerIds = state.selectedAnswerIds,
                             correctAnswerIds = state.question.correctAnswerIds,
                         ),
-                        modifier = Modifier.testTag(AssessmentTakingOutcomeTag),
+                        modifier = Modifier
+                            .animateEnterExit(
+                                enter = fadeIn(AppMotion.revealSpec(VerdictRevealDelayMillis)) +
+                                    scaleIn(
+                                        animationSpec = AppMotion.revealSpec(VerdictRevealDelayMillis),
+                                        initialScale = VerdictInitialScale,
+                                    ),
+                            )
+                            .testTag(AssessmentTakingOutcomeTag),
                     )
-                    QuestionExplanationBlock(state.question.explanation)
+                    QuestionExplanationBlock(
+                        explanation = state.question.explanation,
+                        modifier = Modifier.animateEnterExit(
+                            enter = fadeIn(AppMotion.revealSpec(ExplanationRevealDelayMillis)),
+                        ),
+                    )
                 }
+            }
+            // One control throughout, because it is one decision point: the question's next action.
+            // Replacing the label outright made the most important moment in the flow — the point
+            // at which an open question became an answered one — the only part of it that did not
+            // move. The button keeps its place, its width, and its primary emphasis; only the word
+            // inside it crosses over, and the box around that word eases rather than snapping
+            // between the widths of "Submit" and "Next question".
+            val actionLabel = when {
+                state.feedback != null -> stringResource(Res.string.assessment_taking_next_question)
+                state.isSubmitting -> stringResource(Res.string.assessment_taking_submitting)
+                else -> stringResource(Res.string.assessment_taking_submit)
             }
             Button(
                 onClick = if (state.feedback == null) onSubmit else onNext,
@@ -315,26 +358,28 @@ private fun QuestionContent(
                     .fillMaxWidth()
                     .testTag(AssessmentTakingSubmitTag),
             ) {
-                Text(
-                    if (state.feedback != null) {
-                        stringResource(Res.string.assessment_taking_next_question)
-                    } else {
-                        stringResource(
-                            if (state.isSubmitting) {
-                                Res.string.assessment_taking_submitting
-                            } else {
-                                Res.string.assessment_taking_submit
-                            },
+                AnimatedContent(
+                    targetState = actionLabel,
+                    transitionSpec = {
+                        // The exit is half the entrance, as everywhere else in the app: the old
+                        // label should be gone before the new one is legible, not dissolve into it.
+                        val enter = fadeIn(AppMotion.effectSpec())
+                        val exit = fadeOut(
+                            AppMotion.effectSpec(AppMotion.StateChangeDurationMillis / 2),
                         )
+                        // Unclipped, so neither label is cut off while the box between the two
+                        // widths is still travelling.
+                        enter togetherWith exit using SizeTransform(clip = false)
                     },
-                )
+                    label = "assessmentAction",
+                ) { label -> Text(label) }
             }
         }
     }
 }
 
 /**
- * One answer option, in the three states it has: at rest, chosen, and marked.
+ * One answer option, in the states it can hold.
  *
  * The row is the touch target and the selection surface: answers used to be bare rows separated
  * only by 6dp, so they were hard to tell apart, and the control was centred against the whole
@@ -356,9 +401,15 @@ private fun AnswerRow(
     outcome: AnswerOutcome?,
     onClick: () -> Unit,
 ) {
+    // Owned here rather than left to the selection modifier's own, because the row reads the press
+    // as well as indicating it. Material still draws its ripple from the same source, so there is
+    // one press and two responses to it instead of a hand-rolled gesture detector.
+    val interactionSource = remember { MutableInteractionSource() }
     val selectionModifier = if (mode == AnswerSelectionMode.SINGLE) {
         Modifier.selectable(
             selected = selected,
+            interactionSource = interactionSource,
+            indication = LocalIndication.current,
             enabled = enabled,
             role = Role.RadioButton,
             onClick = onClick,
@@ -366,6 +417,8 @@ private fun AnswerRow(
     } else {
         Modifier.toggleable(
             value = selected,
+            interactionSource = interactionSource,
+            indication = LocalIndication.current,
             enabled = enabled,
             role = Role.Checkbox,
             onValueChange = { onClick() },
@@ -377,47 +430,76 @@ private fun AnswerRow(
     // nothing else — the one list in the product where every row is a thing to be picked was
     // also the only one whose rows were not objects.
     val restingContainer = MaterialTheme.colorScheme.surfaceContainerLow
-    val marked = outcome?.colors(neutralContainer = restingContainer)
 
     // Choosing an answer is the action this whole product exists for, and it used to be the least
-    // responsive thing in it: the container colour and the border jumped between two values in a
-    // single frame, so the row registered the tap without ever acknowledging it. Easing the three
-    // properties is the feedback — the state is what is being animated, not decoration around it.
-    // The reveal rides the same three animations, so a result grows out of the selection rather
-    // than replacing it.
-    val containerColor by animateColorAsState(
-        targetValue = when {
-            marked != null -> marked.container
-            selected -> MaterialTheme.colorScheme.secondaryContainer
-            else -> restingContainer
-        },
-        animationSpec = AppMotion.effectSpec(),
+    // responsive thing in it: every property jumped between two values in a single frame, so the
+    // row registered the tap without ever acknowledging it.
+    //
+    // Everything the row says about itself is one discrete fact — [AnswerVisualState] — so it is
+    // one `Transition` rather than six independent animations racing each other. The reveal is not
+    // a second mechanism layered on top: submitting simply re-targets the same transition, which is
+    // what makes a result grow out of the selection instead of replacing it.
+    val transition = updateTransition(
+        targetState = answerVisualState(selected = selected, outcome = outcome),
+        label = "answerState",
+    )
+    val containerColor by transition.animateColor(
+        transitionSpec = { AppMotion.effectSpec() },
         label = "answerContainer",
-    )
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            marked != null -> marked.border
-            selected -> MaterialTheme.colorScheme.primary
-            else -> MaterialTheme.colorScheme.outlineVariant
-        },
-        animationSpec = AppMotion.effectSpec(),
+    ) { it.colors(restingContainer).container }
+    val borderColor by transition.animateColor(
+        transitionSpec = { AppMotion.effectSpec() },
         label = "answerBorder",
-    )
-    // The border width is spatial rather than an effect: it is a size, so it springs like one. A
-    // marked row is emphasised on the same terms as a chosen one, except where the mark is the
+    ) { it.colors(restingContainer).border }
+    // A marked row is emphasised on the same terms as a chosen one, except where the mark is the
     // absence of one — an option that was neither picked nor correct has nothing to emphasise.
-    val borderWidth by animateDpAsState(
-        targetValue = if (selected || (outcome != null && outcome != AnswerOutcome.NEUTRAL)) {
-            SelectedBorderWidth
-        } else {
-            UnselectedBorderWidth
-        },
-        animationSpec = AppMotion.spatialSpec(),
+    // The border width is spatial rather than an effect: it is a size, so it springs like one.
+    val borderWidth by transition.animateDp(
+        transitionSpec = { AppMotion.spatialSpec() },
         label = "answerBorderWidth",
+    ) { if (it == AnswerVisualState.Resting) UnselectedBorderWidth else SelectedBorderWidth }
+    // A marked row states its outcome in words and colour of its own, so the answer text returns to
+    // the ordinary reading colour once the row is a result rather than a choice.
+    val textColor by transition.animateColor(
+        transitionSpec = { AppMotion.effectSpec() },
+        label = "answerText",
+    ) {
+        if (it == AnswerVisualState.Selected) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
+    }
+    // The control's own colours travel with the rest. Material would otherwise repaint the one mark
+    // that records *what the learner themselves did* in a single frame, at the exact moment the row
+    // around it is easing into a verdict.
+    val controlSelectedColor by transition.animateColor(
+        transitionSpec = { AppMotion.effectSpec() },
+        label = "answerControlSelected",
+    ) { it.colors(restingContainer).tagColor ?: MaterialTheme.colorScheme.primary }
+    val controlUnselectedColor by transition.animateColor(
+        transitionSpec = { AppMotion.effectSpec() },
+        label = "answerControlUnselected",
+    ) { it.colors(restingContainer).tagColor ?: MaterialTheme.colorScheme.onSurfaceVariant }
+
+    // Pressing an answer should feel like pressing something. The scale is deliberately barely
+    // perceptible and lives in a draw layer, so it changes nothing about layout, hit testing, or
+    // when [onClick] runs — the callback is the selection modifier's and is never waited on.
+    val pressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) PressedScale else 1f,
+        animationSpec = AppMotion.spatialSpec(),
+        label = "answerPress",
     )
 
     Surface(
-        modifier = Modifier.fillMaxWidth().then(selectionModifier),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
+            .then(selectionModifier),
         shape = MaterialTheme.shapes.medium,
         color = containerColor,
         border = BorderStroke(width = borderWidth, color = borderColor),
@@ -446,7 +528,8 @@ private fun AnswerRow(
                         // right. The row carries the disabled semantics; the control carries the
                         // record.
                         enabled = enabled || outcome != null,
-                        accent = marked?.tagColor,
+                        selectedColor = controlSelectedColor,
+                        unselectedColor = controlUnselectedColor,
                     )
                 }
             }
@@ -457,17 +540,23 @@ private fun AnswerRow(
                 Text(
                     text = answerText,
                     style = MaterialTheme.typography.bodyLarge,
-                    // A marked row states its outcome in words and colour of its own, so the answer
-                    // text stays the ordinary reading colour rather than taking the selected one.
-                    color = if (selected && outcome == null) {
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
+                    color = textColor,
                 )
                 val label = outcome?.tagLabel()
-                if (label != null && marked?.tagColor != null) {
-                    QuestionAnswerTag(text = label, color = marked.tagColor)
+                val tagColor = outcome?.colors(restingContainer)?.tagColor
+                // The label is the row's non-colour channel, so it arrives with the colour rather
+                // than ahead of it: without this the word appeared on the frame of submission while
+                // the container behind it was still a fifth of the way through easing. There is no
+                // exit — a row only ever gains a mark, and a new question replaces the whole
+                // subtree through `key(question.id)`.
+                AnimatedVisibility(
+                    visible = label != null && tagColor != null,
+                    enter = fadeIn(AppMotion.revealSpec(AnswerTagRevealDelayMillis)) +
+                        expandVertically(AppMotion.spatialSpec()),
+                ) {
+                    if (label != null && tagColor != null) {
+                        QuestionAnswerTag(text = label, color = tagColor)
+                    }
                 }
             }
         }
@@ -475,44 +564,113 @@ private fun AnswerRow(
 }
 
 /**
- * The radio or checkbox, tinted by outcome once there is one.
+ * Everything one option's appearance depends on, as a single value.
  *
- * [accent] is null while the question is open, and the control then uses Material's own selection
- * colours. After the reveal it is the outcome's accent, so the mark the learner reads first — the
- * filled control they put there themselves — is already the right or wrong colour before they get
- * to the label.
+ * The row was previously drawn from two independent inputs — a `selected` flag and a nullable
+ * outcome — recombined in a `when` at each of six property sites. Naming the four appearances the
+ * row actually has is what lets one `Transition` drive all of them, and what stops a later edit
+ * from teaching one property a rule the other five do not know.
+ *
+ * It is derived, not stored: nothing in the ViewModel changes, and this adds no state that could
+ * disagree with the selection or the feedback it comes from.
+ */
+private enum class AnswerVisualState { Resting, Selected, Correct, Incorrect, Missed }
+
+private fun answerVisualState(selected: Boolean, outcome: AnswerOutcome?): AnswerVisualState =
+    when (outcome) {
+        AnswerOutcome.CORRECT -> AnswerVisualState.Correct
+        AnswerOutcome.WRONG -> AnswerVisualState.Incorrect
+        AnswerOutcome.MISSED -> AnswerVisualState.Missed
+        AnswerOutcome.NEUTRAL -> AnswerVisualState.Resting
+        null -> if (selected) AnswerVisualState.Selected else AnswerVisualState.Resting
+    }
+
+/**
+ * The colours of each appearance.
+ *
+ * Four of the five defer to the shared review vocabulary rather than restating it, so practice and
+ * results cannot drift into two answers to "what does a wrong option look like". Only
+ * [AnswerVisualState.Selected] is this screen's own, because it is the one state a review surface
+ * has no concept of: an answer chosen but not yet submitted.
+ *
+ * That state takes the **primary** family. It used to take `secondaryContainer`, and the secondary
+ * family is by this palette's own definition the primary hue *drained of chroma* — the same colour
+ * the neutral surface ramp is tinted with. A selected option was therefore one more step on that
+ * ramp rather than a different kind of thing, and it was carrying a `primary` border on top of a
+ * near-neutral fill. `primaryContainer` is the brand colour at container strength, so the fill now
+ * agrees with the border and selection reads as chromatic rather than as slightly darker.
+ */
+@Composable
+private fun AnswerVisualState.colors(restingContainer: Color): AnswerOutcomeColors = when (this) {
+    AnswerVisualState.Resting -> AnswerOutcome.NEUTRAL.colors(restingContainer)
+    AnswerVisualState.Selected -> AnswerOutcomeColors(
+        border = MaterialTheme.colorScheme.primary,
+        container = MaterialTheme.colorScheme.primaryContainer,
+        // No tag: an unsubmitted choice has no verdict to label, and the control tints fall back to
+        // Material's own selection colours through this null.
+        tagColor = null,
+    )
+    AnswerVisualState.Correct -> AnswerOutcome.CORRECT.colors(restingContainer)
+    AnswerVisualState.Incorrect -> AnswerOutcome.WRONG.colors(restingContainer)
+    AnswerVisualState.Missed -> AnswerOutcome.MISSED.colors(restingContainer)
+}
+
+/**
+ * The radio or checkbox, in whatever colours the row's transition currently holds.
+ *
+ * The colours are the caller's rather than resolved here, because they are mid-animation values:
+ * while the question is open they are Material's own selection colours, and after the reveal they
+ * have travelled to the outcome's accent. The mark the learner reads first — the filled control
+ * they put there themselves — therefore changes colour with the row around it rather than ahead
+ * of it.
  */
 @Composable
 private fun AnswerControl(
     mode: AnswerSelectionMode,
     selected: Boolean,
     enabled: Boolean,
-    accent: Color?,
+    selectedColor: Color,
+    unselectedColor: Color,
 ) {
     if (mode == AnswerSelectionMode.SINGLE) {
         RadioButton(
             selected = selected,
             onClick = null,
             enabled = enabled,
-            colors = if (accent == null) {
-                RadioButtonDefaults.colors()
-            } else {
-                RadioButtonDefaults.colors(selectedColor = accent, unselectedColor = accent)
-            },
+            colors = RadioButtonDefaults.colors(
+                selectedColor = selectedColor,
+                unselectedColor = unselectedColor,
+            ),
         )
     } else {
         Checkbox(
             checked = selected,
             onCheckedChange = null,
             enabled = enabled,
-            colors = if (accent == null) {
-                CheckboxDefaults.colors()
-            } else {
-                CheckboxDefaults.colors(checkedColor = accent, uncheckedColor = accent)
-            },
+            colors = CheckboxDefaults.colors(
+                checkedColor = selectedColor,
+                uncheckedColor = unselectedColor,
+            ),
         )
     }
 }
+
+/**
+ * How far the verdict badge and the explanation trail the answer surfaces they belong to.
+ *
+ * Small enough that the whole reveal is over well inside half a second, and ordered so the learner
+ * reads the rows, then the verdict, then the reason — which is the order the information is useful
+ * in. Nothing is gated on these: the Next button is live from the first frame of the reveal.
+ */
+private const val AnswerTagRevealDelayMillis = 60
+private const val VerdictRevealDelayMillis = 80
+private const val ExplanationRevealDelayMillis = 170
+
+/** Barely a shrink. Enough to read as a surface giving under a finger, not as a button bouncing. */
+private const val PressedScale = 0.98f
+
+/** The badge settles in from just under its size; a larger start would read as a pop. */
+private const val VerdictInitialScale = 0.94f
 
 private val SelectedBorderWidth = 2.dp
 private val UnselectedBorderWidth = 1.dp

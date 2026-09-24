@@ -573,7 +573,7 @@ to match a new order is not.
 not disappear when the bundle stops authoring it: if any past attempt selected it,
 the import must keep it to preserve the foreign key from
 `question_attempt_selected_answer`. It is therefore marked `DEPRECATED` and
-excluded from active curriculum queries, while `getQuestionById` still returns it
+excluded from active curriculum queries, while `getQuestionsByIds` still returns it
 so the attempt stays reviewable. This was not true when the 90-question review
 first landed, and the consequence was that retired options — the very filler the
 review removed — reappeared as extra choices for upgrading users. When a change

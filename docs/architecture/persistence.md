@@ -347,7 +347,7 @@ matters because renaming an `AnswerOption` id is a content edit but a data
 migration in the database: without a status the retired row would keep appearing
 as an extra choice in new assessments. Active curriculum queries therefore read
 through `getActiveAnswerOptionsForQuestions`, while
-`CurriculumRepository.getQuestionById` reads every option so a past attempt is
+`CurriculumRepository.getQuestionsByIds` reads every option so a past attempt is
 still reviewable with the answer text the user actually saw. Re-adding an option
 in a later bundle reactivates it, because the import upserts every authored
 option as `ACTIVE`.
@@ -653,8 +653,10 @@ reads order newest first and use the stable ID as a deterministic tie-breaker.
 
 The table deliberately has no foreign key to `question`. Saved identity survives independently
 when curriculum content is removed, while display content is resolved separately through
-`CurriculumRepository.getQuestionById`. That historical resolver may return ACTIVE or DEPRECATED
-content, or null for a missing ID; none of those results automatically changes the saved row.
+`CurriculumRepository.getQuestionsByIds`. That historical resolver may return ACTIVE or DEPRECATED
+content, and simply has no entry for a missing ID; none of those results automatically changes the
+saved row. It resolves a whole list of identities in one read, which is what keeps re-resolving the
+saved list after each unsave to a single query rather than one per saved Question.
 
 ## Lesson Study State
 

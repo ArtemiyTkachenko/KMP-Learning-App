@@ -838,8 +838,8 @@ internal class PracticeBuilderViewModelTest {
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
             subtopics.firstOrNull { it.id == subtopicId }
 
-        override suspend fun getQuestionById(questionId: String): Question? =
-            questions.firstOrNull { it.id == questionId }
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            questions.filter { it.id in questionIds }.associateBy(Question::id)
 
         private fun failOnce() {
             if (failuresRemaining > 0) {

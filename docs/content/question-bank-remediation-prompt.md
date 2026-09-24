@@ -92,7 +92,7 @@ different assertion silently corrupts past attempts.
 
 When a change retires answer IDs, verify that the import marks them
 `DEPRECATED`, that active curriculum queries exclude them, and that
-`getQuestionById` still returns them so past attempts stay reviewable. A prior
+`getQuestionsByIds` still returns them so past attempts stay reviewable. A prior
 change got this wrong and retired options reappeared as extra choices for
 upgrading users. Check this explicitly whenever answer IDs are retired at scale.
 

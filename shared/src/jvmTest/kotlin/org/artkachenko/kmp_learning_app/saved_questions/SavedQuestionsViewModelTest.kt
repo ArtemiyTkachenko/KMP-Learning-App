@@ -278,11 +278,16 @@ private class VmCurriculumRepository(
     /** When set, every lookup suspends on it, so a resolution can be held open and superseded. */
     var lookupGate: CompletableDeferred<Unit>? = null
 
-    override suspend fun getQuestionById(questionId: String): Question? {
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
         lookupGate?.await()
         if (failing) error("Curriculum unavailable.")
-        if (available != null && questionId !in available) return null
-        return Question(
+        return questionIds
+            .filter { available == null || it in available }
+            .associateWith { questionId -> question(questionId) }
+    }
+
+    private fun question(questionId: String): Question =
+        Question(
             id = questionId,
             topicId = "kotlin",
             subtopicId = "coroutines",
@@ -297,7 +302,6 @@ private class VmCurriculumRepository(
             explanation = "Explanation",
             sources = listOf(SourceReference("Source", "https://example.com/$questionId")),
         )
-    }
 
     override suspend fun getActiveTopics(): List<Topic> = error("ACTIVE lookup must not be used.")
     override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> =

@@ -258,7 +258,8 @@ internal class AssessmentRetakeControllerTest {
         ): List<Question> = error("Not used.")
         override suspend fun getTopicById(topicId: String): Topic? = error("Not used.")
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = error("Not used.")
-        override suspend fun getQuestionById(questionId: String): Question? = error("Not used.")
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            error("Not used.")
     }
 }
 

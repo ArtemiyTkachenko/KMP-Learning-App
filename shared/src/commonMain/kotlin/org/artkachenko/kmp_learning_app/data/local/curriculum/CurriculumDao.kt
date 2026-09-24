@@ -78,7 +78,7 @@ internal interface CurriculumDao {
      * Renaming an AnswerOption id is a content operation, but the old row lives on in
      * the database. Without this the retired option would keep appearing as an extra
      * choice in new assessments, so it is marked DEPRECATED and filtered out of active
-     * curriculum queries while remaining resolvable through getQuestionById.
+     * curriculum queries while remaining resolvable through getQuestionsByIds.
      */
     @Query(
         """
@@ -120,8 +120,18 @@ internal interface CurriculumDao {
         activeStatus: String,
     ): List<SubtopicEntity>
 
-    @Query("SELECT * FROM question WHERE id = :id")
-    suspend fun getQuestionById(id: String): QuestionEntity?
+    /**
+     * The historical Question resolver.
+     *
+     * Status is unfiltered on purpose, so a DEPRECATED Question a stored attempt references still
+     * reads back. Every caller holds the whole set of ids it needs before it reads any of them, so
+     * this is the only shape: there is no per-id variant to fall back to, and therefore no way for
+     * an implementation to answer the two inconsistently. Callers must not pass an empty
+     * collection; LocalCurriculumRepository answers that case before it reaches Room, because
+     * `IN ()` is not portable SQL.
+     */
+    @Query("SELECT * FROM question WHERE id IN (:ids)")
+    suspend fun getQuestionsByIds(ids: List<String>): List<QuestionEntity>
 
     @Query(
         """

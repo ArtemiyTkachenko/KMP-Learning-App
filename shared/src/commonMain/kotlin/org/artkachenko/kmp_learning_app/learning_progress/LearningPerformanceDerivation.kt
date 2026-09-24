@@ -4,7 +4,6 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
-import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
@@ -23,13 +22,25 @@ internal class LearningPerformanceDerivation(
         val completedAttempts = attempts.filter { it.status == AssessmentStatus.COMPLETED }
         val topicCounts = mutableMapOf<String, Counts>()
         val subtopicCounts = mutableMapOf<PerformanceSubtopicKey, Counts>()
-        val questionsById = mutableMapOf<String, Question?>()
+        // Every stable ID history mentions is collected before anything is read, so the historical
+        // resolution is one repository call rather than one per distinct Question. Deduplication
+        // still happens — a Question answered in five attempts is one ID in this set — but it now
+        // happens before the read instead of behind a per-call memo. An ID the curriculum no longer
+        // holds is simply absent from the result, exactly as the per-ID `null` was.
+        val historicalQuestionIds = completedAttempts.flatMapTo(mutableSetOf()) { attempt ->
+            attempt.questionAttempts.map(QuestionAttempt::questionId)
+        }
+        // A learner with no completed history has nothing to resolve, so the curriculum is not
+        // read at all — which is what keeps a first practice run off the question tables entirely.
+        val questionsById = if (historicalQuestionIds.isEmpty()) {
+            emptyMap()
+        } else {
+            curriculumRepository.getQuestionsByIds(historicalQuestionIds)
+        }
 
         for (attempt in completedAttempts) {
             for (questionAttempt in attempt.questionAttempts) {
-                val question = questionsById.getOrLoad(questionAttempt.questionId) {
-                    curriculumRepository.getQuestionById(questionAttempt.questionId)
-                } ?: continue
+                val question = questionsById[questionAttempt.questionId] ?: continue
                 val isCorrect = answeredCorrectly(questionAttempt)
 
                 topicCounts.getOrPut(question.topicId, ::Counts).add(isCorrect)
@@ -59,6 +70,10 @@ internal class LearningPerformanceDerivation(
             )
         }
 
+        // Topic and Subtopic names stay one lookup per distinct id, memoised for the derivation.
+        // Both loops are bounded by how much the curriculum authors rather than by how much history
+        // the learner has, and each is a single statement against one table rather than the read
+        // transaction a Question costs.
         val subtopicsById = mutableMapOf<String, Subtopic?>()
         val subtopics = subtopicCounts.keys
             .sortedWith(compareBy(PerformanceSubtopicKey::topicId, PerformanceSubtopicKey::subtopicId))

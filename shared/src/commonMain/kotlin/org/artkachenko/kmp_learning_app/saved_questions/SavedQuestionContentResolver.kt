@@ -12,7 +12,7 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
  * what those IDs currently resolve to. Keeping the resolution here rather than in the ViewModel is
  * what makes the three outcomes — ACTIVE, DEPRECATED, and gone — testable on their own.
  *
- * The lookup is deliberately [CurriculumRepository.getQuestionById], the historical resolver, and
+ * The lookup is deliberately [CurriculumRepository.getQuestionsByIds], the historical resolver, and
  * never an ACTIVE listing: a saved identity is learner-owned and outlives the Question's place in
  * the current catalogue, so a DEPRECATED Question stays reviewable exactly like an ACTIVE one.
  */
@@ -30,12 +30,21 @@ internal class SavedQuestionContentResolver(
      * the caller decides what an unreadable curriculum means. The two must not be conflated — a
      * database failure is not evidence that a Question no longer exists.
      */
-    suspend fun resolve(savedQuestions: List<SavedQuestion>): List<SavedQuestionItem> =
-        savedQuestions.map { saved ->
-            val question = curriculumRepository.getQuestionById(saved.questionId)
+    suspend fun resolve(savedQuestions: List<SavedQuestion>): List<SavedQuestionItem> {
+        // Nothing saved means nothing to resolve, and the curriculum is not read for it.
+        if (savedQuestions.isEmpty()) return emptyList()
+        // The whole saved list is resolved in one read rather than one per identity. Every unsave
+        // changes the saved list and so re-runs this for everything still on it, which is what
+        // makes the per-id cost repeat rather than being paid once when the screen opens.
+        val questionsById = curriculumRepository.getQuestionsByIds(
+            savedQuestions.mapTo(mutableSetOf(), SavedQuestion::questionId),
+        )
+        return savedQuestions.map { saved ->
+            val question = questionsById[saved.questionId]
                 ?: return@map SavedQuestionItem.Missing(saved)
             SavedQuestionItem.Available(saved, question.toSavedQuestionContent())
         }
+    }
 }
 
 private fun Question.toSavedQuestionContent(): SavedQuestionContentUiModel =

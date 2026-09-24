@@ -34,6 +34,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import org.artkachenko.kmp_learning_app.getQuestionById
 
 internal class CurriculumImporterTest {
     @Test

@@ -12,6 +12,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.entity.TopicEntity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
+import org.artkachenko.kmp_learning_app.getQuestionById
 
 internal class CurriculumDatabaseTest {
     @Test

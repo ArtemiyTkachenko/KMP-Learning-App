@@ -306,9 +306,9 @@ internal class MistakeReviewViewModelTest {
 private class FailableCurriculumRepository(
     var failing: Boolean = false,
 ) : CurriculumRepository by VmCurriculumRepository {
-    override suspend fun getQuestionById(questionId: String): Question? {
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
         if (failing) error("Curriculum unavailable.")
-        return VmCurriculumRepository.getQuestionById(questionId)
+        return VmCurriculumRepository.getQuestionsByIds(questionIds)
     }
 }
 
@@ -378,26 +378,28 @@ private object VmCurriculumRepository : CurriculumRepository {
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
         error("Subtopic lookup is not needed.")
 
-    override suspend fun getQuestionById(questionId: String): Question? =
-        Question(
-            id = questionId,
-            topicId = "kotlin",
-            subtopicId = "coroutines",
-            text = "Question $questionId",
-            answers = listOf(
-                AnswerOption("${questionId}_a", "Answer A"),
-                AnswerOption("${questionId}_b", "Answer B"),
-            ),
-            selectionMode = AnswerSelectionMode.SINGLE,
-            level = QuestionLevel.FOUNDATION,
-            correctAnswerIds = listOf("${questionId}_a"),
-            explanation = "Explanation",
-            sources = listOf(SourceReference("Source", "https://example.com/$questionId")),
-        )
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        questionIds.associateWith { questionId ->
+            Question(
+                id = questionId,
+                topicId = "kotlin",
+                subtopicId = "coroutines",
+                text = "Question $questionId",
+                answers = listOf(
+                    AnswerOption("${questionId}_a", "Answer A"),
+                    AnswerOption("${questionId}_b", "Answer B"),
+                ),
+                selectionMode = AnswerSelectionMode.SINGLE,
+                level = QuestionLevel.FOUNDATION,
+                correctAnswerIds = listOf("${questionId}_a"),
+                explanation = "Explanation",
+                sources = listOf(SourceReference("Source", "https://example.com/$questionId")),
+            )
+        }
 }
 
 private object CancelingCurriculumRepository : CurriculumRepository by VmCurriculumRepository {
-    override suspend fun getQuestionById(questionId: String): Question? =
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
         throw CancellationException("cancelled")
 }
 
@@ -428,6 +430,6 @@ private object FailingLearningContentRepository : LearningContentRepository {
 private class PartialCurriculumRepository(
     private val missingIds: Set<String>,
 ) : CurriculumRepository by VmCurriculumRepository {
-    override suspend fun getQuestionById(questionId: String): Question? =
-        if (questionId in missingIds) null else VmCurriculumRepository.getQuestionById(questionId)
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        VmCurriculumRepository.getQuestionsByIds(questionIds.filterNot { it in missingIds })
 }

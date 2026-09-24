@@ -22,6 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import org.artkachenko.kmp_learning_app.getQuestionById
 
 /**
  * E15-05 compatibility verification for authored `QuestionLevel` metadata.

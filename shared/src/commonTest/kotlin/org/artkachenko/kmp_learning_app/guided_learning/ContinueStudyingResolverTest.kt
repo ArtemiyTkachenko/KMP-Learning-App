@@ -305,7 +305,8 @@ internal class ContinueStudyingResolverTest {
             levels: Set<QuestionLevel>,
         ): List<Question> = unused()
 
-        override suspend fun getQuestionById(questionId: String): Question? = unused()
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            unused()
 
         private fun unused(): Nothing =
             error("ContinueStudyingResolver must resolve identity only, never content.")

@@ -550,7 +550,8 @@ internal class MixedInterviewResultViewModelTest {
         ): List<Question> = error("Not used")
         override suspend fun getTopicById(topicId: String): Topic? = topics.firstOrNull { it.id == topicId }
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
-        override suspend fun getQuestionById(questionId: String): Question? = questions.firstOrNull { it.id == questionId }
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            questions.filter { it.id in questionIds }.associateBy(Question::id)
     }
 }
 

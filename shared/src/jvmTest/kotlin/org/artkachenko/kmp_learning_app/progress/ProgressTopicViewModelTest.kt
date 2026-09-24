@@ -398,7 +398,8 @@ private class TopicCurriculumRepository(
 
     override suspend fun getTopicById(topicId: String): Topic? = topicsById[topicId]
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? = subtopicsById[subtopicId]
-    override suspend fun getQuestionById(questionId: String): Question? = questionsById[questionId]
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        questionIds.mapNotNull { questionsById[it] }.associateBy(Question::id)
 }
 
 private fun topicQuestion(

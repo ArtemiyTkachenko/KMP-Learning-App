@@ -93,7 +93,7 @@ Focused destinations use the same coordinator and push
 `FocusedPracticeAttempt(attemptId)` after persistence.
 Completion replaces the attempt entry with `MixedInterviewResult(attemptId)`;
 the result loads the durable `AssessmentScore` from `AssessmentRepository` and
-uses `AssessmentReviewLoader` with `CurriculumRepository.getQuestionById` for
+uses `AssessmentReviewLoader` with `CurriculumRepository.getQuestionsByIds` for
 ordered historical review. Resolved review Questions are grouped by `topicId`
 in attempt encounter order by `topicAnswerCounts()`, a pure derivation over the
 review items alone; `CurriculumRepository.getTopicById` then resolves historical
@@ -127,7 +127,7 @@ opens.
 E09-04 completes the retained session through `AssessmentEngine`, persists the
 completed attempt before replacing focused-practice navigation with a stable
 attempt-ID result route, and loads historical review through
-`AssessmentRepository` plus `CurriculumRepository.getQuestionById`. Deprecated
+`AssessmentRepository` plus `CurriculumRepository.getQuestionsByIds`. Deprecated
 or missing historical questions are represented per review item without
 changing the durable score. Retake behavior remains deferred to E09-05.
 
@@ -206,7 +206,7 @@ browsing saved content is review rather than an assessment in progress.
 surfaces observe; it never reads `SavedQuestionRepository` itself, which is what makes a Question
 saved on a result screen appear here, and one removed here disappear there. It adds exactly one
 thing: `SavedQuestionContentResolver` maps each saved identity through
-`CurriculumRepository.getQuestionById` — the historical resolver, never an ACTIVE listing — into
+`CurriculumRepository.getQuestionsByIds` — the historical resolver, never an ACTIVE listing — into
 `SavedQuestionItem.Available` or `SavedQuestionItem.Missing`, preserving the repository's saved
 order (`saved_at_epoch_millis DESC, question_id ASC`) exactly. DEPRECATED content resolves and
 renders like any other; a null lookup is a `Missing` placeholder that keeps its position and stays

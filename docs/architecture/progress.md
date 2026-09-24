@@ -18,12 +18,12 @@ The two sources answer slightly different questions, and are allowed to. Overall
 totals come from the persisted score of each completed attempt and therefore
 count every occurrence the learner answered, while the Topic and Subtopic
 breakdown can only place an occurrence whose Question still resolves through
-`CurriculumRepository.getQuestionById`. A historical Question that no longer
+`CurriculumRepository.getQuestionsByIds`. A historical Question that no longer
 resolves at all — which the never-delete import contract makes unreachable
 through ordinary publishing — keeps its persisted occurrence in the overall
 figures and drops out of the grouped ones, so the grouped answered counts may
 legitimately sum to less than the overall answered count. Deprecation does not
-cause this: `getQuestionById` is the historical resolver and reads a DEPRECATED
+cause this: `getQuestionsByIds` is the historical resolver and reads a DEPRECATED
 Question, which keeps its Topic and Subtopic accuracy while leaving current
 coverage.
 

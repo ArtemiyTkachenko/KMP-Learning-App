@@ -697,7 +697,8 @@ private class FakeCurriculumRepository(
         return subtopicsById[subtopicId]
     }
 
-    override suspend fun getQuestionById(questionId: String): Question? = questionsById[questionId]
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        questionIds.mapNotNull { questionsById[it] }.associateBy(Question::id)
 }
 
 private fun completedAttempt(

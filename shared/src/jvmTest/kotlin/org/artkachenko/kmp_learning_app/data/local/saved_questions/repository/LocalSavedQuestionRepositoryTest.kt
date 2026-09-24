@@ -29,6 +29,7 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.getQuestionById
 
 internal class LocalSavedQuestionRepositoryTest {
     @Test

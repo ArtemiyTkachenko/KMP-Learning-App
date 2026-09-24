@@ -41,6 +41,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCu
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.getQuestionById
 
 internal class AssessmentEngineIntegrationTest {
     @Test
@@ -300,10 +301,9 @@ internal class AssessmentEngineIntegrationTest {
                 components.assessmentRepository.getById("attempt_retired_answer"),
             )
             val reviewed = assertIs<ReviewQuestionItem.Available>(
-                AssessmentReviewLoader(curriculumRepository).loadQuestion(
-                    attemptId = historical.id,
-                    questionAttempt = historical.questionAttempts.single(),
-                ),
+                AssessmentReviewLoader(curriculumRepository)
+                    .loadQuestions(historical)
+                    .single(),
             ).question
 
             // The selection is occurrence data: it survives the option leaving the bundle, and the

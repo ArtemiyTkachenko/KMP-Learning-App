@@ -21,6 +21,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import org.artkachenko.kmp_learning_app.getQuestionById
 
 internal class LocalCurriculumRepositoryTest {
     @Test
@@ -329,7 +330,7 @@ internal class LocalCurriculumRepositoryTest {
     }
 
     @Test
-    fun getQuestionByIdReturnsDeprecatedQuestionForHistoricalLookup() = runTest {
+    fun getQuestionsByIdsReturnsDeprecatedQuestionForHistoricalLookup() = runTest {
         val deprecatedQuestion = question(
             id = "deprecated_question",
             topicId = "deprecated_topic",
@@ -349,7 +350,7 @@ internal class LocalCurriculumRepositoryTest {
                 questions = listOf(deprecatedQuestion),
             ),
         ) { repository ->
-            val question = repository.getQuestionById("deprecated_question")
+            val question = repository.getQuestionsByIds(listOf("deprecated_question"))["deprecated_question"]
 
             assertNotNull(question)
             assertEquals(ContentStatus.DEPRECATED, question.status)
@@ -361,9 +362,43 @@ internal class LocalCurriculumRepositoryTest {
     }
 
     @Test
-    fun getQuestionByIdReturnsNullForUnknownQuestion() = runTest {
+    fun getQuestionsByIdsOmitsUnknownQuestionsAndReadsNothingForAnEmptyRequest() = runTest {
         withRepository(curriculumOf(graph("topic_a"))) { repository ->
-            assertNull(repository.getQuestionById("missing_question"))
+            assertEquals(emptyMap(), repository.getQuestionsByIds(listOf("missing_question")))
+            assertEquals(emptyMap(), repository.getQuestionsByIds(emptyList()))
+        }
+    }
+
+    /**
+     * Many identities in one request answer exactly as a request for each of them would.
+     *
+     * This is the property the batched resolver rests on, asserted against a real database rather
+     * than a fake: DEPRECATED content, retired answer options, and authored orders all survive, a
+     * duplicate collapses, and an identity the curriculum no longer holds is simply absent.
+     */
+    @Test
+    fun getQuestionsByIdsAnswersManyIdentitiesExactlyAsSingletonRequestsDo() = runTest {
+        withTestDatabase { database ->
+            assertEquals(CurriculumImportResult.Imported, CurriculumImporter(database).importCurriculum())
+            val repository = LocalCurriculumRepository(database)
+            val bundled = BundledCurriculumSource.load().questions
+            val deprecatedId = bundled.first { it.status == ContentStatus.DEPRECATED }.id
+            val activeIds = bundled.filter { it.status == ContentStatus.ACTIVE }.take(3).map { it.id }
+            val requested = activeIds + deprecatedId + "no_such_question" + activeIds.first()
+
+            val batched = repository.getQuestionsByIds(requested)
+
+            assertEquals(
+                (activeIds + deprecatedId).toSet(),
+                batched.keys,
+                "A missing identity is absent rather than present-and-empty, and a duplicate collapses.",
+            )
+            batched.forEach { (questionId, question) ->
+                assertEquals(
+                    repository.getQuestionsByIds(listOf(questionId)).getValue(questionId),
+                    question,
+                )
+            }
         }
     }
 

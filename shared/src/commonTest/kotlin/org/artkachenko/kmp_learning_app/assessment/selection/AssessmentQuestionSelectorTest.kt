@@ -1715,8 +1715,8 @@ internal class AssessmentQuestionSelectorTest {
             return Subtopic(subtopicId, question.topicId, subtopicId)
         }
 
-        override suspend fun getQuestionById(questionId: String): Question? =
-            allKnownQuestions().firstOrNull { it.id == questionId }
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            allKnownQuestions().filter { it.id in questionIds }.associateBy(Question::id)
 
         private fun allKnownQuestions(): List<Question> =
             historicalQuestions + activeQuestions + topicQuestions.values.flatten() +

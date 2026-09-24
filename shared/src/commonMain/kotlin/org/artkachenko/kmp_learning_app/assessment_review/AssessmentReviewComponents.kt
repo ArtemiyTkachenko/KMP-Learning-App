@@ -29,20 +29,13 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
-import kmp_learning_app.shared.generated.resources.assessment_review_correct
-import kmp_learning_app.shared.generated.resources.assessment_review_correct_answer
-import kmp_learning_app.shared.generated.resources.assessment_review_correctly_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_collapse
 import kmp_learning_app.shared.generated.resources.assessment_review_expand
-import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
-import kmp_learning_app.shared.generated.resources.assessment_review_incorrectly_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_missing_question
 import kmp_learning_app.shared.generated.resources.assessment_review_interview_complete
 import kmp_learning_app.shared.generated.resources.assessment_review_practice_complete
 import kmp_learning_app.shared.generated.resources.assessment_review_mistakes_retained
-import kmp_learning_app.shared.generated.resources.assessment_review_missed
 import kmp_learning_app.shared.generated.resources.assessment_review_practice_mistakes
-import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_save_question
 import kmp_learning_app.shared.generated.resources.assessment_review_saved_state
 import kmp_learning_app.shared.generated.resources.assessment_review_unsaved_state
@@ -57,7 +50,6 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
-import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
@@ -188,30 +180,17 @@ internal fun UnresolvedReviewQuestionsNotice(
 internal fun reviewQuestionSaveTag(questionId: String): String =
     "review_question_save_$questionId"
 
-/** How a reviewed answer relates to the authored correct set, for colouring only. */
-private enum class AnswerOutcome { CORRECT, MISSED, WRONG, NEUTRAL }
-
-/** Overall outcome of one reviewed question. */
-private enum class QuestionOutcome { CORRECT, PARTIAL, INCORRECT }
-
 /**
- * Derived purely from what the review model already carries. Persisted correctness stays
- * authoritative for [QuestionOutcome.CORRECT]; the partial case only refines how a question that
- * was *scored incorrect* is presented, so no scoring behaviour changes.
+ * The attempt's answers, put through the shared derivation in [questionOutcome].
+ *
+ * The review model carries a per-answer `wasSelected` flag rather than a set of selected IDs, so
+ * this is where the two shapes meet; the rule itself is not restated here.
  */
-private fun ReviewQuestionUiModel.outcome(): QuestionOutcome {
-    if (isCorrect) return QuestionOutcome.CORRECT
-    val pickedWrong = answers.any { it.wasSelected && !it.isCorrectAnswer }
-    val pickedAnyCorrect = answers.any { it.wasSelected && it.isCorrectAnswer }
-    return if (!pickedWrong && pickedAnyCorrect) QuestionOutcome.PARTIAL else QuestionOutcome.INCORRECT
-}
-
-private fun ReviewAnswerUiModel.outcome(): AnswerOutcome = when {
-    wasSelected && isCorrectAnswer -> AnswerOutcome.CORRECT
-    wasSelected -> AnswerOutcome.WRONG
-    isCorrectAnswer -> AnswerOutcome.MISSED
-    else -> AnswerOutcome.NEUTRAL
-}
+private fun ReviewQuestionUiModel.outcome(): QuestionOutcome = questionOutcome(
+    scoredCorrect = isCorrect,
+    selectedAnswerIds = answers.filter { it.wasSelected }.map { it.id }.toSet(),
+    correctAnswerIds = answers.filter { it.isCorrectAnswer }.map { it.id },
+)
 
 /**
  * [saveAction] is optional so this component stays usable where saved state is unknown, or where a
@@ -359,26 +338,7 @@ private val SaveIconSize = 18.dp
 @Composable
 private fun QuestionOutcomeLabel(outcome: QuestionOutcome, statesOutcome: Boolean) {
     if (!statesOutcome && outcome == QuestionOutcome.INCORRECT) return
-    val semantic = AppThemeExtras.semanticColors
-    val (text, content, container) = when (outcome) {
-        QuestionOutcome.CORRECT -> Triple(
-            stringResource(Res.string.assessment_review_correct),
-            semantic.onCorrectContainer,
-            semantic.correctContainer,
-        )
-        QuestionOutcome.PARTIAL -> Triple(
-            stringResource(Res.string.assessment_review_partially_correct),
-            semantic.onPartiallyCorrectContainer,
-            semantic.partiallyCorrectContainer,
-        )
-        QuestionOutcome.INCORRECT -> Triple(
-            stringResource(Res.string.assessment_review_incorrect),
-            semantic.onIncorrectContainer,
-            semantic.incorrectContainer,
-        )
-    }
-
-    StatusBadge(text = text, contentColor = content, containerColor = container)
+    QuestionOutcomeBadge(outcome)
 }
 
 /**
@@ -387,36 +347,20 @@ private fun QuestionOutcomeLabel(outcome: QuestionOutcome, statesOutcome: Boolea
  */
 @Composable
 private fun ReviewAnswerRow(answer: ReviewAnswerUiModel) {
-    val semantic = AppThemeExtras.semanticColors
-    val outcome = answer.outcome()
-    val border = when (outcome) {
-        AnswerOutcome.CORRECT, AnswerOutcome.MISSED -> semantic.correct
-        AnswerOutcome.WRONG -> semantic.incorrect
-        AnswerOutcome.NEUTRAL -> MaterialTheme.colorScheme.outlineVariant
-    }
-    val container = when (outcome) {
-        AnswerOutcome.CORRECT -> semantic.correctContainer
-        AnswerOutcome.WRONG -> semantic.incorrectContainer
-        AnswerOutcome.MISSED, AnswerOutcome.NEUTRAL -> MaterialTheme.colorScheme.surface
-    }
-
-    val label = when (outcome) {
-        AnswerOutcome.CORRECT -> stringResource(Res.string.assessment_review_correctly_selected)
-        AnswerOutcome.MISSED -> stringResource(Res.string.assessment_review_missed)
-        AnswerOutcome.WRONG -> stringResource(Res.string.assessment_review_incorrectly_selected)
-        AnswerOutcome.NEUTRAL -> null
-    }
+    val outcome = answerOutcome(
+        wasSelected = answer.wasSelected,
+        isCorrectAnswer = answer.isCorrectAnswer,
+    )
+    // These options sit inside a `surfaceContainerLow` card, so an unmarked one takes the page tone
+    // and reads as a well within it rather than as another card on top of one.
+    val colors = outcome.colors(neutralContainer = MaterialTheme.colorScheme.surface)
+    val label = outcome.tagLabel()
     QuestionAnswerOption(
         text = answer.text,
-        borderColor = border,
-        containerColor = container,
-        tags = if (label != null) {
-            {
-                QuestionAnswerTag(
-                    text = label,
-                    color = if (outcome == AnswerOutcome.WRONG) semantic.incorrect else semantic.correct,
-                )
-            }
+        borderColor = colors.border,
+        containerColor = colors.container,
+        tags = if (label != null && colors.tagColor != null) {
+            { QuestionAnswerTag(text = label, color = colors.tagColor) }
         } else {
             null
         },

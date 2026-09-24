@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertRangeInfoEquals
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
@@ -412,6 +413,102 @@ internal class AssessmentTakingScreenTest {
         onNodeWithTag(AssessmentProgressMeterTag).assertDoesNotExist()
     }
 
+    /**
+     * The reveal, which is the whole point of formative practice and had no coverage at all.
+     *
+     * What is asserted is that every option says what it was — including the one the learner did
+     * not pick and should have — and that the verdict is named. The colours behind those labels are
+     * the palette's and are asserted there; a screen test that pinned them would fail on every
+     * deliberate theme change.
+     */
+    @Test
+    fun theRevealMarksEveryOptionAndNamesTheVerdict() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = revealedState(
+                        mode = AnswerSelectionMode.SINGLE,
+                        selected = setOf("answer_b"),
+                        correct = listOf("answer_a"),
+                        isCorrect = false,
+                    ),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithTag(AssessmentTakingOutcomeTag).assert(hasAnyDescendant(hasText("Incorrect")))
+        onNodeWithText("\u2715 Incorrectly selected").assertIsDisplayed()
+        onNodeWithText("\u2715 Missed").assertIsDisplayed()
+        onNodeWithText("Explanation").assertIsDisplayed()
+        onNodeWithText("Because A.").assertIsDisplayed()
+    }
+
+    /**
+     * Picking two of three correct options and nothing wrong is not the same as picking the wrong
+     * one, and the reveal now says so. The score is untouched — this is presentation of a question
+     * that was still recorded as incorrect.
+     */
+    @Test
+    fun aPartlyRightAnswerIsNamedRatherThanCollapsedIntoWrong() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = revealedState(
+                        mode = AnswerSelectionMode.MULTIPLE,
+                        selected = setOf("answer_a"),
+                        correct = listOf("answer_a", "answer_b"),
+                        isCorrect = false,
+                    ),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithTag(AssessmentTakingOutcomeTag).assert(hasAnyDescendant(hasText("Partially correct")))
+        onNodeWithText("\u2713 Correctly selected").assertIsDisplayed()
+        onNodeWithText("\u2715 Missed").assertIsDisplayed()
+    }
+
+    /** Once the answer is revealed the rows are a record, so the choice can no longer be changed. */
+    @Test
+    fun revealedOptionsStopAcceptingInput() = runComposeUiTest {
+        var clicks = 0
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = revealedState(
+                        mode = AnswerSelectionMode.SINGLE,
+                        selected = setOf("answer_a"),
+                        correct = listOf("answer_a"),
+                        isCorrect = true,
+                    ),
+                    onAnswerClick = { clicks += 1 },
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithTag(AssessmentTakingOutcomeTag).assert(hasAnyDescendant(hasText("Correct")))
+        onNodeWithText("Answer B").assertIsNotEnabled()
+        onNodeWithText("Answer B").performClick()
+        assertEquals(0, clicks)
+    }
+
     private fun contentState(mode: AnswerSelectionMode) = AssessmentTakingUiState.Content(
         attemptId = "attempt",
         questionNumber = 2,
@@ -430,4 +527,21 @@ internal class AssessmentTakingScreenTest {
         isSubmitting = false,
         submissionFailed = false,
     )
+
+    private fun revealedState(
+        mode: AnswerSelectionMode,
+        selected: Set<String>,
+        correct: List<String>,
+        isCorrect: Boolean,
+    ) = contentState(mode).let { base ->
+        base.copy(
+            question = base.question.copy(
+                correctAnswerIds = correct,
+                explanation = "Because A.",
+            ),
+            selectedAnswerIds = selected,
+            canSubmit = true,
+            feedback = PracticeFeedback(isCorrect = isCorrect),
+        )
+    }
 }

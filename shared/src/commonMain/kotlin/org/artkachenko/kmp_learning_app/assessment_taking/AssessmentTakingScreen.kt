@@ -1,7 +1,10 @@
 package org.artkachenko.kmp_learning_app.assessment_taking
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +28,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -43,9 +49,6 @@ import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_taking_answer_save_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_completion_save_error
-import kmp_learning_app.shared.generated.resources.assessment_taking_correct_answer
-import kmp_learning_app.shared.generated.resources.assessment_taking_feedback_correct
-import kmp_learning_app.shared.generated.resources.assessment_taking_feedback_incorrect
 import kmp_learning_app.shared.generated.resources.assessment_taking_finish
 import kmp_learning_app.shared.generated.resources.assessment_taking_loading
 import kmp_learning_app.shared.generated.resources.assessment_taking_no_questions
@@ -58,6 +61,14 @@ import kmp_learning_app.shared.generated.resources.assessment_taking_select_one
 import kmp_learning_app.shared.generated.resources.assessment_taking_start_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_submit
 import kmp_learning_app.shared.generated.resources.assessment_taking_submitting
+import org.artkachenko.kmp_learning_app.assessment_review.AnswerOutcome
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionAnswerTag
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionExplanationBlock
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionOutcomeBadge
+import org.artkachenko.kmp_learning_app.assessment_review.answerOutcome
+import org.artkachenko.kmp_learning_app.assessment_review.colors
+import org.artkachenko.kmp_learning_app.assessment_review.questionOutcome
+import org.artkachenko.kmp_learning_app.assessment_review.tagLabel
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
@@ -78,6 +89,9 @@ internal const val AssessmentTakingSubmitTag = "focused_practice_submit"
 internal const val AssessmentTakingFinishTag = "focused_practice_finish"
 
 internal const val AssessmentProgressMeterTag = "assessment_progress_meter"
+
+/** The revealed verdict for the question just answered. */
+internal const val AssessmentTakingOutcomeTag = "assessment_taking_outcome"
 
 
 @Composable
@@ -211,7 +225,7 @@ private fun QuestionContent(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
         item {
             // Three distinct tiers: progress metadata, the question itself, and the supporting
@@ -230,7 +244,7 @@ private fun QuestionContent(
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
-                    .padding(top = 12.dp)
+                    .padding(top = AppSpacing.Grouped)
                     .semantics { heading() },
             )
             Text(
@@ -243,7 +257,7 @@ private fun QuestionContent(
                 ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
+                modifier = Modifier.padding(top = AppSpacing.Related),
             )
         }
         items(
@@ -256,6 +270,15 @@ private fun QuestionContent(
                 selected = selected,
                 mode = state.question.selectionMode,
                 enabled = !state.isSubmitting && state.feedback == null,
+                // Null until the answer is submitted. The reveal is the rows themselves: the
+                // learner's own options are marked in place, rather than the screen naming the
+                // correct answer in a sentence underneath and leaving them to find the row it means.
+                outcome = state.feedback?.let {
+                    answerOutcome(
+                        wasSelected = selected,
+                        isCorrectAnswer = answer.id in state.question.correctAnswerIds,
+                    )
+                },
                 onClick = { onAnswerClick(answer.id) },
             )
         }
@@ -266,25 +289,24 @@ private fun QuestionContent(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-            state.feedback?.let { feedback ->
-                Text(
-                    text = stringResource(
-                        if (feedback.isCorrect) {
-                            Res.string.assessment_taking_feedback_correct
-                        } else {
-                            Res.string.assessment_taking_feedback_incorrect
-                        },
-                    ),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (feedback.isCorrect) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                )
-                state.question.answers.filter { it.id in state.question.correctAnswerIds }.forEach {
-                    Text(
-                        stringResource(Res.string.assessment_taking_correct_answer, it.text),
-                        style = MaterialTheme.typography.bodyMedium,
+            // Entering rather than appearing. The verdict and the explanation are new content
+            // arriving under answers the learner is already looking at, so they decelerate into
+            // place; `key(question.id)` above resets this, so every question reveals once.
+            AnimatedVisibility(
+                visible = state.feedback != null,
+                enter = fadeIn(AppMotion.effectSpec()) + expandVertically(AppMotion.spatialSpec()),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
+                    QuestionOutcomeBadge(
+                        outcome = questionOutcome(
+                            scoredCorrect = state.feedback?.isCorrect == true,
+                            selectedAnswerIds = state.selectedAnswerIds,
+                            correctAnswerIds = state.question.correctAnswerIds,
+                        ),
+                        modifier = Modifier.testTag(AssessmentTakingOutcomeTag),
                     )
+                    QuestionExplanationBlock(state.question.explanation)
                 }
-                Text(state.question.explanation, style = MaterialTheme.typography.bodyMedium)
             }
             Button(
                 onClick = if (state.feedback == null) onSubmit else onNext,
@@ -312,11 +334,18 @@ private fun QuestionContent(
 }
 
 /**
- * One answer option.
+ * One answer option, in the three states it has: at rest, chosen, and marked.
  *
  * The row is the touch target and the selection surface: answers used to be bare rows separated
  * only by 6dp, so they were hard to tell apart, and the control was centred against the whole
  * block instead of the first line of a wrapping answer.
+ *
+ * [outcome] is null until the answer is submitted and non-null afterwards, and it is what makes the
+ * reveal happen on the rows rather than beneath them. Once it is set the row stops being a control
+ * and becomes a result: the selection modifier is disabled so the choice cannot be changed, and the
+ * container, border, control tint, and label all restate the same fact through
+ * [org.artkachenko.kmp_learning_app.assessment_review.AnswerOutcome] — the identical vocabulary the
+ * results screen uses, so a learner meets it once.
  */
 @Composable
 private fun AnswerRow(
@@ -324,6 +353,7 @@ private fun AnswerRow(
     selected: Boolean,
     mode: AnswerSelectionMode,
     enabled: Boolean,
+    outcome: AnswerOutcome?,
     onClick: () -> Unit,
 ) {
     val selectionModifier = if (mode == AnswerSelectionMode.SINGLE) {
@@ -342,31 +372,46 @@ private fun AnswerRow(
         )
     }
 
+    // An option at rest sits one level above the page rather than on it. It used to take
+    // `surface`, which is the page's own colour, so an unselected answer was an outline and
+    // nothing else — the one list in the product where every row is a thing to be picked was
+    // also the only one whose rows were not objects.
+    val restingContainer = MaterialTheme.colorScheme.surfaceContainerLow
+    val marked = outcome?.colors(neutralContainer = restingContainer)
+
     // Choosing an answer is the action this whole product exists for, and it used to be the least
     // responsive thing in it: the container colour and the border jumped between two values in a
     // single frame, so the row registered the tap without ever acknowledging it. Easing the three
     // properties is the feedback — the state is what is being animated, not decoration around it.
+    // The reveal rides the same three animations, so a result grows out of the selection rather
+    // than replacing it.
     val containerColor by animateColorAsState(
-        targetValue = if (selected) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            MaterialTheme.colorScheme.surface
+        targetValue = when {
+            marked != null -> marked.container
+            selected -> MaterialTheme.colorScheme.secondaryContainer
+            else -> restingContainer
         },
         animationSpec = AppMotion.effectSpec(),
         label = "answerContainer",
     )
     val borderColor by animateColorAsState(
-        targetValue = if (selected) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.outlineVariant
+        targetValue = when {
+            marked != null -> marked.border
+            selected -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.outlineVariant
         },
         animationSpec = AppMotion.effectSpec(),
         label = "answerBorder",
     )
-    // The border width is spatial rather than an effect: it is a size, so it springs like one.
+    // The border width is spatial rather than an effect: it is a size, so it springs like one. A
+    // marked row is emphasised on the same terms as a chosen one, except where the mark is the
+    // absence of one — an option that was neither picked nor correct has nothing to emphasise.
     val borderWidth by animateDpAsState(
-        targetValue = if (selected) SelectedBorderWidth else UnselectedBorderWidth,
+        targetValue = if (selected || (outcome != null && outcome != AnswerOutcome.NEUTRAL)) {
+            SelectedBorderWidth
+        } else {
+            UnselectedBorderWidth
+        },
         animationSpec = AppMotion.spatialSpec(),
         label = "answerBorderWidth",
     )
@@ -381,7 +426,7 @@ private fun AnswerRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = AnswerRowMinHeight)
-                .padding(horizontal = 12.dp, vertical = 12.dp),
+                .padding(AppSpacing.Grouped),
             verticalAlignment = Alignment.Top,
         ) {
             // The control's own 48dp minimum would push it below the first text line, so the
@@ -391,24 +436,81 @@ private fun AnswerRow(
                     modifier = Modifier.height(AnswerLineHeight),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (mode == AnswerSelectionMode.SINGLE) {
-                        RadioButton(selected = selected, onClick = null, enabled = enabled)
-                    } else {
-                        Checkbox(checked = selected, onCheckedChange = null, enabled = enabled)
-                    }
+                    AnswerControl(
+                        mode = mode,
+                        selected = selected,
+                        // A marked control is drawn as live rather than disabled even though the
+                        // row no longer accepts input. Material greys a disabled control to 38%
+                        // opacity, which would fade the one mark that says *what the learner
+                        // themselves did* at the exact moment they are being told whether it was
+                        // right. The row carries the disabled semantics; the control carries the
+                        // record.
+                        enabled = enabled || outcome != null,
+                        accent = marked?.tagColor,
+                    )
                 }
             }
-            Text(
-                text = answerText,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (selected) {
-                    MaterialTheme.colorScheme.onSecondaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                modifier = Modifier.padding(start = 12.dp),
-            )
+            Column(
+                modifier = Modifier.padding(start = AppSpacing.Grouped),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+            ) {
+                Text(
+                    text = answerText,
+                    style = MaterialTheme.typography.bodyLarge,
+                    // A marked row states its outcome in words and colour of its own, so the answer
+                    // text stays the ordinary reading colour rather than taking the selected one.
+                    color = if (selected && outcome == null) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                )
+                val label = outcome?.tagLabel()
+                if (label != null && marked?.tagColor != null) {
+                    QuestionAnswerTag(text = label, color = marked.tagColor)
+                }
+            }
         }
+    }
+}
+
+/**
+ * The radio or checkbox, tinted by outcome once there is one.
+ *
+ * [accent] is null while the question is open, and the control then uses Material's own selection
+ * colours. After the reveal it is the outcome's accent, so the mark the learner reads first — the
+ * filled control they put there themselves — is already the right or wrong colour before they get
+ * to the label.
+ */
+@Composable
+private fun AnswerControl(
+    mode: AnswerSelectionMode,
+    selected: Boolean,
+    enabled: Boolean,
+    accent: Color?,
+) {
+    if (mode == AnswerSelectionMode.SINGLE) {
+        RadioButton(
+            selected = selected,
+            onClick = null,
+            enabled = enabled,
+            colors = if (accent == null) {
+                RadioButtonDefaults.colors()
+            } else {
+                RadioButtonDefaults.colors(selectedColor = accent, unselectedColor = accent)
+            },
+        )
+    } else {
+        Checkbox(
+            checked = selected,
+            onCheckedChange = null,
+            enabled = enabled,
+            colors = if (accent == null) {
+                CheckboxDefaults.colors()
+            } else {
+                CheckboxDefaults.colors(checkedColor = accent, uncheckedColor = accent)
+            },
+        )
     }
 }
 

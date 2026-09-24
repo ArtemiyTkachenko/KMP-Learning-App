@@ -166,6 +166,16 @@ internal class AppColorSchemeTest {
             ).forEach { (role, colors) ->
                 val (accent, container, onContainer) = colors
                 assertContrastAtLeast(onContainer, container, BodyTextContrast, "$name $role container text")
+                // A marked answer option fills itself with the container but leaves the answer in
+                // the ordinary reading colour, because the option's text is the authored question
+                // rather than a statement about the outcome. Both practice and review do this, so
+                // `onSurface` has to survive every semantic container as well as its own.
+                assertContrastAtLeast(
+                    scheme.onSurface,
+                    container,
+                    BodyTextContrast,
+                    "$name body text on the $role container",
+                )
                 scheme.surfaceLevels().forEach { (level, surface) ->
                     assertContrastAtLeast(accent, surface, BodyTextContrast, "$name $role accent on $level")
                 }

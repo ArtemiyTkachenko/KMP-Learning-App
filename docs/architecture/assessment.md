@@ -71,6 +71,21 @@ question. That rule is the same one `AssessmentTakingViewModel` enforces by with
 `PracticeFeedback` for a `Mixed` config, so the copy describes behaviour rather than
 promising it.
 
+When a `Focused` run does reveal an answer, it reveals it **on the options themselves**. The
+practice screen and the results screen share one outcome vocabulary, declared in
+`assessment_review/QuestionContentComponents.kt`: `AnswerOutcome` for a single option
+(correctly selected, incorrectly selected, missed, or unremarkable), `QuestionOutcome` for
+the question as a whole, and one derivation and one set of colours for both. That code used
+to be private to the review card, because results were the only place a learner met it;
+formative practice shows the same thing seconds after an answer instead of minutes, so the
+boundary moved rather than being copied. `AssessmentTakingScreen` owns no colour rule of its
+own, and the two surfaces cannot drift into teaching two visual languages for one fact.
+
+The partial case is derived at presentation from `selectedAnswerIds` against
+`correctAnswerIds` and never reaches scoring. `PracticeFeedback` still carries only
+`isCorrect`, and a partially correct answer is recorded exactly as incorrect as it always
+was; what changed is that the learner is told which kind of wrong it was.
+
 Once the learner has finished an interview, `InterviewStartScreen` shows their record
 through `InterviewStartViewModel`; each row opens the result it came from. The most recent
 interview leads and carries its date, because "how did I do last time, and how long ago was

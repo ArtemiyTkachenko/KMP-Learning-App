@@ -3,6 +3,8 @@ package org.artkachenko.kmp_learning_app
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -36,6 +38,7 @@ import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionS
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingFinishTag
+import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingOutcomeTag
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingSubmitTag
 import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
@@ -127,13 +130,20 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithText("Single question").assertIsDisplayed()
             onNodeWithText("A").performClick()
             onNodeWithTag(AssessmentTakingSubmitTag).performClick()
-            onNodeWithText("Correct. Nice work.").assertIsDisplayed()
+            // The reveal marks the options in place: the verdict is a badge, and each row says what
+            // it was. "A" was the single correct answer, so it is now the correctly selected one.
+            onNodeWithTag(AssessmentTakingOutcomeTag).assert(hasAnyDescendant(hasText("Correct")))
+            onNodeWithText("\u2713 Correctly selected").assertIsDisplayed()
             onNodeWithText("Next question").performClick()
             onNodeWithText("Multiple question").assertIsDisplayed()
             onNodeWithText("A").performClick()
             onNodeWithText("B").performClick()
             onNodeWithTag(AssessmentTakingSubmitTag).performClick()
-            onNodeWithText("Not quite. Review the correct answer below.").assertIsDisplayed()
+            // Correct answers are A and C; picking A and B is a wrong pick, so this is not the
+            // partial case, and C is left marked as the one that was missed.
+            onNodeWithTag(AssessmentTakingOutcomeTag).assert(hasAnyDescendant(hasText("Incorrect")))
+            onNodeWithText("\u2715 Incorrectly selected").assertIsDisplayed()
+            onNodeWithText("\u2715 Missed").assertIsDisplayed()
             onNodeWithText("Next question").performClick()
 
             onNodeWithText("Score: 1 / 2").assertIsDisplayed()

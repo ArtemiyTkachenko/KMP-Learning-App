@@ -91,6 +91,14 @@ tag text, not on the 200dp block. Six review cards should read as six results, n
 theme, and a test asserts it. A product whose failed answer and failed operation are different reds
 has two error languages and teaches neither.
 
+An answer option has exactly three states and they are drawn in that order of strength: at rest it
+is a level-1 surface with a hairline `outlineVariant` border; chosen, it takes `secondaryContainer`
+with a 2dp `primary` border; marked, it takes its `AnswerOutcome` colours. Practice and review share
+that vocabulary — `AnswerOutcome`, `QuestionOutcome`, and their colours live in
+`assessment_review/QuestionContentComponents.kt` and neither screen keeps a colour rule of its own.
+A marked option keeps the answer text in `onSurface` rather than an outcome colour, because the text
+is the authored question and the mark is the label and border around it.
+
 `AppSemanticColors.heroGradientStart`/`heroGradientEnd` is a defined token with no call site yet. It
 carries no on-colour: both endpoints sit within the scheme's `primaryContainer` tone, so
 `onPrimaryContainer` is the text colour across the sweep.

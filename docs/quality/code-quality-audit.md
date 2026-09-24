@@ -3691,6 +3691,134 @@ No production code was changed. The suite went from 1 559 to 1 569 jvm tests.
 | `git diff --check` | Clean |
 
 
+## Stage 4G Fix Pass Review Record
+
+- **Commit reviewed:** `c1a11a3` (the tip of `task/code-quality-audit-1`) plus the working tree.
+- **Framing:** not a code pass. Stages 4A-4F fixed lifecycle and cancellation, ownership, state
+  integrity, persistence consistency, recomposition cost and regression coverage. This pass asked
+  one question about the repository rather than the code: *does the tooling automatically detect the
+  kinds of regression those stages just spent six passes fixing?*
+- **Boundary read:** `settings.gradle.kts`, the root and all five module build files,
+  `gradle.properties`, `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties`,
+  `gradle/gradle-daemon-jvm.properties`, both workflows, `.gitignore`, `git ls-files` for tracked
+  generated output, every `@Suppress` in Kotlin source, and the live Gradle task graph via
+  `./gradlew check --dry-run` and per-module `tasks --all`.
+
+### The probe that decided this pass
+
+Android Lint is the only static analyser the repository has, it is wired into `:androidApp:check`,
+and `docs/development/validation.md` listed it as a validation command. Before proposing it as a CI
+gate the pass measured what it actually sees, by planting three violations and removing them again:
+
+| Violation planted | Where | Reported? |
+| --- | --- | --- |
+| `java.time.LocalDate.now()` — API 26 against minSdk 24 | `shared/src/androidMain` | **No** |
+| `@Composable fun … = mutableStateOf(0)` — unremembered state | `shared/src/commonMain` | **No** |
+| The same `java.time.LocalDate.now()` | `androidApp/src/main` | **Yes** — `NewApi`, build aborted |
+
+The middle column is the finding. `checkDependencies = true` was enabled for the first two and
+changed nothing: the `com.android.kotlin.multiplatform.library` plugin exposes only
+`lintAnalyzeAndroidHostTest` for `:shared` — no main-variant analysis and no report task — so lint
+has **no reach into shared Kotlin at all**. Roughly the entire application is invisible to it. This
+is the single most important fact 4G established, and it is why no amount of lint configuration
+would have protected the 4A-4E regression classes.
+
+A second measurement followed from it: a clean `:androidApp:lintDebug --rerun-tasks` reports
+**0 errors and 29 warnings**, every one of them `NewerVersionAvailable`, `GradleDependency` or
+`AndroidGradlePluginVersion` over `libs.versions.toml`. Those detectors contact the dependency
+repositories on every run, so their output changes when somebody else publishes.
+
+### 4G findings
+
+| ID | Area | Gap | Regression it allows | Category | Disposition |
+| --- | --- | --- | --- | --- | --- |
+| `CQ-CI-001` | CI | Nothing verified that the build left the source tree unchanged | Room exports schemas into the tracked `shared/schemas`. A `CurriculumDatabase` version bump whose schema JSON was never committed produces a green run: CI regenerates the file, `CurriculumDatabaseMigrationTest` (which walks 1 to 8) still passes, and `main` gains a database version whose schema exists on no machine but the runner — after which no migration test can ever be written against it | CI | **Fixed** |
+| `CQ-CI-002` | static analysis | Android Lint not run by CI, and blind to `:shared` (see the probe) | Enforcing it catches manifest, resource and API-level regressions in the Android shell only. It cannot catch anything 4A-4F fixed | CI | **Fixed, with the coverage boundary documented** |
+| `CQ-CI-003` | Gradle | Lint's three dependency-currency detectors are network-dependent noise | 29 warnings per run that change when upstream publishes; as a gate this trains readers to ignore lint output, which is how the one real finding gets missed | Gradle | **Fixed** |
+| `CQ-CI-004` | CI | `validate_backlog.py` ran only in the `workflow_dispatch` backlog sync | A malformed edit to the 6 169-line `backlog.yml` merges freely and surfaces only when somebody next dispatches the sync, by which time it is on `main` | CI | **Fixed** |
+| `CQ-CI-005` | CI | Only the JVM test report was uploaded, though `:shared:check` runs four test targets | An Android host, JS or Wasm failure leaves only a truncated console log — and those are precisely the targets a macOS developer cannot reproduce | CI | **Fixed** |
+| `CQ-DEP-001` | dependencies | Seven catalog aliases with zero references (`kotlin-testJunit`, `junit`, `androidx-core-ktx`, `androidx-testExt-junit`, `androidx-espresso-core`, `androidx-appcompat`, `androidx-lifecycle-runtimeKtx`) and five versions serving only them | KMP-wizard leftovers advertising a JUnit4/Espresso/AppCompat stack the project does not use, to readers and to agents | dependencies | **Fixed** |
+| `CQ-DOC-001` | developer workflow | `validation.md` listed `:androidApp:testDebugUnitTest` (`NO-SOURCE`; `androidApp/src` holds only `main`) and `:androidApp:lintDebug` with no caveat | Both overstate what they prove; given the probe, the second is materially misleading | documentation | **Fixed** |
+| `CQ-CI-006` | CI | `main.yml` pins `actions/checkout@v4`; `sync-backlog.yml` pins `actions/checkout@v7` and `actions/setup-python@v7` | Version drift between two workflows. Which tag is current could not be verified from this session, and `main.yml` guards every pull request, so it was deliberately left alone rather than changed blind | CI | **Deferred** |
+| `CQ-GRADLE-002` | CI | `Set up JDK` installs Temurin 21, but `gradle-daemon-jvm.properties` demands vendor `AZUL`, so Gradle ignores it and downloads Zulu 21 via foojay | Misleading rather than wrong — the pin wins. A reader may change the `setup-java` version believing it controls the build JVM | CI | **Deferred** |
+| `CQ-DEP-002` | dependencies | `kotlinx-coroutines-test` declared in both `commonTest` and `jvmTest`; `androidx-sqlite-bundled` in both `jvmMain` and `jvmTest`. Both redundant | None. Churn with no regression-catching value | dependencies | **Deferred** |
+| `CQ-DEP-003` | dependencies | `shared` `androidMain` takes `compose-uiTooling` as `implementation`, not debug-scoped; the separate `androidRuntimeClasspath` line suggests this was fought once already | A debug artifact reaching release APKs. The KMP Android library plugin has no `debugImplementation`, so this is not a one-line fix | dependencies | **Deferred** |
+| `CQ-HYG-001` | repository hygiene | `kotlin-js-store/` is gitignored, with a comment recording that adopting the lockfile would be its own change | JS/Wasm npm resolution is not reproducible: a transitive update can break `:webApp:assemble` on a runner while every local tree still works. Enforcing a committed lockfile makes `kotlinUpgradeYarnLock` a required step on every dependency change | repository hygiene | **Deferred** |
+
+### Examined and found sound
+
+`continue-on-error` (absent), main-only quality gates (absent — `main.yml` runs on `pull_request`),
+path filters (absent), stale task names (all CI task paths verified against the live graph),
+`afterEvaluate`, eager task realization and cross-project configuration (absent; the one custom
+task, `generateProductMetadata`, is `tasks.register` with declared inputs and outputs and reads its
+values at configuration time), workflow permissions (`contents: read` on both, and the PAT-bearing
+workflow is `workflow_dispatch` only, so no untrusted pull-request code ever sees a secret),
+duplicated compiler options (`JvmTarget.JVM_11` appears exactly twice, in the two places that need
+it), tracked generated output (`git ls-files` shows no `build/`, no `.idea`, no `.DS_Store`, no
+`local.properties`; Room schemas 1-8 are tracked on purpose), and `@Suppress` usage (six total, none
+file-level or broad — four of them name detekt's `TooGenericExceptionCaught` in a repository with no
+detekt, which suppresses nothing and reads as documentation of intent; left in place).
+
+`CQ-GRADLE-001` is recorded as a non-finding worth knowing: `gradle/gradle-daemon-jvm.properties`
+pins the daemon to Azul Zulu 21 with per-OS foojay download URLs. No `jvmToolchain` is declared, so
+`shared`'s `jvm()` target and `desktopApp` compile at the daemon JVM's level — verified as class-file
+major 65. The daemon pin is what makes that reproducible, and it does the job better than a
+`jvmToolchain` call would.
+
+### Tools considered and rejected
+
+**Detekt.** Its rules are stylistic and complexity-oriented; the stages this pass was commissioned to
+protect fixed cancellation ordering, Flow subscription lifetime, Room transactionality, recomposition
+scope and state validity, and detekt detects none of them. On 130-plus Compose and KMP files with no
+prior configuration the first run yields a baseline of hundreds of violations, and a baseline file is
+exactly the artefact that hides the next real finding. **Not added.**
+
+**ktlint / spotless.** No `.editorconfig` exists and formatting is currently consistent by
+convention. Formatting infrastructure ranks below correctness tooling and no maintenance problem
+justifies it. **Not added.**
+
+**`allWarningsAsErrors`.** Room's own KSP-generated `CurriculumDatabaseConstructor.kt` emits
+`expect`/`actual` Beta warnings on every Android compilation. Turning warnings into errors would fail
+the build on generated code. **Not enabled.**
+
+**Compose compiler metrics.** 4E identified no ongoing performance concern requiring regression
+analysis, and a performance report nobody reads is not a quality gate. **Not added.**
+
+**Dependency locking and verification.** A single-developer learning repository with no release
+pipeline and no secrets in the build. The maintenance burden exceeds the reproducibility gain.
+**Not added.**
+
+### 4G scope
+
+**Implemented:** `CQ-CI-001`, `CQ-CI-002`, `CQ-CI-003`, `CQ-CI-004`, `CQ-CI-005`, `CQ-DEP-001` and
+`CQ-DOC-001` — one cluster: **make the checks this repository already defines actually run in CI, and
+make CI notice when the build writes files nobody committed.** No new tool was introduced; four
+existing capabilities were connected and one source of noise that would have undermined them was
+switched off.
+
+**Deferred:** `CQ-CI-006`, `CQ-GRADLE-002`, `CQ-DEP-002`, `CQ-DEP-003`, `CQ-HYG-001`, plus Android
+Lint coverage for `:shared` (an AGP plugin limitation with no local fix), core-library desugaring as
+a minSdk-24 safety net, and an iOS job on a macOS runner.
+
+### Behaviour
+
+No production Kotlin changed. No dependency was added, removed from a source set, or upgraded; the
+only dependency-related edit deletes catalog entries that nothing referenced.
+
+### Validation
+
+| Command | Result |
+| ------- | ------ |
+| `./gradlew :androidApp:assembleDebug :androidApp:lintDebug :desktopApp:assemble :webApp:assemble :shared:check` | PASS — the exact Gradle line CI now runs |
+| `git status --porcelain` after that invocation | Empty — the new CI gate passes against the real build |
+| `python3 -m unittest discover -s tools -p 'test_*.py'` | PASS |
+| `python3 tools/learning_question_coverage.py --check` | PASS |
+| `python3 .github/project/validate_backlog.py .github/project/backlog.yml` | PASS (PyYAML 6.0.3 in a scratch virtualenv) |
+| Both workflow files parsed, with triggers, permissions and step lists inspected | PASS |
+
+The GitHub-hosted behaviour of the changed workflow was **not** observed. Everything above is local.
+
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -3896,8 +4024,9 @@ or platform tests may be more informative than isolated unit tests.
 
 ### Configured quality tooling
 
-- Android lint exists through the Android Gradle plugin; no custom lint configuration or baseline
-  was found.
+- Android lint exists through the Android Gradle plugin. Stage 4G measured its reach: it covers the
+  `:androidApp` shell and analyses no `:shared` code at all, `checkDependencies` included. It now
+  runs in CI with the three dependency-currency detectors disabled; there is still no baseline.
 - Gradle/Kotlin compilation and KMP dependency/configuration checks run as part of normal tasks.
 - Room/KSP provides compile-time query/schema generation; Room schema/migration tests exist.
 - Python validators cover authored content and the learning-to-question snapshot.
@@ -3915,18 +4044,24 @@ Compose compiler diagnostic configuration was found. Part 0 does not enable any 
 
 ### CI checks actually configured
 
+Restated by Stage 4G; see the Stage 4G Fix Pass Review Record for why each line is there.
+
 The build-and-test workflow runs on pull requests/pushes to `main` and manual dispatch. It runs:
 
 ```text
 python3 -m unittest discover -s tools -p 'test_*.py'
 python3 tools/learning_question_coverage.py --check
-./gradlew --no-daemon :androidApp:assembleDebug :desktopApp:assemble :webApp:assemble :shared:check
+python3 .github/project/validate_backlog.py .github/project/backlog.yml
+./gradlew --no-daemon :androidApp:assembleDebug :androidApp:lintDebug \
+  :desktopApp:assemble :webApp:assemble :shared:check
+git status --porcelain            # must be empty
 ```
 
-It uploads the JVM test report. It does not run `:androidApp:lintDebug`, Android instrumentation/UI
-tests, browser end-to-end tests, line coverage, Detekt/ktlint, or iOS compilation/runtime checks on
-the Ubuntu runner. The manual backlog-sync workflow validates and synchronizes backlog data; it is
-not part of application CI.
+It uploads the test reports for every target `:shared:check` ran. It does not run Android
+instrumentation/UI tests, browser end-to-end tests, line coverage, Detekt/ktlint, or iOS
+compilation/runtime checks on the Ubuntu runner. `:androidApp:lintDebug` is a gate on the Android
+shell only and analyses no `:shared` code. The manual backlog-sync workflow synchronizes backlog
+data; it is not part of application CI, though application CI now runs the same validator it does.
 
 ## Audit Ownership Map
 
@@ -4291,8 +4426,48 @@ Needs measurement: 0
 Accepted as-is: 1
 Not a defect: 2
 
+Stage 4G fix pass — Complete
+
+High: 0
+Medium: 0
+Low: 0
+Observations: 12
+
+Fixed: 7
+Deferred: 5
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
 Part 4B — Next
 ```
+
+The Stage 4G fix pass is complete. It is not one of the planned chunks and it made no production
+finding: it audited the repository's build, CI, static analysis and dependency configuration against
+one question — does the tooling automatically detect the kinds of regression Stages 4A-4F spent six
+passes fixing? The answer it found is worth stating plainly. **Android Lint, the only static
+analyser the repository has, is blind to `:shared`.** That was measured rather than assumed: a
+`NewApi` violation planted in `shared/src/androidMain` and an unremembered-state violation planted in
+`shared/src/commonMain` were both unreported even with `checkDependencies = true`, while the same
+`NewApi` violation in `androidApp/src/main` aborted the build immediately. The
+`com.android.kotlin.multiplatform.library` plugin gives that module no main-variant lint task, so
+essentially the whole application is invisible to it, and no lint configuration could have protected
+what 4A-4E fixed. Detekt, ktlint, `allWarningsAsErrors`, Compose compiler metrics and dependency
+locking were each considered against a named regression class and each rejected with the reason
+recorded; no tool was added. What was fixed is the gap between the checks the repository already
+defines and the checks CI actually runs: the build's effect on the tracked `shared/schemas`
+directory is now verified (`CQ-CI-001`, the highest-value item — a database version bump whose
+schema JSON was never committed used to produce a green run), `validate_backlog.py` now gates every
+pull request instead of only the manual sync (`CQ-CI-004`), `:androidApp:lintDebug` runs with its
+three network-dependent dependency-currency detectors disabled and its true scope written down
+(`CQ-CI-002`, `CQ-CI-003`), all four shared test targets' reports are uploaded rather than the JVM
+one alone (`CQ-CI-005`), seven unreferenced version-catalog aliases and five orphan versions are
+deleted (`CQ-DEP-001`), and two overstated commands in `docs/development/validation.md` are
+corrected (`CQ-DOC-001`). No production Kotlin changed and no dependency was added, removed from a
+source set, or upgraded. Five findings are deferred, of which `CQ-HYG-001` (the ignored
+`kotlin-js-store/` lockfile) and `CQ-DEP-003` (`compose-uiTooling` reaching release builds) are the
+two worth a later look. The exact next chunk is **Part 4B — Host composition roots**. Do not begin
+it automatically.
 
 The Stage 4C fix pass is complete. It is not one of the planned chunks: it is a state-model,
 API-contract and boundary-correctness re-audit of the current tree, bounded to the one cluster where

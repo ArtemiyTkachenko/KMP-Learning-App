@@ -38,11 +38,20 @@ is the broadest shared check and is by far the longest-running task in the repos
 
 ```sh
 ./gradlew :androidApp:assembleDebug
-./gradlew :androidApp:testDebugUnitTest
 ./gradlew :androidApp:lintDebug
 ./gradlew :desktopApp:assemble
 ./gradlew :webApp:assemble
 ```
+
+`:androidApp` has no `src/test` or `src/androidTest`, so `:androidApp:testDebugUnitTest` is
+`NO-SOURCE`. Running it proves task and configuration health, not test execution.
+
+`:androidApp:lintDebug` covers the **Android shell only** — `MainActivity`,
+`KmpLearningApplication`, the manifest and the Android resources. It does not analyse
+`:shared`: the `com.android.kotlin.multiplatform.library` plugin gives that module no
+main-variant lint task, and `checkDependencies` does not reach it either. A minSdk or
+Compose-usage defect in shared Kotlin passes this command. Never report it as coverage of
+shared behaviour.
 
 ## Repository-Wide
 
@@ -71,7 +80,8 @@ python .github/project/validate_backlog.py .github/project/backlog.yml
 ```
 
 If `PyYAML` is not installed locally, report that instead of reporting the validation as
-passed.
+passed. CI runs this same validator on every pull request, so a backlog edit that fails it
+cannot merge.
 
 ## Known Non-Fatal Signals
 

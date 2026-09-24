@@ -14,5 +14,6 @@ launcher resources, app id, SDK configuration, Koin startup, and Android preview
 - Do not introduce a large legacy Views/Fragments architecture unless a scoped refresher
   issue explicitly asks for it.
 - Validate with `./gradlew :androidApp:assembleDebug`, adding
-  `./gradlew :androidApp:lintDebug` when the change warrants it. See
-  [validation](../docs/development/validation.md).
+  `./gradlew :androidApp:lintDebug` when the change warrants it. CI runs both. Android lint
+  reaches this module and nothing in `:shared`, so it is a gate on the shell rather than on
+  product behavior. See [validation](../docs/development/validation.md).

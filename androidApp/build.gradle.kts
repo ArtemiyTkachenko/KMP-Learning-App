@@ -57,4 +57,12 @@ android {
     buildFeatures {
         compose = true
     }
+    lint {
+        // These three detectors report that a newer release of a dependency exists. They
+        // contact the dependency repositories on every run, so their output changes when
+        // somebody else publishes rather than when this repository changes — which is not
+        // something a pull-request gate should be sensitive to. Dependency currency is a
+        // deliberate decision made in `gradle/libs.versions.toml`, not a lint finding.
+        disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion")
+    }
 }

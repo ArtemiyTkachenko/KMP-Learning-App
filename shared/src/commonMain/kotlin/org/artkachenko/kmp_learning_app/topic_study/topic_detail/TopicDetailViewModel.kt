@@ -6,6 +6,8 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
@@ -75,6 +77,17 @@ internal class TopicDetailViewModel(
     private var studyState: StudyProgressState = StudyProgressState.Loading
 
     /**
+     * Counts requests to derive again from history that has not itself changed; see [retry].
+     *
+     * The same counter `ProgressStateHolder` and `MistakeReviewStateHolder` keep, for the same
+     * reason: both derivations above can fail over history that read perfectly well, and a re-read
+     * of unchanged history is an equal `AssessmentHistory.Loaded` that a `StateFlow` does not emit
+     * again. Without an emission of its own, nothing downstream would run and the learning summary
+     * and the mistake count would stay missing for the rest of the session.
+     */
+    private val derivations = MutableStateFlow(0)
+
+    /**
      * The ACTIVE domain Units the study derivation needs, kept beside the row models rather than
      * inside them.
      *
@@ -94,7 +107,20 @@ internal class TopicDetailViewModel(
         loadTopic()
     }
 
+    /**
+     * Recovers every read this screen depends on, not only the curriculum.
+     *
+     * The four inputs fail in four different places, so Retry has to reach all of them. Invalidating
+     * the shared history re-reads an unreadable attempt table — and recovers every other screen
+     * derived from it at the same time, exactly as the Progress and Mistake Review retries do.
+     * Bumping [derivations] covers the other history failure domain: history that read successfully
+     * but could not be turned into a learning context or a mistake count. The study record is
+     * re-read for the per-Unit figures, and the curriculum load brings the Topic and its study
+     * material back.
+     */
     fun retry() {
+        historyStore.invalidate()
+        derivations.update { it + 1 }
         studyProgressStateHolder.refresh()
         loadTopic()
     }
@@ -144,7 +170,7 @@ internal class TopicDetailViewModel(
      */
     private fun observeLearningContext() {
         viewModelScope.launch {
-            historyStore.history.collect { history ->
+            combine(historyStore.history, derivations) { history, _ -> history }.collect { history ->
                 learningContexts = when (history) {
                     // Unknown history, not empty history: with nothing derived the summary is
                     // omitted rather than announcing that the Topic has never been studied.

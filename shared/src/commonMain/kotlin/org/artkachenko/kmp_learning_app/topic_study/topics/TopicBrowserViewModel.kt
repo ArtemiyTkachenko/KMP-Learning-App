@@ -6,6 +6,8 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
@@ -94,16 +96,37 @@ internal class TopicBrowserViewModel(
     private var continueStudying: ContinueStudyingContext? = null
     private var recommendedNext: LearningRecommendation? = null
 
+    /**
+     * Counts requests to derive again from history that has not itself changed; see [retry].
+     *
+     * The same counter `ProgressStateHolder` and `MistakeReviewStateHolder` keep, for the same
+     * reason: the three enrichments below can fail over history that read perfectly well, and a
+     * re-read of unchanged history is an equal `AssessmentHistory.Loaded` that a `StateFlow` does
+     * not emit again. Without an emission of its own, nothing downstream would run and the guided
+     * surfaces would stay missing for the rest of the session.
+     */
+    private val derivations = MutableStateFlow(0)
+
     init {
         observeLearningContext()
         observeStudyState()
         loadCatalog()
     }
 
+    /**
+     * Recovers every read this screen depends on, not only the catalogue.
+     *
+     * The three inputs fail in three different places, so Retry has to reach all three. Invalidating
+     * the shared history re-reads an unreadable attempt table — and recovers every other screen
+     * derived from it at the same time, exactly as the Progress and Mistake Review retries do.
+     * Bumping [derivations] covers the other history failure domain: history that read successfully
+     * but could not be turned into a learning context, a recommendation, or a Continue Studying
+     * shortcut. The study record is re-read so Continue Learning comes back too. Content, history,
+     * and study state stay independent reads; this only triggers all of them.
+     */
     fun retry() {
-        // The study record is re-read too, so a learner who retries after a failed read recovers the
-        // Continue Learning card as well as the catalogue. Content and study state stay independent
-        // reads; this only triggers both.
+        historyStore.invalidate()
+        derivations.update { it + 1 }
         studyProgressStateHolder.refresh()
         loadCatalog()
     }
@@ -151,7 +174,7 @@ internal class TopicBrowserViewModel(
      */
     private fun observeLearningContext() {
         viewModelScope.launch {
-            historyStore.history.collect { history ->
+            combine(historyStore.history, derivations) { history, _ -> history }.collect { history ->
                 val attempts = (history as? AssessmentHistory.Loaded)?.attempts
                 // A failed derivation is treated exactly like history that has not arrived: the
                 // catalog stays browsable and loses only its decoration. No derivation can turn

@@ -425,6 +425,54 @@ internal class TopicBrowserViewModelTest {
     }
 
     @Test
+    fun retryReReadsTheSharedHistoryRatherThanOnlyTheCatalogue() = runViewModelTest {
+        val repository = retryableCatalogRepository(loads = 2)
+        val history = RecoveringHistoryRepository(
+            attempts = listOf(completedAttempt("attempt", answer("q_compose_1", true))),
+            failuresRemaining = 1,
+        )
+        val viewModel = viewModel(repository, history)
+        advanceUntilIdle()
+
+        // The attempt table was unreadable, so the shared cache holds AssessmentHistory.Failed and
+        // every history-derived surface is absent. Nothing re-reads it on its own: invalidation is
+        // the only thing that does, and it only happens when an assessment completes.
+        assertNull(topic(viewModel, "compose").learningContext)
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        // Retry reaches the history, not just the catalogue, so the enrichment comes back in the
+        // same session — and so does every other screen derived from the same cache.
+        assertEquals(
+            100.0,
+            assertNotNull(topic(viewModel, "compose").learningContext).accuracyPercentage,
+        )
+    }
+
+    @Test
+    fun retryRerunsADerivationThatFailedOverHistoryThatReadSuccessfully() = runViewModelTest {
+        // The attempt table reads perfectly; the ACTIVE bank the derivation needs does not.
+        val repository = retryableCatalogRepository(loads = 2, activeQuestionFailures = 1)
+        val history = historyRepository(answer("q_compose_1", true))
+        val viewModel = viewModel(repository, history)
+        advanceUntilIdle()
+
+        assertNull(topic(viewModel, "compose").learningContext)
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        // Invalidating alone could not have recovered this: the re-read produces an equal
+        // AssessmentHistory.Loaded, which a StateFlow does not emit again. Only the retry being an
+        // emission in its own right re-runs the derivation.
+        assertEquals(
+            100.0,
+            assertNotNull(topic(viewModel, "compose").learningContext).accuracyPercentage,
+        )
+    }
+
+    @Test
     fun completedHistoryInvalidationRefreshesLearningContextInPlace() = runViewModelTest {
         val repository = catalogRepository()
         val history = MutableHistoryRepository()
@@ -1648,6 +1696,11 @@ internal class TopicBrowserViewModelTest {
             mutableMapOf(),
         private val questions: List<Question> = emptyList(),
         /**
+         * Failures for the ACTIVE-bank read alone, which is how a derivation over history that read
+         * perfectly well is made to fail without touching the catalogue read above it.
+         */
+        private var activeQuestionFailures: Int = 0,
+        /**
          * Identity lookups, which Continue Studying resolves its historical scope IDs against.
          * Empty by default so tests that are only about the catalogue keep the previous behaviour
          * of resolving no metadata at all.
@@ -1679,6 +1732,10 @@ internal class TopicBrowserViewModelTest {
         /** LearningProgressService reads the ACTIVE bank once per derivation, for coverage. */
         override suspend fun getActiveQuestions(): List<Question> {
             questionReadCount += 1
+            if (activeQuestionFailures > 0) {
+                activeQuestionFailures -= 1
+                error("Question bank unavailable")
+            }
             return questions
         }
 
@@ -1790,6 +1847,26 @@ internal class TopicBrowserViewModelTest {
         override suspend fun getById(attemptId: String): TestAttempt? = null
         override suspend fun getCompletedAttempts(): List<TestAttempt> {
             readCount += 1
+            return attempts
+        }
+    }
+
+    /**
+     * Fails its first [failuresRemaining] reads and then succeeds, which is what a transient
+     * attempt-table failure looks like to the shared cache: one `AssessmentHistory.Failed` that only
+     * a re-read can move off.
+     */
+    private class RecoveringHistoryRepository(
+        private val attempts: List<TestAttempt>,
+        private var failuresRemaining: Int,
+    ) : AssessmentRepository {
+        override suspend fun save(attempt: TestAttempt) = Unit
+        override suspend fun getById(attemptId: String): TestAttempt? = null
+        override suspend fun getCompletedAttempts(): List<TestAttempt> {
+            if (failuresRemaining > 0) {
+                failuresRemaining -= 1
+                error("History unavailable")
+            }
             return attempts
         }
     }
@@ -2004,5 +2081,43 @@ internal class TopicBrowserViewModelTest {
 
         fun <T> resultsOf(vararg values: T): ArrayDeque<Result<T>> =
             ArrayDeque(values.map(Result.Companion::success))
+
+        /**
+         * The same catalogue as [catalogRepository], queued to answer [loads] complete reads, for a
+         * test that retries and therefore loads it twice.
+         */
+        fun retryableCatalogRepository(
+            loads: Int,
+            activeQuestionFailures: Int = 0,
+        ) = FakeCurriculumRepository(
+            topicResults = ArrayDeque(List(loads) { Result.success(CatalogTopics) }),
+            subtopicResults = mutableMapOf(
+                "compose" to ArrayDeque(
+                    List(loads) {
+                        Result.success(
+                            listOf(Subtopic("compose_runtime", "compose", "Compose runtime")),
+                        )
+                    },
+                ),
+                "compose_architecture" to ArrayDeque(
+                    List(loads) { Result.success(emptyList<Subtopic>()) },
+                ),
+                "architecture" to ArrayDeque(
+                    List(loads) {
+                        Result.success(
+                            listOf(
+                                Subtopic(
+                                    "viewmodel_lifecycle",
+                                    "architecture",
+                                    "ViewModel lifecycle",
+                                ),
+                            ),
+                        )
+                    },
+                ),
+            ),
+            questions = ActiveQuestions,
+            activeQuestionFailures = activeQuestionFailures,
+        )
     }
 }

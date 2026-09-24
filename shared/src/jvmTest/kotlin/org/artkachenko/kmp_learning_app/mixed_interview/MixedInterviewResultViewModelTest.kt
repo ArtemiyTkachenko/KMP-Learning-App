@@ -31,6 +31,8 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeCreated
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
@@ -99,7 +101,7 @@ internal class MixedInterviewResultViewModelTest {
             ),
             state.topicPerformance,
         )
-        assertEquals(RepeatInterviewState.Idle, state.repeatInterviewState)
+        assertEquals(AssessmentRetakeState.Idle, viewModel.retakeState.value)
     }
 
     @Test
@@ -113,13 +115,13 @@ internal class MixedInterviewResultViewModelTest {
         )
         val viewModel = viewModel(repository, curriculum, retakeId = "retake")
         advanceUntilIdle()
-        val event = async { viewModel.events.first() }
+        val event = async { viewModel.retakeEvents.first() }
 
         viewModel.repeatInterview()
-        assertEquals(RepeatInterviewState.Creating, content(viewModel).repeatInterviewState)
+        assertEquals(AssessmentRetakeState.Creating, viewModel.retakeState.value)
         advanceUntilIdle()
 
-        val createdEvent = assertIs<MixedInterviewResultEvent.RetakeCreated>(event.await())
+        val createdEvent: AssessmentRetakeCreated = event.await()
         val retake = requireNotNull(repository.getById(createdEvent.attemptId))
         assertEquals("retake", createdEvent.attemptId)
         assertNotEquals(source.id, retake.id)
@@ -129,15 +131,15 @@ internal class MixedInterviewResultViewModelTest {
         assertNull(retake.score)
         assertNull(retake.completedAt)
         assertEquals(source, repository.getById(source.id))
-        assertEquals(RepeatInterviewState.Created("retake"), content(viewModel).repeatInterviewState)
+        assertEquals(AssessmentRetakeState.Created("retake"), viewModel.retakeState.value)
 
         viewModel.repeatInterview()
         advanceUntilIdle()
         assertEquals(1, repository.saveCalls)
         viewModel.onRetakeEventHandled("other-retake")
-        assertEquals(RepeatInterviewState.Created("retake"), content(viewModel).repeatInterviewState)
+        assertEquals(AssessmentRetakeState.Created("retake"), viewModel.retakeState.value)
         viewModel.onRetakeEventHandled("retake")
-        assertEquals(RepeatInterviewState.Idle, content(viewModel).repeatInterviewState)
+        assertEquals(AssessmentRetakeState.Idle, viewModel.retakeState.value)
     }
 
     @Test
@@ -156,7 +158,7 @@ internal class MixedInterviewResultViewModelTest {
 
         viewModel.repeatInterview()
         viewModel.repeatInterview()
-        assertEquals(RepeatInterviewState.Creating, content(viewModel).repeatInterviewState)
+        assertEquals(AssessmentRetakeState.Creating, viewModel.retakeState.value)
         runCurrent()
         assertEquals(1, curriculum.activeQuestionCalls)
 
@@ -177,18 +179,18 @@ internal class MixedInterviewResultViewModelTest {
         val viewModel = viewModel(repository, curriculum)
         advanceUntilIdle()
         repository.attempts.remove(source.id)
-        val event = async { viewModel.events.first() }
+        val event = async { viewModel.retakeEvents.first() }
 
         viewModel.repeatInterview()
         advanceUntilIdle()
-        assertEquals(RepeatInterviewState.SourceAttemptNotFound, content(viewModel).repeatInterviewState)
+        assertEquals(AssessmentRetakeState.SourceAttemptNotFound, viewModel.retakeState.value)
         assertFalse(event.isCompleted)
 
         repository.attempts[source.id] = source
         curriculum.activeQuestions = emptyList()
         viewModel.repeatInterview()
         advanceUntilIdle()
-        assertEquals(RepeatInterviewState.NoEligibleQuestions, content(viewModel).repeatInterviewState)
+        assertEquals(AssessmentRetakeState.NoEligibleQuestions, viewModel.retakeState.value)
         assertEquals(0, repository.saveCalls)
         assertFalse(event.isCompleted)
         event.cancel()
@@ -210,14 +212,14 @@ internal class MixedInterviewResultViewModelTest {
         viewModel.repeatInterview()
         advanceUntilIdle()
         val failed = content(viewModel)
-        assertEquals(RepeatInterviewState.Error, failed.repeatInterviewState)
+        assertEquals(AssessmentRetakeState.Error, viewModel.retakeState.value)
         assertEquals(1, failed.totalQuestions)
         assertEquals(1, failed.questions.size)
 
-        val event = async { viewModel.events.first() }
+        val event = async { viewModel.retakeEvents.first() }
         viewModel.repeatInterview()
         advanceUntilIdle()
-        assertEquals("retake", assertIs<MixedInterviewResultEvent.RetakeCreated>(event.await()).attemptId)
+        assertEquals("retake", event.await().attemptId)
     }
 
     @Test
@@ -307,7 +309,7 @@ internal class MixedInterviewResultViewModelTest {
         viewModel.repeatInterview()
         advanceUntilIdle()
 
-        assertEquals(RepeatInterviewState.Creating, content(viewModel).repeatInterviewState)
+        assertEquals(AssessmentRetakeState.Creating, viewModel.retakeState.value)
     }
 
     /**
@@ -354,7 +356,7 @@ internal class MixedInterviewResultViewModelTest {
         assertEquals(before.topicPerformance, content(viewModel).topicPerformance)
         assertEquals(before.correctAnswers, content(viewModel).correctAnswers)
         assertEquals(before.percentage, content(viewModel).percentage)
-        assertEquals(before.repeatInterviewState, content(viewModel).repeatInterviewState)
+        assertEquals(AssessmentRetakeState.Idle, viewModel.retakeState.value)
         assertEquals(before.questions, content(viewModel).questions)
     }
 

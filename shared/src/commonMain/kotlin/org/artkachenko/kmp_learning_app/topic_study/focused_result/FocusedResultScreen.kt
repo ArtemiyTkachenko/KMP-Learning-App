@@ -34,6 +34,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuesti
 import org.artkachenko.kmp_learning_app.assessment_review.MistakeRetentionNotice
 import org.artkachenko.kmp_learning_app.assessment_review.reviewSaveAction
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.jetbrains.compose.resources.stringResource
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentResultLayout
@@ -61,6 +62,7 @@ internal fun FocusedResultScreen(
     onBack: () -> Unit,
     onSourceClick: (String) -> Unit,
     onRepeatPractice: () -> Unit,
+    retakeState: AssessmentRetakeState = AssessmentRetakeState.Idle,
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)? = null,
     savedQuestions: SavedQuestionsState = SavedQuestionsState.Loading,
     onToggleSaved: (String) -> Unit = {},
@@ -94,6 +96,7 @@ internal fun FocusedResultScreen(
                     state = state,
                     onSourceClick = onSourceClick,
                     onRepeatPractice = onRepeatPractice,
+                    retakeState = retakeState,
                     onPracticeMistakes = onPracticeMistakes,
                     savedQuestions = savedQuestions,
                     onToggleSaved = onToggleSaved,
@@ -119,6 +122,7 @@ private fun ResultContent(
     state: FocusedResultUiState.Content,
     onSourceClick: (String) -> Unit,
     onRepeatPractice: () -> Unit,
+    retakeState: AssessmentRetakeState,
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)?,
     savedQuestions: SavedQuestionsState,
     onToggleSaved: (String) -> Unit,
@@ -133,6 +137,7 @@ private fun ResultContent(
             outcomeSection(
                 state = state,
                 onRepeatPractice = onRepeatPractice,
+                retakeState = retakeState,
                 onPracticeMistakes = onPracticeMistakes,
             )
         },
@@ -152,6 +157,7 @@ private fun ResultContent(
 private fun LazyListScope.outcomeSection(
     state: FocusedResultUiState.Content,
     onRepeatPractice: () -> Unit,
+    retakeState: AssessmentRetakeState,
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)?,
 ) {
     item {
@@ -164,23 +170,23 @@ private fun LazyListScope.outcomeSection(
             )
             UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
             MistakeRetentionNotice(state.questions, onPracticeMistakes)
-            when (state.repeatPracticeState) {
-                RepeatPracticeState.Idle -> Unit
-                RepeatPracticeState.Creating,
-                is RepeatPracticeState.Created,
+            when (retakeState) {
+                AssessmentRetakeState.Idle -> Unit
+                AssessmentRetakeState.Creating,
+                is AssessmentRetakeState.Created,
                 ->
                     Text(stringResource(Res.string.focused_result_practice_starting))
-                RepeatPracticeState.SourceAttemptNotFound ->
+                AssessmentRetakeState.SourceAttemptNotFound ->
                     Text(
                         stringResource(Res.string.focused_result_repeat_source_missing),
                         color = MaterialTheme.colorScheme.error,
                     )
-                RepeatPracticeState.NoEligibleQuestions ->
+                AssessmentRetakeState.NoEligibleQuestions ->
                     Text(
                         stringResource(Res.string.focused_result_repeat_no_questions),
                         color = MaterialTheme.colorScheme.error,
                     )
-                RepeatPracticeState.Error ->
+                AssessmentRetakeState.Error ->
                     Text(
                         stringResource(Res.string.focused_result_repeat_error),
                         color = MaterialTheme.colorScheme.error,
@@ -188,13 +194,13 @@ private fun LazyListScope.outcomeSection(
             }
             OutlinedButton(
                 onClick = onRepeatPractice,
-                enabled = state.repeatPracticeState !is RepeatPracticeState.Creating &&
-                    state.repeatPracticeState !is RepeatPracticeState.Created,
+                enabled = retakeState !is AssessmentRetakeState.Creating &&
+                    retakeState !is AssessmentRetakeState.Created,
                 modifier = Modifier.testTag(FocusedResultPracticeAgainTag),
             ) {
                 if (
-                    state.repeatPracticeState is RepeatPracticeState.Creating ||
-                    state.repeatPracticeState is RepeatPracticeState.Created
+                    retakeState is AssessmentRetakeState.Creating ||
+                    retakeState is AssessmentRetakeState.Created
                 ) {
                     CircularProgressIndicator()
                 } else {

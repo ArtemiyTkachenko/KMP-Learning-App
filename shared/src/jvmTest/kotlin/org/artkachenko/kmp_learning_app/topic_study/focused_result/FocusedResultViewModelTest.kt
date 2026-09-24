@@ -27,6 +27,8 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeCreated
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
@@ -201,28 +203,51 @@ internal class FocusedResultViewModelTest {
         )
         advanceUntilIdle()
 
-        val event = async { viewModel.events.first() }
+        val event = async { viewModel.retakeEvents.first() }
         viewModel.repeatPractice()
         advanceUntilIdle()
-        assertEquals(FocusedResultEvent.RetakeCreated("retake"), event.await())
-        assertEquals(
-            RepeatPracticeState.Created("retake"),
-            assertIs<FocusedResultUiState.Content>(viewModel.uiState.value).repeatPracticeState,
-        )
+        assertEquals(AssessmentRetakeCreated("retake"), event.await())
+        assertEquals(AssessmentRetakeState.Created("retake"), viewModel.retakeState.value)
 
         viewModel.repeatPractice()
         advanceUntilIdle()
         assertEquals(1, repository.saveCalls)
         viewModel.onRetakeEventHandled("other-retake")
-        assertEquals(
-            RepeatPracticeState.Created("retake"),
-            assertIs<FocusedResultUiState.Content>(viewModel.uiState.value).repeatPracticeState,
-        )
+        assertEquals(AssessmentRetakeState.Created("retake"), viewModel.retakeState.value)
         viewModel.onRetakeEventHandled("retake")
-        assertEquals(
-            RepeatPracticeState.Idle,
-            assertIs<FocusedResultUiState.Content>(viewModel.uiState.value).repeatPracticeState,
+        assertEquals(AssessmentRetakeState.Idle, viewModel.retakeState.value)
+
+        // The result itself is unchanged by any of it: the retake state is a separate stream now,
+        // so a transition cannot rewrite the score or the transcript.
+        val content = assertIs<FocusedResultUiState.Content>(viewModel.uiState.value)
+        assertEquals(listOf("q"), content.questions.map { assertIs<ReviewQuestionItem.Available>(it).question.questionId })
+    }
+
+    /**
+     * The one rule the result keeps for itself now that the state machine is shared: there has to
+     * be a result to practise again. Without it the shared controller would happily create a
+     * durable attempt from a screen that is still loading or has failed.
+     */
+    @Test
+    fun practiseAgainBeforeTheResultLoadsCreatesNothing() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val question = question("q")
+        val repository = FakeAssessmentRepository(completedAttempt(listOf("q"), 1))
+        val viewModel = FocusedResultViewModel(
+            "attempt",
+            repository,
+            reviewLoader(listOf(question)),
+            retakeService(repository, listOf(question)),
+            savedQuestionStateHolder(),
         )
+
+        // Still Loading: the attempt read has not been dispatched yet.
+        assertIs<FocusedResultUiState.Loading>(viewModel.uiState.value)
+        viewModel.repeatPractice()
+        advanceUntilIdle()
+
+        assertEquals(AssessmentRetakeState.Idle, viewModel.retakeState.value)
+        assertEquals(0, repository.saveCalls)
     }
 
     @Test
@@ -244,10 +269,7 @@ internal class FocusedResultViewModelTest {
         viewModel.repeatPractice()
         advanceUntilIdle()
 
-        assertEquals(
-            RepeatPracticeState.Creating,
-            assertIs<FocusedResultUiState.Content>(viewModel.uiState.value).repeatPracticeState,
-        )
+        assertEquals(AssessmentRetakeState.Creating, viewModel.retakeState.value)
     }
 
     /**

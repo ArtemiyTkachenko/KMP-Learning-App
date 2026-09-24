@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
@@ -212,7 +213,8 @@ internal class MixedInterviewResultScreenTest {
         setContent {
             MaterialTheme {
                 MixedInterviewResultScreen(
-                    state = contentState().copy(repeatInterviewState = RepeatInterviewState.Creating),
+                    state = contentState(),
+                    retakeState = AssessmentRetakeState.Creating,
                     onRetry = {},
                     onBack = {},
                     onSourceClick = {},
@@ -232,13 +234,14 @@ internal class MixedInterviewResultScreenTest {
 
     @Test
     fun retakeFailuresShowSpecificMessagesAndKeepResultVisible() = runComposeUiTest {
-        var repeatState: RepeatInterviewState by mutableStateOf(
-            RepeatInterviewState.SourceAttemptNotFound,
+        var repeatState: AssessmentRetakeState by mutableStateOf(
+            AssessmentRetakeState.SourceAttemptNotFound,
         )
         setContent {
             MaterialTheme {
                 MixedInterviewResultScreen(
-                    state = contentState().copy(repeatInterviewState = repeatState),
+                    state = contentState(),
+                    retakeState = repeatState,
                     onRetry = {},
                     onBack = {},
                     onSourceClick = {},
@@ -249,11 +252,11 @@ internal class MixedInterviewResultScreenTest {
         onNodeWithText("The original interview is no longer available.").assertIsDisplayed()
         onNodeWithText("Score: 3 / 5").assertIsDisplayed()
 
-        repeatState = RepeatInterviewState.NoEligibleQuestions
+        repeatState = AssessmentRetakeState.NoEligibleQuestions
         onNodeWithText("No interview questions are currently available.").assertIsDisplayed()
         onNodeWithText("Retake interview").assertIsDisplayed()
 
-        repeatState = RepeatInterviewState.Error
+        repeatState = AssessmentRetakeState.Error
         onNodeWithText("Interview could not be started. Try again.").assertIsDisplayed()
         onNodeWithText("Score: 3 / 5").assertIsDisplayed()
     }

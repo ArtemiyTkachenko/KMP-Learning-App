@@ -3,19 +3,19 @@ package org.artkachenko.kmp_learning_app.topic_study.focused_result
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
-import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeController
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeCreated
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
-import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.assessment_review.isAvailableFor
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
@@ -23,13 +23,28 @@ internal class FocusedResultViewModel(
     private val attemptId: String,
     private val assessmentRepository: AssessmentRepository,
     private val assessmentReviewLoader: AssessmentReviewLoader,
-    private val assessmentRetakeService: AssessmentRetakeService,
+    assessmentRetakeService: AssessmentRetakeService,
     private val savedQuestionStateHolder: SavedQuestionStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<FocusedResultUiState>(FocusedResultUiState.Loading)
     val uiState: StateFlow<FocusedResultUiState> = _uiState.asStateFlow()
-    private val _events = Channel<FocusedResultEvent>(Channel.BUFFERED)
-    val events: Flow<FocusedResultEvent> = _events.receiveAsFlow()
+
+    /**
+     * The shared retake state machine, scoped to this screen's lifetime.
+     *
+     * Constructed here rather than injected because it is per-attempt and per-screen: it exists for
+     * as long as this result is open, and its work belongs to [viewModelScope] so leaving the
+     * destination cancels a retake still in flight.
+     */
+    private val retake = AssessmentRetakeController(
+        sourceAttemptId = attemptId,
+        retakeService = assessmentRetakeService,
+        scope = viewModelScope,
+    )
+
+    /** Observed beside [uiState]; see [FocusedResultUiState] for why it is not part of it. */
+    val retakeState: StateFlow<AssessmentRetakeState> = retake.state
+    val retakeEvents: Flow<AssessmentRetakeCreated> = retake.createdAttempts
 
     /**
      * A second, independent state stream: the result is never held back waiting for saved state, and
@@ -58,51 +73,20 @@ internal class FocusedResultViewModel(
      */
     fun toggleSaved(questionId: String) {
         val content = uiState.value as? FocusedResultUiState.Content ?: return
-        val isAvailable = content.questions.any {
-            it is ReviewQuestionItem.Available && it.question.questionId == questionId
-        }
-        if (!isAvailable) return
+        if (content.questions.none { it.isAvailableFor(questionId) }) return
         savedQuestionStateHolder.toggleSaved(questionId)
     }
 
+    /**
+     * There has to be a result to practise again before one can be asked for; everything after that
+     * check is the shared retake state machine's.
+     */
     fun repeatPractice() {
-        val currentState = uiState.value as? FocusedResultUiState.Content ?: return
-        if (
-            currentState.repeatPracticeState == RepeatPracticeState.Creating ||
-            currentState.repeatPracticeState is RepeatPracticeState.Created
-        ) return
-        _uiState.value = currentState.copy(repeatPracticeState = RepeatPracticeState.Creating)
-        viewModelScope.launch {
-            runCatching { assessmentRetakeService.createRetake(attemptId) }
-                .onSuccess { result ->
-                    when (result) {
-                        is AssessmentRetakeResult.Created -> {
-                            setRepeatState(RepeatPracticeState.Created(result.attemptId))
-                            _events.send(FocusedResultEvent.RetakeCreated(result.attemptId))
-                        }
-                        AssessmentRetakeResult.SourceAttemptNotFound ->
-                            setRepeatState(RepeatPracticeState.SourceAttemptNotFound)
-                        AssessmentRetakeResult.NoEligibleQuestions ->
-                            setRepeatState(RepeatPracticeState.NoEligibleQuestions)
-                    }
-                }
-                .onFailure { failure ->
-                    if (failure is CancellationException) throw failure
-                    setRepeatState(RepeatPracticeState.Error)
-                }
-        }
+        if (uiState.value !is FocusedResultUiState.Content) return
+        retake.start()
     }
 
-    fun onRetakeEventHandled(attemptId: String) {
-        val content = _uiState.value as? FocusedResultUiState.Content ?: return
-        val created = content.repeatPracticeState as? RepeatPracticeState.Created ?: return
-        if (created.attemptId == attemptId) setRepeatState(RepeatPracticeState.Idle)
-    }
-
-    private fun setRepeatState(state: RepeatPracticeState) {
-        val currentState = uiState.value as? FocusedResultUiState.Content ?: return
-        _uiState.value = currentState.copy(repeatPracticeState = state)
-    }
+    fun onRetakeEventHandled(attemptId: String) = retake.onCreatedAttemptHandled(attemptId)
 
     private fun load() {
         _uiState.value = FocusedResultUiState.Loading

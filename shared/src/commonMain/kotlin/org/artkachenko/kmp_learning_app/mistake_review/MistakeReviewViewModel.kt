@@ -3,7 +3,7 @@ package org.artkachenko.kmp_learning_app.mistake_review
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.StateFlow
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
-import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.assessment_review.isAvailableFor
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
@@ -49,11 +49,7 @@ internal class MistakeReviewViewModel(
      */
     fun toggleSaved(questionId: String) {
         val content = uiState.value as? MistakeReviewUiState.Content ?: return
-        val isAvailable = content.mistakes.any { mistake ->
-            val item = mistake.reviewItem
-            item is ReviewQuestionItem.Available && item.question.questionId == questionId
-        }
-        if (!isAvailable) return
+        if (content.mistakes.none { it.reviewItem.isAvailableFor(questionId) }) return
         savedQuestionStateHolder.toggleSaved(questionId)
     }
 }

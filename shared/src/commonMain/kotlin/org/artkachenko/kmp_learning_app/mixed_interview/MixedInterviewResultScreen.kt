@@ -37,6 +37,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuesti
 import org.artkachenko.kmp_learning_app.assessment_review.MistakeRetentionNotice
 import org.artkachenko.kmp_learning_app.assessment_review.reviewSaveAction
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentResultLayout
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
@@ -66,6 +67,7 @@ internal fun MixedInterviewResultScreen(
     onBack: () -> Unit,
     onSourceClick: (String) -> Unit,
     onRepeatInterview: () -> Unit = {},
+    retakeState: AssessmentRetakeState = AssessmentRetakeState.Idle,
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)? = null,
     savedQuestions: SavedQuestionsState = SavedQuestionsState.Loading,
     onToggleSaved: (String) -> Unit = {},
@@ -99,6 +101,7 @@ internal fun MixedInterviewResultScreen(
                     state = state,
                     onSourceClick = onSourceClick,
                     onRepeatInterview = onRepeatInterview,
+                    retakeState = retakeState,
                     onPracticeMistakes = onPracticeMistakes,
                     savedQuestions = savedQuestions,
                     onToggleSaved = onToggleSaved,
@@ -133,6 +136,7 @@ private fun MixedResultContent(
     state: MixedInterviewResultUiState.Content,
     onSourceClick: (String) -> Unit,
     onRepeatInterview: () -> Unit,
+    retakeState: AssessmentRetakeState,
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)?,
     savedQuestions: SavedQuestionsState,
     onToggleSaved: (String) -> Unit,
@@ -147,6 +151,7 @@ private fun MixedResultContent(
             outcomeSection(
                 state = state,
                 onRepeatInterview = onRepeatInterview,
+                retakeState = retakeState,
                 onPracticeMistakes = onPracticeMistakes,
             )
         },
@@ -166,6 +171,7 @@ private fun MixedResultContent(
 private fun LazyListScope.outcomeSection(
     state: MixedInterviewResultUiState.Content,
     onRepeatInterview: () -> Unit,
+    retakeState: AssessmentRetakeState,
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)?,
 ) {
     item {
@@ -178,23 +184,23 @@ private fun LazyListScope.outcomeSection(
             )
             UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
             MistakeRetentionNotice(state.questions, onPracticeMistakes)
-            when (state.repeatInterviewState) {
-                RepeatInterviewState.Idle -> Unit
-                RepeatInterviewState.Creating,
-                is RepeatInterviewState.Created,
+            when (retakeState) {
+                AssessmentRetakeState.Idle -> Unit
+                AssessmentRetakeState.Creating,
+                is AssessmentRetakeState.Created,
                 ->
                     Text(stringResource(Res.string.mixed_result_practice_starting))
-                RepeatInterviewState.SourceAttemptNotFound ->
+                AssessmentRetakeState.SourceAttemptNotFound ->
                     Text(
                         stringResource(Res.string.mixed_result_repeat_source_missing),
                         color = MaterialTheme.colorScheme.error,
                     )
-                RepeatInterviewState.NoEligibleQuestions ->
+                AssessmentRetakeState.NoEligibleQuestions ->
                     Text(
                         stringResource(Res.string.mixed_result_repeat_no_questions),
                         color = MaterialTheme.colorScheme.error,
                     )
-                RepeatInterviewState.Error ->
+                AssessmentRetakeState.Error ->
                     Text(
                         stringResource(Res.string.mixed_result_repeat_error),
                         color = MaterialTheme.colorScheme.error,
@@ -202,13 +208,13 @@ private fun LazyListScope.outcomeSection(
             }
             OutlinedButton(
                 onClick = onRepeatInterview,
-                enabled = state.repeatInterviewState !is RepeatInterviewState.Creating &&
-                    state.repeatInterviewState !is RepeatInterviewState.Created,
+                enabled = retakeState !is AssessmentRetakeState.Creating &&
+                    retakeState !is AssessmentRetakeState.Created,
                 modifier = Modifier.testTag(MixedResultPracticeAgainTag),
             ) {
                 if (
-                    state.repeatInterviewState is RepeatInterviewState.Creating ||
-                    state.repeatInterviewState is RepeatInterviewState.Created
+                    retakeState is AssessmentRetakeState.Creating ||
+                    retakeState is AssessmentRetakeState.Created
                 ) {
                     CircularProgressIndicator(Modifier.testTag(MixedResultCreatingIndicatorTag))
                 } else {

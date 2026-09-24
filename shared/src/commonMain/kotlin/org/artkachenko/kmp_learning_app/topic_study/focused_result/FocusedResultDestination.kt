@@ -24,18 +24,15 @@ internal fun FocusedResultDestination(
     launchViewModel: AssessmentLaunchViewModel = koinViewModel(),
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
+    val retakeState = viewModel.retakeState.collectAsStateWithLifecycle().value
     val savedQuestions = viewModel.savedQuestions.collectAsStateWithLifecycle().value
     val uriHandler = LocalUriHandler.current
     val currentOnRetakeCreated by rememberUpdatedState(onRetakeCreated)
     var failedSourceUrl by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(viewModel) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is FocusedResultEvent.RetakeCreated -> {
-                    currentOnRetakeCreated(event.attemptId)
-                    viewModel.onRetakeEventHandled(event.attemptId)
-                }
-            }
+        viewModel.retakeEvents.collect { created ->
+            currentOnRetakeCreated(created.attemptId)
+            viewModel.onRetakeEventHandled(created.attemptId)
         }
     }
     AssessmentLaunchCoordinator(
@@ -52,6 +49,7 @@ internal fun FocusedResultDestination(
                 failedSourceUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
             },
             onRepeatPractice = viewModel::repeatPractice,
+            retakeState = retakeState,
             onPracticeMistakes = startAssessment,
             savedQuestions = savedQuestions,
             // The semantic action, not the repository: persistence stays behind the ViewModel.

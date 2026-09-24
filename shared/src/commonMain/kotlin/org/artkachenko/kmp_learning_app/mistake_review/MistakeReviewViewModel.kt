@@ -20,7 +20,7 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
  */
 internal class MistakeReviewViewModel(
     private val historyStore: AssessmentHistoryStore,
-    private val stateHolder: MistakeReviewStateHolder,
+    stateHolder: MistakeReviewStateHolder,
     private val savedQuestionStateHolder: SavedQuestionStateHolder,
 ) : ViewModel() {
     val uiState: StateFlow<MistakeReviewUiState> = stateHolder.state
@@ -32,14 +32,14 @@ internal class MistakeReviewViewModel(
     }
 
     /**
-     * Recovers from either failure the queue can show: an unreadable attempt table, which
-     * invalidating the shared history re-reads, and a derivation over readable history that could
-     * not reconstruct review content, which only running it again recovers. Saved state has its own
-     * read and is refreshed alongside.
+     * Recovers from either failure the queue can show — an unreadable attempt table, and a
+     * derivation over readable history that could not reconstruct review content — with the one
+     * call that reaches both: the store re-announces the cached history once its re-read settles,
+     * so the derivation runs again even when the attempts came back identical. Saved state has its
+     * own read and is refreshed alongside.
      */
     fun refresh() {
         historyStore.invalidate()
-        stateHolder.retryDerivation()
         savedQuestionStateHolder.refresh()
     }
 

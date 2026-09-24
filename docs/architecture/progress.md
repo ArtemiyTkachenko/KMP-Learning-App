@@ -187,6 +187,19 @@ other consumer uses — no restart, no manual retry, and no second history cache
 No app-wide analytics state holder was introduced: the store plus the service
 already are the shared source, and each feature only maps them.
 
+`AssessmentHistoryStore.history` is a `SharedFlow` with `replay = 1` rather than a
+`StateFlow`, and that choice is the whole of a consumer's Retry. Every consumer
+listed above *derives* from the history — over a curriculum that can be
+unavailable while the attempt table reads perfectly well — so the two failures a
+screen can show come from different places, and re-reading alone would not reach
+the second one: a re-read of an attempt table nobody has written produces attempts
+equal to the cached ones, and a `StateFlow` drops an emission equal to its last.
+The store instead guarantees that **one `invalidate()` is one emission once the
+resulting read settles**, whether the attempts changed, came back identical, or
+could not be read at all. A consumer therefore recovers both failures by observing
+this flow, with nothing of its own to arrange; `replay = 1` is what still lets a
+returning destination render the cached history on its first frame.
+
 Search matching is unchanged by any of this. It still reads Topic and Subtopic
 names only, in memory, against the catalog already loaded, so learning context is
 display metadata that no query can match and typing still issues no repository

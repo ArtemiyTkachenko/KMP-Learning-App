@@ -14,21 +14,20 @@ import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStor
  */
 internal class ProgressViewModel(
     private val historyStore: AssessmentHistoryStore,
-    private val stateHolder: ProgressStateHolder,
+    stateHolder: ProgressStateHolder,
 ) : ViewModel() {
     val uiState: StateFlow<ProgressUiState> = stateHolder.state
 
     /**
-     * Recovers from either failure the dashboard can show.
+     * Recovers from either failure the dashboard can show, with the one call that reaches both.
      *
-     * Invalidating the shared history covers an unreadable attempt table, and recovers every other
-     * screen derived from it at the same time. Asking the holder to derive again covers the other
-     * half — history that read successfully but could not be turned into a dashboard — which an
-     * invalidation alone would not reach, because a re-read of unchanged history is an equal value
-     * that a `StateFlow` does not re-emit.
+     * Invalidating the shared history re-reads an unreadable attempt table, and recovers every
+     * other screen derived from it at the same time. It also covers the other half — history that
+     * read successfully but could not be turned into a dashboard — because the store re-announces
+     * the cached history once the re-read settles whether or not it changed, which is what makes
+     * the derivation run again.
      */
     fun refresh() {
         historyStore.invalidate()
-        stateHolder.retryDerivation()
     }
 }

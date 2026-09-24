@@ -182,7 +182,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-DI-008` | App scope / platform dispatcher semantics | Observation | High | `assessment/history/AppCoroutineScope.kt`, `ProgressStateHolder.kt`, `MistakeReviewStateHolder.kt` | `Dispatchers.Default` is a background pool on three targets and the browser's main thread on two. | `AppCoroutineScope` is `CoroutineScope(SupervisorJob() + Dispatchers.Default)`. On Kotlin/JS and Kotlin/Wasm that is the single-threaded event loop. On each `invalidate()` — every completed attempt — `ProgressStateHolder` re-derives the dashboard, `MistakeReviewStateHolder` rebuilds the queue, and `MistakeReviewService.load` issues one `getQuestionById` per unresolved mistake through `AssessmentReviewLoader`, each in its own read transaction. The holders are lazy `single`s, so this starts on the first visit to those areas and then continues for the process whether or not the screens are shown again. No measurement was taken on any host. | Record only; `CQ-DATA-010` owns the per-ID query cost it compounds. Revisit with Part 5 cross-cutting performance. | Open |
 | `CQ-DI-009` | Constructor defaults / graph opt-out | Observation | High | `AssessmentQuestionSelector.kt`, `LearningProgressService.kt`, `MistakeReviewStateHolder.kt` | Three constructors can supply a dependency the graph also owns. | `AssessmentQuestionSelector` and `LearningProgressService` default `performanceDerivation` to `LearningPerformanceDerivation(curriculumRepository)`; `MistakeReviewStateHolder` defaults `learningContentRepository` to `null`. All three are supplied explicitly by their modules, so production shares one stateless derivation and the mistake queue does get its study links. The null is the one that is not harmless in kind: it removes the study-Lesson link silently rather than failing, and six test call sites construct the holder without it. | Record only. Noted because a default that builds or omits a graph-owned dependency is how a future call site would silently opt out of the graph, invisibly at the call site. | Open |
 | `CQ-STATE-012` | Learn surfaces / history recovery | High | High | `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt`, `TopicBrowserViewModelTest.kt`, `TopicDetailViewModelTest.kt` | Neither Learn ViewModel's Retry could recover any state derived from the shared assessment history. | Both observe `AssessmentHistoryStore.history` and derive optional enrichment from it — learning context, Recommended Next and Continue Studying on the browser; learning context and the unresolved-mistake count on Topic Detail. `retry()` reloaded only the curriculum and the study projection. It called neither `historyStore.invalidate()`, which is the only thing that re-reads an attempt table that failed, nor anything that re-runs a derivation over history that read successfully — a re-read of unchanged history is an equal `AssessmentHistory.Loaded` that a `StateFlow` does not emit again. A transient database failure at startup therefore removed every guided surface for the rest of the session, and the Retry button that exists for exactly that restored the catalogue and left the rest gone. `ProgressViewModel.refresh()` and `MistakeReviewViewModel.refresh()` already document and implement both halves (`CQ-STATE-008`); these two never received them. | Mirror the existing pattern in both ViewModels: a `derivations` counter combined into the history collection, and a `retry()` that calls `historyStore.invalidate()` and bumps it. Four jvm regressions pin both failure domains, each confirmed to fail against the previous code. | Fixed |
-| `CQ-STATE-013` | Shared history / retryable derivation | Medium | High | `ProgressStateHolder.kt`, `MistakeReviewStateHolder.kt`, `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt`, `AssessmentHistoryStore.kt` | Four owners now keep a private `derivations` counter to make a retry over unchanged history observable. | The counter exists because `AssessmentHistoryStore.history` is a `StateFlow` and an equal `Loaded` is not re-emitted. Each consumer solves that for itself with the same `MutableStateFlow(0)` plus `combine(history, derivations)` pair, which is why `CQ-STATE-012` was possible at all: the pattern is copied rather than owned. Giving the store's own emissions an identity — a generation on `AssessmentHistory.Loaded`, or an explicit re-derivation signal beside `invalidate()` — would let all four copies and both `retryDerivation()` methods be deleted. | Defer. It is a deliberate consolidation across the store and four consumers with its own test surface, not a bug fix, and it depends on `CQ-STATE-012` having landed. Re-confirmed as the top Stage 4C candidate during the Stage 4B fix pass, which deliberately kept it out of scope to avoid one patch spanning two unrelated themes. | Deferred |
+| `CQ-STATE-013` | Shared history / retryable derivation | Medium | High | `ProgressStateHolder.kt`, `MistakeReviewStateHolder.kt`, `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt`, `AssessmentHistoryStore.kt` | Four owners now keep a private `derivations` counter to make a retry over unchanged history observable. | The counter exists because `AssessmentHistoryStore.history` is a `StateFlow` and an equal `Loaded` is not re-emitted. Each consumer solves that for itself with the same `MutableStateFlow(0)` plus `combine(history, derivations)` pair, which is why `CQ-STATE-012` was possible at all: the pattern is copied rather than owned. Giving the store's own emissions an identity — a generation on `AssessmentHistory.Loaded`, or an explicit re-derivation signal beside `invalidate()` — would let all four copies and both `retryDerivation()` methods be deleted. | Defer. It is a deliberate consolidation across the store and four consumers with its own test surface, not a bug fix, and it depends on `CQ-STATE-012` having landed. Re-confirmed as the top Stage 4C candidate during the Stage 4B fix pass, which deliberately kept it out of scope to avoid one patch spanning two unrelated themes. Fixed in the Stage 4C fix pass: `history` became a `SharedFlow` with `replay = 1` whose contract is one emission per settled refresh, and all four counters plus both `retryDerivation()` methods are deleted. | Fixed |
 | `CQ-STATE-014` | Attempt creation / event versus state | Low | Medium | `AssessmentLaunchViewModel.kt`, `FocusedResultViewModel.kt`, `MixedInterviewResultViewModel.kt`, `AssessmentLaunchCoordinator.kt` | Attempt creation is published as durable state and as a one-shot `Channel` event describing the same fact, reconciled by a handled-callback. | Each of the three sets `Created(attemptId)` on its `MutableStateFlow` and sends the same identity through a `Channel(BUFFERED)` consumed by a `LaunchedEffect` in the composable. `receiveAsFlow` is single-consumer and that collection is cancelled when the destination leaves composition, so an event lost in flight would strand the state on `Created`, where the `start`/`repeat` guards refuse to launch again — the action is then dead for the life of that ViewModel. The window is one dispatch wide and no failure has been observed. | Defer. The remedy is a decision about event delivery shared by all three result surfaces, which is wider than a local fix and belongs with the Part 2 owners. | Deferred |
 | `CQ-KMP-001` | Android preference storage / contract | Medium | High | `settings/AndroidAppearanceModule.kt`, `settings/AppPreferenceStorage.kt` | The Android store was the one implementation that could throw out of a contract that forbids it. | `AppPreferenceStorage` states that implementations must not throw and that an unreadable store reports absence, "because failing to remember a preference is not a reason to fail to start". The JVM, iOS and web implementations all guard; Android called `getSharedPreferences` and `getString` unguarded. `getSharedPreferences` throws when the preferences directory is unavailable — the normal state of a credential-protected context before first unlock — and `getString` throws `ClassCastException` if the key holds another type. `AppearanceStateHolder` performs that read synchronously in its constructor, which Koin resolves lazily inside `AppearanceTheme`'s `remember`, i.e. during `AppRoot`'s first composition and above the startup error screen, so a throw is an unrecoverable first-frame crash rather than a forgotten preference. Carried over as the open handoff from Part 3D. | Guard both methods with `runCatching`, using the idiom `JvmAppPreferenceStorage` already uses, and resolve the `SharedPreferences` instance lazily so its own failure is absence too. Not covered by a test: `shared` has no populated Android host-test source set and exercising `SharedPreferences` off-device would mean adding Robolectric. | Fixed || `CQ-CROSS-001` | Attempt result surfaces / retake orchestration | Medium | High | `topic_study/focused_result/FocusedResultViewModel.kt`, `mixed_interview/MixedInterviewResultViewModel.kt`, both UI state files, both screens, both destinations, `assessment/retake/AssessmentRetakeController.kt` | One retake state machine existed twice, under two names. | `RepeatPracticeState` and `RepeatInterviewState` were structurally identical six-case sealed interfaces, driven by identical `repeatPractice`/`repeatInterview`, `onRetakeEventHandled` and `setRepeatState` bodies over the same `AssessmentRetakeService.createRetake`, and reported through two one-case event hierarchies (`FocusedResultEvent`, `MixedInterviewResultEvent`) collected by two identical `LaunchedEffect` blocks. `CQ-BUG-003` — the post-persistence re-entry window — had to be found and fixed in both copies independently, which is the concrete cost this records. Neither copy could be tested without a full result ViewModel and its four fakes. | Extract `AssessmentRetakeController` in `assessment/retake/`, owning `AssessmentRetakeState`, the buffered `AssessmentRetakeCreated` event, the re-entry guard and the identity-matched release. Both ViewModels delegate; each keeps only whether there is a loaded result to repeat, and each screen keeps its own wording. | Fixed |
 | `CQ-CROSS-002` | Attempt result surfaces / state ownership | Low | High | `FocusedResultUiState.kt`, `MixedInterviewResultUiState.kt`, both screens | Retake state was stored inside the result content it is not part of. | `Content.repeatPracticeState` / `Content.repeatInterviewState` put a running action inside a record of a settled fact: the score and the transcript of a completed attempt cannot change while the screen is open, and the retake state changes on every press. The conflation forced every transition through a `setRepeatState` that cast to `Content` and silently dropped the write otherwise — unreachable in practice, but a transition that can disappear is not a state machine anyone can reason about. | Publish retake state as its own `StateFlow` beside `uiState`, and pass it to the screen as its own parameter. The "only retake a loaded result" rule becomes an explicit guard in the ViewModel rather than an implicit consequence of a cast. | Fixed |
@@ -211,6 +211,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 4A addendum | Common Koin graph and lifetimes | Complete | `8b2be06abc375fa930172a03a474280e55cb3445` | Seven common modules plus eight platform modules re-counted mechanically, 20 `koinViewModel` sites across 15 files, 4 host bridges and 4 platform roots, 30 singleton classes re-read for fields, 8 app-scoped holders, 12 Koin-touching test files, and 5 third-party libraries read from source | 6 | 0 | One throwaway duplicate-definition probe (`:shared:jvmTest`, passed, then deleted); `git status --short` clean; no other Gradle task, because no executable file changed | High 0, Medium 1, Low 3, Observations 2. Audit only: no Koin definition, module, host bridge, comment or test was changed. Adds the enforcement, implicit-contract and test-coverage layer the Part 4A record did not reach. |
 | Stage 4A fix pass | Cross-cutting: Learn-surface history recovery and the Android preference store | Complete | `b8a214a` plus the working tree | 2 ViewModels, 4 state holders, 1 shared store, 1 platform store, and the 2 corresponding jvm test files, re-read in full | 4 (1 High, 2 Medium, 1 Low) | 2 fixed, 2 deferred | `:shared:jvmTest`, `:shared:allTests`, `:androidApp:assembleDebug`, `:androidApp:lintDebug` | Not a planned chunk. A targeted re-audit of state ownership, coroutine lifecycle, cancellation and event-versus-state across the current tree, taken outside the Part sequence; **Part 4B remains the next planned chunk and was not started**. |
 | Stage 4B fix pass | Attempt result ownership: the retake state machine, result derivation, and the review mutation boundary | Complete | `e398dc7` plus the working tree | 2 result ViewModels, 2 UI state files, 2 screens, 2 destinations, 1 further review ViewModel, 1 shared review model file, plus the 4 corresponding test files, re-read in full; 23 further presentation/domain files read for comparison | 9 (4 fixed, 1 deferred, 3 recorded, 1 not a defect) | 4 fixed | `:shared:compileKotlinJvm`; `:shared:jvmTest` (1545 tests); `:shared:check`; `:androidApp:assembleDebug`; `git diff --check`; `git status --short` | Not a planned chunk. An architecture-focused pass over ownership, duplication and testability in the two attempt-result surfaces, taken outside the Part sequence. `CQ-CROSS-001`–`004` are fixed; `CQ-STATE-013` is re-confirmed as deferred and is the leading Stage 4C candidate. **The planned Part 4B — host composition roots — is unrelated to this pass, remains the next planned chunk, and was not started.** |
+| Stage 4C fix pass | Shared assessment-history refresh contract: state/event semantics and the store's own type surface | Complete | `6324153` plus the working tree | 1 store, 1 interface, 6 consumers and 1 test file read in full; 5 further state holders and UI-state files read for comparison | 6 (2 fixed, 1 deferred, 2 not a defect, 1 accepted as-is) | 2 fixed | `:shared:compileKotlinJvm`; `:shared:jvmTest` (1549 tests); `:shared:check`; `:androidApp:assembleDebug`; `git status --short` | Not a planned chunk. A state-model, API-contract and boundary-correctness pass bounded to one cluster: the shared history store and everything that derives from it. `CQ-STATE-013` and `CQ-STATE-015` are fixed; `CQ-STATE-014` and `CQ-TYPE-001` remain deferred. **The planned Part 4B — host composition roots — is unrelated to this pass, remains the next planned chunk, and was not started.** |
 
 ### Part 1A Review Record
 
@@ -3199,6 +3200,92 @@ keep what is genuinely theirs — delegation and the loaded-result guard — and
 `practiseAgainBeforeTheResultLoadsCreatesNothing` pins the rule that moving the state machine out
 made explicit.
 
+## Stage 4C Fix Pass Review Record
+
+- **Commit reviewed:** `6324153` (the tip of `task/code-quality-audit-1`) plus the working tree.
+- **Framing:** this is not the planned Part 4C. The planned Part 4 sequence still has **Part 4B —
+  host composition roots** as its next chunk, untouched. This pass was commissioned as the
+  successor to the Stage 4A correctness/lifecycle work and the Stage 4B ownership work, and asked a
+  single question: *does the type, API, or state model make incorrect or inconsistent usage
+  unnecessarily easy?*
+- **Boundary read:** `AssessmentHistoryStore`, `CompletedAssessmentHistory` and all six of the
+  store's consumers end to end (`ProgressStateHolder`/`ProgressViewModel`,
+  `MistakeReviewStateHolder`/`MistakeReviewViewModel`, `TopicBrowserViewModel`,
+  `TopicDetailViewModel`, `InterviewHistoryStateHolder`, `AppShellViewModel`), plus
+  `StudyProgressStateHolder`, `SavedQuestionStateHolder`, `AppNavigator`, `PracticeBuilderUiState`
+  and `PracticeBuilderViewModel`, `AssessmentQuestionSelector`, and the corresponding jvm test files
+  for the store and its four retrying consumers.
+
+### 4C findings
+
+| ID | Area | Category | Severity | Files | Finding | Disposition |
+| --- | --- | --- | --- | --- | --- | --- |
+| `CQ-STATE-013` | Shared history refresh contract | event/state semantics | Medium | `AssessmentHistoryStore.kt`, `ProgressStateHolder.kt`, `MistakeReviewStateHolder.kt`, `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt` | Recovering from a failed derivation required two calls that no type related to each other. `history` was a `StateFlow`, which drops an emission equal to its last, so a re-read of an unchanged attempt table reached no consumer. Four owners each answered that with the same private `MutableStateFlow(0)` combined into their own state, and every retry became `invalidate()` *plus* a second call that a caller simply had to know to make. A retry that made only one recovered only half the screens derived from the read — which is what `CQ-STATE-012` (High, fixed in Stage 4A) actually was. | **Fixed** |
+| `CQ-STATE-015` | `HistoryRefresh` | type safety | Low | `AssessmentHistoryStore.kt` | `completedAttempts()` waited for a settled generation and then had to handle `HistoryRefresh.Pending` anyway, with `error("Pending refresh cannot satisfy a settled generation.")`. The type permitted a state the caller had already excluded, so the exclusion lived in a comment and a throw rather than in the `when`. | **Fixed** |
+| `CQ-STATE-016` | `InterviewHistoryStateHolder` | error modeling | — | `InterviewHistoryStateHolder.kt` | An unreadable history renders as `Empty`, the same shape as "no interviews taken". | **Not a defect.** The collapse is deliberate and documented on the branch: the record is supplementary, the screen's only control does not depend on it, and the alternative blocks the one action on a surface whose purpose is starting an interview. |
+| `CQ-STATE-017` | `AppShellViewModel` | error modeling | — | `AppShellViewModel.kt` | Loading and Failed history both badge the Mistakes item with `0`, indistinguishable from "nothing unresolved". | **Not a defect.** A badge is decoration, the KDoc says so, and there is no navigation-level surface on which an error could be reported without interrupting navigation. |
+| `CQ-STATE-018` | `AppNavigator.backStack` | mutability | — | `AppNavigator.kt` | The back stack escapes as a `MutableList<NavKey>`, so any caller can bypass `push`/`popBack`/`replaceTop`. | **Accepted as-is.** Navigation 3's `NavDisplay` takes the mutable list itself; narrowing the property would mean exposing a second accessor for the framework, which removes nothing. |
+| `CQ-TYPE-001` | Stable identifiers | type safety | Low | repository-wide | `topicId`, `subtopicId`, `questionId`, `attemptId`, `unitId` and `lessonId` are all plain `String`, and `MistakeStudyLesson(unit.id, lesson.id, lesson.title)` is the kind of positional call where two of them could be swapped silently. | **Deferred.** No instance of a mixed identifier was found, and the remedy is the repository-wide value-class migration this audit's scope discipline excludes. Worth revisiting only if a real mix-up appears. |
+
+Findings group into one cluster — the shared assessment-history boundary, where `CQ-STATE-013`,
+`CQ-STATE-015`, `CQ-STATE-016` and `CQ-STATE-017` all live — and two isolated observations,
+`CQ-STATE-018` and `CQ-TYPE-001`.
+
+### 4C scope
+
+**Implemented:** `CQ-STATE-013` and `CQ-STATE-015`. One file owns the contract, five files consume
+it, and no unrelated code is touched.
+
+**Deferred:** `CQ-TYPE-001` (repository-wide typing), `CQ-STATE-014` (attempt creation published as
+both durable state and a one-shot `Channel` event across three result surfaces — a decision about
+event delivery shared by the Part 2 owners, unchanged from Stage 4A), and `CQ-DI-007` (the DI
+narrative in `docs/architecture/overview.md`).
+
+The scope earns its type change because the contract it fixes has already produced a High bug. The
+pattern was copied into four owners *because* nothing in the store's type said what a refresh meant,
+and `CQ-STATE-012` was the case where one of those four copies was simply missing. Deleting the
+copies is secondary; what matters is that there is no longer a second call for a fifth consumer to
+forget.
+
+### What changed
+
+`AssessmentHistoryStore.history` is now a `SharedFlow<AssessmentHistory>` with `replay = 1`,
+produced by a pure `scan` over settled refreshes rather than by a `MutableStateFlow` mutated inside
+a `map`. The contract is stated on the property: **one `invalidate()` is one emission once the
+resulting read settles** — whether the attempts changed, came back identical, or could not be read
+at all — and `replay = 1` keeps the late-subscriber guarantee the cache exists for. `HistoryRefresh`
+gained a `Settled` sub-interface, so `completedAttempts()` waits on a type that cannot be `Pending`
+and its `when` has two branches instead of three.
+
+The four `derivations` counters, both `retryDerivation()` methods and all four `combine` calls are
+gone. `ProgressViewModel.refresh()`, `MistakeReviewViewModel.refresh()`,
+`TopicBrowserViewModel.retry()` and `TopicDetailViewModel.retry()` each lost the second call, and
+`ProgressViewModel`/`MistakeReviewViewModel` no longer retain their state holder as a property.
+
+### Behaviour
+
+No intended user-visible change, and the claim is measured rather than asserted: with conflation
+restored on the new flow — one `distinctUntilChanged()` inserted before `shareIn` — the four
+consumers' retry-recovery regressions fail and the two new store regressions fail, and with it
+removed all 1 549 jvm tests pass. That is the same recovery the counters provided, now provided
+once.
+
+One unobservable timing difference is worth recording: a derivation retry used to run immediately
+on the counter bump *and* again if the re-read changed the history, so a retry could derive twice.
+It now derives once, after the read settles. Nothing renders in between either way — the previous
+state stays on screen while the derivation suspends — so the visible sequence is unchanged, and the
+retry now costs one derivation instead of two.
+
+### Test surface
+
+`AssessmentHistoryStoreTest` gains four regressions over the flow contract rather than over any
+consumer: an unchanged re-read still announces itself, a *failed* re-read announces itself while
+keeping the attempts already read, a subscriber before the first read settles is told `Loading`
+rather than "no history", and a late subscriber replays the cached history without starting a read
+of its own. The four consumer retry tests were already written against the public `refresh()`/
+`retry()` API, so they needed no change and now pin the single-signal contract directly.
+
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -3786,8 +3873,43 @@ Needs measurement: 0
 Accepted as-is: 0
 Not a defect: 0
 
+Stage 4C fix pass — Complete
+
+High: 0
+Medium: 1
+Low: 2
+Observations: 0
+
+Fixed: 2
+Deferred: 1
+Needs measurement: 0
+Accepted as-is: 1
+Not a defect: 2
+
 Part 4B — Next
 ```
+
+The Stage 4C fix pass is complete. It is not one of the planned chunks: it is a state-model,
+API-contract and boundary-correctness re-audit of the current tree, bounded to the one cluster where
+the type system was actually making misuse easy — the shared assessment-history store and the six
+surfaces that derive from it. `CQ-STATE-013` (Medium) is fixed, and it is the finding the Stage 4A
+pass named as the consolidation that its own High fix made worth doing. `AssessmentHistoryStore
+.history` was a `StateFlow`, so a re-read of an attempt table nobody had written produced an equal
+`Loaded` that never reached a consumer; four owners each answered that privately with the same
+counter, and "retry" became two calls related by nothing but convention. It is now a `SharedFlow`
+with `replay = 1`, built from a pure `scan` over settled refreshes, whose stated contract is one
+emission per `invalidate()` once the read settles — so one call recovers both an unreadable attempt
+table and a derivation that failed over history which read perfectly well. The four `derivations`
+counters, both `retryDerivation()` methods and all four `combine` calls are deleted, and no
+consumer can now forget the half of a retry that `CQ-STATE-012` was. `CQ-STATE-015` (Low) closes the
+store's own unreachable state: `HistoryRefresh` gained a `Settled` sub-interface, so the suspending
+read waits on a type that cannot be `Pending` and no longer carries an `error(...)` for a case its
+own caller had already excluded. Four regressions in `AssessmentHistoryStoreTest` pin the new flow
+contract, and the claim that behaviour is unchanged was measured: restoring conflation with a single
+`distinctUntilChanged()` fails all four consumers' retry regressions and two of the new ones.
+`CQ-STATE-016`, `CQ-STATE-017` and `CQ-STATE-018` are recorded as deliberate and were not changed;
+`CQ-TYPE-001` and `CQ-STATE-014` are deferred. The exact next planned chunk remains **Part 4B —
+Host composition roots**, which this pass did not begin.
 
 The stage 4A fix pass is complete. It is not one of the planned chunks: it is a targeted re-audit of
 the current tree against state ownership, coroutine and Flow lifecycle, cancellation, event-versus-state

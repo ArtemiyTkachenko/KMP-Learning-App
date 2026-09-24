@@ -215,6 +215,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Stage 4B fix pass | Attempt result ownership: the retake state machine, result derivation, and the review mutation boundary | Complete | `e398dc7` plus the working tree | 2 result ViewModels, 2 UI state files, 2 screens, 2 destinations, 1 further review ViewModel, 1 shared review model file, plus the 4 corresponding test files, re-read in full; 23 further presentation/domain files read for comparison | 9 (4 fixed, 1 deferred, 3 recorded, 1 not a defect) | 4 fixed | `:shared:compileKotlinJvm`; `:shared:jvmTest` (1545 tests); `:shared:check`; `:androidApp:assembleDebug`; `git diff --check`; `git status --short` | Not a planned chunk. An architecture-focused pass over ownership, duplication and testability in the two attempt-result surfaces, taken outside the Part sequence. `CQ-CROSS-001`–`004` are fixed; `CQ-STATE-013` is re-confirmed as deferred and is the leading Stage 4C candidate. **The planned Part 4B — host composition roots — is unrelated to this pass, remains the next planned chunk, and was not started.** |
 | Stage 4C fix pass | Shared assessment-history refresh contract: state/event semantics and the store's own type surface | Complete | `6324153` plus the working tree | 1 store, 1 interface, 6 consumers and 1 test file read in full; 5 further state holders and UI-state files read for comparison | 6 (2 fixed, 1 deferred, 2 not a defect, 1 accepted as-is) | 2 fixed | `:shared:compileKotlinJvm`; `:shared:jvmTest` (1549 tests); `:shared:check`; `:androidApp:assembleDebug`; `git status --short` | Not a planned chunk. A state-model, API-contract and boundary-correctness pass bounded to one cluster: the shared history store and everything that derives from it. `CQ-STATE-013` and `CQ-STATE-015` are fixed; `CQ-STATE-014` and `CQ-TYPE-001` remain deferred. **The planned Part 4B — host composition roots — is unrelated to this pass, remains the next planned chunk, and was not started.** |
 | Stage 4E fix pass | Historical curriculum resolution: one batched read instead of one round trip per stable ID | Complete | `272a509` plus the working tree | 1 repository interface, 1 DAO, 1 Room repository, 5 per-ID call sites, and the 4 app-scoped/ViewModel consumers that drive them; 31 test doubles and 10 integration tests updated | 6 (1 high, 1 medium, 4 low) | 1 cluster (`CQ-DATA-010`) | `:shared:jvmTest` (1559 tests), `:shared:check`, `:androidApp:assembleDebug`, `git diff --check` | High 0 new; the pass converted `CQ-DATA-010` from *Needs measurement* to *Fixed* by supplying the trigger analysis it lacked, and relieved half of `CQ-DI-008`. Five deferred findings recorded for 4F. See review record below. |
+| Stage 4F fix pass | Regression protection: superseded, cancelled and unread asynchronous results must not reach the learner as an answer | Complete | `cbd7d5c` plus the working tree | All 131 test files inventoried by name; every production file without a same-named test checked for indirect coverage; every broad `catch` in `commonMain` and the platform source sets; 1 new test file, 4 test files extended, 3 test doubles gated | 5 (2 high, 2 medium, 1 low) | 1 cluster (`CQ-TEST-001`, `CQ-TEST-002`, `CQ-TEST-003`) | `:shared:jvmTest` (1569 tests), `:shared:check`, `:androidApp:assembleDebug`, `git diff --check` | No production-code change. Ten tests added, each verified against a deliberately broken production tree and restored. Two findings deferred to 4G. See review record below. |
 
 ### Part 1A Review Record
 
@@ -3552,6 +3553,142 @@ assertion was added.
 | `git diff --check` | Clean |
 
 No benchmark was run, because the repository has none and this pass did not introduce one.
+
+
+## Stage 4F Fix Pass Review Record
+
+- **Commit reviewed:** `cbd7d5c` (the tip of `task/code-quality-audit-1`) plus the working tree.
+- **Framing:** not the planned Part 4B — host composition roots remain untouched. This pass was
+  commissioned as the regression-protection successor to Stages 4A-4E and asked one question: *are
+  the important architectural and behavioural guarantees of this application protected by tests that
+  would actually catch realistic regressions?* Test count was explicitly not the objective.
+- **Boundary read:** all 131 test files in `commonTest` and `jvmTest` (1 559 tests at the start of
+  the pass), inventoried by name; every production file with no same-named test, checked for
+  indirect coverage; every broad `catch` in `commonMain` and the platform source sets; every
+  `runBlocking`, `delay`, `Thread.sleep`, clock, timezone, UUID and `Random` use in production and
+  test code.
+
+### What the suite already does well, and should not be re-derived
+
+This is the expensive half of the pass. The suite is in good shape and most of the brief's
+checklist has no finding attached to it.
+
+- **Coroutine hygiene.** No `Thread.sleep` anywhere, no `delay` used for synchronisation in any
+  test, and no `runBlocking` standing in for `runTest` in a coroutine test — the three surviving
+  uses are fixture loading outside a coroutine test and one deliberately documented Unconfined
+  bridge. 59 files use `runTest`; ViewModel suites install `StandardTestDispatcher` as Main and
+  drive with `advanceUntilIdle()`/`runCurrent()`.
+- **Time and randomness are already injected.** `AssessmentEngine`, `LocalSavedQuestionRepository`
+  and `LocalLessonStudyRepository` all take `now: () -> Instant`; `AssessmentEngine` takes
+  `generateAttemptId`; `AssessmentQuestionSelector` takes `randomize`; `AnswerOrder` seeds `Random`
+  from the attempt and question IDs. `LocalTimestamp` is pure and takes its offset and its "now" as
+  arguments. No test depends on the wall clock, the machine timezone or the current date.
+- **Failure paths are tested, not assumed.** Repository failure, missing records, deprecated and
+  missing historical content, empty datasets, duplicate invocation, cancellation, retry and
+  repository/database reconstruction each have named tests across the state holders, the four local
+  repositories and the integration suites.
+- **Persistence guarantees are tested at the layer that provides them.** `AssessmentAttemptStoreTest`,
+  `LocalSavedQuestionRepositoryTest`, `LocalLessonStudyRepositoryTest`, `CurriculumImporterTest` and
+  `CurriculumDatabaseMigrationTest` all run against a real Room database, including concurrent
+  duplicate writes, foreign-key rejection, deterministic ordering and eight migration steps.
+- **Assertions are specific.** 467 `assertIs<…>` against 162 `assertNotNull`; the `assertTrue(…
+  isNotEmpty())` uses are bundled-content smoke checks and Compose "at least one node matches"
+  queries, which is what that assertion is for.
+- **Compose tests assert behaviour.** 82 semantic-state assertions (`assertHasClickAction`,
+  `assertIsEnabled`, `assertIsToggleable`, `assertIsSelected`) beside the tag lookups, and the
+  adaptive suite covers both window classes for the cases where the layout genuinely differs.
+- **Files with no same-named test are mostly models and DI modules.** The ones that looked like real
+  gaps were each checked and found covered through their consumers: `RecentStudyContextDerivation`
+  (`ContinueStudyingResolverTest`, `LearningRecommendationResolverTest`), `AuthoredContentChecks`
+  (`CurriculumValidatorTest`), `RecentPerformancePolicy` (`LearningProgressServiceTest`),
+  `AssessmentAttemptMapper` (`AssessmentAttemptStoreTest`, against a real database), and the four
+  route-mapping files (`AppNavigationTest`, which also pins the "no target may reach an attempt"
+  rule the mappings' KDoc states).
+
+### 4F findings
+
+| ID | Area | Existing coverage | Missing contract | Regression not currently caught | Level | Priority | Disposition |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `CQ-TEST-001` | `AppShellViewModel` | `SharedHostStartupTest` asserts Koin resolves it; `ProgressLearningJourneyIntegrationTest` asserts the literal text `"2"` in the unmerged tree of one full-app run | The badge's whole mapping from `AssessmentHistory`: `Loading`/`Failed` badge nothing (the `CQ-STATE-017` adjudication), the count is the mistake queue's rule over the *shared* read, it moves on completion, and a rebuilt shell takes the replayed history | A shell that badges an error indicator, that recounts by reading the attempt table itself on every rebuild, or that stops following `invalidate()`. Only the one integration assertion stands between any of those and shipping, and it survives the first two | ViewModel | **High** | **Fixed** |
+| `CQ-TEST-002` | `PracticeBuilderViewModel.refreshAvailability()` | `availabilityRefreshesWhenTheLevelSelectionChanges` (sequential; its two toggles are not separated by a scheduler advance, so the superseded check never starts), `aFailedEligibilityCheckIsAnErrorThatRetryCanRecoverFrom` | The documented supersession rule — *"Held so a superseded eligibility read cannot land after the one that replaced it"* — and the documented cancellation rethrow beside it | Dropping `availabilityJob?.cancel()` leaves the learner looking at the eligible count *and the offered run lengths* of a level selection they have already moved off; folding the cancellation into `Error` puts "could not check" on a screen whose newer check is still running. `refreshAvailability()` runs on every level and source tap, so this is the most frequently exercised cancellation in the app | ViewModel | **High** | **Fixed** |
+| `CQ-TEST-003` | `LearningLessonViewModel`, `LearningUnitViewModel`, `ProgressTopicViewModel` | Each has a failure-and-retry test; none has a cancellation test | All three `loadJob?.cancel()`, publish `Loading`, then relaunch, and all three rethrow `CancellationException` so the abandoned load publishes nothing. Eight comparable owners in the repository have this test; these three do not | A double-tapped Retry, or a Lesson opened while the previous document read is outstanding, leaves `Error` on screen over a reload that is going to succeed — and on the Progress drill-down `Error` is the state that offers Retry, so the learner is invited to retry the retry | ViewModel | Medium | **Fixed** |
+| `CQ-TEST-004` | `timestampText` | `LocalTimestampTest` covers the pure day-and-offset arithmetic; nothing covers the wording layer, and the one integration assertion deliberately avoids it | The `TODAY`/`YESTERDAY`/dated branch selection and the twelve-entry `shortMonthResource` table | A month mis-mapped in that table dates every Progress history row and every interview record wrongly, silently. A mid-month instant keeps such a test timezone-independent, so it is writable without flakiness | Compose UI | Medium | **Deferred to 4G** |
+| `CQ-TEST-005` | `AssessmentLaunchViewModel` | Four tests over success, no-eligible-questions, retry and re-entry | Its `CancellationException` rethrow, which keeps a dismissed launch dialog from settling as `Failed(Unexpected)` | Lower than `CQ-TEST-003`: the state belongs to a dialog that is going away, so a swallowed cancellation is largely unobservable | ViewModel | Low | **Deferred to 4G** |
+
+Two candidates were investigated and **not** raised. `AppShellViewModel`'s `catch (_: Exception) -> 0`
+around `countUnresolved` is unreachable from its only call site — the shell always supplies the
+attempts, and `UnresolvedMistakeDerivation` over a supplied list is pure and cannot throw — so a test
+for it would be an invented failure the API cannot produce. And no test double was found misleading:
+the fakes propagate failures, preserve production ordering, and the repository-level guarantees are
+tested against real Room rather than restated in Kotlin.
+
+### 4F scope
+
+**Implemented:** `CQ-TEST-001`, `CQ-TEST-002` and `CQ-TEST-003` — one cluster: **an asynchronous
+result that was superseded, cancelled, or never read must not reach the learner as an answer.**
+
+That is one rule with four owners that each cancel-and-relaunch (`PracticeBuilderViewModel` twice
+over, on the target resolve and the eligibility check; the Lesson reader; the Unit overview; the
+Progress drill-down) plus the one consumer of the shared history cache that had no behavioural test
+at all. The repository already states this rule elsewhere — `ProgressViewModel`'s
+`aStaleReadCompletingLateDoesNotOverwriteTheNewerResult`, `SavedQuestionStateHolder`'s
+`aReadIssuedBeforeAMutationDoesNotOverwriteItAfterwards`, `StudyProgressStateHolder`'s equivalent —
+so this pass finishes an existing pattern rather than introducing one.
+
+**Deferred:** `CQ-TEST-004` (a different cluster: the presentation of time) and `CQ-TEST-005`.
+
+### Test surface
+
+Ten tests, all `jvmTest`, all deterministic and gated on `CompletableDeferred` rather than on timing.
+
+- **`AppShellViewModelTest`** (new, 5 tests). The count is the mistake queue's rule over the shared
+  history; an unsettled history and an unreadable one each badge nothing; a completed assessment
+  moves the badge on the same one further read every other screen gets; a rebuilt shell badges the
+  cached count without starting a read. Its curriculum repository refuses every call, which is
+  itself the assertion that the badge counts occurrences and never reconstructs review content.
+- **`PracticeBuilderViewModelTest`** (+2). A superseded eligibility read cannot overwrite the newer
+  selection — asserted on both the eligible count and the offered run lengths, because
+  `refreshAvailability` writes `questionCountOptions` inside the same `try`. And a cancelled read
+  leaves the screen `Checking` rather than `Error`. The first check is for two levels and the second
+  for one, so the two answers differ and the assertion can tell them apart.
+- **`LearningUnitViewModelTest`**, **`LearningLessonViewModelTest`**, **`ProgressTopicViewModelTest`**
+  (+1 each). A superseded load publishes nothing and leaves the screen loading. Two gates per test,
+  with the superseded read released *last*, after the replacement has already been observed — which
+  is what makes the ordering a fact rather than a hope.
+
+Two test doubles gained a gate rather than a new fake being written: `FakeLearningContentRepository`
+(shared by the Unit and Lesson suites) and `ProgressTopicViewModelTest`'s history repository each
+took a `beforeRead`/`beforeLoad` hook receiving the read's 1-based number, defaulting to a no-op so
+no existing call site changed. `PracticeBuilderViewModelTest`'s private curriculum fake took the
+same hook keyed on its existing `selectionCalls` counter.
+
+### Mutation check
+
+Every added test was verified against a deliberately broken production tree, one mutation at a time,
+each restored immediately:
+
+| Mutation | Tests that failed | Others affected |
+| --- | --- | --- |
+| `CancellationException` rethrow removed from the three `load()` methods | the three `aSupersededLoad…` tests | none of the other 45 in those classes |
+| `availabilityJob?.cancel()` removed | `aSupersededEligibilityReadCannotOverwriteTheNewerSelection` | none of the other 32 |
+| Practice Builder cancellation folded into `PracticeAvailability.Error` | `aCancelledEligibilityReadLeavesTheScreenCheckingRatherThanFailed` | none of the other 32 |
+| `Loading, Failed -> 0` changed to `-> 1` | the unsettled-history and unreadable-history tests | none |
+| `countUnresolved(history.attempts)` changed to `countUnresolved()` | the completion and rebuilt-shell tests | none |
+| `countUnresolved(history.attempts)` changed to `history.attempts.size` | three of the five badge tests | none |
+
+### Behaviour
+
+No production code was changed. The suite went from 1 559 to 1 569 jvm tests.
+
+### Validation
+
+| Command | Result |
+| ------- | ------ |
+| The five affected test classes, individually | PASS |
+| `./gradlew :shared:jvmTest` | PASS — 1569 tests, 0 failures, 0 skipped |
+| `./gradlew :shared:check` | PASS — JVM, Android host, JS, Wasm and iOS simulator task graph |
+| `./gradlew :androidApp:assembleDebug` | PASS |
+| `git diff --check` | Clean |
 
 
 ## Baseline Health

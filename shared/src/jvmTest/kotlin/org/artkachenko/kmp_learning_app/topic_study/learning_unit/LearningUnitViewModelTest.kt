@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -266,6 +267,44 @@ internal class LearningUnitViewModelTest {
         assertEquals(listOf(false, true, false), progress.lessons.map { it.isStudied })
         // Publisher content and learner state have independent lifecycles: nothing was re-authored.
         assertEquals(documentReads, content.unitReadIds.size)
+    }
+
+    /**
+     * Retry cancels the load already in flight before starting another, and the cancelled one must
+     * publish nothing at all.
+     *
+     * A learner who taps Retry twice, or who re-enters an overview whose first read has not come
+     * back, would otherwise be shown "could not load" over a reload that is going to succeed — the
+     * screen would claim a failure for a read nobody is waiting on any more. The two gates are what
+     * make that a fact rather than a hope: the superseded read is released last, after the
+     * replacement has already been observed still loading.
+     */
+    @Test
+    fun aSupersededLoadPublishesNothingAndLeavesTheUnitLoading() = runViewModelTest {
+        val firstRead = CompletableDeferred<Unit>()
+        val secondRead = CompletableDeferred<Unit>()
+        val content = threeLessonUnit()
+        content.beforeRead = { read ->
+            when (read) {
+                1 -> firstRead.await()
+                2 -> secondRead.await()
+            }
+        }
+        val viewModel = viewModel("unit_a", content)
+        advanceUntilIdle()
+        assertEquals(LearningUnitUiState.Loading, viewModel.uiState.value)
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertEquals(LearningUnitUiState.Loading, viewModel.uiState.value)
+
+        secondRead.complete(Unit)
+        firstRead.complete(Unit)
+        advanceUntilIdle()
+
+        val state = assertIs<LearningUnitUiState.Content>(viewModel.uiState.value)
+        assertEquals(listOf("lesson_a", "lesson_b", "lesson_c"), state.lessons.map { it.lessonId })
     }
 
     /** Opening the overview reads study state and writes none of it. */

@@ -1,5 +1,9 @@
 package org.artkachenko.kmp_learning_app.curriculum.learning.content
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
@@ -18,11 +22,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 /**
  * The fixture is authored, not alphabetical: Units are named so that authored order and
  * alphabetical order disagree, which is what makes the ordering assertions meaningful.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 internal class BundledLearningContentRepositoryTest {
     @Test
     fun activeUnitsForATopicKeepAuthoredOrderAndExcludeDeprecatedUnits() = runTest {
@@ -96,7 +103,12 @@ internal class BundledLearningContentRepositoryTest {
     @Test
     fun theDocumentIsLoadedOnceAcrossRepeatedQueries() = runTest {
         var loads = 0
-        val repository = repository(onLoad = { loads++ })
+        val repository = repository(
+            onLoad = {
+                loads++
+                null
+            },
+        )
 
         repository.getActiveUnits()
         repository.getActiveUnitsByTopic("android_ui")
@@ -104,6 +116,45 @@ internal class BundledLearningContentRepositoryTest {
         repository.getLessonById("lesson_side_effects")
 
         assertEquals(1, loads)
+    }
+
+    /**
+     * The other half of the caching contract, and the one repeated sequential queries cannot show:
+     * callers that arrive *before* the first load finishes share it rather than each starting one.
+     *
+     * This matters because the repository is a `single` whose callers are not on one thread —
+     * `MistakeReviewStateHolder` reads it from `AppCoroutineScope` (`Dispatchers.Default`) while the
+     * Learn ViewModels read it from `viewModelScope` (`Dispatchers.Main.immediate`) — so two first
+     * calls overlapping is a normal thing for this object rather than a contrived one, and the mutex
+     * is what makes it one load. Both callers must come back with the same indexes; that they may
+     * then read the cached field without the mutex is safe for a separate reason the repository's own
+     * documentation gives.
+     */
+    @Test
+    fun concurrentFirstCallsShareOneLoadAndSeeTheSameDocument() = runTest {
+        var loads = 0
+        val loading = CompletableDeferred<Unit>()
+        val repository = repository(
+            onLoad = {
+                loads++
+                // Suspends the first load so the second caller genuinely arrives while it is in
+                // flight, rather than after it. No delay is involved: the gate is released below.
+                loading
+            },
+        )
+
+        val first = async { repository.getActiveUnits() }
+        val second = async { repository.getUnitById("unit_a") }
+        runCurrent()
+        assertTrue(first.isActive && second.isActive, "Neither caller should complete before the load does.")
+
+        loading.complete(Unit)
+
+        val units = first.await()
+        assertEquals("unit_a", requireNotNull(second.await()).id)
+        assertEquals(1, loads, "Overlapping first calls must share one load.")
+        // The same index instance, not an equal copy: a second load would have built a second one.
+        assertSame(units, repository.getActiveUnits())
     }
 
     @Test
@@ -129,11 +180,17 @@ internal class BundledLearningContentRepositoryTest {
         assertFailsWith<LearningContentLoadException> { repository.getLessonById("lesson_side_effects") }
     }
 
-    private fun repository(onLoad: () -> Unit = {}): LearningContentRepository =
+    /**
+     * [onLoad] may return a [CompletableDeferred] to hold the load open, which is how the concurrent
+     * test above arranges an overlap without a timing assumption.
+     */
+    private fun repository(
+        onLoad: () -> CompletableDeferred<Unit>? = { null },
+    ): LearningContentRepository =
         BundledLearningContentRepository(
             loader = LearningContentLoader(
                 loadLearningCurriculum = {
-                    onLoad()
+                    onLoad()?.await()
                     learningCurriculum
                 },
                 loadCurriculum = { baseCurriculum },

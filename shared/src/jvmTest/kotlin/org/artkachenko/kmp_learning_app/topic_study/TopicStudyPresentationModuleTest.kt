@@ -22,6 +22,7 @@ import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeServic
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
+import org.artkachenko.kmp_learning_app.assessment.session.CompleteAssessment
 import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchViewModel
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
@@ -93,6 +94,9 @@ internal class TopicStudyPresentationModuleTest {
                     single<AssessmentRepository> { FakeAssessmentRepository() }
                     single { AssessmentSessionLoader(get(), get()) }
                     single { StartAssessment(get(), get()) }
+                    // Assessment taking resolves completion as one operation rather than being
+                    // handed the repository and the cache to coordinate itself.
+                    single { CompleteAssessment(get(), get(), get()) }
                     single { AssessmentRetakeService(get(), get()) }
                     single { LearningProgressService(get(), get()) }
                     // The presentation module now depends on the app-scoped history cache; the

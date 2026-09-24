@@ -9,13 +9,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
-import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSession
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoadResult
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentStartResult
+import org.artkachenko.kmp_learning_app.assessment.session.CompleteAssessment
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
 
@@ -24,7 +24,7 @@ internal class AssessmentTakingViewModel(
     private val assessmentEngine: AssessmentEngine,
     private val assessmentRepository: AssessmentRepository,
     private val assessmentSessionLoader: AssessmentSessionLoader,
-    private val historyStore: AssessmentHistoryStore,
+    private val completeAttempt: CompleteAssessment,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<AssessmentTakingUiState>(AssessmentTakingUiState.Loading)
     val uiState: StateFlow<AssessmentTakingUiState> = _uiState.asStateFlow()
@@ -142,15 +142,12 @@ internal class AssessmentTakingViewModel(
         )
 
         viewModelScope.launch {
-            runCatching {
-                val completedSession = assessmentEngine.complete(originalSession)
-                assessmentRepository.save(completedSession.attempt)
-                // The only transition that changes completed history, and so the one point the
-                // shared cache behind progress, the mistake queue, the interview record, and the
-                // navigation badge has to be marked stale. In-progress saves cannot affect them.
-                historyStore.invalidate()
-                completedSession
-            }.onSuccess { completedSession ->
+            // Scoring, the durable write, and marking the shared history cache stale are one
+            // operation rather than three statements here: the cache behind Progress, the mistake
+            // queue, the interview record and the navigation badge must not be able to stay stale
+            // because this coroutine was cancelled between the write and the invalidation. See
+            // CompleteAssessment.
+            runCatching { completeAttempt(originalSession) }.onSuccess { completedSession ->
                 session = completedSession
                 _uiState.value = AssessmentTakingUiState.CompletionSucceeded(
                     attemptId = completedSession.attempt.id,

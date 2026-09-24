@@ -17,6 +17,26 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningC
  * first calls wait for the same load, and the cached field is only assigned once the whole
  * document has passed validation, so a failed load leaves no partial indexes behind and
  * cannot be observed as an empty curriculum.
+ *
+ * ## Why the plain cached field is safe to read outside the mutex
+ *
+ * This is a `single`, and its callers are not on one thread: `MistakeReviewStateHolder` reads it
+ * from `AppCoroutineScope`, which is `Dispatchers.Default`, while the Learn ViewModels read it from
+ * `viewModelScope`, which is `Dispatchers.Main.immediate`. A caller that finds the field already set
+ * returns on the fast path without taking the mutex, so that read genuinely races the write — and it
+ * is nonetheless safe, because every property of [LoadedLearningContent] is a `val`, which compiles
+ * to a `final` field. JLS 17.5 freezes final fields at the end of the constructor and guarantees a
+ * thread that obtains the reference only after construction — even through a race — sees their
+ * initialised values and everything reachable from them. The reference is assigned after the
+ * constructor returns, so there is no partially built document to observe. Kotlin/Native follows the
+ * same model, and both web targets are single-threaded.
+ *
+ * `@Volatile` would therefore add a barrier to every read and buy no correctness. This is recorded
+ * rather than left implicit because the shape looks like unsafe publication and invites a fix it
+ * does not need; the guarantee ends the moment [LoadedLearningContent] gains a mutable property,
+ * which is the one change that should revisit this. `CurriculumDataInitializer` reaches the same
+ * safety differently — its flag is published through a `MutableStateFlow` — so the two are not the
+ * same argument even though the double-checked shape is.
  */
 internal class BundledLearningContentRepository(
     private val loader: LearningContentLoader = LearningContentLoader(),

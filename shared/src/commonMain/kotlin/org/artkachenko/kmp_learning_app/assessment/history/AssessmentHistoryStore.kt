@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
@@ -133,17 +134,26 @@ internal class AssessmentHistoryStore(
         reloads.update { it + 1 }
     }
 
-    /** Coalesces concurrent callers onto one retry when the current generation has failed. */
+    /**
+     * Coalesces concurrent callers onto one retry when the current generation has failed.
+     *
+     * The mutex serialises one-shot readers against each other, but [invalidate] does not take it —
+     * it is an unconditional bump that nothing should have to wait for. So the retry bump is written
+     * atomically rather than as a read of [reloads] followed by an absolute assignment: an
+     * [invalidate] landing between those two would have been overwritten, and because the
+     * assignment set an *absolute* value rather than an increment it could move the generation
+     * backwards, letting a later one-shot read be satisfied by a refresh older than its own call.
+     * Incrementing under [updateAndGet] keeps the counter monotonic whatever else is bumping it.
+     */
     private suspend fun generationForOneShotRead(): Int = failedReadRetry.withLock {
-        val currentGeneration = reloads.value
         val latestRefresh = refreshes.value
         if (
             latestRefresh is HistoryRefresh.Failed &&
-            latestRefresh.generation == currentGeneration
+            latestRefresh.generation == reloads.value
         ) {
-            (currentGeneration + 1).also { retryGeneration -> reloads.value = retryGeneration }
+            reloads.updateAndGet { generation -> generation + 1 }
         } else {
-            currentGeneration
+            reloads.value
         }
     }
 

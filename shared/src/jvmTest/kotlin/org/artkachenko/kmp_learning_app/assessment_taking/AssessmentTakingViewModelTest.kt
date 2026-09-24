@@ -32,6 +32,7 @@ import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeServic
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
+import org.artkachenko.kmp_learning_app.assessment.session.CompleteAssessment
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessmentResult
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
@@ -373,20 +374,25 @@ internal class AssessmentTakingViewModelTest {
             startedAt = Instant.fromEpochMilliseconds(1_000),
         )
         val curriculum = FakeCurriculumRepository(questions)
+        val engine = AssessmentEngine(
+            questionSelector = AssessmentQuestionSelector(
+                curriculumRepository = curriculum,
+                completedHistory = { emptyList() },
+                randomize = { it },
+            ),
+            generateAttemptId = { error("start must not be called") },
+            now = { Instant.fromEpochMilliseconds(2_000) },
+        )
         val viewModel = AssessmentTakingViewModel(
             attemptId = "retake-1",
-            assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(
-                    curriculumRepository = curriculum,
-                    completedHistory = { emptyList() },
-                    randomize = { it },
-                ),
-                generateAttemptId = { error("start must not be called") },
-                now = { Instant.fromEpochMilliseconds(2_000) },
-            ),
+            assessmentEngine = engine,
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
-            historyStore = AssessmentHistoryStore(repository, backgroundScope),
+            completeAttempt = CompleteAssessment(
+                assessmentEngine = engine,
+                assessmentRepository = repository,
+                historyStore = AssessmentHistoryStore(repository, backgroundScope),
+            ),
         )
         advanceUntilIdle()
 
@@ -467,20 +473,25 @@ internal class AssessmentTakingViewModelTest {
             startedAt = Instant.fromEpochMilliseconds(1_000),
         )
         val curriculum = FakeCurriculumRepository(questions)
+        val engine = AssessmentEngine(
+            questionSelector = AssessmentQuestionSelector(
+                curriculumRepository = curriculum,
+                completedHistory = { emptyList() },
+                randomize = { it },
+            ),
+            generateAttemptId = { error("start must not be called") },
+            now = { Instant.fromEpochMilliseconds(2_000) },
+        )
         val viewModel = AssessmentTakingViewModel(
             attemptId = "mixed-existing",
-            assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(
-                    curriculumRepository = curriculum,
-                    completedHistory = { emptyList() },
-                    randomize = { it },
-                ),
-                generateAttemptId = { error("start must not be called") },
-                now = { Instant.fromEpochMilliseconds(2_000) },
-            ),
+            assessmentEngine = engine,
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
-            historyStore = AssessmentHistoryStore(repository, backgroundScope),
+            completeAttempt = CompleteAssessment(
+                assessmentEngine = engine,
+                assessmentRepository = repository,
+                historyStore = AssessmentHistoryStore(repository, backgroundScope),
+            ),
         )
 
         advanceUntilIdle()
@@ -540,7 +551,11 @@ internal class AssessmentTakingViewModelTest {
             assessmentEngine = engine,
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
-            historyStore = AssessmentHistoryStore(repository, backgroundScope),
+            completeAttempt = CompleteAssessment(
+                assessmentEngine = engine,
+                assessmentRepository = repository,
+                historyStore = AssessmentHistoryStore(repository, backgroundScope),
+            ),
         )
         advanceUntilIdle()
 
@@ -563,20 +578,25 @@ internal class AssessmentTakingViewModelTest {
             startedAt = Instant.fromEpochMilliseconds(1_000),
         )
         val curriculum = FakeCurriculumRepository(questions)
+        val engine = AssessmentEngine(
+            questionSelector = AssessmentQuestionSelector(
+                curriculumRepository = curriculum,
+                completedHistory = { emptyList() },
+                randomize = { it },
+            ),
+            generateAttemptId = { error("start must not be called") },
+            now = { Instant.fromEpochMilliseconds(2_000) },
+        )
         val viewModel = AssessmentTakingViewModel(
             attemptId = "mixed-ready",
-            assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(
-                    curriculumRepository = curriculum,
-                    completedHistory = { emptyList() },
-                    randomize = { it },
-                ),
-                generateAttemptId = { error("start must not be called") },
-                now = { Instant.fromEpochMilliseconds(2_000) },
-            ),
+            assessmentEngine = engine,
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
-            historyStore = AssessmentHistoryStore(repository, backgroundScope),
+            completeAttempt = CompleteAssessment(
+                assessmentEngine = engine,
+                assessmentRepository = repository,
+                historyStore = AssessmentHistoryStore(repository, backgroundScope),
+            ),
         )
 
         advanceUntilIdle()
@@ -601,20 +621,25 @@ internal class AssessmentTakingViewModelTest {
             score = AssessmentScore(totalQuestions = 1, correctAnswers = 1),
         )
         val curriculum = FakeCurriculumRepository(emptyList())
+        val engine = AssessmentEngine(
+            questionSelector = AssessmentQuestionSelector(
+                curriculumRepository = curriculum,
+                completedHistory = { emptyList() },
+                randomize = { it },
+            ),
+            generateAttemptId = { error("start must not be called") },
+            now = { Instant.fromEpochMilliseconds(3_000) },
+        )
         val viewModel = AssessmentTakingViewModel(
             attemptId = "mixed-completed",
-            assessmentEngine = AssessmentEngine(
-                questionSelector = AssessmentQuestionSelector(
-                    curriculumRepository = curriculum,
-                    completedHistory = { emptyList() },
-                    randomize = { it },
-                ),
-                generateAttemptId = { error("start must not be called") },
-                now = { Instant.fromEpochMilliseconds(3_000) },
-            ),
+            assessmentEngine = engine,
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
-            historyStore = AssessmentHistoryStore(repository, backgroundScope),
+            completeAttempt = CompleteAssessment(
+                assessmentEngine = engine,
+                assessmentRepository = repository,
+                historyStore = AssessmentHistoryStore(repository, backgroundScope),
+            ),
         )
 
         advanceUntilIdle()
@@ -675,7 +700,11 @@ internal class AssessmentTakingViewModelTest {
             assessmentEngine = engine,
             assessmentRepository = repository,
             assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
-            historyStore = AssessmentHistoryStore(repository, CoroutineScope(SupervisorJob())),
+            completeAttempt = CompleteAssessment(
+                assessmentEngine = engine,
+                assessmentRepository = repository,
+                historyStore = AssessmentHistoryStore(repository, CoroutineScope(SupervisorJob())),
+            ),
         )
     }
 

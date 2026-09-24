@@ -232,6 +232,12 @@ internal class CurriculumValidator {
         }
     }
 
+    /**
+     * A source URL is the stored identity of a citation: `question_source` is keyed by
+     * `(question_id, url)`, so two sources authored with the same URL would silently
+     * become one row and quietly drop a citation. The duplicate is reported instead,
+     * because which title the author meant cannot be inferred.
+     */
     private fun validateSources(
         question: Question,
         errors: MutableList<CurriculumValidationError>,
@@ -240,7 +246,11 @@ internal class CurriculumValidator {
             errors.add(error(CurriculumValidationErrorCode.NO_SOURCES, question.id, "Question '${question.id}' must have at least one source."))
         }
 
+        val duplicateUrls = duplicateNonBlankValues(question.sources.map { it.url })
         question.sources.forEach { source ->
+            if (source.url in duplicateUrls) {
+                errors.add(error(CurriculumValidationErrorCode.DUPLICATE_SOURCE_URL, question.id, "Question '${question.id}' cites source URL '${source.url}' more than once."))
+            }
             validateSource(question, source, errors)
         }
     }

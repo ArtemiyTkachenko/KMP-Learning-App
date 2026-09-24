@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.topic_study.focused_result
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,9 +9,11 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.flow.first
@@ -24,6 +27,8 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeCreated
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
@@ -126,13 +131,66 @@ internal class FocusedResultViewModelTest {
             id = "attempt", config = config(), questionAttempts = listOf(QuestionAttempt("q")),
             status = AssessmentStatus.IN_PROGRESS, startedAt = Instant.fromEpochMilliseconds(1),
         )
-        missing.retry()
+        val incomplete = FocusedResultViewModel(
+            "attempt",
+            repo,
+            reviewLoader(emptyList()),
+            retakeService(repo, emptyList()),
+            savedQuestionStateHolder(),
+        )
         advanceUntilIdle()
-        assertIs<FocusedResultUiState.NotCompleted>(missing.uiState.value)
+        assertIs<FocusedResultUiState.NotCompleted>(incomplete.uiState.value)
     }
 
     @Test
-    fun repeatPracticeEmitsNewAttemptEvent() = runTest {
+    fun resultLoadCancellationDoesNotBecomeAnError() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = FakeAssessmentRepository(completedAttempt(listOf("q"), 1)).apply {
+            loadFailure = CancellationException("cancelled")
+        }
+        val viewModel = FocusedResultViewModel(
+            "attempt",
+            repository,
+            reviewLoader(listOf(question("q"))),
+            retakeService(repository, listOf(question("q"))),
+            savedQuestionStateHolder(),
+        )
+
+        advanceUntilIdle()
+
+        assertIs<FocusedResultUiState.Loading>(viewModel.uiState.value)
+    }
+
+    @Test
+    fun duplicateRetryWhileReloadIsPendingStartsOneLoad() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = FakeAssessmentRepository(completedAttempt(listOf("q"), 1)).apply {
+            loadFailure = IllegalStateException("unavailable")
+        }
+        val viewModel = FocusedResultViewModel(
+            "attempt",
+            repository,
+            reviewLoader(listOf(question("q"))),
+            retakeService(repository, listOf(question("q"))),
+            savedQuestionStateHolder(),
+        )
+        advanceUntilIdle()
+        assertIs<FocusedResultUiState.Error>(viewModel.uiState.value)
+        val gate = CompletableDeferred<Unit>()
+        repository.loadGate = gate
+
+        viewModel.retry()
+        viewModel.retry()
+        runCurrent()
+
+        assertEquals(2, repository.loadCalls)
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertIs<FocusedResultUiState.Content>(viewModel.uiState.value)
+    }
+
+    @Test
+    fun repeatPracticeEmitsOneAttemptAndBlocksReentryWhileNavigationIsPending() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val question = question("q")
         val repository = FakeAssessmentRepository(completedAttempt(listOf("q"), 1))
@@ -145,10 +203,73 @@ internal class FocusedResultViewModelTest {
         )
         advanceUntilIdle()
 
-        val event = async { viewModel.events.first() }
+        val event = async { viewModel.retakeEvents.first() }
         viewModel.repeatPractice()
         advanceUntilIdle()
-        assertEquals(FocusedResultEvent.RetakeCreated("retake"), event.await())
+        assertEquals(AssessmentRetakeCreated("retake"), event.await())
+        assertEquals(AssessmentRetakeState.Created("retake"), viewModel.retakeState.value)
+
+        viewModel.repeatPractice()
+        advanceUntilIdle()
+        assertEquals(1, repository.saveCalls)
+        viewModel.onRetakeEventHandled("other-retake")
+        assertEquals(AssessmentRetakeState.Created("retake"), viewModel.retakeState.value)
+        viewModel.onRetakeEventHandled("retake")
+        assertEquals(AssessmentRetakeState.Idle, viewModel.retakeState.value)
+
+        // The result itself is unchanged by any of it: the retake state is a separate stream now,
+        // so a transition cannot rewrite the score or the transcript.
+        val content = assertIs<FocusedResultUiState.Content>(viewModel.uiState.value)
+        assertEquals(listOf("q"), content.questions.map { assertIs<ReviewQuestionItem.Available>(it).question.questionId })
+    }
+
+    /**
+     * The one rule the result keeps for itself now that the state machine is shared: there has to
+     * be a result to practise again. Without it the shared controller would happily create a
+     * durable attempt from a screen that is still loading or has failed.
+     */
+    @Test
+    fun practiseAgainBeforeTheResultLoadsCreatesNothing() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val question = question("q")
+        val repository = FakeAssessmentRepository(completedAttempt(listOf("q"), 1))
+        val viewModel = FocusedResultViewModel(
+            "attempt",
+            repository,
+            reviewLoader(listOf(question)),
+            retakeService(repository, listOf(question)),
+            savedQuestionStateHolder(),
+        )
+
+        // Still Loading: the attempt read has not been dispatched yet.
+        assertIs<FocusedResultUiState.Loading>(viewModel.uiState.value)
+        viewModel.repeatPractice()
+        advanceUntilIdle()
+
+        assertEquals(AssessmentRetakeState.Idle, viewModel.retakeState.value)
+        assertEquals(0, repository.saveCalls)
+    }
+
+    @Test
+    fun retakeCancellationDoesNotBecomeAnError() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val question = question("q")
+        val repository = FakeAssessmentRepository(completedAttempt(listOf("q"), 1))
+        val curriculum = FakeCurriculumRepository(listOf(question))
+        val viewModel = FocusedResultViewModel(
+            "attempt",
+            repository,
+            AssessmentReviewLoader(curriculum),
+            retakeService(repository, curriculum),
+            savedQuestionStateHolder(),
+        )
+        advanceUntilIdle()
+        curriculum.selectionFailure = CancellationException("cancelled")
+
+        viewModel.repeatPractice()
+        advanceUntilIdle()
+
+        assertEquals(AssessmentRetakeState.Creating, viewModel.retakeState.value)
     }
 
     /**
@@ -242,14 +363,22 @@ internal class FocusedResultViewModelTest {
     private fun reviewLoader(questions: List<Question>) =
         AssessmentReviewLoader(FakeCurriculumRepository(questions))
 
-    private fun retakeService(repository: FakeAssessmentRepository, questions: List<Question>) =
+    private fun retakeService(
+        repository: FakeAssessmentRepository,
+        questions: List<Question>,
+    ) = retakeService(repository, FakeCurriculumRepository(questions))
+
+    private fun retakeService(
+        repository: FakeAssessmentRepository,
+        curriculum: FakeCurriculumRepository,
+    ) =
         AssessmentRetakeService(
             assessmentRepository = repository,
             startAssessment = StartAssessment(
                 assessmentRepository = repository,
                 assessmentEngine = AssessmentEngine(
                     questionSelector = AssessmentQuestionSelector(
-                        curriculumRepository = FakeCurriculumRepository(questions),
+                        curriculumRepository = curriculum,
                         completedHistory = { emptyList() },
                         randomize = { it },
                     ),
@@ -269,13 +398,30 @@ internal class FocusedResultViewModelTest {
     )
 
     private class FakeAssessmentRepository(var attempt: TestAttempt?) : AssessmentRepository {
-        override suspend fun save(attempt: TestAttempt) { this.attempt = attempt }
-        override suspend fun getById(attemptId: String): TestAttempt? = attempt
+        var saveCalls = 0
+        var loadFailure: Throwable? = null
+        var loadGate: CompletableDeferred<Unit>? = null
+        var loadCalls = 0
+
+        override suspend fun save(attempt: TestAttempt) {
+            saveCalls++
+            this.attempt = attempt
+        }
+        override suspend fun getById(attemptId: String): TestAttempt? {
+            loadCalls++
+            loadFailure?.let { failure ->
+                loadFailure = null
+                throw failure
+            }
+            loadGate?.await()
+            return attempt
+        }
         override suspend fun getCompletedAttempts(): List<TestAttempt> = emptyList()
     }
 
     private class FakeCurriculumRepository(private val questions: List<Question>) : CurriculumRepository {
         val lookups = mutableListOf<String>()
+        var selectionFailure: Throwable? = null
         override suspend fun getActiveTopics(): List<Topic> = error("not used")
         override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> = error("not used")
         override suspend fun getActiveQuestions(): List<Question> = questions
@@ -285,13 +431,19 @@ internal class FocusedResultViewModelTest {
         override suspend fun getActiveQuestionsByTopicAndLevels(
             topicId: String,
             levels: Set<QuestionLevel>,
-        ): List<Question> = questions.filter { it.level in levels }
+        ): List<Question> {
+            selectionFailure?.let { throw it }
+            return questions.filter { it.level in levels }
+        }
         override suspend fun getActiveQuestionsBySubtopicAndLevels(
             subtopicId: String,
             levels: Set<QuestionLevel>,
         ): List<Question> = questions.filter { it.level in levels }
         override suspend fun getTopicById(topicId: String): Topic? = null
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
-        override suspend fun getQuestionById(questionId: String): Question? { lookups += questionId; return questions.firstOrNull { it.id == questionId } }
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
+            lookups += questionIds
+            return questions.filter { it.id in questionIds }.associateBy(Question::id)
+        }
     }
 }

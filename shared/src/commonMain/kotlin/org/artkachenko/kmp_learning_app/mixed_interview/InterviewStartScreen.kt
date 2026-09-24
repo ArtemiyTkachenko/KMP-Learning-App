@@ -1,6 +1,5 @@
 package org.artkachenko.kmp_learning_app.mixed_interview
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,6 +24,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.interview_history_attempts
 import kmp_learning_app.shared.generated.resources.interview_history_best
@@ -134,6 +135,7 @@ private fun LazyListScope.invitationSection(onStartMixedInterview: () -> Unit) {
             text = stringResource(Res.string.mixed_interview_title),
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.semantics { heading() },
         )
     }
     item {
@@ -318,7 +320,6 @@ private fun InterviewRecordRow(
         ),
         percentage = attempt.percentage,
         caption = if (showsDate) timestampText(attempt.completedAt) else null,
-        showChevron = true,
-        modifier = Modifier.clickable { onOpenResult(attempt.attemptId) },
+        onClick = { onOpenResult(attempt.attemptId) },
     )
 }

@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.mistake_review
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,6 +35,9 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningLesson
+import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
+import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
@@ -104,6 +108,69 @@ internal class MistakeReviewViewModelTest {
         val content = assertIs<MistakeReviewUiState.Content>(state.value)
         assertEquals(listOf("q1"), content.mistakes.map { it.questionId })
     }
+
+    @Test
+    fun queueCancellationDoesNotBecomeAnError() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
+        )
+        val scope = testCacheScope()
+        val store = testHistoryStore(repository, scope)
+        val state = MistakeReviewStateHolder(
+            MistakeReviewService(
+                repository,
+                AssessmentReviewLoader(CancelingCurriculumRepository),
+            ),
+            store,
+            scope,
+        ).state
+
+        advanceUntilIdle()
+
+        assertIs<MistakeReviewUiState.Loading>(state.value)
+    }
+
+    @Test
+    fun studyLinkCancellationDoesNotPublishQueueWithoutLinks() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
+        )
+        val scope = testCacheScope()
+        val store = testHistoryStore(repository, scope)
+        val state = MistakeReviewStateHolder(
+            vmService(repository),
+            store,
+            scope,
+            CancelingLearningContentRepository,
+        ).state
+
+        advanceUntilIdle()
+
+        assertIs<MistakeReviewUiState.Loading>(state.value)
+    }
+
+    @Test
+    fun ordinaryStudyLinkFailureKeepsMistakesWithoutLinks() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
+        )
+        val scope = testCacheScope()
+        val store = testHistoryStore(repository, scope)
+        val state = MistakeReviewStateHolder(
+            vmService(repository),
+            store,
+            scope,
+            FailingLearningContentRepository,
+        ).state
+
+        advanceUntilIdle()
+
+        val mistake = assertIs<MistakeReviewUiState.Content>(state.value).mistakes.single()
+        assertEquals(null, mistake.studyLesson)
+    }
     /**
      * Saved state and unresolved state are separate truths. Saving is learner intent about a
      * Question; only answering it correctly can take it out of the queue.
@@ -173,6 +240,33 @@ internal class MistakeReviewViewModelTest {
         assertIs<SavedQuestionsState.Error>(viewModel.savedQuestions.value)
     }
 
+    /**
+     * Retry has to recover a failed derivation, not only a failed history read.
+     *
+     * Invalidating the shared history re-reads the attempt table, but an unchanged table produces an
+     * equal `AssessmentHistory.Loaded`, and a `StateFlow` does not emit an equal value again. When
+     * it was the curriculum that was unreadable while reconstructing review content, nothing
+     * downstream would run and the queue would stay in Error for the rest of the session.
+     */
+    @Test
+    fun retryRecoversADerivationFailureEvenThoughHistoryIsUnchanged() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = VmHistoryRepository(
+            listOf(vmAttempt("a1", "2026-08-29T10:00:00Z", "q1")),
+        )
+        val curriculum = FailableCurriculumRepository(failing = true)
+        val viewModel = viewModel(repository, curriculum)
+        advanceUntilIdle()
+        assertIs<MistakeReviewUiState.Error>(viewModel.uiState.value)
+
+        curriculum.failing = false
+        viewModel.refresh()
+        advanceUntilIdle()
+
+        val content = assertIs<MistakeReviewUiState.Content>(viewModel.uiState.value)
+        assertEquals(listOf("q1"), content.mistakes.map { it.questionId })
+    }
+
     private fun TestScope.viewModel(
         repository: AssessmentRepository,
         curriculum: CurriculumRepository = VmCurriculumRepository,
@@ -205,6 +299,16 @@ internal class MistakeReviewViewModelTest {
             historyStore = testHistoryStore(repository, scope),
             scope = scope,
         ).state
+    }
+}
+
+/** An otherwise ordinary curriculum that can be made unreadable and readable again. */
+private class FailableCurriculumRepository(
+    var failing: Boolean = false,
+) : CurriculumRepository by VmCurriculumRepository {
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
+        if (failing) error("Curriculum unavailable.")
+        return VmCurriculumRepository.getQuestionsByIds(questionIds)
     }
 }
 
@@ -274,28 +378,58 @@ private object VmCurriculumRepository : CurriculumRepository {
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
         error("Subtopic lookup is not needed.")
 
-    override suspend fun getQuestionById(questionId: String): Question? =
-        Question(
-            id = questionId,
-            topicId = "kotlin",
-            subtopicId = "coroutines",
-            text = "Question $questionId",
-            answers = listOf(
-                AnswerOption("${questionId}_a", "Answer A"),
-                AnswerOption("${questionId}_b", "Answer B"),
-            ),
-            selectionMode = AnswerSelectionMode.SINGLE,
-            level = QuestionLevel.FOUNDATION,
-            correctAnswerIds = listOf("${questionId}_a"),
-            explanation = "Explanation",
-            sources = listOf(SourceReference("Source", "https://example.com/$questionId")),
-        )
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        questionIds.associateWith { questionId ->
+            Question(
+                id = questionId,
+                topicId = "kotlin",
+                subtopicId = "coroutines",
+                text = "Question $questionId",
+                answers = listOf(
+                    AnswerOption("${questionId}_a", "Answer A"),
+                    AnswerOption("${questionId}_b", "Answer B"),
+                ),
+                selectionMode = AnswerSelectionMode.SINGLE,
+                level = QuestionLevel.FOUNDATION,
+                correctAnswerIds = listOf("${questionId}_a"),
+                explanation = "Explanation",
+                sources = listOf(SourceReference("Source", "https://example.com/$questionId")),
+            )
+        }
+}
+
+private object CancelingCurriculumRepository : CurriculumRepository by VmCurriculumRepository {
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        throw CancellationException("cancelled")
+}
+
+private object CancelingLearningContentRepository : LearningContentRepository {
+    override suspend fun getActiveUnits(): List<LearningUnit> =
+        throw CancellationException("cancelled")
+
+    override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> =
+        error("Not used.")
+
+    override suspend fun getUnitById(unitId: String): LearningUnit? = error("Not used.")
+
+    override suspend fun getLessonById(lessonId: String): LearningLesson? = error("Not used.")
+}
+
+private object FailingLearningContentRepository : LearningContentRepository {
+    override suspend fun getActiveUnits(): List<LearningUnit> = error("unavailable")
+
+    override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> =
+        error("Not used.")
+
+    override suspend fun getUnitById(unitId: String): LearningUnit? = error("Not used.")
+
+    override suspend fun getLessonById(lessonId: String): LearningLesson? = error("Not used.")
 }
 
 /** Review content the curriculum no longer holds, so the queue entry resolves to Missing. */
 private class PartialCurriculumRepository(
     private val missingIds: Set<String>,
 ) : CurriculumRepository by VmCurriculumRepository {
-    override suspend fun getQuestionById(questionId: String): Question? =
-        if (questionId in missingIds) null else VmCurriculumRepository.getQuestionById(questionId)
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        VmCurriculumRepository.getQuestionsByIds(questionIds.filterNot { it in missingIds })
 }

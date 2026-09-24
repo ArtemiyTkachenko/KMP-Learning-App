@@ -274,8 +274,8 @@ internal class GuidedLearningPracticePresetIntegrationTest {
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
             Subtopics.firstOrNull { it.id == subtopicId }
 
-        override suspend fun getQuestionById(questionId: String): Question? =
-            Questions.firstOrNull { it.id == questionId }
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            Questions.filter { it.id in questionIds }.associateBy(Question::id)
     }
 
     private companion object {

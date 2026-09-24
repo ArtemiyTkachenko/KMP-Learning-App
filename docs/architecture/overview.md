@@ -95,13 +95,15 @@ route data into their ViewModels, while Navigation 3 entry-scoped ViewModel
 ownership remains intact: each back-stack entry receives its own
 ViewModelStore, and the ViewModel is cleared when that entry is removed.
 
-All runtime hosts share `AppRoot(initialize)` in shared `commonMain`. It owns the
-startup loading, failure, and retry states around the platform initializer and
-then enters `App()`. Hosts start Koin before composition and supply only their
-own initializer, so a failed initialization cannot leave a host without
-content. `App()` keeps its own theme call so it remains usable directly in
-tests and previews that bypass `AppRoot` — both go through `AppearanceTheme`, so the two
-are one decision rather than two that happen to agree.
+All runtime hosts share `AppRoot(initializer)` in shared `commonMain`. The app-scoped
+`CurriculumDataInitializer` implements the small `AppStartupInitializer` host contract and owns
+successful completion for the process lifetime: host reconstruction sees that completion, while a
+fresh graph after process restart begins incomplete and runs initialization again. `AppRoot` owns
+only the transient loading, failure, and retry presentation around that initializer, then enters
+`App()`. Hosts start Koin before composition and supply the one initializer, so a failed
+initialization cannot leave a host without content. `App()` keeps its own theme call so it remains
+usable directly in tests and previews that bypass `AppRoot` — both go through `AppearanceTheme`, so
+the two are one decision rather than two that happen to agree.
 
 ### Runtime Host Coverage
 
@@ -157,11 +159,14 @@ operating system exactly as it did before the preference existed.
 
 `AppearanceStateHolder` is a Koin `single`, so the preference outlives the Settings entry
 that changes it — a Settings-scoped ViewModel would take the application's theme with it
-when popped. It reads storage **once, synchronously, in its constructor**, while the host
-is building its graph: the preference is therefore already in memory before anything
-composes, which is what avoids both a light-to-dark flash and an asynchronous startup step
-in `AppRoot`. Its write is likewise undispatched, because it is one small key-value write
-and a closing app must not lose the choice to a coroutine that never ran.
+when popped. It reads storage **once, synchronously, in its constructor**. A Koin
+`single` is lazy, so that read happens on first resolution — `AppearanceTheme`'s
+`remember` block, on the first composition — rather than while the host builds its
+graph. Being synchronous is what matters: the read completes inside that composition,
+so the effective theme is settled before the first frame, which avoids both a
+light-to-dark flash and an asynchronous startup step in `AppRoot`. Its write is
+likewise undispatched, because it is one small key-value write and a closing app must
+not lose the choice to a coroutine that never ran.
 
 `AppearanceTheme` resolves the holder from the running application graph and tolerates its
 absence: a preview or an isolated screen test has no graph, and then the system value

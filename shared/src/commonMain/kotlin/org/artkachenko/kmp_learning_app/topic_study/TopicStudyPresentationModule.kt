@@ -237,7 +237,7 @@ internal val topicStudyPresentationModule = module {
             assessmentEngine = get(),
             assessmentRepository = get(),
             assessmentSessionLoader = get<AssessmentSessionLoader>(),
-            historyStore = get(),
+            completeAttempt = get(),
         )
     }
     viewModel { parameters ->

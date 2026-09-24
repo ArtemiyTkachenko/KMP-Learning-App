@@ -278,20 +278,22 @@ private object DestinationCurriculumRepository : CurriculumRepository {
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
         error("Subtopic lookup is not needed.")
 
-    override suspend fun getQuestionById(questionId: String): Question? =
-        Question(
-            id = questionId,
-            topicId = "kotlin",
-            subtopicId = "coroutines",
-            text = "Question $questionId",
-            answers = listOf(
-                AnswerOption("${questionId}_a", "Answer A"),
-                AnswerOption("${questionId}_b", "Answer B"),
-            ),
-            selectionMode = AnswerSelectionMode.SINGLE,
-            level = QuestionLevel.FOUNDATION,
-            correctAnswerIds = listOf("${questionId}_a"),
-            explanation = "Explanation",
-            sources = listOf(SourceReference("Kotlin docs", "https://kotlinlang.org/$questionId")),
-        )
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        questionIds.associateWith { questionId ->
+            Question(
+                id = questionId,
+                topicId = "kotlin",
+                subtopicId = "coroutines",
+                text = "Question $questionId",
+                answers = listOf(
+                    AnswerOption("${questionId}_a", "Answer A"),
+                    AnswerOption("${questionId}_b", "Answer B"),
+                ),
+                selectionMode = AnswerSelectionMode.SINGLE,
+                level = QuestionLevel.FOUNDATION,
+                correctAnswerIds = listOf("${questionId}_a"),
+                explanation = "Explanation",
+                sources = listOf(SourceReference("Kotlin docs", "https://kotlinlang.org/$questionId")),
+            )
+        }
 }

@@ -3,7 +3,7 @@ package org.artkachenko.kmp_learning_app.mistake_review
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.StateFlow
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
-import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.assessment_review.isAvailableFor
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
@@ -31,6 +31,13 @@ internal class MistakeReviewViewModel(
         savedQuestionStateHolder.refresh()
     }
 
+    /**
+     * Recovers from either failure the queue can show — an unreadable attempt table, and a
+     * derivation over readable history that could not reconstruct review content — with the one
+     * call that reaches both: the store re-announces the cached history once its re-read settles,
+     * so the derivation runs again even when the attempts came back identical. Saved state has its
+     * own read and is refreshed alongside.
+     */
     fun refresh() {
         historyStore.invalidate()
         savedQuestionStateHolder.refresh()
@@ -42,11 +49,7 @@ internal class MistakeReviewViewModel(
      */
     fun toggleSaved(questionId: String) {
         val content = uiState.value as? MistakeReviewUiState.Content ?: return
-        val isAvailable = content.mistakes.any { mistake ->
-            val item = mistake.reviewItem
-            item is ReviewQuestionItem.Available && item.question.questionId == questionId
-        }
-        if (!isAvailable) return
+        if (content.mistakes.none { it.reviewItem.isAvailableFor(questionId) }) return
         savedQuestionStateHolder.toggleSaved(questionId)
     }
 }

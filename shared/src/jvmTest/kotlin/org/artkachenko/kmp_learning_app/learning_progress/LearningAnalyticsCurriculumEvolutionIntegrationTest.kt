@@ -35,6 +35,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.Curriculu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
 import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
+import org.artkachenko.kmp_learning_app.getQuestionById
 
 /**
  * Derived analytics against real persistence and a curriculum that keeps changing underneath it.
@@ -471,8 +472,8 @@ private class CurriculumRepositoryWithoutQuestion(
     private val delegate: CurriculumRepository,
     private val unavailableQuestionId: String,
 ) : CurriculumRepository by delegate {
-    override suspend fun getQuestionById(questionId: String): Question? =
-        if (questionId == unavailableQuestionId) null else delegate.getQuestionById(questionId)
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        delegate.getQuestionsByIds(questionIds.filterNot { it == unavailableQuestionId })
 
     override suspend fun getActiveQuestions(): List<Question> =
         delegate.getActiveQuestions().filterNot { it.id == unavailableQuestionId }

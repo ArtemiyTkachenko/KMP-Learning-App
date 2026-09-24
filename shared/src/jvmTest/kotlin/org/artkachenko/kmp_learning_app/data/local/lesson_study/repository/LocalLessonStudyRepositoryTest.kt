@@ -140,6 +140,35 @@ internal class LocalLessonStudyRepositoryTest {
     }
 
     @Test
+    fun aConcurrentRepeatedMarkCannotReplaceTheOriginalRecordedTime() = runTest {
+        withTestDatabase { database ->
+            var epochMillis = 1_000L
+            val repository = LocalLessonStudyRepository(
+                database = database,
+                now = { Instant.fromEpochMilliseconds(epochMillis) },
+            )
+            repository.markStudied("lesson_a")
+
+            epochMillis = 2_000
+            coroutineScope {
+                List(20) {
+                    async { repository.markStudied("lesson_a") }
+                }.awaitAll()
+            }
+
+            // Collapsing to one row is not the whole contract: studied order is timestamp first, so
+            // a repeat that raced the original must not be able to move this Lesson to the front of
+            // the list either. Insert-ignore gives both properties; an upsert would give only the
+            // first.
+            assertEquals(
+                listOf(StudiedLesson("lesson_a", studiedAtEpochMillis = 1_000)),
+                repository.getStudiedLessons(),
+            )
+            assertEquals(1, database.studiedLessonDao().count())
+        }
+    }
+
+    @Test
     fun aRecordForALessonNoLongerInTheBundleIsRetainedReadableAndRemovable() = runTest {
         withTestDatabase { database ->
             // Deliberately no LearningContentRepository here: persistence never asks whether a

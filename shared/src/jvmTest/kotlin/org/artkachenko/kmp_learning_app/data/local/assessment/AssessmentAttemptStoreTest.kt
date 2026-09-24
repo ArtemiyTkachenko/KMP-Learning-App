@@ -538,6 +538,42 @@ internal class AssessmentAttemptStoreTest {
     }
 
     @Test
+    fun aFailedSaveLeavesThePreviouslyCommittedSnapshotIntact() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val store = AssessmentAttemptStore(database)
+            val committed = TestAttempt(
+                id = "attempt_rollback",
+                config = AssessmentConfig.Mixed(questionCount = 2),
+                questionAttempts = listOf(
+                    answeredQuestionAttempt("question_a", "question_a_a"),
+                    QuestionAttempt("question_b"),
+                ),
+                status = AssessmentStatus.IN_PROGRESS,
+                startedAt = StartedAt,
+            )
+            store.save(committed)
+
+            // The aggregate save deletes this attempt's children before writing the new ones, so a
+            // write that fails part-way is exactly the shape that could leave an updated attempt row
+            // beside no occurrences at all. A selected answer owned by another Question violates the
+            // composite foreign key and fails the last statement in the sequence.
+            val corrupt = committed.copy(
+                questionAttempts = listOf(
+                    answeredQuestionAttempt("question_a", "question_b_a"),
+                    answeredQuestionAttempt("question_b", "question_b_b"),
+                ),
+            )
+
+            assertFails { store.save(corrupt) }
+
+            assertEquals(committed, store.getById("attempt_rollback"))
+            assertEquals(2, database.assessmentAttemptDao().countQuestionAttempts())
+            assertEquals(1, database.assessmentAttemptDao().countSelectedAnswers())
+        }
+    }
+
+    @Test
     fun deprecatedQuestionReferenceCanBePersistedForHistory() = runTest {
         withTestDatabase { database ->
             insertAttemptFixtureCurriculum(database)

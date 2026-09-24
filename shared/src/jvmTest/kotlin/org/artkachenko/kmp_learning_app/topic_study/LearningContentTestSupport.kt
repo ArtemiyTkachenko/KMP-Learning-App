@@ -58,7 +58,8 @@ internal fun testLearningLesson(
  * resolvable by ID.
  *
  * [failuresRemaining] fails that many calls before answering, so a Retry can be observed
- * recovering rather than only failing.
+ * recovering rather than only failing, and [beforeRead] can hold a read open so a load that is
+ * superseded mid-flight is observable rather than instantaneous.
  */
 internal class FakeLearningContentRepository(
     units: List<LearningUnit> = emptyList(),
@@ -74,23 +75,39 @@ internal class FakeLearningContentRepository(
     var lessonReadIds = mutableListOf<String>()
         private set
 
+    /**
+     * Runs before each read answers, with that read's 1-based number.
+     *
+     * The default does nothing, so every existing call site reads synchronously as before. A test
+     * that needs two loads in flight at once gates them by number — the superseded read can then
+     * be released *after* its replacement has been observed, which is what turns "a cancelled load
+     * publishes nothing" into a deterministic assertion instead of a race.
+     */
+    var beforeRead: suspend (Int) -> Unit = {}
+
+    private var readCount = 0
+
     override suspend fun getActiveUnits(): List<LearningUnit> {
+        beforeRead(++readCount)
         failIfRequested()
         return allUnits.filter { it.status == ContentStatus.ACTIVE }
     }
 
     override suspend fun getActiveUnitsByTopic(topicId: String): List<LearningUnit> {
+        beforeRead(++readCount)
         failIfRequested()
         return allUnits.filter { it.topicId == topicId && it.status == ContentStatus.ACTIVE }
     }
 
     override suspend fun getUnitById(unitId: String): LearningUnit? {
+        beforeRead(++readCount)
         failIfRequested()
         unitReadIds += unitId
         return unitsById[unitId]
     }
 
     override suspend fun getLessonById(lessonId: String): LearningLesson? {
+        beforeRead(++readCount)
         failIfRequested()
         lessonReadIds += lessonId
         return lessonsById[lessonId]

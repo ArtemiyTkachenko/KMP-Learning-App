@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.lesson_study
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,28 +58,24 @@ internal class StudyProgressStateHolder(
         if (!reading.tryLock()) return
         scope.launch {
             try {
-                runCatching { repository.getStudiedLessons() }.fold(
-                    onSuccess = { studied ->
-                        _state.update { current ->
-                            when (current) {
-                                // A mutation in flight keeps its pending marker across the refresh.
-                                is StudyProgressState.Loaded -> current.copy(studiedLessons = studied)
-                                else -> StudyProgressState.Loaded(studied)
-                            }
+                try {
+                    val studied = repository.getStudiedLessons()
+                    _state.update { current ->
+                        when (current) {
+                            // A mutation in flight keeps its pending marker across the refresh.
+                            is StudyProgressState.Loaded -> current.copy(studiedLessons = studied)
+                            else -> StudyProgressState.Loaded(studied)
                         }
-                    },
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
                     // A failed re-read leaves an earlier successful one in place: a transient
                     // failure must not repaint every Lesson in the Learn stack as unstudied.
-                    onFailure = {
-                        _state.update { current ->
-                            if (current is StudyProgressState.Loaded) {
-                                current
-                            } else {
-                                StudyProgressState.Error
-                            }
-                        }
-                    },
-                )
+                    _state.update { current ->
+                        current as? StudyProgressState.Loaded ?: StudyProgressState.Error
+                    }
+                }
             } finally {
                 reading.unlock()
             }
@@ -111,19 +108,21 @@ internal class StudyProgressStateHolder(
             }
         }
         scope.launch {
-            runCatching {
+            try {
                 if (mark) repository.markStudied(lessonId) else repository.unmarkStudied(lessonId)
                 // The read-back is ordered against [refresh]'s reads; see [reading].
-                reading.withLock { repository.getStudiedLessons() }
-            }.fold(
-                onSuccess = { studied -> settle(lessonId) { it.copy(studiedLessons = studied) } },
+                val studied = reading.withLock { repository.getStudiedLessons() }
+                settle(lessonId) { it.copy(studiedLessons = studied) }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
                 // The write failed, or the read after it did. Either way the last state actually
                 // read from the repository stands rather than a guess at what the write made true:
                 // when only the read-back failed the database may well hold the new value, and the
                 // next refresh is what discovers that. Inventing it here is what the read-back
                 // contract exists to forbid.
-                onFailure = { settle(lessonId) { it } },
-            )
+                settle(lessonId) { it }
+            }
         }
     }
 

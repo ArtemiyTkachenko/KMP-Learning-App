@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.mistake_review
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +27,15 @@ internal class MistakeReviewStateHolder(
     scope: CoroutineScope,
     private val learningContentRepository: LearningContentRepository? = null,
 ) {
+    /**
+     * Re-derives the queue on every settled refresh of the shared history, which is what makes one
+     * [AssessmentHistoryStore.invalidate] recover both failures this screen can show.
+     *
+     * Re-reading the attempt table recovers an unreadable one. It also recovers a queue derivation
+     * that failed over history which read perfectly well — an unavailable curriculum while
+     * reconstructing review content — because the store re-announces the cached history once the
+     * re-read settles whether or not the attempts changed.
+     */
     val state: StateFlow<MistakeReviewUiState> = historyStore.history
         .map { history ->
             when (history) {
@@ -46,14 +56,20 @@ internal class MistakeReviewStateHolder(
             onSuccess = { mistakes ->
                 if (mistakes.isEmpty()) MistakeReviewUiState.Empty else MistakeReviewUiState.Content(mistakes)
             },
-            onFailure = { MistakeReviewUiState.Error },
+            onFailure = { failure ->
+                if (failure is CancellationException) throw failure
+                MistakeReviewUiState.Error
+            },
         )
 
     private suspend fun attachStudyLessons(
         mistakes: List<UnresolvedMistake>,
     ): List<UnresolvedMistake> {
         val units = runCatching { learningContentRepository?.getActiveUnits() }
-            .getOrNull() ?: return mistakes
+            .getOrElse { failure ->
+                if (failure is CancellationException) throw failure
+                return mistakes
+            } ?: return mistakes
         return mistakes.withStudyLessons(units)
     }
 }

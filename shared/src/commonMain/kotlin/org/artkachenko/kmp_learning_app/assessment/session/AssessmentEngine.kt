@@ -11,6 +11,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentSelectionResult
+import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 
 internal class AssessmentEngine(
     private val questionSelector: AssessmentQuestionSelector,
@@ -84,6 +85,17 @@ internal class AssessmentEngine(
         val unknownAnswerIds = selectedIds - answerIds
         require(unknownAnswerIds.isEmpty()) {
             "Selected answer IDs do not belong to question $questionId: ${unknownAnswerIds.joinToString()}."
+        }
+        // The authored interaction is a domain rule, not a presentation one: authoring already
+        // rejects a SINGLE Question with several correct answers, and the persisted occurrence is
+        // what review and analytics read long after the UI that produced it is gone. Enforcing the
+        // arity here keeps a non-UI caller from recording a choice the learner could never have
+        // made. MULTIPLE stays deliberately unconstrained beyond non-emptiness: any non-empty
+        // subset is a legitimate submission, and exact-set scoring decides the rest.
+        require(
+            question.selectionMode != AnswerSelectionMode.SINGLE || selectedIds.size == 1,
+        ) {
+            "Question $questionId allows one selected answer but received ${selectedIds.size}."
         }
 
         val updatedAnswerState = QuestionAnswerState.Answered(

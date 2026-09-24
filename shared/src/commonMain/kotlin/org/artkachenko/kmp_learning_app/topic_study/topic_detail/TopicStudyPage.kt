@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
@@ -246,7 +247,7 @@ private fun LearningUnitRow(
     val clickable = if (onLearningUnitClick == null) {
         base
     } else {
-        base.clickable { onLearningUnitClick(unit.unitId) }
+        base.clickable(role = Role.Button) { onLearningUnitClick(unit.unitId) }
     }
     // The margin goes inside the clickable, so the state layer spans the pane rather than being
     // inset with the row and drawing a band that hugs the text. See `appListContentPadding`.

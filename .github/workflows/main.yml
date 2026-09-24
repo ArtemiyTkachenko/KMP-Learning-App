@@ -44,6 +44,22 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_*.py'
           python3 tools/learning_question_coverage.py --check
 
+      # The backlog validator is the same one `sync-backlog.yml` runs, but that workflow is
+      # manual dispatch only, so before this step a malformed `backlog.yml` could merge and
+      # was discovered only when someone next ran the sync — after the breakage was already
+      # on `main`. Validating here makes a bad epic key, priority or size a pull-request
+      # failure instead. PyYAML is pinned to the version the sync workflow installs, into a
+      # virtualenv under RUNNER_TEMP: the runner's system Python is externally managed, so a
+      # plain `pip install` is refused, and a virtualenv inside the workspace would be caught
+      # by the uncommitted-output check below.
+      - name: Validate backlog data
+        run: |
+          python3 -m venv "$RUNNER_TEMP/backlog-venv"
+          "$RUNNER_TEMP/backlog-venv/bin/pip" install \
+            --disable-pip-version-check --quiet PyYAML==6.0.3
+          "$RUNNER_TEMP/backlog-venv/bin/python" \
+            .github/project/validate_backlog.py .github/project/backlog.yml
+
       # One Gradle invocation rather than several: a single configuration phase and
       # one Kotlin/Native + JS/Wasm toolchain setup. org.gradle.parallel is not
       # enabled, so the requested tasks run sequentially in command-line order,
@@ -51,22 +67,46 @@ jobs:
       # and desktop JVM compilation runs first so a plain compile break fails fast;
       # :shared:check runs last because it is by far the longest.
       #
+      # :androidApp:lintDebug sits next to the Android build because it reuses that
+      # compilation and costs seconds. Its reach is the Android shell only — the
+      # `com.android.kotlin.multiplatform.library` plugin gives :shared no main-variant
+      # lint, so nothing here analyses shared Kotlin. See docs/workflows/ci.md.
+      #
       # Note: Kotlin/Native iOS compilations are disabled on a Linux runner, so this
       # job gives no iOS signal. iOS remains a local macOS check.
       - name: Validate Android, Desktop, and Web builds and shared tests
         run: >
           ./gradlew --no-daemon
           :androidApp:assembleDebug
+          :androidApp:lintDebug
           :desktopApp:assemble
           :webApp:assemble
           :shared:check
 
-      - name: Upload JVM test report
+      # The build writes into the source tree: Room exports its schemas to
+      # `shared/schemas`, which is tracked on purpose. Without this step a database
+      # version bump whose schema JSON was never committed produces a green run —
+      # CI regenerates the file, the migration test passes against it, and `main`
+      # ends up with a schema version that exists on no machine but the runner.
+      # Generated build output is gitignored, so a clean tree here is the normal case.
+      - name: Verify the build left no uncommitted output
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::The build created or modified files that are not committed."
+            git status --porcelain
+            git diff --stat
+            exit 1
+          fi
+
+      # Every target :shared:check runs, not just the JVM one. Android host, JS and
+      # Wasm failures are the ones least reproducible on a developer's machine, so
+      # their reports are the ones most worth keeping.
+      - name: Upload shared test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jvm-test-report
+          name: shared-test-reports
           path: |
-            shared/build/reports/tests/jvmTest/
-            shared/build/test-results/jvmTest/
+            shared/build/reports/tests/
+            shared/build/test-results/
           if-no-files-found: ignore

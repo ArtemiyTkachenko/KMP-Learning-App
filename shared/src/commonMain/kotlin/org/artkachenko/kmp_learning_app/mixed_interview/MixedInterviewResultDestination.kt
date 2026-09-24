@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -23,15 +24,15 @@ internal fun MixedInterviewResultDestination(
     launchViewModel: AssessmentLaunchViewModel = koinViewModel(),
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle().value
+    val retakeState = viewModel.retakeState.collectAsStateWithLifecycle().value
     val savedQuestions = viewModel.savedQuestions.collectAsStateWithLifecycle().value
     val uriHandler = LocalUriHandler.current
+    val currentOnRetakeCreated by rememberUpdatedState(onRetakeCreated)
     var failedSourceUrl by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(viewModel) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is MixedInterviewResultEvent.RetakeCreated ->
-                    onRetakeCreated(event.attemptId)
-            }
+        viewModel.retakeEvents.collect { created ->
+            currentOnRetakeCreated(created.attemptId)
+            viewModel.onRetakeEventHandled(created.attemptId)
         }
     }
     AssessmentLaunchCoordinator(
@@ -43,6 +44,7 @@ internal fun MixedInterviewResultDestination(
             onRetry = viewModel::retry,
             onBack = onBack,
             onRepeatInterview = viewModel::repeatInterview,
+            retakeState = retakeState,
             onPracticeMistakes = startAssessment,
             savedQuestions = savedQuestions,
             onToggleSaved = viewModel::toggleSaved,

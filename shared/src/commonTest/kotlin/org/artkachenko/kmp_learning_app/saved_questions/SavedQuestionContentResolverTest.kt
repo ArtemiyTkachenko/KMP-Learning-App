@@ -119,6 +119,27 @@ internal class SavedQuestionContentResolverTest {
         assertEquals(emptyList(), SavedQuestionContentResolver(repository).resolve(emptyList()))
         assertEquals(0, repository.lookups)
     }
+
+    /**
+     * The batching contract, as call counts rather than timing.
+     *
+     * Every unsave changes the saved list and re-resolves everything still on it, so this cost is
+     * paid per tap rather than once per screen. One read transaction per saved Question is what
+     * made that expensive; one read for the whole list is what it costs now. A missing identity is
+     * still asked for, so its absence remains evidence rather than an unread id.
+     */
+    @Test
+    fun theWholeSavedListIsResolvedInOneRead() = runTest {
+        val repository = FakeContentRepository(listOf(question("q1"), question("q3")))
+
+        val items = SavedQuestionContentResolver(repository).resolve(
+            listOf(savedQuestion("q3"), savedQuestion("q2"), savedQuestion("q1")),
+        )
+
+        assertEquals(1, repository.lookups)
+        assertEquals(listOf(setOf("q3", "q2", "q1")), repository.batchedReads)
+        assertEquals(listOf("q3", "q2", "q1"), items.map { it.questionId })
+    }
 }
 
 private fun savedQuestion(questionId: String, savedAt: Long = 1_000): SavedQuestion =
@@ -157,13 +178,18 @@ private class FakeContentRepository(
     private val questions: List<Question>,
     private val failingIds: Set<String> = emptySet(),
 ) : CurriculumRepository {
+    /** How many times the curriculum was read, whatever shape the read took. */
     var lookups = 0
         private set
 
-    override suspend fun getQuestionById(questionId: String): Question? {
+    /** The identities each batched read asked for, newest call last. */
+    val batchedReads = mutableListOf<Set<String>>()
+
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
         lookups += 1
-        if (questionId in failingIds) error("Curriculum unavailable.")
-        return questions.firstOrNull { it.id == questionId }
+        batchedReads += questionIds.toSet()
+        if (questionIds.any { it in failingIds }) error("Curriculum unavailable.")
+        return questions.filter { it.id in questionIds }.associateBy(Question::id)
     }
 
     override suspend fun getActiveTopics(): List<Topic> = error("ACTIVE lookup must not be used.")

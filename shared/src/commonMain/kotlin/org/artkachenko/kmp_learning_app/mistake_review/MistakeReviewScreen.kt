@@ -12,7 +12,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
@@ -160,11 +160,9 @@ private fun MistakeReviewContent(
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
-    val practiceableMistakes = state.mistakes.mapNotNull { mistake ->
-        (mistake.reviewItem as? ReviewQuestionItem.Available)?.question
-            ?.takeIf { it.subtopicId.isNotBlank() }
+    val practiceTarget = remember(state.mistakes) {
+        state.mistakes.toPracticeTarget()
     }
-    val practiceSubtopicIds = practiceableMistakes.mapTo(mutableSetOf()) { it.subtopicId }
 
     if (LocalAppWindowSizeClass.current.isExpanded) {
         AppTwoPaneRow(
@@ -173,8 +171,8 @@ private fun MistakeReviewContent(
                 MistakePane(Modifier.weight(RemediationPaneWeight).testTag(MistakeRemediationPaneTag)) {
                     remediationSection(
                         mistakeCount = state.mistakes.size,
-                        practiceableMistakeCount = practiceableMistakes.size,
-                        practiceSubtopicIds = practiceSubtopicIds,
+                        practiceableMistakeCount = practiceTarget.questionCount,
+                        practiceSubtopicIds = practiceTarget.subtopicIds,
                         onStartPractice = onStartPractice,
                     )
                 }
@@ -198,8 +196,8 @@ private fun MistakeReviewContent(
     MistakePane(modifier) {
         remediationSection(
             mistakeCount = state.mistakes.size,
-            practiceableMistakeCount = practiceableMistakes.size,
-            practiceSubtopicIds = practiceSubtopicIds,
+            practiceableMistakeCount = practiceTarget.questionCount,
+            practiceSubtopicIds = practiceTarget.subtopicIds,
             onStartPractice = onStartPractice,
         )
         queueSection(
@@ -212,6 +210,24 @@ private fun MistakeReviewContent(
             failedSourceUrl = failedSourceUrl,
         )
     }
+}
+
+private data class MistakePracticeTarget(
+    val questionCount: Int,
+    val subtopicIds: Set<String>,
+)
+
+private fun List<UnresolvedMistake>.toPracticeTarget(): MistakePracticeTarget {
+    var questionCount = 0
+    val subtopicIds = mutableSetOf<String>()
+    forEach { mistake ->
+        val question = (mistake.reviewItem as? ReviewQuestionItem.Available)?.question
+        if (question != null && question.subtopicId.isNotBlank()) {
+            questionCount += 1
+            subtopicIds += question.subtopicId
+        }
+    }
+    return MistakePracticeTarget(questionCount, subtopicIds)
 }
 
 /** One column of the queue screen, with the same padding and rhythm in either arrangement. */

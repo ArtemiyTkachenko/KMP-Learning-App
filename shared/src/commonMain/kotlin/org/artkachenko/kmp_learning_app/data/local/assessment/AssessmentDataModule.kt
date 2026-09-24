@@ -7,6 +7,7 @@ import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
+import org.artkachenko.kmp_learning_app.assessment.session.CompleteAssessment
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.data.local.assessment.repository.LocalAssessmentRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
@@ -69,6 +70,15 @@ internal val assessmentDataModule = module {
         AssessmentRetakeService(
             assessmentRepository = get(),
             startAssessment = get(),
+        )
+    }
+    single {
+        // The counterpart of StartAssessment: it owns both the completed write and the history
+        // invalidation, which is why nothing else in the graph is handed the store to invalidate.
+        CompleteAssessment(
+            assessmentEngine = get(),
+            assessmentRepository = get(),
+            historyStore = get(),
         )
     }
     single {

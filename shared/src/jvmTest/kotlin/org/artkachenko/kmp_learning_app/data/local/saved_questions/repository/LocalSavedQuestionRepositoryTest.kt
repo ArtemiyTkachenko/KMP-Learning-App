@@ -29,6 +29,7 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.getQuestionById
 
 internal class LocalSavedQuestionRepositoryTest {
     @Test
@@ -139,6 +140,35 @@ internal class LocalSavedQuestionRepositoryTest {
                 }.awaitAll()
             }
 
+            assertEquals(1, database.savedQuestionDao().count())
+        }
+    }
+
+    @Test
+    fun aConcurrentDuplicateSaveCannotReplaceTheOriginalTimestamp() = runTest {
+        withTestDatabase { database ->
+            var epochMillis = 1_000L
+            val repository = LocalSavedQuestionRepository(
+                database = database,
+                now = { Instant.fromEpochMilliseconds(epochMillis) },
+            )
+            repository.save("question")
+
+            epochMillis = 2_000
+            coroutineScope {
+                List(20) {
+                    async { repository.save("question") }
+                }.awaitAll()
+            }
+
+            // Collapsing to one row is not the whole contract: saved order is timestamp first, so a
+            // duplicate that raced the original must not be able to move this identity to the front
+            // of the list either. Insert-ignore gives both properties; an upsert would give only the
+            // first.
+            assertEquals(
+                listOf(SavedQuestion("question", savedAtEpochMillis = 1_000)),
+                repository.getSavedQuestions(),
+            )
             assertEquals(1, database.savedQuestionDao().count())
         }
     }

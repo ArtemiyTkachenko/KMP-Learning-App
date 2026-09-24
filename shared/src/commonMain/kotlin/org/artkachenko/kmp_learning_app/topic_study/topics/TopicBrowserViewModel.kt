@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.topic_study.topics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -99,10 +100,20 @@ internal class TopicBrowserViewModel(
         loadCatalog()
     }
 
+    /**
+     * Recovers every read this screen depends on, not only the catalogue.
+     *
+     * The three inputs fail in three different places, so Retry has to reach all three. Invalidating
+     * the shared history re-reads an unreadable attempt table — and recovers every other screen
+     * derived from it at the same time, exactly as the Progress and Mistake Review retries do. It
+     * covers the other history failure domain with the same call: history that read successfully
+     * but could not be turned into a learning context, a recommendation, or a Continue Studying
+     * shortcut, because the store re-announces the cached history once its re-read settles whether
+     * or not the attempts changed. The study record is re-read so Continue Learning comes back too.
+     * Content, history, and study state stay independent reads; this only triggers all of them.
+     */
     fun retry() {
-        // The study record is re-read too, so a learner who retries after a failed read recovers the
-        // Continue Learning card as well as the catalogue. Content and study state stay independent
-        // reads; this only triggers both.
+        historyStore.invalidate()
         studyProgressStateHolder.refresh()
         loadCatalog()
     }
@@ -147,6 +158,9 @@ internal class TopicBrowserViewModel(
      * on: a loaded empty history is a learner with no completed study and may produce the
      * deterministic new-user recommendation, while Loading or Failed history is simply unknown and
      * must never be presented as either.
+     *
+     * The store emits once per settled refresh rather than only when the attempts differ, so a
+     * failed enrichment over readable history is recovered by [retry]'s invalidation alone.
      */
     private fun observeLearningContext() {
         viewModelScope.launch {
@@ -183,7 +197,13 @@ internal class TopicBrowserViewModel(
 
     private suspend fun <T> List<TestAttempt>.derivedOrNull(
         derive: suspend (List<TestAttempt>) -> T?,
-    ): T? = runCatching { derive(this) }.getOrNull()
+    ): T? = try {
+        derive(this)
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Exception) {
+        null
+    }
 
     /**
      * Loads the catalogue, then enriches it with learning availability in the same coroutine.
@@ -207,7 +227,13 @@ internal class TopicBrowserViewModel(
         activeLearningUnits = null
         render()
         viewModelScope.launch {
-            val catalog = runCatching { readCatalog() }.getOrElse { TopicCatalog.Error }
+            val catalog = try {
+                readCatalog()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                TopicCatalog.Error
+            }
             if (generation != catalogGeneration) return@launch
             this@TopicBrowserViewModel.catalog = catalog
             render()
@@ -228,14 +254,18 @@ internal class TopicBrowserViewModel(
      * one validated document, so every lookup here is a map read over one load.
      */
     private suspend fun loadLearningContent(topics: List<Topic>, generation: Int) {
-        val content = runCatching {
+        val content = try {
             LearningContentEnrichment(
                 unitCounts = topics.associate { topic ->
                     topic.id to learningContentRepository.getActiveUnitsByTopic(topic.id).size
                 },
                 activeUnits = learningContentRepository.getActiveUnits(),
             )
-        }.getOrNull() ?: return
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            return
+        }
         if (generation != catalogGeneration) return
         learningUnitCounts = content.unitCounts
         activeLearningUnits = content.activeUnits

@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.saved_questions
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -7,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 
 /**
@@ -28,7 +30,18 @@ internal class SavedQuestionStateHolder(
     private val _state = MutableStateFlow<SavedQuestionsState>(SavedQuestionsState.Loading)
     val state: StateFlow<SavedQuestionsState> = _state.asStateFlow()
 
-    /** Held for the duration of a read so concurrent entries share one query, not one each. */
+    /**
+     * Held for the duration of a read so concurrent entries share one query, not one each, and so a
+     * read can never publish a snapshot older than one already published.
+     *
+     * A mutation's read-back takes it too. Without that, two reads could be in flight at once and
+     * settle in the wrong order: a [refresh] that reached the database *before* a write could
+     * return after it, and — more realistically for a browsing surface — saving one Question and
+     * removing another are independent mutations by design, so the save's read-back could sample
+     * the table before the removal and publish afterwards, putting the removed Question back on
+     * screen while the database said otherwise. The writes themselves stay outside the lock, so a
+     * mutation on one Question is still never delayed by a mutation on another.
+     */
     private val reading = Mutex()
 
     /**
@@ -43,28 +56,24 @@ internal class SavedQuestionStateHolder(
         if (!reading.tryLock()) return
         scope.launch {
             try {
-                runCatching { repository.getSavedQuestions() }.fold(
-                    onSuccess = { saved ->
-                        _state.update { current ->
-                            when (current) {
-                                // A mutation in flight keeps its pending marker across the refresh.
-                                is SavedQuestionsState.Loaded -> current.copy(savedQuestions = saved)
-                                else -> SavedQuestionsState.Loaded(saved)
-                            }
+                try {
+                    val saved = repository.getSavedQuestions()
+                    _state.update { current ->
+                        when (current) {
+                            // A mutation in flight keeps its pending marker across the refresh.
+                            is SavedQuestionsState.Loaded -> current.copy(savedQuestions = saved)
+                            else -> SavedQuestionsState.Loaded(saved)
                         }
-                    },
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
                     // A failed re-read leaves an earlier successful one in place: previously known
                     // saved state is better than reporting that nothing is known.
-                    onFailure = {
-                        _state.update { current ->
-                            if (current is SavedQuestionsState.Loaded) {
-                                current
-                            } else {
-                                SavedQuestionsState.Error
-                            }
-                        }
-                    },
-                )
+                    _state.update { current ->
+                        current as? SavedQuestionsState.Loaded ?: SavedQuestionsState.Error
+                    }
+                }
             } finally {
                 reading.unlock()
             }
@@ -80,7 +89,9 @@ internal class SavedQuestionStateHolder(
      * learner sees predictable.
      *
      * The visible state changes only after the write succeeds, and is then read back from the
-     * repository, so a card never claims a saved state that was not persisted.
+     * repository, so a card never claims a saved state that was not persisted — and the read-back
+     * is ordered against every other read of the table, so nothing published afterwards can revert
+     * it to a snapshot taken before the write.
      */
     fun toggleSaved(questionId: String) {
         val loaded = _state.value as? SavedQuestionsState.Loaded ?: return
@@ -94,15 +105,18 @@ internal class SavedQuestionStateHolder(
             }
         }
         scope.launch {
-            runCatching {
+            try {
                 if (save) repository.save(questionId) else repository.unsave(questionId)
-                repository.getSavedQuestions()
-            }.fold(
-                onSuccess = { saved -> settle(questionId) { it.copy(savedQuestions = saved) } },
+                // The read-back is ordered against every other read; see [reading].
+                val saved = reading.withLock { repository.getSavedQuestions() }
+                settle(questionId) { it.copy(savedQuestions = saved) }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
                 // The mutation failed, or the read after it did. Either way the last state read from
                 // the repository stands rather than a guess at what the write would have made true.
-                onFailure = { settle(questionId) { it } },
-            )
+                settle(questionId) { it }
+            }
         }
     }
 

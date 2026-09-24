@@ -31,8 +31,5 @@ public fun startWebLocalDataGraph() {
     }
 }
 
-public suspend fun initializeWebLocalData() {
-    KoinPlatform.getKoin()
-        .get<CurriculumDataInitializer>()
-        .initialize()
-}
+public fun webAppStartupInitializer(): AppStartupInitializer =
+    KoinPlatform.getKoin().get<CurriculumDataInitializer>()

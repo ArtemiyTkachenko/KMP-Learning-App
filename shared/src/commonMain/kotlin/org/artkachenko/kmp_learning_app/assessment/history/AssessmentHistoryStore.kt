@@ -1,14 +1,19 @@
 package org.artkachenko.kmp_learning_app.assessment.history
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
@@ -52,19 +57,42 @@ internal class AssessmentHistoryStore(
 ) : CompletedAssessmentHistory {
     private val reloads = MutableStateFlow(0)
     private val failedReadRetry = Mutex()
-    private val cachedHistory = MutableStateFlow<AssessmentHistory>(AssessmentHistory.Loading)
 
     private val refreshes: StateFlow<HistoryRefresh> = reloads
-        .map { generation -> read(generation).also(::updateCachedHistory) }
+        .map(::read)
         .stateIn(scope, SharingStarted.Eagerly, HistoryRefresh.Pending)
 
     /**
+     * The cached history, re-announced once per settled refresh.
+     *
+     * **The contract: every [invalidate] produces exactly one emission here once the read it
+     * started settles — whether the attempts changed, came back identical, or could not be read at
+     * all.** A consumer therefore needs one signal to recover, not two, and it recovers by
+     * observing this rather than by arranging anything of its own.
+     *
+     * Deliberately a [SharedFlow] rather than a `StateFlow`, because that contract is the part a
+     * `StateFlow` cannot express: it drops an emission equal to the last one, and a re-read of an
+     * attempt table nobody has written produces exactly that. Consumers do not only *render* this
+     * value, they *derive* from it — over a curriculum that can be unavailable while the attempt
+     * table reads perfectly well — so "derive again" has to be a signal this store can still send
+     * when the history itself did not change. Four consumers used to manufacture that signal
+     * privately, as a counter combined into their own state, which made every retry a pair of calls
+     * that a caller had to know to make together; a retry that made only one of them recovered only
+     * half the screens derived from this read.
+     *
+     * `replay = 1` is what a durable cache owes a late subscriber: a destination re-entering
+     * composition renders the current history on its first frame instead of waiting for the next
+     * refresh.
+     *
      * Started eagerly rather than while subscribed, because the upstream is not a live subscription
      * that costs anything to hold: it is an invalidation signal mapped to a read, so it re-runs only
      * when [invalidate] is called. Sharing while subscribed would re-read on every tab switch — more
      * work than caching, not less — and would leave the first screen of a session waiting.
      */
-    val history: StateFlow<AssessmentHistory> = cachedHistory.asStateFlow()
+    val history: SharedFlow<AssessmentHistory> = refreshes
+        .filterIsInstance<HistoryRefresh.Settled>()
+        .scan(AssessmentHistory.Loading, ::historyAfter)
+        .shareIn(scope, SharingStarted.Eagerly, replay = 1)
 
     /**
      * The same cached history as [history], for a caller that wants one answer rather than a
@@ -85,70 +113,98 @@ internal class AssessmentHistoryStore(
      */
     override suspend fun completedAttempts(): List<TestAttempt> {
         val requiredGeneration = generationForOneShotRead()
-        return when (val refresh = refreshes.first { it.hasSettled(requiredGeneration) }) {
-            is HistoryRefresh.Loaded -> refresh.attempts
+        val settled = refreshes
+            .filterIsInstance<HistoryRefresh.Settled>()
+            .first { it.generation >= requiredGeneration }
+        return when (settled) {
+            is HistoryRefresh.Loaded -> settled.attempts
             is HistoryRefresh.Failed -> throw AssessmentHistoryUnavailableException()
-            HistoryRefresh.Pending -> error("Pending refresh cannot satisfy a settled generation.")
         }
     }
 
     /**
      * Marks the cached history stale. Call after an attempt reaches a completed state; an
      * in-progress save cannot change what any consumer of this store reads.
+     *
+     * This is also the whole of a consumer's retry: [history] emits once the resulting read settles
+     * even if it reads the same attempts back, so a derivation that failed over readable history
+     * runs again without the consumer signalling anything else.
      */
     fun invalidate() {
         reloads.update { it + 1 }
     }
 
-    /** Coalesces concurrent callers onto one retry when the current generation has failed. */
+    /**
+     * Coalesces concurrent callers onto one retry when the current generation has failed.
+     *
+     * The mutex serialises one-shot readers against each other, but [invalidate] does not take it —
+     * it is an unconditional bump that nothing should have to wait for. So the retry bump is written
+     * atomically rather than as a read of [reloads] followed by an absolute assignment: an
+     * [invalidate] landing between those two would have been overwritten, and because the
+     * assignment set an *absolute* value rather than an increment it could move the generation
+     * backwards, letting a later one-shot read be satisfied by a refresh older than its own call.
+     * Incrementing under [updateAndGet] keeps the counter monotonic whatever else is bumping it.
+     */
     private suspend fun generationForOneShotRead(): Int = failedReadRetry.withLock {
-        val currentGeneration = reloads.value
         val latestRefresh = refreshes.value
         if (
             latestRefresh is HistoryRefresh.Failed &&
-            latestRefresh.generation == currentGeneration
+            latestRefresh.generation == reloads.value
         ) {
-            (currentGeneration + 1).also { retryGeneration -> reloads.value = retryGeneration }
+            reloads.updateAndGet { generation -> generation + 1 }
         } else {
-            currentGeneration
+            reloads.value
         }
     }
 
-    private suspend fun read(generation: Int): HistoryRefresh =
+    private suspend fun read(generation: Int): HistoryRefresh.Settled =
         runCatching { assessmentRepository.getCompletedAttempts() }
             .fold(
                 onSuccess = { HistoryRefresh.Loaded(generation, it) },
-                onFailure = { HistoryRefresh.Failed(generation) },
+                onFailure = { failure ->
+                    if (failure is CancellationException) throw failure
+                    HistoryRefresh.Failed(generation)
+                },
             )
-
-    private fun updateCachedHistory(refresh: HistoryRefresh) {
-        cachedHistory.value = when (refresh) {
-            HistoryRefresh.Pending -> cachedHistory.value
-            is HistoryRefresh.Loaded -> AssessmentHistory.Loaded(refresh.attempts)
-            is HistoryRefresh.Failed ->
-                if (cachedHistory.value is AssessmentHistory.Loaded) {
-                    cachedHistory.value
-                } else {
-                    AssessmentHistory.Failed
-                }
-        }
-    }
-
-    private fun HistoryRefresh.hasSettled(requiredGeneration: Int): Boolean =
-        when (this) {
-            HistoryRefresh.Pending -> false
-            is HistoryRefresh.Loaded -> generation >= requiredGeneration
-            is HistoryRefresh.Failed -> generation >= requiredGeneration
-        }
 }
 
+/**
+ * The history a settled refresh leaves behind, as a pure function of the previous history.
+ *
+ * The one place the stale-on-failure rule lives: a failed re-read keeps attempts that were read
+ * successfully, rather than replacing a working screen with an error, while a failure with nothing
+ * cached yet is genuinely unreadable history. Either way the result is published, so a consumer
+ * whose own derivation failed over the cached attempts derives again.
+ */
+private fun historyAfter(
+    previous: AssessmentHistory,
+    refresh: HistoryRefresh.Settled,
+): AssessmentHistory =
+    when (refresh) {
+        is HistoryRefresh.Loaded -> AssessmentHistory.Loaded(refresh.attempts)
+        is HistoryRefresh.Failed -> previous as? AssessmentHistory.Loaded ?: AssessmentHistory.Failed
+    }
+
+/**
+ * One read of the attempt table, identified by the invalidation generation that started it.
+ *
+ * [Settled] is a type rather than a convention so that a caller which has already waited for a
+ * generation cannot be handed [Pending]: the `when` over a settled refresh has two branches and no
+ * unreachable third to fail loudly in.
+ */
 private sealed interface HistoryRefresh {
+    /** No read has completed yet, so no generation has settled. */
     data object Pending : HistoryRefresh
 
-    data class Loaded(
-        val generation: Int,
-        val attempts: List<TestAttempt>,
-    ) : HistoryRefresh
+    /** A read that finished, either way. */
+    sealed interface Settled : HistoryRefresh {
+        val generation: Int
+    }
 
-    data class Failed(val generation: Int) : HistoryRefresh
+    data class Loaded(
+        override val generation: Int,
+        val attempts: List<TestAttempt>,
+    ) : Settled
+
+    data class Failed(override val generation: Int) : Settled
 }

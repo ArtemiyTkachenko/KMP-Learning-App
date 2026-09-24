@@ -37,13 +37,18 @@ internal class AssessmentLaunchViewModel(
         }
     }
 
+    fun onCreatedEventHandled(attemptId: String) {
+        val created = _state.value as? AssessmentLaunchState.Created ?: return
+        if (created.attemptId == attemptId) _state.value = AssessmentLaunchState.Idle
+    }
+
     private fun launch(config: AssessmentConfig) {
         _state.value = AssessmentLaunchState.Launching
         viewModelScope.launch {
             try {
                 when (val result = startAssessment(config)) {
                     is StartAssessmentResult.Created -> {
-                        _state.value = AssessmentLaunchState.Idle
+                        _state.value = AssessmentLaunchState.Created(result.attemptId)
                         _events.send(AssessmentLaunchEvent.Created(result.attemptId))
                     }
                     StartAssessmentResult.NoEligibleQuestions -> {
@@ -68,6 +73,7 @@ internal class AssessmentLaunchViewModel(
 internal sealed interface AssessmentLaunchState {
     data object Idle : AssessmentLaunchState
     data object Launching : AssessmentLaunchState
+    data class Created(val attemptId: String) : AssessmentLaunchState
     data class Failed(
         val config: AssessmentConfig,
         val reason: AssessmentLaunchFailure,

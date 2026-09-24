@@ -17,6 +17,8 @@ import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionS
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentStartResult
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
@@ -39,6 +41,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCu
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.getQuestionById
 
 internal class AssessmentEngineIntegrationTest {
     @Test
@@ -255,6 +258,84 @@ internal class AssessmentEngineIntegrationTest {
     }
 
     @Test
+    fun anAnswerOptionRetiredByALaterBundleStaysSelectedInHistoricalReview() = runTest {
+        withTestDatabase { database ->
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(database, loadCurriculum = { controlledCurriculum() }).importCurriculum(),
+            )
+            val components = assessmentComponents(
+                database = database,
+                generateAttemptId = { "attempt_retired_answer" },
+                now = sequenceClock(StartedAt, CompletedAt),
+            )
+            val started = assertIs<AssessmentStartResult.Started>(
+                components.engine.start(
+                    AssessmentConfig.Focused(AssessmentScope.Subtopic(SubtopicId), questionCount = 1),
+                ),
+            ).session
+            // The learner picks the distractor that a later bundle replaces.
+            val completed = components.engine.complete(
+                components.engine.submitAnswer(started, SingleQuestionId, listOf(SingleAnswerC)),
+            )
+            components.assessmentRepository.save(completed.attempt)
+
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = {
+                        controlledCurriculum(
+                            singleQuestionAnswers = listOf(
+                                AnswerOption(SingleAnswerA, "A"),
+                                AnswerOption(SingleAnswerB, "B"),
+                                AnswerOption(RewrittenAnswerD, "D"),
+                            ),
+                        )
+                    },
+                ).importCurriculum(),
+            )
+
+            val curriculumRepository = LocalCurriculumRepository(database)
+            val historical = assertNotNull(
+                components.assessmentRepository.getById("attempt_retired_answer"),
+            )
+            val reviewed = assertIs<ReviewQuestionItem.Available>(
+                AssessmentReviewLoader(curriculumRepository)
+                    .loadQuestions(historical)
+                    .single(),
+            ).question
+
+            // The selection is occurrence data: it survives the option leaving the bundle, and the
+            // correctness recorded at the time survives with it.
+            assertEquals(
+                setOf(SingleAnswerC),
+                reviewed.answers.filter { it.wasSelected }.map { it.id }.toSet(),
+            )
+            assertEquals(false, reviewed.isCorrect)
+            assertEquals(
+                setOf(SingleAnswerA, SingleAnswerB, SingleAnswerC, RewrittenAnswerD),
+                reviewed.answers.map { it.id }.toSet(),
+            )
+
+            // A new assessment is offered only the options the current bundle authors.
+            val afterRetirement = assertIs<AssessmentStartResult.Started>(
+                assessmentEngine(
+                    curriculumRepository = curriculumRepository,
+                    generateAttemptId = { "attempt_after_retirement" },
+                ).start(
+                    AssessmentConfig.Focused(AssessmentScope.Subtopic(SubtopicId), questionCount = 1),
+                ),
+            ).session
+            assertEquals(
+                setOf(SingleAnswerA, SingleAnswerB, RewrittenAnswerD),
+                afterRetirement.questions.single { it.id == SingleQuestionId }
+                    .answers.map { it.id }.toSet(),
+            )
+        }
+    }
+
+    @Test
     fun koinGraphResolvesCompletedAssessmentDependenciesWhenDatabaseIsSupplied() = runTest {
         withTestDatabase { database ->
             val app = koinApplication {
@@ -390,6 +471,11 @@ internal class AssessmentEngineIntegrationTest {
 
     private fun controlledCurriculum(
         singleQuestionStatus: ContentStatus = ContentStatus.ACTIVE,
+        singleQuestionAnswers: List<AnswerOption> = listOf(
+            AnswerOption(SingleAnswerA, "A"),
+            AnswerOption(SingleAnswerB, "B"),
+            AnswerOption(SingleAnswerC, "C"),
+        ),
     ): Curriculum =
         Curriculum(
             topics = listOf(
@@ -406,24 +492,28 @@ internal class AssessmentEngineIntegrationTest {
                 ),
             ),
             questions = listOf(
-                singleAnswerQuestion(status = singleQuestionStatus),
+                singleAnswerQuestion(
+                    status = singleQuestionStatus,
+                    answers = singleQuestionAnswers,
+                ),
                 multipleAnswerQuestion(),
             ),
         )
 
     private fun singleAnswerQuestion(
         status: ContentStatus = ContentStatus.ACTIVE,
+        answers: List<AnswerOption> = listOf(
+            AnswerOption(SingleAnswerA, "A"),
+            AnswerOption(SingleAnswerB, "B"),
+            AnswerOption(SingleAnswerC, "C"),
+        ),
     ): Question =
         Question(
             id = SingleQuestionId,
             topicId = TopicId,
             subtopicId = SubtopicId,
             text = "Which answer is correct?",
-            answers = listOf(
-                AnswerOption(SingleAnswerA, "A"),
-                AnswerOption(SingleAnswerB, "B"),
-                AnswerOption(SingleAnswerC, "C"),
-            ),
+            answers = answers,
             selectionMode = AnswerSelectionMode.SINGLE,
             level = QuestionLevel.FOUNDATION,
             correctAnswerIds = listOf(SingleAnswerA),
@@ -487,6 +577,7 @@ internal class AssessmentEngineIntegrationTest {
         const val SingleAnswerA = "single_a"
         const val SingleAnswerB = "single_b"
         const val SingleAnswerC = "single_c"
+        const val RewrittenAnswerD = "single_d"
         const val MultiQuestionId = "multi_question"
         const val MultiAnswerA = "multi_a"
         const val MultiAnswerB = "multi_b"

@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -93,7 +94,20 @@ internal class TopicDetailViewModel(
         loadTopic()
     }
 
+    /**
+     * Recovers every read this screen depends on, not only the curriculum.
+     *
+     * The four inputs fail in four different places, so Retry has to reach all of them. Invalidating
+     * the shared history re-reads an unreadable attempt table — and recovers every other screen
+     * derived from it at the same time, exactly as the Progress and Mistake Review retries do. It
+     * covers the other history failure domain with the same call: history that read successfully
+     * but could not be turned into a learning context or a mistake count, because the store
+     * re-announces the cached history once its re-read settles whether or not the attempts changed.
+     * The study record is re-read for the per-Unit figures, and the curriculum load brings the
+     * Topic and its study material back.
+     */
     fun retry() {
+        historyStore.invalidate()
         studyProgressStateHolder.refresh()
         loadTopic()
     }
@@ -140,6 +154,9 @@ internal class TopicDetailViewModel(
      * Follows the app-scoped history cache rather than reading completed attempts again, so
      * finishing an assessment refreshes this Topic's context through the same invalidation every
      * other consumer uses — without reloading the curriculum underneath it.
+     *
+     * The store emits once per settled refresh rather than only when the attempts differ, so a
+     * derivation that failed over readable history is recovered by [retry]'s invalidation alone.
      */
     private fun observeLearningContext() {
         viewModelScope.launch {
@@ -148,9 +165,13 @@ internal class TopicDetailViewModel(
                     // Unknown history, not empty history: with nothing derived the summary is
                     // omitted rather than announcing that the Topic has never been studied.
                     AssessmentHistory.Loading, AssessmentHistory.Failed -> null
-                    is AssessmentHistory.Loaded -> runCatching {
+                    is AssessmentHistory.Loaded -> try {
                         LearningContextIndex(learningProgressService.load(history.attempts))
-                    }.getOrNull()
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
+                    } catch (_: Exception) {
+                        null
+                    }
                 }
                 // The same shared derivation the Mistakes queue uses, over the same attempts, so
                 // this screen can never disagree with that queue about what is unresolved. It is
@@ -158,10 +179,14 @@ internal class TopicDetailViewModel(
                 // failed progress derivation must not also take away a mistake count that was read.
                 unresolvedMistakeQuestionIds = when (history) {
                     AssessmentHistory.Loading, AssessmentHistory.Failed -> null
-                    is AssessmentHistory.Loaded -> runCatching {
+                    is AssessmentHistory.Loaded -> try {
                         UnresolvedMistakeDerivation.derive(history.attempts)
                             .mapTo(mutableSetOf(), UnresolvedMistakeOccurrence::questionId)
-                    }.getOrNull()
+                    } catch (cancellation: CancellationException) {
+                        throw cancellation
+                    } catch (_: Exception) {
+                        null
+                    }
                 }
                 render()
             }
@@ -186,7 +211,13 @@ internal class TopicDetailViewModel(
         activeUnits = emptyList()
         render()
         viewModelScope.launch {
-            val curriculum = runCatching { readCurriculum() }.getOrElse { TopicCurriculum.Error }
+            val curriculum = try {
+                readCurriculum()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Exception) {
+                TopicCurriculum.Error
+            }
             if (generation != loadGeneration) return@launch
             this@TopicDetailViewModel.curriculum = curriculum
             render()
@@ -205,14 +236,20 @@ internal class TopicDetailViewModel(
      * told there is none — and keeps every practice action either way.
      */
     private suspend fun loadLearningUnits(topicId: String, generation: Int) {
-        val read = runCatching { learningContentRepository.getActiveUnitsByTopic(topicId) }
-        val units = read.fold(
-            onSuccess = { TopicLearningUnitsUiState.Available(it.toLearningUnitItems()) },
-            onFailure = { TopicLearningUnitsUiState.Unavailable },
-        )
+        val loadedUnits = try {
+            learningContentRepository.getActiveUnitsByTopic(topicId)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            if (generation != loadGeneration) return
+            activeUnits = emptyList()
+            learningUnits = TopicLearningUnitsUiState.Unavailable
+            render()
+            return
+        }
         if (generation != loadGeneration) return
-        activeUnits = read.getOrDefault(emptyList())
-        learningUnits = units
+        activeUnits = loadedUnits
+        learningUnits = TopicLearningUnitsUiState.Available(loadedUnits.toLearningUnitItems())
         render()
     }
 

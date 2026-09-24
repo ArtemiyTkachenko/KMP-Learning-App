@@ -2,20 +2,22 @@ package org.artkachenko.kmp_learning_app.mixed_interview
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.channels.Channel
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
-import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeController
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeCreated
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.assessment_review.isAvailableFor
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
@@ -25,15 +27,23 @@ internal class MixedInterviewResultViewModel(
     private val assessmentRepository: AssessmentRepository,
     private val curriculumRepository: CurriculumRepository,
     private val assessmentReviewLoader: AssessmentReviewLoader,
-    private val assessmentRetakeService: AssessmentRetakeService,
+    assessmentRetakeService: AssessmentRetakeService,
     private val savedQuestionStateHolder: SavedQuestionStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<MixedInterviewResultUiState>(
         MixedInterviewResultUiState.Loading,
     )
     val uiState: StateFlow<MixedInterviewResultUiState> = _uiState.asStateFlow()
-    private val _events = Channel<MixedInterviewResultEvent>(Channel.BUFFERED)
-    val events: Flow<MixedInterviewResultEvent> = _events.receiveAsFlow()
+
+    /** The same retake state machine the Focused result uses, over the same service. */
+    private val retake = AssessmentRetakeController(
+        sourceAttemptId = attemptId,
+        retakeService = assessmentRetakeService,
+        scope = viewModelScope,
+    )
+
+    val retakeState: StateFlow<AssessmentRetakeState> = retake.state
+    val retakeEvents: Flow<AssessmentRetakeCreated> = retake.createdAttempts
 
     /**
      * The same app-scoped saved state the Focused result and Mistake Review observe, so a Question
@@ -49,6 +59,7 @@ internal class MixedInterviewResultViewModel(
     }
 
     fun retry() {
+        if (_uiState.value != MixedInterviewResultUiState.Error) return
         load()
         savedQuestionStateHolder.refresh()
     }
@@ -56,50 +67,27 @@ internal class MixedInterviewResultViewModel(
     /** Ignores any ID this result does not currently show as available review content. */
     fun toggleSaved(questionId: String) {
         val content = uiState.value as? MixedInterviewResultUiState.Content ?: return
-        val isAvailable = content.questions.any {
-            it is ReviewQuestionItem.Available && it.question.questionId == questionId
-        }
-        if (!isAvailable) return
+        if (content.questions.none { it.isAvailableFor(questionId) }) return
         savedQuestionStateHolder.toggleSaved(questionId)
     }
 
+    /** As on the Focused result: this decides whether there is anything to repeat, nothing more. */
     fun repeatInterview() {
-        val currentState = uiState.value as? MixedInterviewResultUiState.Content ?: return
-        if (currentState.repeatInterviewState == RepeatInterviewState.Creating) return
-        _uiState.value = currentState.copy(repeatInterviewState = RepeatInterviewState.Creating)
-        viewModelScope.launch {
-            runCatching { assessmentRetakeService.createRetake(attemptId) }
-                .onSuccess { result ->
-                    when (result) {
-                        is AssessmentRetakeResult.Created -> {
-                            setRepeatState(RepeatInterviewState.Idle)
-                            _events.send(
-                                MixedInterviewResultEvent.RetakeCreated(
-                                    result.attemptId,
-                                ),
-                            )
-                        }
-                        AssessmentRetakeResult.SourceAttemptNotFound ->
-                            setRepeatState(RepeatInterviewState.SourceAttemptNotFound)
-                        AssessmentRetakeResult.NoEligibleQuestions ->
-                            setRepeatState(RepeatInterviewState.NoEligibleQuestions)
-                    }
-                }
-                .onFailure { setRepeatState(RepeatInterviewState.Error) }
-        }
+        if (uiState.value !is MixedInterviewResultUiState.Content) return
+        retake.start()
     }
 
-    private fun setRepeatState(state: RepeatInterviewState) {
-        val currentState = uiState.value as? MixedInterviewResultUiState.Content ?: return
-        _uiState.value = currentState.copy(repeatInterviewState = state)
-    }
+    fun onRetakeEventHandled(attemptId: String) = retake.onCreatedAttemptHandled(attemptId)
 
     private fun load() {
         _uiState.value = MixedInterviewResultUiState.Loading
         viewModelScope.launch {
             runCatching { loadResult() }
                 .onSuccess { _uiState.value = it }
-                .onFailure { _uiState.value = MixedInterviewResultUiState.Error }
+                .onFailure { failure ->
+                    if (failure is CancellationException) throw failure
+                    _uiState.value = MixedInterviewResultUiState.Error
+                }
         }
     }
 
@@ -120,35 +108,26 @@ internal class MixedInterviewResultViewModel(
             totalQuestions = score.totalQuestions,
             correctAnswers = score.correctAnswers,
             percentage = score.percentage,
-            topicPerformance = loadTopicPerformance(questions),
+            topicPerformance = nameTopics(questions),
             questions = questions,
         )
     }
 
-    private suspend fun loadTopicPerformance(
+    /**
+     * Names the Topics of the already-counted breakdown.
+     *
+     * The counting is [topicAnswerCounts] and needs nothing from here; this adds the one thing it
+     * cannot know, at one lookup per distinct Topic rather than per Question.
+     */
+    private suspend fun nameTopics(
         questions: List<ReviewQuestionItem>,
-    ): List<TopicPerformanceUiModel> {
-        val countsByTopic = linkedMapOf<String, TopicCounts>()
-        questions.forEach { item ->
-            val question = (item as? ReviewQuestionItem.Available)?.question ?: return@forEach
-            val counts = countsByTopic.getOrPut(question.topicId) { TopicCounts() }
-            counts.questionCount += 1
-            if (question.isCorrect) counts.correctCount += 1
-        }
-
-        return countsByTopic.map { (topicId, counts) ->
-            TopicPerformanceUiModel(
-                topicId = topicId,
-                topicName = curriculumRepository.getTopicById(topicId)?.name,
-                questionCount = counts.questionCount,
-                correctCount = counts.correctCount,
-                percentage = counts.correctCount.toDouble() / counts.questionCount * 100.0,
-            )
-        }
+    ): List<TopicPerformanceUiModel> = questions.topicAnswerCounts().map { counts ->
+        TopicPerformanceUiModel(
+            topicId = counts.topicId,
+            topicName = curriculumRepository.getTopicById(counts.topicId)?.name,
+            questionCount = counts.questionCount,
+            correctCount = counts.correctCount,
+            percentage = counts.percentage,
+        )
     }
-
-    private class TopicCounts(
-        var questionCount: Int = 0,
-        var correctCount: Int = 0,
-    )
 }

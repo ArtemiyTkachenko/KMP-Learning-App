@@ -514,8 +514,8 @@ internal class ProgressLearningJourneyIntegrationTest {
         private val delegate: CurriculumRepository,
         private val missingQuestionId: String,
     ) : CurriculumRepository by delegate {
-        override suspend fun getQuestionById(questionId: String): Question? =
-            if (questionId == missingQuestionId) null else delegate.getQuestionById(questionId)
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            delegate.getQuestionsByIds(questionIds.filterNot { it == missingQuestionId })
     }
 }
 

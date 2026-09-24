@@ -672,10 +672,8 @@ private fun TopicPerformanceCard(
         correctCount = topic.correctCount,
         answeredCount = topic.answeredCount,
         percentage = topic.percentage,
-        modifier = Modifier
-            .testTag(progressTopicCardTag(topic.topicId))
-            .clickable(onClick = onClick),
-        showChevron = true,
+        modifier = Modifier.testTag(progressTopicCardTag(topic.topicId)),
+        onClick = onClick,
     )
 }
 
@@ -695,14 +693,12 @@ private fun HistoryCard(
             attempt.totalQuestions,
         ),
         percentage = attempt.percentage,
-        modifier = Modifier
-            .testTag(progressHistoryCardTag(attempt.attemptId))
-            .clickable(onClick = onClick),
+        modifier = Modifier.testTag(progressHistoryCardTag(attempt.attemptId)),
         subtitle = focusedScopeLabel(attempt.focusedScope),
         // Formatted here, where the reader's zone and their idea of "today" are available; the state
         // carries the instant itself. See ui/time/TimestampText.kt.
         caption = timestampText(attempt.completedAt),
-        showChevron = true,
+        onClick = onClick,
     )
 }
 

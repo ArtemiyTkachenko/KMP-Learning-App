@@ -8,6 +8,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -278,6 +279,50 @@ internal class ProgressTopicViewModelTest {
         advanceUntilIdle()
         assertIs<ProgressTopicUiState.Content>(viewModel.uiState.value)
     }
+
+    /**
+     * Retry cancels the derivation already in flight before starting another, and the cancelled one
+     * must publish nothing.
+     *
+     * The drill-down is reached from a dashboard that may already be retrying, so a second Retry
+     * arriving while the first is still reading is ordinary use. A cancelled load that reported
+     * itself would leave Error on a screen whose replacement read is still running — and Error here
+     * is the state that offers Retry, so the learner would be invited to retry the retry.
+     */
+    @Test
+    fun aSupersededLoadPublishesNothingAndLeavesTheTopicLoading() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val firstLoad = CompletableDeferred<Unit>()
+        val secondLoad = CompletableDeferred<Unit>()
+        val context = topicTestContext(
+            answers = listOf(answer("kotlin_1", true)),
+            questions = listOf(topicQuestion("kotlin_1", "kotlin", "basics")),
+            topics = listOf(Topic("kotlin", "Kotlin")),
+            subtopics = listOf(Subtopic("basics", "kotlin", "Basics")),
+        )
+        context.repository.beforeLoad = { load ->
+            when (load) {
+                1 -> firstLoad.await()
+                2 -> secondLoad.await()
+            }
+        }
+
+        val viewModel = topicViewModel("kotlin", context)
+        advanceUntilIdle()
+        assertIs<ProgressTopicUiState.Loading>(viewModel.uiState.value)
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertIs<ProgressTopicUiState.Loading>(viewModel.uiState.value)
+
+        secondLoad.complete(Unit)
+        firstLoad.complete(Unit)
+        advanceUntilIdle()
+
+        val state = assertIs<ProgressTopicUiState.Content>(viewModel.uiState.value)
+        assertEquals("Kotlin", state.topicName)
+    }
 }
 
 private class TopicTestContext(
@@ -347,12 +392,21 @@ private class TopicHistoryRepository(
 ) : AssessmentRepository {
     var failNextLoad = false
 
+    /**
+     * Runs before each history read answers, with that read's 1-based number. The default does
+     * nothing; a test gates reads by number so two loads can be in flight at once.
+     */
+    var beforeLoad: suspend (Int) -> Unit = {}
+
+    private var loadCount = 0
+
     override suspend fun save(attempt: TestAttempt) = Unit
 
     override suspend fun getById(attemptId: String): TestAttempt? =
         attempts.firstOrNull { it.id == attemptId }
 
     override suspend fun getCompletedAttempts(): List<TestAttempt> {
+        beforeLoad(++loadCount)
         if (failNextLoad) {
             failNextLoad = false
             error("History unavailable")
@@ -398,7 +452,8 @@ private class TopicCurriculumRepository(
 
     override suspend fun getTopicById(topicId: String): Topic? = topicsById[topicId]
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? = subtopicsById[subtopicId]
-    override suspend fun getQuestionById(questionId: String): Question? = questionsById[questionId]
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        questionIds.mapNotNull { questionsById[it] }.associateBy(Question::id)
 }
 
 private fun topicQuestion(

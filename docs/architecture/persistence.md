@@ -347,10 +347,25 @@ matters because renaming an `AnswerOption` id is a content edit but a data
 migration in the database: without a status the retired row would keep appearing
 as an extra choice in new assessments. Active curriculum queries therefore read
 through `getActiveAnswerOptionsForQuestions`, while
-`CurriculumRepository.getQuestionById` reads every option so a past attempt is
+`CurriculumRepository.getQuestionsByIds` reads every option so a past attempt is
 still reviewable with the answer text the user actually saw. Re-adding an option
 in a later bundle reactivates it, because the import upserts every authored
 option as `ACTIVE`.
+
+The import transaction opens with `PRAGMA defer_foreign_keys = ON`, so foreign keys
+are checked once against the finished graph at `COMMIT` rather than after every
+statement. It rewrites a whole content graph, and intermediate rows legitimately
+disagree with each other while it does. Re-homing a `Subtopic` to a different
+`Topic` is the case that proves it: `subtopic.topic_id` is updated before the
+`question` rows that still name the old pair are moved by the very next statement,
+which a per-statement check rejects even though the incoming curriculum is
+internally consistent and a fresh install accepts it. Deferral does not weaken
+atomicity. A graph that is still inconsistent at `COMMIT` — a stale `question` row
+whose `Subtopic` moved out from under it, which the authoring contract forbids by
+requiring retirement through status rather than omission — fails the same
+constraint, rolls the whole transaction back, and leaves the previous curriculum
+usable. SQLite resets the pragma at each `COMMIT` or `ROLLBACK`, so it never
+outlives the import.
 
 Stale answer options are deleted last inside the import transaction.
 `question_correct_answer` and `question_attempt_selected_answer` both hold
@@ -582,6 +597,53 @@ excluded from completed learning history. Historical naming uses unrestricted
 stable Topic, Subtopic, and Question repository lookups; current browsing and
 selection continue to use ACTIVE-only queries.
 
+### Attempt Save and Read Semantics
+
+`AssessmentRepository.save(attempt)` persists one whole aggregate atomically.
+Creation and update are the same operation on purpose: an assessment saves the
+same attempt ID after every answered Question, and each save is the current
+authoritative snapshot rather than an addition to the previous one. Inside a
+single write transaction the attempt row is upserted, that attempt's selected
+answers and question occurrences are deleted, and the snapshot's occurrences and
+selected answers are written. Deleting before inserting is what stops a changed
+child collection from leaving stale rows behind — a replaced selected-answer set
+does not union with the previous one — and doing it in that order satisfies the
+immediate foreign keys the child tables declare. A save that fails rolls the
+whole transaction back, so a reader never observes an updated attempt row beside
+the previous snapshot's children, and saving the same aggregate twice is
+idempotent.
+
+Callers serialise their own writes: one live owner per attempt ID. `StartAssessment`
+writes an attempt exactly once under a freshly generated identity, and assessment
+taking is the only writer thereafter. Nothing in the repository arbitrates between
+two concurrent writers of one attempt, because no ordering rule would make an
+out-of-order pair of whole snapshots meaningful. Durability ends where the save
+returns: once it returns normally the attempt exists, and cache invalidation or
+navigation after that is application synchronisation rather than persistence.
+
+Reads hydrate an aggregate from several tables inside one read transaction, so a
+concurrent save cannot produce a mixed old-parent/new-children result. Completed
+history is three queries regardless of its size — the completed attempt rows,
+then their occurrences and selected answers batched by attempt ID and grouped in
+memory — rather than a per-attempt fan-out.
+
+Reconstruction treats the domain constructors as the corruption detector.
+`getById` returns `null` only when no row exists; an unknown status, config type
+or scope discriminator, a malformed multi-Subtopic payload, or score fields that
+contradict the stored status raise instead of being reported as absent or
+quietly repaired, and one unreadable attempt fails `getCompletedAttempts()` as a
+whole. A corrupted assessment and an assessment the learner never took are
+different answers, and silently converting the first into the second would hide
+the corruption rather than surface it.
+
+Occurrence data is persisted, never recomputed from current content.
+`question_attempt.is_correct` records whether the learner was right when they
+answered, and the score columns record the result the attempt was completed
+with, so re-authoring a Question's answer key later changes future selection and
+grading without rewriting history. Only the presentational content around that
+state — Question text, answer text, explanation, sources — is resolved from the
+current curriculum at review time.
+
 ## Saved Questions
 
 Schema version 7 adds `saved_question` as learner-owned study state. Each row stores only
@@ -591,8 +653,10 @@ reads order newest first and use the stable ID as a deterministic tie-breaker.
 
 The table deliberately has no foreign key to `question`. Saved identity survives independently
 when curriculum content is removed, while display content is resolved separately through
-`CurriculumRepository.getQuestionById`. That historical resolver may return ACTIVE or DEPRECATED
-content, or null for a missing ID; none of those results automatically changes the saved row.
+`CurriculumRepository.getQuestionsByIds`. That historical resolver may return ACTIVE or DEPRECATED
+content, and simply has no entry for a missing ID; none of those results automatically changes the
+saved row. It resolves a whole list of identities in one read, which is what keeps re-resolving the
+saved list after each unsave to a single query rather than one per saved Question.
 
 ## Lesson Study State
 

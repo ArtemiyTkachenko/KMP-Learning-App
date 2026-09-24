@@ -420,7 +420,8 @@ internal class LearningRecommendationResolverTest {
 
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = unused()
 
-        override suspend fun getQuestionById(questionId: String): Question? = unused()
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            unused()
 
         private fun unused(): Nothing =
             error("Counting unresolved mistakes must not read curriculum content.")

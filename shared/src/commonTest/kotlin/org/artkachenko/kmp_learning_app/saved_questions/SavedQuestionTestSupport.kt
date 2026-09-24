@@ -58,6 +58,16 @@ internal class FakeSavedQuestionRepository(
     /** The same, for a removal: what a browsing surface's pending action is waiting on. */
     var unsaveGate: CompletableDeferred<Unit>? = null
 
+    /** When set, a read suspends until it completes, so a surface can be observed while Loading. */
+    var readGate: CompletableDeferred<Unit>? = null
+
+    /**
+     * When set, the *next* read takes its snapshot on entry and only returns it once this
+     * completes — a read that reached the database before a later write and returns after it.
+     * [readGate] cannot express that, because it snapshots after the gate opens.
+     */
+    var staleReadGate: CompletableDeferred<Unit>? = null
+
     override suspend fun save(questionId: String) {
         saveCalls += questionId
         saveGate?.await()
@@ -81,6 +91,15 @@ internal class FakeSavedQuestionRepository(
 
     override suspend fun getSavedQuestions(): List<SavedQuestion> {
         readCalls += 1
+        val stale = staleReadGate
+        if (stale != null) {
+            staleReadGate = null
+            val snapshot = saved.toList()
+            stale.await()
+            if (failReads) error("Saved questions unavailable.")
+            return snapshot
+        }
+        readGate?.await()
         if (failReads) error("Saved questions unavailable.")
         return saved.toList()
     }

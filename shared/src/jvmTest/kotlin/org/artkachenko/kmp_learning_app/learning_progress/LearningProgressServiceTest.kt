@@ -364,7 +364,9 @@ internal class LearningProgressServiceTest {
         )
         assertEquals(3, snapshot.subtopics.last().answeredCount)
         assertEquals(2, snapshot.subtopics.last().correctCount)
-        assertEquals(1, context.curriculum.questionLookupCalls.getValue("q1"))
+        // Three occurrences of q1 across three attempts, asked for once: deduplication now happens
+        // before the read rather than behind a per-call memo.
+        assertEquals(listOf(setOf("q1", "q2", "q3")), context.curriculum.batchedQuestionReads)
     }
 
     @Test
@@ -420,7 +422,7 @@ internal class LearningProgressServiceTest {
     }
 
     @Test
-    fun historicalLookupsCacheResolvedAndMissingIdentitiesOncePerLoad() = runTest {
+    fun historicalIdentitiesAreResolvedInOneBatchedReadPerLoad() = runTest {
         val context = TestContext(
             attempts = listOf(
                 completedAttempt("first", listOf("q1" to true, "q2" to false, "missing" to false)),
@@ -443,7 +445,12 @@ internal class LearningProgressServiceTest {
 
         val snapshot = context.service.load()
 
-        assertEquals(mapOf("q1" to 1, "q2" to 1, "missing" to 1), context.curriculum.questionLookupCalls)
+        // One batched read for every identity history mentions — resolved and missing alike, each
+        // asked for once however many occurrences reference it — and none resolved one at a time.
+        assertEquals(listOf(setOf("q1", "q2", "missing")), context.curriculum.batchedQuestionReads)
+        // Topic and Subtopic names stay one lookup per distinct id, memoised for the derivation.
+        // Both loops are bounded by what the curriculum authors rather than by how much history the
+        // learner has, and neither costs a read transaction the way a Question does.
         assertEquals(mapOf("topic_a" to 1, "topic_b" to 1), context.curriculum.topicLookupCalls)
         assertEquals(mapOf("subtopic" to 1), context.curriculum.subtopicLookupCalls)
         assertEquals(listOf("topic_a", "topic_b"), snapshot.topics.map { it.topicId })
@@ -638,7 +645,7 @@ internal class LearningProgressServiceTest {
         )
         // Historical Question resolution and the single ACTIVE read both predate this issue; recent
         // performance needs neither, so the counts are unchanged by it.
-        assertEquals(mapOf("q1" to 1, "q2" to 1), context.curriculum.questionLookupCalls)
+        assertEquals(listOf(setOf("q1", "q2")), context.curriculum.batchedQuestionReads)
         assertEquals(1, context.curriculum.activeQuestionCalls)
     }
 
@@ -982,11 +989,20 @@ private class FakeCurriculumRepository(
     private val questionsById = questions.associateBy(Question::id)
     private val topicsById = topics.associateBy(Topic::id)
     private val subtopicsById = subtopics.associateBy(Subtopic::id)
-    val questionLookupCalls = mutableMapOf<String, Int>()
     val topicLookupCalls = mutableMapOf<String, Int>()
     val subtopicLookupCalls = mutableMapOf<String, Int>()
     var activeQuestionCalls = 0
         private set
+
+    /**
+     * The batched historical reads, recorded as the ids each call asked for.
+     *
+     * The derivation resolves every stable ID history mentions before it counts anything, so these
+     * say how many round trips a whole derivation costs. In the Room-backed repository a per-ID
+     * question read is a read transaction plus four statements, so "one call for all of them"
+     * rather than "one call each" is the property worth pinning.
+     */
+    val batchedQuestionReads = mutableListOf<Set<String>>()
 
     override suspend fun getActiveTopics(): List<Topic> = error("ACTIVE lookup must not be used.")
     override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> =
@@ -1026,10 +1042,11 @@ private class FakeCurriculumRepository(
         return subtopicsById[subtopicId]
     }
 
-    override suspend fun getQuestionById(questionId: String): Question? {
-        questionLookupCalls[questionId] = questionLookupCalls.getOrElse(questionId) { 0 } + 1
-        return questionsById[questionId]
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
+        batchedQuestionReads += questionIds.toSet()
+        return questionIds.toSet().mapNotNull { id -> questionsById[id]?.let { id to it } }.toMap()
     }
+
 }
 
 private fun completedAttempt(

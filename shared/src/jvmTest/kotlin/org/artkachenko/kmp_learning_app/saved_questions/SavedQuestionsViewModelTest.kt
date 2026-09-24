@@ -8,7 +8,10 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -207,6 +210,50 @@ internal class SavedQuestionsViewModelTest {
         assertEquals(listOf("q3", "q1"), content.items.map { it.questionId })
     }
 
+    /**
+     * A resolution that has been superseded must publish nothing at all.
+     *
+     * Removing one Question and then another produces a saved-list change while the first list is
+     * still resolving. If the replaced job treated its own cancellation as a curriculum failure, it
+     * would publish Error — over a list that reads perfectly well, and with no further emission
+     * coming from the holder to correct it, because a `StateFlow` does not re-emit an equal value.
+     */
+    @Test
+    fun aSupersededResolutionDoesNotReportItsOwnCancellationAsAFailure() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = savedRepository("q3" to 300L, "q2" to 200L, "q1" to 100L)
+        val curriculum = VmCurriculumRepository()
+        val viewModel = viewModel(repository, curriculum)
+        advanceUntilIdle()
+
+        val published = mutableListOf<SavedQuestionsUiState>()
+        val observer = launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.toList(published)
+        }
+
+        val resolving = CompletableDeferred<Unit>()
+        curriculum.lookupGate = resolving
+        viewModel.removeSaved("q2")
+        advanceUntilIdle()
+        curriculum.lookupGate = null
+
+        // A second removal arrives while the first list is still resolving.
+        viewModel.removeSaved("q1")
+        advanceUntilIdle()
+        resolving.complete(Unit)
+        advanceUntilIdle()
+        observer.cancel()
+
+        val content = assertIs<SavedQuestionsUiState.Content>(viewModel.uiState.value)
+        assertEquals(listOf("q3"), content.items.map { it.questionId })
+        assertTrue(content.pendingQuestionIds.isEmpty())
+        // The superseded job must not have reported anything, not even transiently.
+        assertTrue(
+            published.none { it is SavedQuestionsUiState.Error },
+            "A superseded resolution published $published",
+        )
+    }
+
     private fun TestScope.viewModel(
         repository: FakeSavedQuestionRepository,
         curriculum: CurriculumRepository = VmCurriculumRepository(),
@@ -228,10 +275,19 @@ private class VmCurriculumRepository(
     private val available: Set<String>? = null,
     var failing: Boolean = false,
 ) : CurriculumRepository {
-    override suspend fun getQuestionById(questionId: String): Question? {
+    /** When set, every lookup suspends on it, so a resolution can be held open and superseded. */
+    var lookupGate: CompletableDeferred<Unit>? = null
+
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
+        lookupGate?.await()
         if (failing) error("Curriculum unavailable.")
-        if (available != null && questionId !in available) return null
-        return Question(
+        return questionIds
+            .filter { available == null || it in available }
+            .associateWith { questionId -> question(questionId) }
+    }
+
+    private fun question(questionId: String): Question =
+        Question(
             id = questionId,
             topicId = "kotlin",
             subtopicId = "coroutines",
@@ -246,7 +302,6 @@ private class VmCurriculumRepository(
             explanation = "Explanation",
             sources = listOf(SourceReference("Source", "https://example.com/$questionId")),
         )
-    }
 
     override suspend fun getActiveTopics(): List<Topic> = error("ACTIVE lookup must not be used.")
     override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> =

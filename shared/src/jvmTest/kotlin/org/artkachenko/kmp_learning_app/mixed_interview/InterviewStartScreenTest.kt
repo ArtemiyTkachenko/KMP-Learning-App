@@ -4,15 +4,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -33,6 +38,7 @@ internal class InterviewStartScreenTest {
         }
 
         onNodeWithText("Mixed Android Interview").assertIsDisplayed()
+        onNodeWithText("Mixed Android Interview").assert(isHeading())
         onNodeWithText("20-question interview").assertIsDisplayed()
         // The rule that makes an Interview different from Practice, stated before the learner
         // commits rather than discovered on question one.
@@ -85,8 +91,12 @@ internal class InterviewStartScreenTest {
         onNodeWithText("5 of 20 correct").assertIsDisplayed()
         onNodeWithText("18 of 20 correct").assertIsDisplayed()
 
-        onNodeWithText("Last interview").performClick()
-        onNodeWithText("Best").performClick()
+        onNodeWithText("Last interview")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
+        onNodeWithText("Best")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
 
         assertEquals(listOf("latest", "best"), opened)
     }

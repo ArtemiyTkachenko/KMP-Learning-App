@@ -93,17 +93,33 @@ Focused destinations use the same coordinator and push
 `FocusedPracticeAttempt(attemptId)` after persistence.
 Completion replaces the attempt entry with `MixedInterviewResult(attemptId)`;
 the result loads the durable `AssessmentScore` from `AssessmentRepository` and
-uses `AssessmentReviewLoader` with `CurriculumRepository.getQuestionById` for
+uses `AssessmentReviewLoader` with `CurriculumRepository.getQuestionsByIds` for
 ordered historical review. Resolved review Questions are grouped by `topicId`
-in attempt encounter order, and `CurriculumRepository.getTopicById` resolves
-historical names without ACTIVE filtering. Topic performance is derived in
-memory and is not persisted.
+in attempt encounter order by `topicAnswerCounts()`, a pure derivation over the
+review items alone; `CurriculumRepository.getTopicById` then resolves historical
+names without ACTIVE filtering, once per distinct Topic. A review item whose
+Question the curriculum no longer holds has no Topic to attribute it to and is
+counted in no Topic, while the durable score above the breakdown still counts
+it. Topic performance is derived in memory and is not persisted.
 
 Mixed interview repeats follow the same persisted-retake boundary as focused
 practice. The Mixed result delegates creation to `AssessmentRetakeService`,
 keeps the completed source result in the back stack, and pushes
 `MixedInterviewAttempt(retakeAttemptId)` only after the new attempt has been
-saved. That route reopens the persisted session through
+saved.
+
+Both result surfaces drive that boundary through one owner,
+`AssessmentRetakeController`, rather than a copy each. It holds
+`AssessmentRetakeState` — `Idle`, `Creating`, `Created(attemptId)`,
+`SourceAttemptNotFound`, `NoEligibleQuestions`, `Error` — beside the result
+content rather than inside it, and publishes the created identity once through a
+buffered channel. `Created` is terminal until the destination confirms that the
+same identity reached navigation, which is what stops a second durable attempt
+being created in the window between persistence completing and the buffered
+event being consumed. The three failure states do not block re-entry, because
+nothing durable was created. Each result ViewModel keeps only what differs:
+whether there is a loaded result to repeat at all, and the wording its screen
+puts on each state. That route reopens the persisted session through
 `AssessmentSessionLoader`, so balanced selection and `AssessmentEngine.start()`
 occur once during retake creation rather than again when the assessment screen
 opens.
@@ -111,7 +127,7 @@ opens.
 E09-04 completes the retained session through `AssessmentEngine`, persists the
 completed attempt before replacing focused-practice navigation with a stable
 attempt-ID result route, and loads historical review through
-`AssessmentRepository` plus `CurriculumRepository.getQuestionById`. Deprecated
+`AssessmentRepository` plus `CurriculumRepository.getQuestionsByIds`. Deprecated
 or missing historical questions are represented per review item without
 changing the durable score. Retake behavior remains deferred to E09-05.
 
@@ -190,7 +206,7 @@ browsing saved content is review rather than an assessment in progress.
 surfaces observe; it never reads `SavedQuestionRepository` itself, which is what makes a Question
 saved on a result screen appear here, and one removed here disappear there. It adds exactly one
 thing: `SavedQuestionContentResolver` maps each saved identity through
-`CurriculumRepository.getQuestionById` — the historical resolver, never an ACTIVE listing — into
+`CurriculumRepository.getQuestionsByIds` — the historical resolver, never an ACTIVE listing — into
 `SavedQuestionItem.Available` or `SavedQuestionItem.Missing`, preserving the repository's saved
 order (`saved_at_epoch_millis DESC, question_id ASC`) exactly. DEPRECATED content resolves and
 renders like any other; a null lookup is a `Missing` placeholder that keeps its position and stays

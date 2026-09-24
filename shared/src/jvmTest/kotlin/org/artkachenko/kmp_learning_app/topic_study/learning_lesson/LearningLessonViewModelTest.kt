@@ -527,6 +527,44 @@ internal class LearningLessonViewModelTest {
         assertEquals(LessonStudyUiModel(isStudied = true, isPending = false), studyModel(viewModel))
     }
 
+    /**
+     * Retry cancels the read already in flight before starting another, and the cancelled one must
+     * publish nothing at all.
+     *
+     * The reader is the surface where this is easiest to provoke: Next and Previous rebuild the
+     * destination while a slow document read is outstanding. A cancelled load that reported itself
+     * would put "could not load this lesson" over a read that is still running and about to
+     * succeed. The two gates fix the ordering — the superseded read is released last, after the
+     * replacement has been observed still loading.
+     */
+    @Test
+    fun aSupersededLoadPublishesNothingAndLeavesTheLessonLoading() = runViewModelTest {
+        val firstRead = CompletableDeferred<Unit>()
+        val secondRead = CompletableDeferred<Unit>()
+        val repository = lessonRepository()
+        repository.beforeRead = { read ->
+            when (read) {
+                1 -> firstRead.await()
+                2 -> secondRead.await()
+            }
+        }
+        val viewModel = viewModel(unitId = "unit_a", lessonId = "lesson_a", repository = repository)
+        advanceUntilIdle()
+        assertEquals(LearningLessonUiState.Loading, viewModel.uiState.value)
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertEquals(LearningLessonUiState.Loading, viewModel.uiState.value)
+
+        secondRead.complete(Unit)
+        firstRead.complete(Unit)
+        advanceUntilIdle()
+
+        val state = assertIs<LearningLessonUiState.Content>(viewModel.uiState.value)
+        assertEquals("lesson_a", state.lessonId)
+    }
+
     private fun TestScope.studyViewModel(
         studyRepository: FakeLessonStudyRepository,
     ): LearningLessonViewModel =

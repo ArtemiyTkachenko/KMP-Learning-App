@@ -63,6 +63,7 @@ import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultUiSt
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultUiState
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
+import org.artkachenko.kmp_learning_app.getQuestionById
 
 /**
  * The Saved Questions lifecycle across the boundaries no single-layer test owns: a real curriculum

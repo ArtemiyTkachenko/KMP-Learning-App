@@ -285,7 +285,10 @@ private fun availableItem(questionId: String): SavedQuestionItem.Available =
 private class ScreenCurriculumRepository(
     private val status: ContentStatus,
 ) : CurriculumRepository {
-    override suspend fun getQuestionById(questionId: String): Question =
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        questionIds.associateWith { questionId -> question(questionId) }
+
+    private fun question(questionId: String): Question =
         Question(
             id = questionId,
             topicId = "kotlin",

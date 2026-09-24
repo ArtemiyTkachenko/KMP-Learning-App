@@ -64,7 +64,6 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.Curriculu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
-import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultEvent
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultUiState
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.DefaultPracticeQuestionCount
@@ -1871,11 +1870,9 @@ internal class LearningUnitPracticeIntegrationTest {
                 val retakeViewModel = result(attemptId)
                 retakeViewModel.settledResult()
                 retakeViewModel.repeatPractice()
-                val retakeId = assertIs<FocusedResultEvent.RetakeCreated>(
-                    withContext(Dispatchers.Default) {
-                        withTimeout(AwaitTimeoutMillis) { retakeViewModel.events.first() }
-                    },
-                ).attemptId
+                val retakeId = withContext(Dispatchers.Default) {
+                    withTimeout(AwaitTimeoutMillis) { retakeViewModel.retakeEvents.first() }
+                }.attemptId
 
                 // A second attempt, not a mutation of the first: a new stable ID, in progress, carrying the
                 // stored configuration — the multi-Subtopic scope survives rather than broadening to the

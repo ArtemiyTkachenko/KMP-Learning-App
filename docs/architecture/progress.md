@@ -10,8 +10,22 @@ Completed history feeds the shared `LearningProgressService`, which derives a
 `QuestionAnswerState.Answered.isCorrect` values plus stable historical Question,
 Topic, and Subtopic lookup. Every completed occurrence counts equally,
 including focused, mixed, and retake attempts; derived statistics are not
-persisted. A Topic is weak after at least 3 observations below 70% accuracy,
-and a Subtopic after at least 2 observations below 70% accuracy.
+persisted. A Topic or a Subtopic is weak after at least 5 observations below
+70% accuracy — one threshold for both, because a recommendation should rest on a
+pattern rather than on one unlucky Question.
+
+The two sources answer slightly different questions, and are allowed to. Overall
+totals come from the persisted score of each completed attempt and therefore
+count every occurrence the learner answered, while the Topic and Subtopic
+breakdown can only place an occurrence whose Question still resolves through
+`CurriculumRepository.getQuestionsByIds`. A historical Question that no longer
+resolves at all — which the never-delete import contract makes unreachable
+through ordinary publishing — keeps its persisted occurrence in the overall
+figures and drops out of the grouped ones, so the grouped answered counts may
+legitimately sum to less than the overall answered count. Deprecation does not
+cause this: `getQuestionsByIds` is the historical resolver and reads a DEPRECATED
+Question, which keeps its Topic and Subtopic accuracy while leaving current
+coverage.
 
 The same snapshot carries curriculum coverage, which answers a different
 question: not "how accurately did I answer what I saw?" but "how much of the
@@ -172,6 +186,19 @@ completed assessment refreshes these screens through the same invalidation every
 other consumer uses — no restart, no manual retry, and no second history cache.
 No app-wide analytics state holder was introduced: the store plus the service
 already are the shared source, and each feature only maps them.
+
+`AssessmentHistoryStore.history` is a `SharedFlow` with `replay = 1` rather than a
+`StateFlow`, and that choice is the whole of a consumer's Retry. Every consumer
+listed above *derives* from the history — over a curriculum that can be
+unavailable while the attempt table reads perfectly well — so the two failures a
+screen can show come from different places, and re-reading alone would not reach
+the second one: a re-read of an attempt table nobody has written produces attempts
+equal to the cached ones, and a `StateFlow` drops an emission equal to its last.
+The store instead guarantees that **one `invalidate()` is one emission once the
+resulting read settles**, whether the attempts changed, came back identical, or
+could not be read at all. A consumer therefore recovers both failures by observing
+this flow, with nothing of its own to arrange; `replay = 1` is what still lets a
+returning destination render the cached history on its first frame.
 
 Search matching is unchanged by any of this. It still reads Topic and Subtopic
 names only, in memory, against the catalog already loaded, so learning context is

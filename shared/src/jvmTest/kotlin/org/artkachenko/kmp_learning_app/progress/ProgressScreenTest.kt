@@ -1,7 +1,11 @@
 package org.artkachenko.kmp_learning_app.progress
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
@@ -335,7 +339,9 @@ internal class ProgressScreenTest {
         }
 
         onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Android"))
-        onNodeWithText("Android").performClick()
+        onNodeWithText("Android")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
 
         assertEquals(listOf("topic_android"), clicked)
     }
@@ -380,8 +386,14 @@ internal class ProgressScreenTest {
         }
 
         onNodeWithText("Session history").assertIsDisplayed()
-        onNodeWithText("Mixed Android Interview").assertIsDisplayed().performClick()
-        onNodeWithText("Practice").assertIsDisplayed().performClick()
+        onNodeWithText("Mixed Android Interview")
+            .assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
+        onNodeWithText("Practice")
+            .assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
         onNodeWithText("Kotlin · Coroutines").assertIsDisplayed()
         // The raw instant never reaches the UI; how it reads is `timestampText`'s job and is
         // asserted there, against an explicit zone rather than the agent's.

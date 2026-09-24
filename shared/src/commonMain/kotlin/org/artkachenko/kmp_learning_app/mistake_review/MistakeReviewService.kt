@@ -4,6 +4,7 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeDerivation
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewOccurrence
 
 /**
  * Derives the unresolved mistake queue from completed assessment history.
@@ -21,19 +22,23 @@ internal class MistakeReviewService(
      * [completedAttempts] lets a caller that already holds newest-first completed history reuse it,
      * exactly as [countUnresolved] does, so the shared cache is not re-read per screen.
      */
-    suspend fun load(completedAttempts: List<TestAttempt>? = null): List<UnresolvedMistake> =
-        unresolvedOccurrences(completedAttempts).map { occurrence ->
+    suspend fun load(completedAttempts: List<TestAttempt>? = null): List<UnresolvedMistake> {
+        // Review content is reconstructed only for unresolved candidates, never for every
+        // historical occurrence — and for all of them in one historical read rather than one per
+        // mistake, which is what the loader's occurrence-list entry point exists for. The queue
+        // keeps the derivation's order: the loader returns one item per occurrence, in order.
+        val occurrences = unresolvedOccurrences(completedAttempts)
+        val reviewItems = assessmentReviewLoader.loadQuestions(
+            occurrences.map { ReviewOccurrence(it.sourceAttemptId, it.questionAttempt) },
+        )
+        return occurrences.zip(reviewItems) { occurrence, reviewItem ->
             UnresolvedMistake(
                 questionId = occurrence.questionId,
                 sourceAttemptId = occurrence.sourceAttemptId,
-                // Review content is reconstructed only for unresolved candidates, never for every
-                // historical occurrence.
-                reviewItem = assessmentReviewLoader.loadQuestion(
-                    attemptId = occurrence.sourceAttemptId,
-                    questionAttempt = occurrence.questionAttempt,
-                ),
+                reviewItem = reviewItem,
             )
         }
+    }
 
     /**
      * How many Questions are unresolved, without reconstructing any review content.

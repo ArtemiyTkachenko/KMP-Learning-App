@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -37,6 +38,11 @@ internal class AppShellViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
 
     private suspend fun countUnresolved(attempts: List<org.artkachenko.kmp_learning_app.assessment.TestAttempt>): Int =
-        runCatching { mistakeReviewService.countUnresolved(attempts) }.getOrDefault(0)
+        try {
+            mistakeReviewService.countUnresolved(attempts)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            0
+        }
 }
-

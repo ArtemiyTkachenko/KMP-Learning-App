@@ -254,6 +254,38 @@ internal class MistakeReviewServiceTest {
         assertEquals(listOf("q1"), curriculum.questionLookups)
     }
 
+    /**
+     * The batching contract, as call counts rather than timing.
+     *
+     * The queue rebuilds on every settled refresh of the shared history — which its app-scoped
+     * holder observes for the whole process, whether or not the screen is open — so one read
+     * transaction per unresolved mistake was a cost repeated per completed assessment rather than
+     * per visit. Order is the derivation's, newest unresolved occurrence first, and is unchanged.
+     */
+    @Test
+    fun theWholeQueueIsResolvedInOneHistoricalRead() = runTest {
+        val curriculum = RecordingCurriculumRepository(defaultQuestions())
+        val service = MistakeReviewService(
+            assessmentRepository = HistoryRepository(
+                listOf(
+                    attempt("newest", "2026-08-29T12:00:00Z", "q1" to false, "q2" to false),
+                    attempt("oldest", "2026-08-29T10:00:00Z", "q3" to false, "q1" to true),
+                ),
+            ),
+            assessmentReviewLoader = AssessmentReviewLoader(curriculum),
+        )
+
+        val queue = service.load()
+
+        assertEquals(1, curriculum.questionReads)
+        assertEquals(setOf("q1", "q2", "q3"), curriculum.questionLookups.toSet())
+        assertEquals(listOf("q1", "q2", "q3"), queue.map { it.questionId })
+        assertEquals(
+            listOf("newest", "newest", "oldest"),
+            queue.map { it.sourceAttemptId },
+        )
+    }
+
     @Test
     fun attemptsThatAreNotCompletedAreIgnored() = runTest {
         // getCompletedAttempts() is contractually completed-only; the service filters defensively
@@ -416,7 +448,13 @@ private class RecordingCurriculumRepository(
     questions: List<Question>,
 ) : CurriculumRepository {
     private val questionsById = questions.associateBy(Question::id)
+
+    /** Every identity the curriculum was asked to resolve, in the order it was asked for. */
     val questionLookups = mutableListOf<String>()
+
+    /** How many round trips those identities were asked for in. */
+    var questionReads = 0
+        private set
 
     override suspend fun getActiveTopics(): List<Topic> = error("ACTIVE lookup must not be used.")
     override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> =
@@ -440,8 +478,9 @@ private class RecordingCurriculumRepository(
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
         error("Subtopic lookup is not needed.")
 
-    override suspend fun getQuestionById(questionId: String): Question? {
-        questionLookups += questionId
-        return questionsById[questionId]
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
+        questionReads += 1
+        questionLookups += questionIds
+        return questionIds.mapNotNull { id -> questionsById[id]?.let { id to it } }.toMap()
     }
 }

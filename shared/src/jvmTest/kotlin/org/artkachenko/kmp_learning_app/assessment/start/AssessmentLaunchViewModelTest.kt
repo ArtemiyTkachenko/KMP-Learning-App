@@ -41,7 +41,7 @@ internal class AssessmentLaunchViewModelTest {
     }
 
     @Test
-    fun successfulStartPersistsOnceAndEmitsDurableAttemptIdentity() = runTest {
+    fun successfulStartPersistsOnceAndBlocksReentryWhileNavigationIsPending() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val repository = FakeAssessmentRepository()
         val viewModel = viewModel(repository, listOf(question("question")))
@@ -52,12 +52,18 @@ internal class AssessmentLaunchViewModelTest {
         assertEquals(AssessmentLaunchState.Launching, viewModel.state.value)
         advanceUntilIdle()
 
-        assertEquals(AssessmentLaunchState.Idle, viewModel.state.value)
+        assertEquals(AssessmentLaunchState.Created("attempt-1"), viewModel.state.value)
+        viewModel.start(config)
+        advanceUntilIdle()
         assertEquals(1, repository.attempts.size)
         assertEquals(
             AssessmentLaunchEvent.Created("attempt-1"),
             viewModel.events.first(),
         )
+        viewModel.onCreatedEventHandled("other-attempt")
+        assertEquals(AssessmentLaunchState.Created("attempt-1"), viewModel.state.value)
+        viewModel.onCreatedEventHandled("attempt-1")
+        assertEquals(AssessmentLaunchState.Idle, viewModel.state.value)
     }
 
     @Test
@@ -87,6 +93,7 @@ internal class AssessmentLaunchViewModelTest {
         waitUntil { attemptIds.isNotEmpty() }
 
         assertEquals(listOf("attempt-1"), attemptIds)
+        waitUntil { viewModel.state.value == AssessmentLaunchState.Idle }
     }
 
     @Test
@@ -124,7 +131,7 @@ internal class AssessmentLaunchViewModelTest {
         viewModel.retry()
         advanceUntilIdle()
 
-        assertEquals(AssessmentLaunchState.Idle, viewModel.state.value)
+        assertEquals(AssessmentLaunchState.Created("attempt-2"), viewModel.state.value)
         assertEquals(
             "attempt-2",
             assertIs<AssessmentLaunchEvent.Created>(viewModel.events.first()).attemptId,
@@ -185,7 +192,8 @@ internal class AssessmentLaunchViewModelTest {
 
         override suspend fun getTopicById(topicId: String): Topic? = error("Not used.")
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = error("Not used.")
-        override suspend fun getQuestionById(questionId: String): Question? = error("Not used.")
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            error("Not used.")
     }
 
     private fun question(id: String) = Question(

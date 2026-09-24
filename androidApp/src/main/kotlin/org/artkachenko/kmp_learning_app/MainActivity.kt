@@ -12,8 +12,9 @@ class MainActivity : ComponentActivity() {
 
         // Content is set unconditionally so a failed initialization renders AppRoot's
         // error and retry states instead of leaving the activity without any content.
+        val startupInitializer = androidAppStartupInitializer()
         setContent {
-            AppRoot { initializeAndroidLocalData() }
+            AppRoot(startupInitializer)
         }
     }
 }

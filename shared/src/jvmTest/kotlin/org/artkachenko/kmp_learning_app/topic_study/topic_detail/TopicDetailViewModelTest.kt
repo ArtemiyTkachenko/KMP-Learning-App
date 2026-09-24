@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -452,6 +453,21 @@ internal class TopicDetailViewModelTest {
     }
 
     @Test
+    fun curriculumCancellationDoesNotBecomeAnError() = runViewModelTest {
+        val viewModel = viewModel(
+            topicId = "topic_a",
+            curriculum = FakeCurriculumRepository(
+                topics = emptyList(),
+                topicFailure = CancellationException("cancelled"),
+            ),
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(TopicDetailUiState.Loading, viewModel.uiState.value)
+    }
+
+    @Test
     fun accuracyAndCoverageBothReachTheTopicAndItsSubtopics() = runViewModelTest {
         val topic = Topic("topic_a", "Topic A")
         val curriculum = FakeCurriculumRepository(
@@ -646,6 +662,65 @@ internal class TopicDetailViewModelTest {
         val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
         assertNull(state.learningContext)
         assertNotNull(viewModel.topicPracticeScope())
+    }
+
+    @Test
+    fun retryReReadsTheSharedHistoryRatherThanOnlyTheCurriculum() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        val curriculum = FakeCurriculumRepository(
+            topics = listOf(topic),
+            subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+            questions = listOf(question("q1", topic.id, "subtopic_a")),
+        )
+        val history = RecoveringHistoryRepository(
+            attempts = listOf(completedAttempt("attempt", "q1" to true)),
+            failuresRemaining = 1,
+        )
+        val viewModel = viewModel(topic.id, curriculum, history)
+        advanceUntilIdle()
+
+        // The attempt table was unreadable, so the shared cache holds AssessmentHistory.Failed.
+        // Nothing re-reads it on its own: invalidation is the only thing that does, and it only
+        // happens when an assessment completes.
+        assertNull(assertIs<TopicDetailUiState.Content>(viewModel.uiState.value).learningContext)
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        // Retry reaches the history, not just the curriculum, so the summary and the mistake count
+        // come back in the same session — and so does every other screen derived from that cache.
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertEquals(100.0, assertNotNull(state.learningContext).accuracyPercentage)
+        assertEquals(0, state.unresolvedMistakeCount)
+    }
+
+    @Test
+    fun retryRerunsADerivationThatFailedOverHistoryThatReadSuccessfully() = runViewModelTest {
+        val topic = Topic("topic_a", "Topic A")
+        // The attempt table reads perfectly; the ACTIVE bank the derivation needs does not.
+        val curriculum = FakeCurriculumRepository(
+            topics = listOf(topic),
+            subtopics = listOf(Subtopic("subtopic_a", topic.id, "Subtopic A")),
+            questions = listOf(question("q1", topic.id, "subtopic_a")),
+            activeQuestionFailures = 1,
+        )
+        val viewModel = viewModel(
+            topic.id,
+            curriculum,
+            historyRepository(completedAttempt("attempt", "q1" to true)),
+        )
+        advanceUntilIdle()
+
+        assertNull(assertIs<TopicDetailUiState.Content>(viewModel.uiState.value).learningContext)
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        // Invalidating alone could not have recovered this: the re-read produces an equal
+        // AssessmentHistory.Loaded, which a StateFlow does not emit again. Only the retry being an
+        // emission in its own right re-runs the derivation.
+        val state = assertIs<TopicDetailUiState.Content>(viewModel.uiState.value)
+        assertEquals(100.0, assertNotNull(state.learningContext).accuracyPercentage)
     }
 
     @Test
@@ -922,6 +997,26 @@ internal class TopicDetailViewModelTest {
         override suspend fun getCompletedAttempts(): List<TestAttempt> = attempts
     }
 
+    /**
+     * Fails its first [failuresRemaining] reads and then succeeds, which is what a transient
+     * attempt-table failure looks like to the shared cache: one `AssessmentHistory.Failed` that only
+     * a re-read can move off.
+     */
+    private class RecoveringHistoryRepository(
+        private val attempts: List<TestAttempt>,
+        private var failuresRemaining: Int,
+    ) : AssessmentRepository {
+        override suspend fun save(attempt: TestAttempt) = Unit
+        override suspend fun getById(attemptId: String): TestAttempt? = null
+        override suspend fun getCompletedAttempts(): List<TestAttempt> {
+            if (failuresRemaining > 0) {
+                failuresRemaining -= 1
+                error("History unavailable")
+            }
+            return attempts
+        }
+    }
+
     private object FailingHistoryRepository : AssessmentRepository {
         override suspend fun save(attempt: TestAttempt) = Unit
         override suspend fun getById(attemptId: String): TestAttempt? = null
@@ -1029,6 +1124,12 @@ internal class TopicDetailViewModelTest {
         /** Answered in history and still resolvable, but outside the current ACTIVE bank. */
         retiredQuestions: List<Question> = emptyList(),
         private var failuresRemaining: Int = 0,
+        /**
+         * Failures for the ACTIVE-bank read alone, which is how a derivation over history that read
+         * perfectly well is made to fail without touching the Topic read above it.
+         */
+        private var activeQuestionFailures: Int = 0,
+        private val topicFailure: Throwable? = null,
     ) : CurriculumRepository {
         private val questionsById = (questions + retiredQuestions).associateBy(Question::id)
 
@@ -1040,6 +1141,7 @@ internal class TopicDetailViewModelTest {
             private set
 
         override suspend fun getActiveTopics(): List<Topic> {
+            topicFailure?.let { throw it }
             if (failuresRemaining > 0) {
                 failuresRemaining -= 1
                 error("load failed")
@@ -1053,7 +1155,13 @@ internal class TopicDetailViewModelTest {
         }
 
         // Read once per LearningProgressService load to derive curriculum coverage.
-        override suspend fun getActiveQuestions(): List<Question> = questions
+        override suspend fun getActiveQuestions(): List<Question> {
+            if (activeQuestionFailures > 0) {
+                activeQuestionFailures -= 1
+                error("Question bank unavailable")
+            }
+            return questions
+        }
 
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> {
             topicQuestionCalls += 1
@@ -1086,7 +1194,7 @@ internal class TopicDetailViewModelTest {
 
         // Used by LearningProgressService to resolve each answered question back to its topic
         // and subtopic when the screen shows observed accuracy.
-        override suspend fun getQuestionById(questionId: String): Question? =
-            questionsById[questionId]
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            questionIds.mapNotNull { questionsById[it] }.associateBy(Question::id)
     }
 }

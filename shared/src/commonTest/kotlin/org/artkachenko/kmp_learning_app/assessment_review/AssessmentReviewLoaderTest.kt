@@ -85,7 +85,7 @@ internal class AssessmentReviewLoaderTest {
     fun singleOccurrenceMapsSelectedAnswersAndPersistedCorrectness() = runTest {
         val loader = AssessmentReviewLoader(FakeCurriculumRepository(listOf(question("q1"))))
 
-        val item = loader.loadQuestion("attempt_1", answered("q1", selectedIds = setOf("b"), isCorrect = false))
+        val item = loader.loadOccurrence(answered("q1", selectedIds = setOf("b"), isCorrect = false))
 
         val question = available(item)
         assertEquals("q1", question.questionId)
@@ -101,19 +101,61 @@ internal class AssessmentReviewLoaderTest {
         val loader = AssessmentReviewLoader(FakeCurriculumRepository(listOf(question("q1"))))
 
         // Selected the currently-correct answers but was persisted as incorrect: history wins.
-        val item = loader.loadQuestion("attempt_1", answered("q1", selectedIds = setOf("a", "c"), isCorrect = false))
+        val item = loader.loadOccurrence(answered("q1", selectedIds = setOf("a", "c"), isCorrect = false))
 
         assertFalse(available(item).isCorrect)
+    }
+
+    /**
+     * The batching contract, stated as call counts rather than as timing.
+     *
+     * A twenty-question attempt used to cost twenty `getQuestionById` calls, and each of those is
+     * one read transaction and four statements in the Room-backed repository. An identity the
+     * curriculum no longer holds is still asked for, so a missing item remains evidence of a
+     * resolution that was attempted rather than of a read that was skipped.
+     */
+    @Test
+    fun wholeAttemptIsResolvedInOneHistoricalRead() = runTest {
+        val curriculum = FakeCurriculumRepository(
+            listOf(question("q1"), question("q2"), question("q3")),
+        )
+        val attempt = completedAttempt(
+            listOf(answered("q1"), answered("q2"), answered("missing"), answered("q3")),
+            correctAnswers = 3,
+        )
+
+        val items = AssessmentReviewLoader(curriculum).loadQuestions(attempt)
+
+        assertEquals(1, curriculum.batchedReads)
+        assertEquals(
+            listOf("q1", "q2", "missing", "q3"),
+            items.map { item ->
+                when (item) {
+                    is ReviewQuestionItem.Available -> item.question.questionId
+                    is ReviewQuestionItem.Missing -> item.questionId
+                }
+            },
+        )
     }
 
     @Test
     fun singleOccurrenceOfAnUnknownQuestionIsMissing() = runTest {
         val loader = AssessmentReviewLoader(FakeCurriculumRepository(emptyList()))
 
-        val item = loader.loadQuestion("attempt_1", answered("gone"))
+        val item = loader.loadOccurrence(answered("gone"))
 
         assertEquals(ReviewQuestionItem.Missing("gone"), item)
     }
+
+    /**
+     * The single-occurrence path the mistake queue uses, expressed through the occurrence-list
+     * entry point so these cases keep exercising the production mapping rather than a form of
+     * their own.
+     */
+    private suspend fun AssessmentReviewLoader.loadOccurrence(
+        questionAttempt: QuestionAttempt,
+    ): ReviewQuestionItem =
+        loadQuestions(listOf(ReviewOccurrence("attempt_1", questionAttempt))).single()
 
     private fun available(item: ReviewQuestionItem): ReviewQuestionUiModel =
         assertIs<ReviewQuestionItem.Available>(item).question
@@ -182,9 +224,20 @@ internal class AssessmentReviewLoaderTest {
             subtopicId: String,
             levels: Set<QuestionLevel>,
         ): List<Question> = error("Not used")
+        /**
+         * Counts the round trips the loader makes, so a regression back to one read transaction
+         * per occurrence fails a test rather than only being slower.
+         */
+        var batchedReads: Int = 0
+            private set
+
         override suspend fun getTopicById(topicId: String): Topic? = error("Not used")
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
-        override suspend fun getQuestionById(questionId: String): Question? =
-            questions.firstOrNull { it.id == questionId }
+        override suspend fun getQuestionsByIds(
+            questionIds: Collection<String>,
+        ): Map<String, Question> {
+            batchedReads += 1
+            return questions.filter { it.id in questionIds }.associateBy(Question::id)
+        }
     }
 }

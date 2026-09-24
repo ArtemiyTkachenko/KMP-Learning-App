@@ -254,16 +254,33 @@ internal class AssessmentEngineTest {
     }
 
     @Test
-    fun extraAnswerForSingleAnswerQuestionIsIncorrect() = runEngineTest {
+    fun severalAnswersForASingleSelectionQuestionAreRejected() = runEngineTest {
+        // Authoring guarantees a SINGLE Question has exactly one correct answer, and the UI can
+        // only ever submit one ID. The engine enforces the same arity so no other caller can
+        // persist an occurrence recording a choice the interaction never offered.
         val session = sessionWith(question("single", correctAnswerIds = listOf("single_a")))
 
-        val updated = engine().submitAnswer(session, "single", listOf("single_a", "single_b"))
+        assertFailsWith<IllegalArgumentException> {
+            engine().submitAnswer(session, "single", listOf("single_a", "single_b"))
+        }
+
+        assertEquals(
+            QuestionAnswerState.Unanswered,
+            session.attempt.questionAttempts.single().answerState,
+        )
+    }
+
+    @Test
+    fun repeatedIdsStillCountAsOneSelectionForASingleSelectionQuestion() = runEngineTest {
+        val session = sessionWith(question("single", correctAnswerIds = listOf("single_a")))
+
+        val updated = engine().submitAnswer(session, "single", listOf("single_a", "single_a"))
 
         assertAnswered(
             session = updated,
             questionId = "single",
-            selectedAnswerIds = setOf("single_a", "single_b"),
-            isCorrect = false,
+            selectedAnswerIds = setOf("single_a"),
+            isCorrect = true,
         )
     }
 
@@ -708,7 +725,7 @@ internal class AssessmentEngineTest {
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
             error("Not used by AssessmentEngine.")
 
-        override suspend fun getQuestionById(questionId: String): Question? =
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
             error("Not used by AssessmentEngine.")
     }
 

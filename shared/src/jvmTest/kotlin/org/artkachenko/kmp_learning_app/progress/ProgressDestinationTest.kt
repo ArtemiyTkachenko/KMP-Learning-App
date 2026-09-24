@@ -207,7 +207,8 @@ private class StubCurriculumRepository : CurriculumRepository {
     ): List<Question> = emptyList()
     override suspend fun getTopicById(topicId: String): Topic? = Topic(topicId, "Kotlin")
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
-    override suspend fun getQuestionById(questionId: String): Question? = null
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        emptyMap()
 }
 
 private fun mixedAttempt(id: String): TestAttempt = attempt(id, AssessmentConfig.Mixed(1))

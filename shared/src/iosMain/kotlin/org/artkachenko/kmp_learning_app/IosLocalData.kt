@@ -31,8 +31,5 @@ public fun startIosLocalDataGraph() {
     }
 }
 
-public suspend fun initializeIosLocalData() {
-    KoinPlatform.getKoin()
-        .get<CurriculumDataInitializer>()
-        .initialize()
-}
+public fun iosAppStartupInitializer(): AppStartupInitializer =
+    KoinPlatform.getKoin().get<CurriculumDataInitializer>()

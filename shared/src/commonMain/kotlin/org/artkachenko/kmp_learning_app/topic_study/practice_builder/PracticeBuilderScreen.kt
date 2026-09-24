@@ -61,6 +61,9 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
@@ -222,7 +225,9 @@ private fun LazyListScope.configurationSection(
                             ),
                         )
                     },
-                    modifier = Modifier.testTag(practiceQuestionCountTag(option)),
+                    modifier = Modifier
+                        .testTag(practiceQuestionCountTag(option))
+                        .semantics { role = Role.RadioButton },
                 )
             }
         }
@@ -289,7 +294,9 @@ private fun LazyListScope.configurationSection(
                         // Disabled rather than absent: the learner can see that weak-area
                         // and mistake practice exist and are not ready yet.
                         enabled = option.isAvailable,
-                        modifier = Modifier.testTag(practiceSourceTag(option.source)),
+                        modifier = Modifier
+                            .testTag(practiceSourceTag(option.source))
+                            .semantics { role = Role.RadioButton },
                     )
                 }
             }

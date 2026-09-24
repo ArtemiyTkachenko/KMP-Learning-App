@@ -23,8 +23,10 @@ import org.koin.mp.KoinPlatform
  * stands exactly as it did before. That is why this is a lookup that may fail rather than
  * `koinInject()`, which would throw.
  *
- * No storage I/O happens here. The holder read its preference when the host built its graph; this
- * only observes it.
+ * The holder is a lazy Koin `single`, so the first call here is what constructs it and performs
+ * its one synchronous storage read, inside the `remember` below. That read completes within this
+ * composition, which is why the theme is settled before the first frame and no startup step waits
+ * on storage. Every later call, and every recomposition, only observes the value.
  */
 @Composable
 internal fun AppearanceTheme(content: @Composable () -> Unit) {

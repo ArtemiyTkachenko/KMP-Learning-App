@@ -380,7 +380,7 @@ private fun CalloutBlock(
  * lives here rather than as a display field on the enum — that would put presentation into the
  * authored model.
  */
-private fun LearningDepth.labelResource(): StringResource =
+internal fun LearningDepth.labelResource(): StringResource =
     when (this) {
         LearningDepth.CORE -> Res.string.learning_lesson_depth_core
         LearningDepth.PRACTICAL -> Res.string.learning_lesson_depth_practical

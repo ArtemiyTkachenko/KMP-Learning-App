@@ -106,6 +106,9 @@ does not cover: [CI](docs/workflows/ci.md).
 [code review](docs/workflows/code-review.md) ·
 [CI](docs/workflows/ci.md)
 
+**Quality**:
+[code quality audit](docs/quality/code-quality-audit.md)
+
 **Content — assessment** — the interview question bank, not application code:
 [curriculum](docs/content/curriculum.md) ·
 [authoring contract](docs/content/content-authoring.md) ·

@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.progress
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,13 +38,29 @@ internal class ProgressStateHolder(
     historyStore: AssessmentHistoryStore,
     scope: CoroutineScope,
 ) {
+    /**
+     * Re-derives on every settled refresh of the shared history, not only on a history that
+     * changed.
+     *
+     * That is [AssessmentHistoryStore.history]'s contract, and this dashboard depends on the whole
+     * of it: the two failures it can show come from different places. An unreadable attempt table
+     * is recovered by re-reading it, and a derivation that failed over history which read perfectly
+     * well — an unavailable curriculum — is recovered only by running the derivation again. One
+     * [AssessmentHistoryStore.invalidate] reaches both, because the store re-announces the cached
+     * history whether or not the re-read changed it.
+     */
     val state: StateFlow<ProgressUiState> = historyStore.history
         .map { history ->
             when (history) {
                 AssessmentHistory.Loading -> ProgressUiState.Loading
                 AssessmentHistory.Failed -> ProgressUiState.Error
                 is AssessmentHistory.Loaded -> runCatching { loadState(history.attempts) }
-                    .getOrElse { ProgressUiState.Error }
+                    .getOrElse { failure ->
+                        // Cancellation means this holder's own scope is ending, which is not an
+                        // operational failure to report as dashboard state.
+                        if (failure is CancellationException) throw failure
+                        ProgressUiState.Error
+                    }
             }
         }
         .stateIn(scope, SharingStarted.Eagerly, ProgressUiState.Loading)

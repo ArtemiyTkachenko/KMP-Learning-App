@@ -7,6 +7,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -658,6 +659,86 @@ internal class PracticeBuilderViewModelTest {
     }
 
     /**
+     * `availabilityJob` exists so a superseded eligibility read cannot land after the one that
+     * replaced it, and this is the case that proves it.
+     *
+     * The builder re-checks on every level and source tap, so two checks overlapping is ordinary
+     * use rather than a contrived race. The first check is for two levels and the second for one,
+     * so the two answers differ: a builder that let the first finish would tell the learner two
+     * Questions are available — and offer a length of two — for a selection that has one.
+     */
+    @Test
+    fun aSupersededEligibilityReadCannotOverwriteTheNewerSelection() = runViewModelTest {
+        val firstCheck = CompletableDeferred<Unit>()
+        val secondCheck = CompletableDeferred<Unit>()
+        val curriculum = FakeCurriculumRepository()
+        curriculum.beforeSelection = { check ->
+            when (check) {
+                2 -> firstCheck.await()
+                3 -> secondCheck.await()
+            }
+        }
+        val viewModel = viewModel(PracticeBuilderTarget.Topic("topic_a"), curriculum)
+        advanceUntilIdle()
+        assertEquals(3, availableCount(viewModel))
+
+        // Two levels: the check this starts would answer 2, and is abandoned before it can.
+        viewModel.toggleLevel(QuestionLevel.FOUNDATION)
+        advanceUntilIdle()
+        // One level: the check this starts is the only answer the screen may ever show.
+        viewModel.toggleLevel(QuestionLevel.APPLIED)
+        advanceUntilIdle()
+
+        secondCheck.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(setOf(QuestionLevel.ADVANCED), viewModel.uiState.value.levels)
+        assertEquals(1, availableCount(viewModel))
+        assertEquals(listOf(1), viewModel.uiState.value.questionCountOptions)
+
+        // Released last, and must change nothing: the two-level selection it was asked about is
+        // one the learner has already moved off.
+        firstCheck.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(1, availableCount(viewModel))
+        assertEquals(listOf(1), viewModel.uiState.value.questionCountOptions)
+    }
+
+    /**
+     * A check that was superseded is not a check that failed.
+     *
+     * Folding its cancellation into [PracticeAvailability.Error] would put "could not check" on a
+     * screen whose newer check is still running, and disable Start for a configuration nothing has
+     * yet said anything about. While the replacement is in flight the honest state is Checking.
+     */
+    @Test
+    fun aCancelledEligibilityReadLeavesTheScreenCheckingRatherThanFailed() = runViewModelTest {
+        val secondCheck = CompletableDeferred<Unit>()
+        val curriculum = FakeCurriculumRepository()
+        curriculum.beforeSelection = { check ->
+            when (check) {
+                2 -> CompletableDeferred<Unit>().await()
+                3 -> secondCheck.await()
+            }
+        }
+        val viewModel = viewModel(PracticeBuilderTarget.Topic("topic_a"), curriculum)
+        advanceUntilIdle()
+
+        viewModel.toggleLevel(QuestionLevel.FOUNDATION)
+        advanceUntilIdle()
+        viewModel.toggleLevel(QuestionLevel.APPLIED)
+        advanceUntilIdle()
+
+        assertEquals(PracticeAvailability.Checking, viewModel.uiState.value.availability)
+        assertFalse(viewModel.uiState.value.isStartEnabled)
+
+        secondCheck.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(1, availableCount(viewModel))
+        assertTrue(viewModel.uiState.value.isStartEnabled)
+    }
+
+    /**
      * One Unit whose ACTIVE Lessons name `subtopic_a` twice and `subtopic_b` once, plus supporting
      * and deprecated concepts that must not reach practice.
      */
@@ -797,6 +878,15 @@ internal class PracticeBuilderViewModelTest {
         /** Every scoped, level-aware read the selector made, in order. */
         val selectionCalls = mutableListOf<String>()
 
+        /**
+         * Runs before each level-aware read answers, with that read's 1-based number.
+         *
+         * The default does nothing. Gating by number is what lets a test hold one eligibility
+         * check open while the next one runs, which is the only way the builder's supersession
+         * rule is observable — every check otherwise completes before the next tap can arrive.
+         */
+        var beforeSelection: suspend (Int) -> Unit = {}
+
         override suspend fun getActiveTopics(): List<Topic> = topics
 
         override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> =
@@ -819,6 +909,7 @@ internal class PracticeBuilderViewModelTest {
             levels: Set<QuestionLevel>,
         ): List<Question> {
             selectionCalls += "topic:$topicId"
+            beforeSelection(selectionCalls.size)
             failOnce()
             return questions.filter { it.topicId == topicId && it.level in levels }
         }
@@ -828,6 +919,7 @@ internal class PracticeBuilderViewModelTest {
             levels: Set<QuestionLevel>,
         ): List<Question> {
             selectionCalls += "subtopic:$subtopicId"
+            beforeSelection(selectionCalls.size)
             failOnce()
             return questions.filter { it.subtopicId == subtopicId && it.level in levels }
         }
@@ -838,8 +930,8 @@ internal class PracticeBuilderViewModelTest {
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
             subtopics.firstOrNull { it.id == subtopicId }
 
-        override suspend fun getQuestionById(questionId: String): Question? =
-            questions.firstOrNull { it.id == questionId }
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+            questions.filter { it.id in questionIds }.associateBy(Question::id)
 
         private fun failOnce() {
             if (failuresRemaining > 0) {

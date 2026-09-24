@@ -1,14 +1,23 @@
 package org.artkachenko.kmp_learning_app.assessment_taking
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertRangeInfoEquals
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -40,6 +49,82 @@ internal class AssessmentTakingScreenTest {
         onNodeWithText("Question 2 of 6").assertIsDisplayed()
         onNodeWithText("Answer B").performClick()
         assertEquals("answer_b", selectedId)
+    }
+
+    @Test
+    fun questionAndAnswerRowsExposeTheirAssessmentSemantics() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = contentState(AnswerSelectionMode.SINGLE),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithText("Question text").assert(isHeading())
+        onNodeWithText("Answer A").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton),
+        )
+
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = contentState(AnswerSelectionMode.MULTIPLE),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+        onNodeWithText("Answer A").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox),
+        )
+    }
+
+    @Test
+    fun aNewQuestionStartsAtTheTopOfItsOwnContent() = runComposeUiTest {
+        val first = contentState(AnswerSelectionMode.SINGLE).copy(
+            question = AssessmentQuestionUiModel(
+                id = "question_a",
+                text = "Question A",
+                answers = (1..30).map { AnswerOption("answer_$it", "Answer $it") },
+                selectionMode = AnswerSelectionMode.SINGLE,
+            ),
+        )
+        val state = mutableStateOf(first)
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = state.value,
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNode(hasScrollAction()).performScrollToNode(hasText("Answer 25"))
+        onNodeWithText("Answer 25").assertIsDisplayed()
+        runOnIdle {
+            state.value = first.copy(
+                questionNumber = 3,
+                question = first.question.copy(id = "question_b", text = "Question B"),
+            )
+        }
+
+        onNodeWithText("Question B").assertIsDisplayed()
     }
 
     @Test

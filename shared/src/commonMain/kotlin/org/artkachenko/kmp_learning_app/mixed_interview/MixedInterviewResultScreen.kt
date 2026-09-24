@@ -2,12 +2,9 @@ package org.artkachenko.kmp_learning_app.mixed_interview
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -16,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mixed_result_attempt_not_found
 import kmp_learning_app.shared.generated.resources.mixed_result_error
@@ -41,9 +37,10 @@ import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuesti
 import org.artkachenko.kmp_learning_app.assessment_review.MistakeRetentionNotice
 import org.artkachenko.kmp_learning_app.assessment_review.reviewSaveAction
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentResultLayout
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
-import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.PerformanceCard
 import org.artkachenko.kmp_learning_app.ui.ScreenError
@@ -53,11 +50,7 @@ import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.jetbrains.compose.resources.stringResource
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.lazy.LazyListScope
-import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
-import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
 internal const val MixedResultLoadingTag = "mixed_result_loading"
 internal const val MixedResultPracticeAgainTag = "mixed_result_practice_again"
@@ -74,6 +67,7 @@ internal fun MixedInterviewResultScreen(
     onBack: () -> Unit,
     onSourceClick: (String) -> Unit,
     onRepeatInterview: () -> Unit = {},
+    retakeState: AssessmentRetakeState = AssessmentRetakeState.Idle,
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)? = null,
     savedQuestions: SavedQuestionsState = SavedQuestionsState.Loading,
     onToggleSaved: (String) -> Unit = {},
@@ -107,6 +101,7 @@ internal fun MixedInterviewResultScreen(
                     state = state,
                     onSourceClick = onSourceClick,
                     onRepeatInterview = onRepeatInterview,
+                    retakeState = retakeState,
                     onPracticeMistakes = onPracticeMistakes,
                     savedQuestions = savedQuestions,
                     onToggleSaved = onToggleSaved,
@@ -141,65 +136,34 @@ private fun MixedResultContent(
     state: MixedInterviewResultUiState.Content,
     onSourceClick: (String) -> Unit,
     onRepeatInterview: () -> Unit,
+    retakeState: AssessmentRetakeState,
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)?,
     savedQuestions: SavedQuestionsState,
     onToggleSaved: (String) -> Unit,
     failedSourceUrl: String?,
     modifier: Modifier,
 ) {
-    if (LocalAppWindowSizeClass.current.isExpanded) {
-        AppTwoPaneRow(
-            modifier = modifier,
-            primary = {
-                ResultPane(Modifier.weight(1f).testTag(MixedResultSummaryPaneTag)) {
-                    outcomeSection(
-                        state = state,
-                        onRepeatInterview = onRepeatInterview,
-                        onPracticeMistakes = onPracticeMistakes,
-                    )
-                }
-            },
-            secondary = {
-                ResultPane(Modifier.weight(1f).testTag(MixedResultReviewPaneTag)) {
-                    reviewSection(
-                        state = state,
-                        onSourceClick = onSourceClick,
-                        savedQuestions = savedQuestions,
-                        onToggleSaved = onToggleSaved,
-                        failedSourceUrl = failedSourceUrl,
-                    )
-                }
-            },
-        )
-        return
-    }
-    ResultPane(modifier) {
-        outcomeSection(
-            state = state,
-            onRepeatInterview = onRepeatInterview,
-            onPracticeMistakes = onPracticeMistakes,
-        )
-        reviewSection(
-            state = state,
-            onSourceClick = onSourceClick,
-            savedQuestions = savedQuestions,
-            onToggleSaved = onToggleSaved,
-            failedSourceUrl = failedSourceUrl,
-        )
-    }
-}
-
-/** One column of the result, with the same padding and rhythm in either arrangement. */
-@Composable
-private fun ResultPane(
-    modifier: Modifier,
-    content: LazyListScope.() -> Unit,
-) {
-    LazyColumn(
-        modifier = modifier.fillMaxHeight(),
-        contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable),
-        content = content,
+    AssessmentResultLayout(
+        modifier = modifier,
+        summaryPaneModifier = Modifier.testTag(MixedResultSummaryPaneTag),
+        reviewPaneModifier = Modifier.testTag(MixedResultReviewPaneTag),
+        summary = {
+            outcomeSection(
+                state = state,
+                onRepeatInterview = onRepeatInterview,
+                retakeState = retakeState,
+                onPracticeMistakes = onPracticeMistakes,
+            )
+        },
+        review = {
+            reviewSection(
+                state = state,
+                onSourceClick = onSourceClick,
+                savedQuestions = savedQuestions,
+                onToggleSaved = onToggleSaved,
+                failedSourceUrl = failedSourceUrl,
+            )
+        },
     )
 }
 
@@ -207,6 +171,7 @@ private fun ResultPane(
 private fun LazyListScope.outcomeSection(
     state: MixedInterviewResultUiState.Content,
     onRepeatInterview: () -> Unit,
+    retakeState: AssessmentRetakeState,
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)?,
 ) {
     item {
@@ -219,21 +184,23 @@ private fun LazyListScope.outcomeSection(
             )
             UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
             MistakeRetentionNotice(state.questions, onPracticeMistakes)
-            when (state.repeatInterviewState) {
-                RepeatInterviewState.Idle -> Unit
-                RepeatInterviewState.Creating ->
+            when (retakeState) {
+                AssessmentRetakeState.Idle -> Unit
+                AssessmentRetakeState.Creating,
+                is AssessmentRetakeState.Created,
+                ->
                     Text(stringResource(Res.string.mixed_result_practice_starting))
-                RepeatInterviewState.SourceAttemptNotFound ->
+                AssessmentRetakeState.SourceAttemptNotFound ->
                     Text(
                         stringResource(Res.string.mixed_result_repeat_source_missing),
                         color = MaterialTheme.colorScheme.error,
                     )
-                RepeatInterviewState.NoEligibleQuestions ->
+                AssessmentRetakeState.NoEligibleQuestions ->
                     Text(
                         stringResource(Res.string.mixed_result_repeat_no_questions),
                         color = MaterialTheme.colorScheme.error,
                     )
-                RepeatInterviewState.Error ->
+                AssessmentRetakeState.Error ->
                     Text(
                         stringResource(Res.string.mixed_result_repeat_error),
                         color = MaterialTheme.colorScheme.error,
@@ -241,10 +208,14 @@ private fun LazyListScope.outcomeSection(
             }
             OutlinedButton(
                 onClick = onRepeatInterview,
-                enabled = state.repeatInterviewState != RepeatInterviewState.Creating,
+                enabled = retakeState !is AssessmentRetakeState.Creating &&
+                    retakeState !is AssessmentRetakeState.Created,
                 modifier = Modifier.testTag(MixedResultPracticeAgainTag),
             ) {
-                if (state.repeatInterviewState == RepeatInterviewState.Creating) {
+                if (
+                    retakeState is AssessmentRetakeState.Creating ||
+                    retakeState is AssessmentRetakeState.Created
+                ) {
                     CircularProgressIndicator(Modifier.testTag(MixedResultCreatingIndicatorTag))
                 } else {
                     Text(stringResource(Res.string.mixed_result_practice_again))

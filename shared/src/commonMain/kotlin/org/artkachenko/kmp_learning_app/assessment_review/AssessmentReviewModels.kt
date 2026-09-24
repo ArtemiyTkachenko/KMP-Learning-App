@@ -32,3 +32,15 @@ internal data class ReviewSourceUiModel(
     val title: String,
     val url: String,
 )
+
+/**
+ * Whether this item is [questionId] as content the learner can actually act on.
+ *
+ * The mutation boundary of every review surface: a save action may only be honoured for a Question
+ * the surface is currently showing as available, so persistence can never record an identity whose
+ * content the learner has no way to reach. The Focused result, the Mixed result, and the Mistake
+ * queue each stated this rule for themselves, over three different traversals of the same type; one
+ * predicate is what keeps the three surfaces from drifting on which saves they accept.
+ */
+internal fun ReviewQuestionItem.isAvailableFor(questionId: String): Boolean =
+    this is ReviewQuestionItem.Available && question.questionId == questionId

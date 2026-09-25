@@ -108,9 +108,9 @@ resolved queue keeps no action, because an empty destination is not worth a tap.
 
 The dashboard presents the snapshot's three signals as three separate surfaces,
 because they answer three different questions and are routinely different
-numbers. All-time accuracy leads as the screen's standing hero and is labelled as
+numbers. All-time accuracy leads as the screen's `AccuracyHeroCard` and is labelled as
 all-time rather than "overall", since an unqualified accuracy figure beside a
-recent one is ambiguous. That hero is `surfaceContainerHigh` with a hairline
+recent one is ambiguous. That card is `surfaceContainerHigh` with a hairline
 `outlineVariant` edge and a small shadow, and states its figure beside the shared
 `AccuracyRing` rather than over a bar: as an ordinary `PrimarySummaryCard` it sat one
 surface step above the two cards qualifying it, which in dark — where separation is
@@ -160,6 +160,24 @@ budget — draws no direction colouring or "improving"/"declining" label, since 
 domain deliberately exposes raw observations, and carries a semantic description
 listing every plotted percentage oldest-first so the drawing is never the only
 representation.
+
+The drill-down leads with the same `AccuracyHeroCard`, carrying the Topic name as its
+title and the all-time counts as its caption. Its percentage is nullable for the
+same reason the card's parameter is: below `WeakAreaMinimumAnswered` there is no
+honest figure, so the hero states the counts and lets the "not enough data" line
+explain itself rather than drawing a ring at a number the learner never produced.
+Weakness remains the domain's verdict and is still suppressed below that minimum,
+and coverage stays a caption rather than a second figure, because it counts current
+Questions once each while the line above it is all-time and occurrence-based.
+
+The Subtopic rows beneath it are the one list in the app that passes
+`PerformanceCard(comparesWithSiblings = true)`. They are parts of one whole measured
+on one scale, and the question the learner opened the screen to ask is which of them
+is worst; four percentages down the right-hand edge answer that only by being read
+one at a time. The meter is drawn from the same `accuracyColor` as the figure and
+clears its semantics, so the number is announced once. A row below the evidence
+minimum has no percentage and therefore no meter, rather than a bar at a rate that
+was never measured.
 
 Topic performance rows open `AppRoute.ProgressTopic(topicId)`, carrying only
 stable topic identity. `ProgressTopicViewModel` selects that Topic and its

@@ -1,7 +1,9 @@
 package org.artkachenko.kmp_learning_app.progress
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertCountEquals
@@ -83,6 +85,42 @@ internal class ProgressTopicScreenTest {
         onNodeWithText("Basics").assertExists()
         // Only the weak subtopic is flagged; the aggregate card is not weak here.
         onAllNodesWithText("Weak area").assertCountEquals(1)
+    }
+
+    /**
+     * Every figure on this screen is drawn twice — as a number and as a bar — and announced once.
+     *
+     * The Subtopic rows carry a meter so the column can be read as a comparison rather than as four
+     * numbers to remember, and the hero's ring does the same for the Topic. Both are pictures of a
+     * percentage that is written in full immediately beside them, so both clear their semantics:
+     * a `ProgressBarRangeInfo` here would hand assistive technology the same value a second time,
+     * once per row. Asserting the absence is the only way to say that from a test — the drawings
+     * themselves are verified by capture, not by assertion.
+     */
+    @Test
+    fun theComparisonBarsAndTheRingAreDrawnRatherThanAnnounced() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressTopicScreen(
+                    state = ProgressTopicUiState.Content(
+                        topicName = "Kotlin",
+                        answeredCount = 20,
+                        correctCount = 14,
+                        percentage = 70.0,
+                        isWeak = false,
+                        coverage = ProgressCoverageUiModel(12, 30, 40.0),
+                        subtopics = subtopicRows(),
+                    ),
+                    onBack = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("70%").assertIsDisplayed()
+        onAllNodes(
+            SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo),
+        ).assertCountEquals(0)
     }
 
     @Test

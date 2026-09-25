@@ -17,7 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 
 /**
@@ -38,6 +40,14 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
  * ordering puts weak rows first, and [weakLabel] is available wherever the surrounding context does
  * not already say what these rows are.
  *
+ * [comparesWithSiblings] adds a meter under the row, and is off by default because most lists of
+ * these cards are not comparisons. A Topic's Subtopics are: they are parts of one whole, measured on
+ * one scale, and the question the learner opened the screen to ask is which of them is worst. Four
+ * percentages down the right-hand edge answer that only by being read and remembered one at a time,
+ * where four bars answer it at a glance. A session-history list is the counter-example — consecutive
+ * attempts of different lengths on different scopes are not rows to compare against each other, and
+ * a bar on each would invite exactly that.
+ *
  * [onClick] makes the whole card a button and adds the navigation chevron. Keeping the callback and
  * affordance together prevents an inert card from advertising navigation. [action] is an optional
  * low-emphasis control on its own line under the figures. It is absent by
@@ -55,7 +65,7 @@ internal fun PerformanceCard(
     caption: String? = null,
     isWeak: Boolean = false,
     weakLabel: String? = null,
-    isSummary: Boolean = false,
+    comparesWithSiblings: Boolean = false,
     onClick: (() -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
@@ -73,29 +83,36 @@ internal fun PerformanceCard(
                     Modifier.clickable(role = Role.Button, onClick = onClick)
                 },
             ),
-        shape = if (isSummary) MaterialTheme.shapes.large else MaterialTheme.shapes.medium,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = if (isSummary) {
-                MaterialTheme.colorScheme.surfaceContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerLow
-            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
         border = if (isWeak) BorderStroke(WeakBorderWidth, semantic.partiallyCorrect) else null,
     ) {
+        val meter = percentage.takeIf { comparesWithSiblings }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                // The action supplies the card's bottom inset when there is one, so the row does
-                // not leave a full gap above a control that belongs to it.
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-                .padding(bottom = if (action == null) 16.dp else 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                // Whatever comes next supplies the card's bottom inset, so the row does not leave a
+                // full gap above a meter or a control that belongs to it.
+                .padding(
+                    start = AppSpacing.Comfortable,
+                    end = AppSpacing.Comfortable,
+                    top = AppSpacing.Comfortable,
+                )
+                .padding(
+                    bottom = when {
+                        action != null -> AppSpacing.Tight
+                        meter != null -> AppSpacing.Grouped
+                        else -> AppSpacing.Comfortable
+                    },
+                ),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             ) {
                 Text(
                     title,
@@ -149,9 +166,30 @@ internal fun PerformanceCard(
                 )
             }
         }
+        meter?.let {
+            ProgressMeter(
+                fraction = (it / 100.0).toFloat(),
+                color = accuracyColor(it),
+                // The figure above it is already announced; a second progress node saying the same
+                // number is noise to a screen reader, so the bar is drawing only.
+                modifier = Modifier
+                    .padding(
+                        start = AppSpacing.Comfortable,
+                        end = AppSpacing.Comfortable,
+                        bottom = AppSpacing.Comfortable,
+                    )
+                    .clearAndSetSemantics {},
+            )
+        }
         action?.let {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = AppSpacing.Related,
+                        end = AppSpacing.Related,
+                        bottom = AppSpacing.Tight,
+                    ),
             ) {
                 it()
             }

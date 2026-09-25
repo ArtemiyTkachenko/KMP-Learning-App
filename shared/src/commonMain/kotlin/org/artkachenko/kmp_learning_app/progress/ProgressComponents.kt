@@ -40,7 +40,7 @@ internal fun ProgressPerformanceCard(
      * "Weak areas" heading, every card carrying the badge repeats that heading once per row.
      */
     weakLabel: String? = stringResource(Res.string.progress_weak_label),
-    isSummary: Boolean = false,
+    comparesWithSiblings: Boolean = false,
     onClick: (() -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
@@ -53,7 +53,7 @@ internal fun ProgressPerformanceCard(
         caption = caption,
         isWeak = isWeak,
         weakLabel = weakLabel,
-        isSummary = isSummary,
+        comparesWithSiblings = comparesWithSiblings,
         onClick = onClick,
         action = action,
     )

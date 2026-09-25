@@ -48,7 +48,7 @@ import androidx.compose.ui.graphics.Color
  * | --- | --- | --- |
  * | 0 — page | `background` (= `surface`) | `AppNavigationScaffold`'s container |
  * | 1 — ordinary content | `surfaceContainerLow` | most Cards, `SecondarySummaryCard` |
- * | 2 — raised / interactive | `surfaceContainer` and up | `PrimarySummaryCard`, a weak `PerformanceCard`, menus, sheets |
+ * | 2 — raised / interactive | `surfaceContainer` and up | `AccuracyHeroCard` (at `surfaceContainerHigh`), a weak `PerformanceCard`, menus, sheets |
  *
  * The complaint this answers is that the levels were nearly the same colour. The light ramp used to
  * step about 6/255 per level and the dark one about 4/255, which is below what a display in a lit

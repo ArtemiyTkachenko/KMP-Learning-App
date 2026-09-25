@@ -56,44 +56,6 @@ internal fun accuracyColor(percentage: Double): Color {
 private const val StrongAccuracyThreshold = 85.0
 
 /**
- * The headline number for a screen: an accuracy percentage with a supporting caption and a meter.
- * Used by the progress dashboard, the topic drill-down, and both result screens so the primary
- * outcome reads the same way everywhere.
- */
-@Composable
-internal fun AccuracyHeadline(
-    percentage: Double,
-    caption: String,
-    modifier: Modifier = Modifier,
-    supporting: String? = null,
-) {
-    val color = accuracyColor(percentage)
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = formatAccuracy(percentage),
-                style = MaterialTheme.typography.displaySmall,
-                color = color,
-            )
-            Text(
-                text = caption,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
-        }
-        ProgressMeter(fraction = (percentage / 100.0).toFloat(), color = color)
-        supporting?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-/**
  * The horizontal meter under a figure, in the one style the product uses for all of them.
  *
  * This existed four times with the same styling copied out, and three of those copies passed their
@@ -206,7 +168,7 @@ private val AccuracyRingStroke = 6.dp
 internal const val AccuracyRingTrackAlpha = 0.22f
 
 /**
- * The figure a card exists to show, one step below [AccuracyHeadline]'s screen headline.
+ * The figure a card exists to show, one step below [AccuracyHeroCard]'s screen headline.
  *
  * This exists because three cards — coverage, recent performance, and the interview question count
  * — each set `FontWeight.Bold` on a headline role at their own call site, while the same roles are

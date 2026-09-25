@@ -33,10 +33,9 @@ import kmp_learning_app.shared.generated.resources.topic_detail_recommended_weak
 import kmp_learning_app.shared.generated.resources.topic_detail_start_practice
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
-import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
+import org.artkachenko.kmp_learning_app.ui.AccuracyHeroCard
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
-import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.ProgressMeter
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.SecondarySummaryCard
@@ -229,10 +228,15 @@ private fun TopicPracticeRecommendation.reasonLabel(): String? =
 /**
  * The Topic's learning summary: one coherent surface rather than two competing cards.
  *
- * All-time accuracy leads when there is any, because it is the figure the learner came for, with
- * current coverage under a divider as the second, differently-scoped question. With no accuracy to
- * lead on, the whole thing steps down to a quieter card: an unstudied Topic should not open with a
- * display-size headline, and it must never open with a fabricated 0%.
+ * All-time accuracy leads when there is any, because it is the figure the learner came for: the
+ * page's [AccuracyHeroCard], with current coverage under a divider as the second, differently-scoped
+ * question. The two are deliberately drawn with different controls — a ring for the rate, a meter
+ * for how much of the bank is behind the learner — because the only reason they share a card is
+ * that they are not the same reading.
+ *
+ * With no accuracy to lead on, the whole thing steps down to a quieter card rather than passing a
+ * null figure to the hero: an unstudied Topic should not open with a display-size surface at all,
+ * and it must never open with a fabricated 0%.
  *
  * It now carries no shortcuts of its own. The two text buttons that used to end this card were the
  * only evidence-driven practice on the page and they sat above the one filled button, which inverted
@@ -252,11 +256,10 @@ private fun TopicLearningSummary(context: LearningContextUiModel) {
             TopicCoverage(context)
         }
     } else {
-        PrimarySummaryCard {
-            AccuracyHeadline(
-                percentage = accuracy,
-                caption = stringResource(Res.string.topic_detail_accuracy_caption),
-            )
+        AccuracyHeroCard(
+            percentage = accuracy,
+            caption = stringResource(Res.string.topic_detail_accuracy_caption),
+        ) {
             if (context.isWeak) {
                 StatusBadge(
                     text = stringResource(Res.string.progress_weak_label),

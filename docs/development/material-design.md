@@ -63,7 +63,7 @@ change picks one of them rather than a tone it likes the look of.
 | --- | --- | --- |
 | 0 — page | `background` | The screen itself. Only `AppNavigationScaffold` paints it. |
 | 1 — ordinary content | `surfaceContainerLow` | Most Cards: a list row, a review question, `SecondarySummaryCard`. |
-| 2 — raised / interactive | `surfaceContainer` and above | The one surface on a screen that outranks the rest: `PrimarySummaryCard`, a weak `PerformanceCard`, a code block, a menu or sheet. |
+| 2 — raised / interactive | `surfaceContainer` and above | The one surface on a screen that outranks the rest: `AccuracyHeroCard` (at `surfaceContainerHigh`), a weak `PerformanceCard`, a code block, a menu or sheet. |
 
 Level 2 is a claim about importance, so a screen that puts everything on it has said nothing. If two
 sibling cards both want it, neither should have it.
@@ -107,15 +107,26 @@ its own on-colour at low alpha plus a small `shadowElevation`, because a gradien
 change rather than a lifted object — most noticeably in light, where the sweep is a pale tint over an
 off-white page.
 
-A screen may have a hero without the gradient, and the Progress dashboard does: its standing
-summary is `surfaceContainerHigh` with the same hairline edge and small shadow, which is how a
-level-2 surface outranks the level-1 cards under it in dark, where separation is luminance and one
-container step is nearly invisible. Reach for the gradient only where the surface is an arrival.
+A screen may have a hero without the gradient, and three do. `AccuracyHeroCard` is
+`surfaceContainerHigh` with a hairline `outlineVariant` edge and a small shadow, and it is what the
+Progress dashboard, the Topic drill-down, and the Topic practice page lead with. The edge is what
+carries the rank in dark, where one container step is nearly invisible and a shadow almost is; the
+shadow is what carries it in light, where the two tones are close in value. Neither alone works in
+both schemes. Reach for the gradient only where the surface is an *arrival*.
 
-Both heroes state their figure beside `AccuracyRing` rather than over a `ProgressMeter`. A bar is
-the picture of "how far through something you are" — which is what curriculum coverage shows — and
-a ring is the picture of a rate. One ring size exists on purpose: a ring that changed size between
-the two surfaces would read as two controls rather than one product idea.
+Every hero states its figure beside `AccuracyRing` rather than over a `ProgressMeter`. A bar is the
+picture of "how far through something you are" — which is what a coverage meter on the same card
+shows — and a ring is the picture of a rate. Drawing both with one control made a Topic's accuracy
+and its coverage look like two readings of one quantity. One ring size exists on purpose: a ring
+that changed size between surfaces would read as several controls rather than one product idea.
+
+`PerformanceCard(comparesWithSiblings = true)` adds a meter under a row, and is off everywhere
+except a Topic's Subtopics. Those rows are parts of one whole on one scale, and "which of these is
+worst" is the question the screen was opened to answer — four percentages down the right-hand edge
+answer it only by being read and remembered one at a time. A session-history list is the
+counter-example: consecutive attempts of different lengths on different scopes are not rows to
+compare, and a bar on each would invite exactly that. Both the ring and these meters clear their
+semantics, because the percentage is written in full immediately beside them.
 
 A completed assessment is the one surface where a performance colour must **not** come from
 `accuracyColor`. That scale bottoms out at `AppSemanticColors.incorrect`, and the error role is for a

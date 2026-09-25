@@ -1,6 +1,5 @@
 package org.artkachenko.kmp_learning_app.progress
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +18,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_none
@@ -65,8 +62,7 @@ import kmp_learning_app.shared.generated.resources.progress_weak_areas
 import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_detail
 import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_title
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
-import org.artkachenko.kmp_learning_app.ui.AccuracyRing
-import org.artkachenko.kmp_learning_app.ui.AccuracyRingTrackAlpha
+import org.artkachenko.kmp_learning_app.ui.AccuracyHeroCard
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
@@ -392,97 +388,35 @@ private fun WeakAreasEarlyState(answeredQuestionCount: Int) {
 }
 
 /**
- * Where the learner stands, as the one surface on this screen that outranks the rest.
- *
- * This was a `PrimarySummaryCard` holding an `AccuracyHeadline`, and on paper that is the level-2
- * surface doing its job. On screen it was not: `surfaceContainer` sits one step above the
- * `surfaceContainerLow` of the coverage and recent cards directly beneath it, and at that distance
- * the three read as a stack of three equal boxes — in dark, where separation comes from luminance
- * rather than tone, they were very nearly indistinguishable. The dashboard's headline figure had no
- * more weight than the two summaries qualifying it.
- *
- * Three changes, and they are all about rank rather than decoration. The surface takes
- * `surfaceContainerHigh` — still level 2, one step further from the cards below. It carries a
- * hairline `outlineVariant` edge and a small shadow, which is what makes the step legible in dark
- * without inventing a colour for it. And the meter under the figure becomes the product's
- * [AccuracyRing] beside it, which is the same form the completion hero uses: a bar is the right
- * picture for "how far through the bank you are" — which is what the coverage card below actually
- * shows — and the wrong one for a rate.
- *
- * This is deliberately **not** the hero gradient. That token is reserved for a surface that is an
- * arrival, and it has exactly one call site for that reason; a lifetime accuracy is a standing
- * figure a learner checks, not a moment that just happened, and dressing it as a celebration would
- * cost the completion hero the thing that makes it read as one.
+ * Where the learner stands: the screen's [AccuracyHeroCard], with the lifetime counts under it.
  *
  * The figure keeps [accuracyColor]. That is the dashboard's diagnostic channel and the reason the
  * scale exists — on a screen whose whole job is to say where a learner is weak, an uncoloured
- * headline was the original defect. The ring takes the same colour so the two are one statement.
+ * headline was the original defect.
  */
 @Composable
 private fun OverallSummary(state: ProgressUiState.Content) {
-    val accuracy = accuracyColor(state.percentage)
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(HeroBorderWidth, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = HeroElevation,
+    AccuracyHeroCard(
+        percentage = state.percentage,
+        caption = stringResource(Res.string.progress_accuracy_caption),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Generous),
-            verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AccuracyRing(
-                    fraction = (state.percentage / 100.0).toFloat(),
-                    color = accuracy,
-                    trackColor = MaterialTheme.colorScheme.onSurface
-                        .copy(alpha = AccuracyRingTrackAlpha),
-                )
-                Column(
-                    // Weighted so the figure and its caption wrap inside the space left beside the
-                    // ring rather than pushing the row past the window at a large type scale.
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
-                ) {
-                    Text(
-                        text = formatAccuracy(state.percentage),
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = accuracy,
-                    )
-                    Text(
-                        text = stringResource(Res.string.progress_accuracy_caption),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
-                MetricRow(
-                    label = stringResource(Res.string.progress_completed_attempts_label),
-                    value = state.completedAttemptCount.toString(),
-                )
-                MetricRow(
-                    label = stringResource(Res.string.progress_questions_answered_label),
-                    value = state.answeredQuestionCount.toString(),
-                )
-                MetricRow(
-                    label = stringResource(Res.string.progress_correct_answers_label),
-                    value = state.correctAnswerCount.toString(),
-                )
-            }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
+            MetricRow(
+                label = stringResource(Res.string.progress_completed_attempts_label),
+                value = state.completedAttemptCount.toString(),
+            )
+            MetricRow(
+                label = stringResource(Res.string.progress_questions_answered_label),
+                value = state.answeredQuestionCount.toString(),
+            )
+            MetricRow(
+                label = stringResource(Res.string.progress_correct_answers_label),
+                value = state.correctAnswerCount.toString(),
+            )
         }
     }
 }
-
-/** The edge and the lift that make the standing hero outrank the summaries under it. */
-private val HeroBorderWidth = 1.dp
-private val HeroElevation = 2.dp
 
 /**
  * How much of the current question bank the learner has seen — a different question from how

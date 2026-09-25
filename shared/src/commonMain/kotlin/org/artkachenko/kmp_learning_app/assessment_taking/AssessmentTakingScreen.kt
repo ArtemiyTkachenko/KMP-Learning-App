@@ -5,13 +5,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,14 +26,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -61,6 +63,7 @@ import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_taking_answer_save_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_completion_save_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_finish
+import kmp_learning_app.shared.generated.resources.assessment_taking_finishing
 import kmp_learning_app.shared.generated.resources.assessment_taking_loading
 import kmp_learning_app.shared.generated.resources.assessment_taking_no_questions
 import kmp_learning_app.shared.generated.resources.assessment_taking_next_question
@@ -83,6 +86,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.questionOutcome
 import org.artkachenko.kmp_learning_app.assessment_review.tagLabel
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.ProgressMeter
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.ScreenError
@@ -92,6 +96,7 @@ import org.artkachenko.kmp_learning_app.ui.ScreenStatus
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.jetbrains.compose.resources.stringResource
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.maxWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
@@ -168,22 +173,14 @@ internal fun AssessmentTakingScreen(
                         Text(
                             text = stringResource(Res.string.assessment_taking_completion_save_error),
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 12.dp),
                         )
                     }
-                    Button(
-                        onClick = onComplete,
-                        enabled = !state.isCompleting,
-                        modifier = Modifier
-                            .padding(top = 16.dp)
-                            .testTag(AssessmentTakingFinishTag),
-                    ) {
-                        if (state.isCompleting) {
-                            CircularProgressIndicator()
-                        } else {
-                            Text(text = stringResource(Res.string.assessment_taking_finish))
-                        }
-                    }
+                    // `ScreenStatus` already spaces what it holds; the two extra top paddings here
+                    // were adding a second gap on top of that one.
+                    FinishAction(
+                        isCompleting = state.isCompleting,
+                        onComplete = onComplete,
+                    )
                 }
 
                 is AssessmentTakingUiState.CompletionSucceeded -> ScreenMessage(
@@ -198,6 +195,19 @@ internal fun AssessmentTakingScreen(
 /**
  * How much of the assessment is behind the learner. The counter alone gave the number but not the
  * shape of it, so "3 of 20" and "3 of 5" read the same at a glance.
+ *
+ * It is pinned above the scrolling content rather than placed in it, so it stays answerable while
+ * the learner reads a long question — and that is exactly why it has to be given the content
+ * column's width explicitly. Spanning the window was correct only at a compact width, where the
+ * pane below *is* the window minus its margin; at a medium or expanded width `AppContentWidth`
+ * caps the question column and centres it, so a full-bleed meter ran from the window's left edge
+ * to its right while the question it measured started several hundred pixels in. The cap plus the
+ * same margin puts it back on the text column at every width.
+ *
+ * The bar itself is the product's one [ProgressMeter] rather than a second `LinearProgressIndicator`
+ * configured by hand. The hand-rolled one kept Material's track gap and stop indicator — a dot
+ * floating past the end of the bar — and its own 4dp height and its own `animateFloatAsState`,
+ * none of which differed from the shared meter on purpose.
  */
 @Composable
 private fun AssessmentProgressMeter(questionNumber: Int, totalQuestions: Int) {
@@ -206,25 +216,78 @@ private fun AssessmentProgressMeter(questionNumber: Int, totalQuestions: Int) {
     } else {
         ((questionNumber - 1).coerceIn(0, totalQuestions).toFloat()) / totalQuestions
     }
-    val animated by animateFloatAsState(
-        targetValue = fraction,
-        animationSpec = AppMotion.effectSpec(AppMotion.ProgressDurationMillis),
-        label = "assessmentProgress",
-    )
-    LinearProgressIndicator(
-        progress = { animated },
-        modifier = Modifier
-            .fillMaxWidth()
-            // The window's own margin rather than a literal: this meter sits outside the content
-            // pane, spanning the window with the question counter it belongs to, so it has to line
-            // up with the margin the pane inside it uses.
-            .padding(
-                horizontal = LocalAppContentMargin.current,
-                vertical = AppSpacing.Related,
-            )
-            .testTag(AssessmentProgressMeterTag),
-    )
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.Related),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        ProgressMeter(
+            fraction = fraction,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .widthIn(max = AppContentWidth.Standard.maxWidth())
+                .padding(horizontal = LocalAppContentMargin.current)
+                .testTag(AssessmentProgressMeterTag),
+        )
+    }
 }
+
+
+/**
+ * Finishing the assessment, in the two states it can be in.
+ *
+ * This was the last control in the app still replacing its label with a bare
+ * `CircularProgressIndicator`. Material's standalone indicator is 40dp, so pressing Finish grew the
+ * button into something half as tall again as it started, and what it grew into said nothing about
+ * why: the word explaining the wait was the word it had just removed. The rule the retake control
+ * and the practice Submit both follow is that a busy control keeps its place, its size and its
+ * emphasis and states its own condition — a spinner sized like the leading icon it effectively is,
+ * beside a word.
+ *
+ * Disabled here means *working*, not unavailable, so the disabled colours are overridden to stay
+ * readable rather than fading the spinner and its label at the moment they are the only things on
+ * screen saying anything.
+ */
+@Composable
+private fun FinishAction(isCompleting: Boolean, onComplete: () -> Unit) {
+    Button(
+        onClick = onComplete,
+        enabled = !isCompleting,
+        colors = ButtonDefaults.buttonColors(
+            disabledContainerColor = MaterialTheme.colorScheme.primary,
+            disabledContentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+        modifier = Modifier.testTag(AssessmentTakingFinishTag),
+    ) {
+        AnimatedContent(
+            targetState = isCompleting,
+            transitionSpec = {
+                val enter = fadeIn(AppMotion.effectSpec())
+                val exit = fadeOut(AppMotion.effectSpec(AppMotion.StateChangeDurationMillis / 2))
+                enter togetherWith exit using SizeTransform(clip = false)
+            },
+            label = "assessmentFinish",
+        ) { completing ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (completing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(FinishProgressSize),
+                        strokeWidth = FinishProgressStroke,
+                    )
+                    Text(
+                        text = stringResource(Res.string.assessment_taking_finishing),
+                        modifier = Modifier.padding(start = AppSpacing.Related),
+                    )
+                } else {
+                    Text(text = stringResource(Res.string.assessment_taking_finish))
+                }
+            }
+        }
+    }
+}
+
+/** The leading-icon size Material gives a text button, as every other busy control here uses. */
+private val FinishProgressSize = 18.dp
+private val FinishProgressStroke = 2.dp
 
 @Composable
 private fun QuestionContent(
@@ -356,6 +419,12 @@ private fun QuestionContent(
                 enabled = (state.canSubmit && !state.isSubmitting) || state.feedback != null,
                 modifier = Modifier
                     .fillMaxWidth()
+                    // A section break above the commit action, on top of the list's own 12dp. The
+                    // button sat one option-gap below the last option, so the control that ends the
+                    // question was as close to the final answer row as the answer rows were to each
+                    // other — which on a touch screen is a mis-tap and on any screen is a hierarchy
+                    // that does not distinguish choosing from committing.
+                    .padding(top = AppSpacing.Section)
                     .testTag(AssessmentTakingSubmitTag),
             ) {
                 AnimatedContent(

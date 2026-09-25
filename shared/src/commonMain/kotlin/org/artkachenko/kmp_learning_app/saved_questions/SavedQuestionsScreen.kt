@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.saved_questions
 
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,12 +15,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_correct_answer
+import kmp_learning_app.shared.generated.resources.saved_questions_count
 import kmp_learning_app.shared.generated.resources.saved_questions_description
 import kmp_learning_app.shared.generated.resources.saved_questions_empty
 import kmp_learning_app.shared.generated.resources.saved_questions_empty_action
@@ -31,16 +37,21 @@ import kmp_learning_app.shared.generated.resources.saved_questions_title
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionAnswerOption
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionAnswerTag
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionAnswersRevealDelayMillis
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionDisclosure
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionExplanationBlock
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionExplanationRevealDelayMillis
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionSources
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
@@ -120,12 +131,29 @@ private fun SavedQuestionsContent(
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
         item {
-            Text(
-                text = stringResource(Res.string.saved_questions_description),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // What this list holds, before what it is for. The screen stated its purpose and left
+            // the learner to count the cards; a saved collection grows over weeks, and its size is
+            // the first thing its owner wants to know — the Mistakes queue has led with its count
+            // since it existed, and these two are siblings.
+            Column(
                 modifier = Modifier.padding(top = AppSpacing.Related),
-            )
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+            ) {
+                Text(
+                    text = pluralStringResource(
+                        Res.plurals.saved_questions_count,
+                        state.items.size,
+                        state.items.size,
+                    ),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = stringResource(Res.string.saved_questions_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         // The repository's saved order, rendered as given. Nothing here re-sorts by content status,
         // Topic, or text: what the learner saved most recently is what they see first.
@@ -163,6 +191,12 @@ private fun SavedQuestionCard(
     failedSourceUrl: String?,
     modifier: Modifier = Modifier,
 ) {
+    // Closed by default, which is the one place this differs from a result transcript and is the
+    // point of the screen. A transcript opens the Questions the learner got wrong because they came
+    // to read it through; a saved collection is a list to browse, and twenty permanently open cards
+    // of options, explanation and sources meant finding one meant scrolling past all the others in
+    // full. Keyed by Question so a card the learner opened stays open as the list changes around it.
+    var expanded by rememberSaveable(question.questionId) { mutableStateOf(false) }
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -176,7 +210,11 @@ private fun SavedQuestionCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
-                verticalAlignment = Alignment.Top,
+                // Centred rather than top-aligned. The control beside the title is a text button
+                // with Material's 40dp minimum height, so against a one-line question the row was
+                // half again as tall as its text with all the slack below it — which was invisible
+                // while every card was permanently open and obvious once they close.
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     question.text,
@@ -190,15 +228,38 @@ private fun SavedQuestionCard(
                     onRemoveSaved = onRemoveSaved,
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Related)) {
-                question.answers.forEach { SavedQuestionAnswerRow(it) }
+            QuestionDisclosure(expanded = expanded, onToggle = { expanded = !expanded }) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+                        modifier = Modifier.animateEnterExit(
+                            enter = fadeIn(
+                                AppMotion.revealSpec(QuestionAnswersRevealDelayMillis),
+                            ),
+                        ),
+                    ) {
+                        question.answers.forEach { SavedQuestionAnswerRow(it) }
+                    }
+                    QuestionExplanationBlock(
+                        explanation = question.explanation,
+                        modifier = Modifier.animateEnterExit(
+                            enter = fadeIn(
+                                AppMotion.revealSpec(QuestionExplanationRevealDelayMillis),
+                            ),
+                        ),
+                    )
+                    QuestionSources(
+                        sources = question.sources,
+                        onSourceClick = onSourceClick,
+                        failedSourceUrl = failedSourceUrl,
+                        modifier = Modifier.animateEnterExit(
+                            enter = fadeIn(
+                                AppMotion.revealSpec(QuestionExplanationRevealDelayMillis),
+                            ),
+                        ),
+                    )
+                }
             }
-            QuestionExplanationBlock(question.explanation)
-            QuestionSources(
-                sources = question.sources,
-                onSourceClick = onSourceClick,
-                failedSourceUrl = failedSourceUrl,
-            )
         }
     }
 }

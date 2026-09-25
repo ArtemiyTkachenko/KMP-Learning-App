@@ -1,16 +1,21 @@
 package org.artkachenko.kmp_learning_app.topic_study.practice_builder
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -23,12 +28,17 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
+import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
 @OptIn(ExperimentalTestApi::class)
 internal class PracticeBuilderScreenTest {
@@ -193,6 +203,55 @@ internal class PracticeBuilderScreenTest {
         onNodeWithTag(PracticeBuilderStartButtonTag).assertIsDisplayed()
     }
 
+    /**
+     * The expanded arrangement, which had no test of its own.
+     *
+     * Two things are asserted and the second is the one that could regress silently. The form and
+     * the summary must still be separate panes — falling back to one column would be a quiet loss
+     * of the layout. And Start must be its own width there: the button is `fillMaxWidth` on a
+     * phone, where the card is the window, and in a pane that is two fifths of a desktop window the
+     * same modifier produced a five-hundred-pixel bar. Half the pane is a generous ceiling that
+     * a stretched button cannot pass and an ordinary one cannot approach.
+     */
+    @Test
+    fun theExpandedBuilderSeparatesTheFormFromTheSummaryAndKeepsStartItsOwnWidth() =
+        runSkikoComposeUiTest(size = DesktopDisplay) {
+            setContent {
+                AppTheme {
+                    CompositionLocalProvider(
+                        LocalAppWindowSizeClass provides AppWindowSizeClass.Expanded,
+                    ) {
+                        Box(Modifier.size(DesktopWidth, DesktopHeight)) {
+                            PracticeBuilderScreen(
+                                state = state(),
+                                onBack = {},
+                                onQuestionCountClick = {},
+                                onLevelClick = {},
+                                onSourceClick = {},
+                                onStartClick = {},
+                                onRetryAvailability = {},
+                            )
+                        }
+                    }
+                }
+            }
+
+            onNodeWithTag(PracticeBuilderFormPaneTag).assertIsDisplayed()
+            onNodeWithTag(PracticeBuilderSummaryPaneTag).assertIsDisplayed()
+            onNodeWithTag(practiceQuestionCountTag(20)).assertIsDisplayed()
+
+            val paneWidth = onNodeWithTag(PracticeBuilderSummaryPaneTag)
+                .fetchSemanticsNode().boundsInRoot.width
+            val startWidth = onNodeWithTag(PracticeBuilderStartButtonTag)
+                .assertIsDisplayed()
+                .fetchSemanticsNode().boundsInRoot.width
+
+            assertTrue(
+                startWidth < paneWidth / 2f,
+                "Start was ${startWidth}px in a ${paneWidth}px pane; it should size to its label.",
+            )
+        }
+
     private fun ComposeUiTest.setContentWith(
         state: PracticeBuilderUiState,
         onLevelClick: (QuestionLevel) -> Unit = {},
@@ -214,6 +273,32 @@ internal class PracticeBuilderScreenTest {
         }
     }
 
+    /**
+     * The thing being configured is announced as a heading, like every other screen's subject line.
+     *
+     * The three field labels under it were already headings — `SectionHeading` applies it — so
+     * heading navigation reached "Questions", "Levels" and "Draw from" while the scope they all
+     * apply to was reachable only by reading past them.
+     */
+    @Test
+    fun theScopeBeingConfiguredIsAHeading() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                PracticeBuilderScreen(
+                    state = state(),
+                    onBack = {},
+                    onQuestionCountClick = {},
+                    onLevelClick = {},
+                    onSourceClick = {},
+                    onStartClick = {},
+                    onRetryAvailability = {},
+                )
+            }
+        }
+
+        onNodeWithText("Topic: Coroutines").assertIsDisplayed().assert(isHeading())
+    }
+
     private fun state(
         levels: Set<QuestionLevel> = AllQuestionLevels,
         source: PracticeQuestionSource = PracticeQuestionSource.ALL,
@@ -231,3 +316,8 @@ internal class PracticeBuilderScreenTest {
             availability = availability,
         )
 }
+
+/** Comfortably past the expanded breakpoint, so the two-pane arrangement actually composes. */
+private val DesktopWidth = 1440.dp
+private val DesktopHeight = 900.dp
+private val DesktopDisplay = Size(DesktopWidth.value, DesktopHeight.value)

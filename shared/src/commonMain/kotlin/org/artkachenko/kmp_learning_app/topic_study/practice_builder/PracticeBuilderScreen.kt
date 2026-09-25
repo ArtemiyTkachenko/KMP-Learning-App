@@ -17,7 +17,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import kmp_learning_app.shared.generated.resources.Res
@@ -54,6 +56,7 @@ import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
+import org.artkachenko.kmp_learning_app.ui.SecondarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
@@ -62,12 +65,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
 internal const val PracticeBuilderStartButtonTag = "practice_builder_start"
@@ -178,6 +183,11 @@ internal fun PracticeBuilderScreen(
  * A `LazyColumn` of chip rows rather than a settings form, and it scrolls rather than pinning the
  * Start action over the content: the summary explains what Start will do, and a control floating
  * above its own explanation is the arrangement that makes a learner press it without reading.
+ *
+ * The arrangement is the app's ordinary [AppSpacing.Comfortable], not [AppSpacing.Section]. Every
+ * group here opens with a `SectionHeading`, which carries a `Section` break of its own, so a
+ * `Section` arrangement was paying for the break twice and putting 48dp between a row of chips and
+ * the heading of the next — half again the separation the same pairing gets on every other screen.
  */
 @Composable
 private fun BuilderPane(
@@ -187,7 +197,7 @@ private fun BuilderPane(
     LazyColumn(
         modifier = modifier.fillMaxHeight(),
         contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Section),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable),
         content = content,
     )
 }
@@ -201,10 +211,17 @@ private fun LazyListScope.configurationSection(
     onSourceClick: (PracticeQuestionSource) -> Unit,
 ) {
     item {
+        // One step above the section headings under it. At `titleLarge` it was the same size as
+        // "Questions", "Levels" and "Draw from", so the thing being configured read as a fourth
+        // group rather than as what the other three are about.
         Text(
             text = state.scope.label(),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
+            // What is being configured, announced as a heading like every other screen's subject
+            // line. The three `SectionHeading`s below it already were, so the form's fields were
+            // reachable by heading navigation while the thing they configure was not.
+            modifier = Modifier.semantics { heading() },
         )
     }
     item {
@@ -311,18 +328,31 @@ private fun LazyListScope.configurationSection(
     }
 }
 
-/** What the four answers add up to, and the single control that acts on them. */
+/**
+ * What the four answers add up to, and the single control that acts on them.
+ *
+ * On its own surface, because this is the screen's conclusion rather than a fifth thing to
+ * configure. Loose on the page it was two orphans — a grey caption and a button — which on a phone
+ * read as a footnote under the last chip row and at an expanded width left the whole second pane
+ * holding one line of text and a stretched button above several hundred pixels of nothing.
+ *
+ * The verdict is stated at [MaterialTheme.typography.titleMedium] and in a tone, which is the part
+ * that was actually wrong rather than merely plain. "No questions match this setup. Try more
+ * levels." is the one sentence explaining why the learner cannot proceed, and it was rendered in
+ * the same `bodyMedium onSurfaceVariant` as a hint — the quietest text on the screen, directly
+ * above a disabled button.
+ */
 private fun LazyListScope.summarySection(
     state: PracticeBuilderUiState,
     onStartClick: () -> Unit,
     onRetryAvailability: () -> Unit,
 ) {
     item {
-        Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Related)) {
+        SecondarySummaryCard {
             Text(
                 text = state.availability.message(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.titleMedium,
+                color = state.availability.messageColor(),
                 modifier = Modifier.testTag(PracticeBuilderAvailabilityTag),
             )
             // A failed check is the one availability state the learner cannot resolve by
@@ -338,7 +368,16 @@ private fun LazyListScope.summarySection(
                 // navigates into assessment taking to fail there.
                 enabled = state.isStartEnabled,
                 modifier = Modifier
-                    .fillMaxWidth()
+                    // Full width where the card is a phone's width, and its own width where the
+                    // card is half a desktop window: a 500dp button is not a bigger affordance,
+                    // it is a bar that happens to be pressable.
+                    .then(
+                        if (LocalAppWindowSizeClass.current.isExpanded) {
+                            Modifier
+                        } else {
+                            Modifier.fillMaxWidth()
+                        },
+                    )
                     .testTag(PracticeBuilderStartButtonTag),
             ) {
                 val count = (state.availability as? PracticeAvailability.Available)
@@ -406,6 +445,29 @@ private fun PracticeScopeUiModel.label(): String =
             PracticeScopeKind.LEARNING_UNIT ->
                 stringResource(Res.string.practice_builder_scope_learning_unit, name)
         }
+    }
+
+/**
+ * The tone of the verdict: a fact, a setup that will not run, or a check that failed.
+ *
+ * Amber is the app's warning tone and says *this configuration needs changing* — which covers both
+ * the case the learner can fix by widening levels and the two where the target itself is no longer
+ * practiceable, because in all three Start is off and the sentence beside it explains why. Red is
+ * reserved for the read having failed, which is the only state with a Retry, and matches
+ * `colorScheme.error` being the same red the product uses for a failed operation everywhere else.
+ */
+@Composable
+@ReadOnlyComposable
+private fun PracticeAvailability.messageColor(): Color =
+    when (this) {
+        PracticeAvailability.Checking,
+        is PracticeAvailability.Available,
+        -> MaterialTheme.colorScheme.onSurface
+        PracticeAvailability.NoEligibleQuestions,
+        PracticeAvailability.TargetUnavailable,
+        PracticeAvailability.NoPracticeableConcepts,
+        -> AppThemeExtras.semanticColors.partiallyCorrect
+        PracticeAvailability.Error -> MaterialTheme.colorScheme.error
     }
 
 @Composable

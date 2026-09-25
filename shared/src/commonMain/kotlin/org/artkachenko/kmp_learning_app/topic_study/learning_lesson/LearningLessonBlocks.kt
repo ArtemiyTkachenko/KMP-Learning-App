@@ -42,7 +42,6 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.LearningBlock
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningCalloutKind
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningDepth
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
-import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -56,13 +55,31 @@ internal const val LearningLessonCodeBlockTag = "learning_lesson_code_block"
 internal const val LearningLessonComparisonTag = "learning_lesson_comparison"
 
 /**
- * Renders one authored Section: its depth layer, its optional subheading, and its blocks.
+ * Renders one authored Section: its depth layer, its optional heading, and its blocks.
  *
  * [showDepthHeading] is decided by the caller rather than here because it depends on the Section
  * before this one. A Lesson may carry several Sections at the same depth — the bundled Compose
  * Unit already does — and repeating "Core" above each of them would turn a layer marker into
  * noise. Order and grouping are untouched: the Sections still render exactly as authored, only the
  * marker above them is drawn once per run.
+ *
+ * ## Which of the two is the heading
+ *
+ * The depth marker used to be a `SectionHeading` — `titleLarge`, the same component the app gives
+ * "Weak areas" and "Question review" — above an authored title at `titleMedium`. So the *layer*
+ * outranked the *content*, and a single-Section layer printed "Core" in the larger type directly
+ * above "Core idea" in the smaller: a heading over a heading, saying almost the same word twice.
+ *
+ * The page was also disagreeing with its own outline about this. `lessonOutlineEntries` labels an
+ * entry `section.title ?: depth`, so the outline treats the authored title as the navigable
+ * heading and falls back to the layer only where a Section has no title of its own. Both were
+ * additionally published as bare `heading()` with no level, so assistive technology heard two peer
+ * headings in a row where the page was drawing one inside the other.
+ *
+ * So the authored title takes `titleLarge` and the layer becomes a marker above it: the same rule
+ * the outline already followed, now drawn. The marker keeps `heading()` only in the one case where
+ * the outline falls back to it too — a Section with no title of its own, where the layer really is
+ * the only thing naming that region.
  */
 @Composable
 internal fun LearningSectionContent(
@@ -70,25 +87,61 @@ internal fun LearningSectionContent(
     showDepthHeading: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val hasTitle = section.title != null
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            // The reading column spaces its children by 8dp, which is a paragraph gap: it left a
+            // new Section's heading the same distance from the previous Section's last paragraph
+            // as that paragraph was from the one before it. The break belongs to the Section, and
+            // how large it is depends on what is starting — a new layer, a new Section, or the
+            // continuation of one.
+            .padding(
+                top = when {
+                    showDepthHeading -> AppSpacing.Section
+                    hasTitle -> AppSpacing.Grouped
+                    else -> Dp.Hairline
+                },
+            ),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
         if (showDepthHeading) {
-            SectionHeading(stringResource(section.depth.labelResource()))
+            LearningDepthMarker(
+                label = stringResource(section.depth.labelResource()),
+                isRegionHeading = !hasTitle,
+            )
         }
         // Optional, and absent means absent: no placeholder heading and no reserved gap, so a
         // Lesson whose depth layers are each a single Section reads as one continuous piece.
         section.title?.let { title ->
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.semantics { heading() },
             )
         }
         section.blocks.forEach { block -> LearningBlockContent(block) }
     }
+}
+
+/**
+ * Which layer of the Lesson the Sections below belong to.
+ *
+ * Drawn as a label rather than as a heading: `labelLarge` in `primary` is the treatment the app
+ * already gives "Question 3 of 10" on the assessment screen, which is the same kind of thing —
+ * where you are in a document, not what the document says next.
+ *
+ * [isRegionHeading] is the one case where it is also the heading; see [LearningSectionContent].
+ */
+@Composable
+private fun LearningDepthMarker(label: String, isRegionHeading: Boolean) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = if (isRegionHeading) Modifier.semantics { heading() } else Modifier,
+    )
 }
 
 /**
@@ -280,16 +333,27 @@ private fun WideComparison(block: LearningBlock.Comparison) {
     }
 }
 
-/** On phones, rows become labelled facts rather than a hidden horizontal spreadsheet. */
+/**
+ * On phones, rows become labelled facts rather than a hidden horizontal spreadsheet.
+ *
+ * The three levels are the subject, the column it is being described under, and the answer — and
+ * they used to be rendered as two. The subject sat at `titleSmall` SemiBold and each column label
+ * at `labelLarge` Medium, which at this scale is the same size in the same colour, so "remember"
+ * and "Survives" read as siblings and the actual answer beneath them was the quietest line in the
+ * block. That is the emphasis exactly inverted: a learner reads a comparison for the answers.
+ *
+ * So the label steps down to the block's quiet key and the value steps up to ordinary body colour.
+ * A column label is now a caption on the fact under it rather than a heading over it, which is what
+ * makes the subject the only prominent thing in its row again.
+ */
 @Composable
 private fun CompactComparison(block: LearningBlock.Comparison) {
     Column(
         Modifier.fillMaxWidth().testTag(LearningLessonComparisonTag),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
         block.rows.forEachIndexed { rowIndex, row ->
             Column(
-                Modifier.fillMaxWidth().padding(AppSpacing.Grouped),
+                Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
             ) {
                 row.firstOrNull()?.let { concern ->
@@ -303,21 +367,25 @@ private fun CompactComparison(block: LearningBlock.Comparison) {
                 }
                 row.drop(1).forEachIndexed { index, value ->
                     val heading = block.headers.getOrNull(index + 1) ?: return@forEachIndexed
-                    Text(
-                        text = heading.toLessonAnnotatedString(),
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Medium,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = value.toLessonAnnotatedString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    // Label and value are one block, so the pair holds together more tightly than
+                    // one pair does to the next.
+                    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
+                        Text(
+                            text = heading.toLessonAnnotatedString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = value.toLessonAnnotatedString(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
             }
-            if (rowIndex < block.rows.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            if (rowIndex < block.rows.lastIndex) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
         }
     }
 }

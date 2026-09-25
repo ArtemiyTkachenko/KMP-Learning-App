@@ -4,9 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,9 +40,15 @@ internal fun AssessmentLaunchDialog(
         AssessmentLaunchState.Launching,
         is AssessmentLaunchState.Created,
         -> Dialog(onDismissRequest = {}) {
+            // Material's own dialog container, quoted from `AlertDialogDefaults` rather than
+            // chosen: the failure branch below *is* an `AlertDialog`, so a hand-rolled surface
+            // here meant the two states of one dialog arrived on different containers and
+            // different corners — `surface` at `shapes.medium` while the other took
+            // `DialogTokens.ContainerColor` (surfaceContainerHigh) at `CornerExtraLarge`.
             Surface(
                 modifier = Modifier.testTag(AssessmentLaunchDialogTag),
-                shape = MaterialTheme.shapes.medium,
+                shape = AlertDialogDefaults.shape,
+                color = AlertDialogDefaults.containerColor,
             ) {
                 Row(
                     modifier = Modifier.padding(AppSpacing.Generous),

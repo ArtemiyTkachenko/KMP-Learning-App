@@ -190,8 +190,8 @@ internal class ProgressLearningJourneyIntegrationTest {
 
                     scrollToTag(progressHistoryCardTag(MixedAttemptId))
                     onNodeWithTag(progressHistoryCardTag(MixedAttemptId)).performClick()
-                    waitForText("Score: 2 / 4")
-                    onNodeWithText("Score: 2 / 4").assertIsDisplayed()
+                    waitForText("2 / 4")
+                    onNodeWithText("2 / 4").assertIsDisplayed()
                     scrollToText("Lifecycle question")
                     onNodeWithText("Lifecycle question").assertIsDisplayed()
                     scrollToText("Question question_missing is no longer available.")
@@ -202,8 +202,8 @@ internal class ProgressLearningJourneyIntegrationTest {
 
                     scrollToTag(progressHistoryCardTag(FocusedSubtopicAttemptId))
                     onNodeWithTag(progressHistoryCardTag(FocusedSubtopicAttemptId)).performClick()
-                    waitForText("Score: 1 / 1")
-                    onNodeWithText("Score: 1 / 1").assertIsDisplayed()
+                    waitForText("1 / 1")
+                    onNodeWithText("1 / 1").assertIsDisplayed()
                     onNodeWithText("Lifecycle question").performScrollTo().assertIsDisplayed()
                     onNodeWithContentDescription("Back").performClick()
                     waitForText("Progress")

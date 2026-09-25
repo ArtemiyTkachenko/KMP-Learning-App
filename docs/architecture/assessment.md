@@ -61,6 +61,21 @@ taking screen pins a linear meter under its top bar, driven by the same
 `questionNumber`/`totalQuestions` as the counter, so how far through the assessment
 the learner is stays answerable while they read a long question.
 
+The progress meter is pinned above the scrolling pane rather than placed in it, so how far
+through the assessment the learner is stays answerable while they read a long question. It is
+given the content column's width explicitly, because "outside the pane" and "the width of the
+pane" are only the same thing at a compact width: past `AppContentWidth.Standard`'s cap the
+question column is centred and a full-bleed meter measured a column it no longer lined up with.
+It draws with the product's shared `ProgressMeter` — not a second `LinearProgressIndicator` with
+Material's track gap, stop indicator and default height, which is what it was.
+
+The commit action is separated from the options by a section break rather than by the same gap
+that separates the options from each other: choosing and committing are different acts, and on a
+touch screen a button one option-gap below the last option is a mis-tap. Finishing follows the
+same busy-control rule as every other action in the app — the button keeps its place, its size and
+its emphasis, and states its condition as a word beside an 18dp spinner rather than replacing its
+label with Material's 40dp standalone indicator.
+
 The Mixed Android Interview product has its own top-level area, and the asymmetry with
 Practice is intentional rather than an omission: **Practice is the learner choosing what to
 work on, Interview is the app testing them.** There is no interview builder and no
@@ -86,8 +101,62 @@ The partial case is derived at presentation from `selectedAnswerIds` against
 `isCorrect`, and a partially correct answer is recorded exactly as incorrect as it always
 was; what changed is that the learner is told which kind of wrong it was.
 
+## Completion
+
+Both result screens are the same three shared pieces. `AssessmentResultLayout` is the adaptive
+shell — one `LazyColumn` at compact and medium widths, two independently scrolling panes at
+expanded, with the outcome pane declared first so traversal order matches the single-column
+reading order. `AssessmentResultOutcome` is the summary block: the hero, the caveats about the
+transcript, and the actions. `AssessmentCompletionHero` is the figure. Only three things differ
+between the products — the completion title, the five retake strings, and the test tags — and the
+Mixed result appends its per-Topic breakdown to the outcome pane after the shared block. There is
+no `isInterview` flag anywhere in the path.
+
+That breakdown is one `ContentGroup` rather than a card per Topic. Its rows are the most
+homogeneous thing on the screen — a Topic, a score, a rate, every one of them — they navigate
+nowhere, and there are at most as many as the interview drew Topics from, so a card each spent an
+edge saying what the heading above already said. It did that directly above a transcript of
+question cards that genuinely are separate surfaces, which left the two halves of the summary
+reading as one undifferentiated column of boxes. Every row is inert and therefore chevron-free: a
+result is a record of what happened and there is no per-Topic destination to reach from one.
+
+`AssessmentCompletionHero` is the product's one use of the hero gradient. It states the score as
+the display figure (`8 / 10`) with the percentage beneath it (`80% correct`), a determinate ring
+beside it, and nothing else; below five questions the percentage and the ring are both withheld,
+because four questions can only produce 0, 25, 50, 75, or 100 and reporting a percentage from one
+of them claims an accuracy the run never measured. One `Animatable`, held in a `rememberSaveable`
+flag so it runs once per visit rather than once per composition, counts the numerator and sweeps the
+ring as a single movement. The figure's node overrides its own `text` with the settled value, so the
+score is readable — to a test and to a screen reader — on the first frame, and the ring's
+`progressBarRangeInfo` is cleared rather than described, because the number is already written twice
+beside it.
+
+Performance emphasis on that card is `ResultEmphasis`, not `accuracyColor`: a run below the
+domain's weakness threshold resolves to `partiallyCorrect`, never to `incorrect`. The error role
+belongs to a wrong answer and a failed operation, not to a verdict on the learner, and the figure
+itself stays `onPrimaryContainer` at every band so the brand remains the dominant colour.
+
+Both of those lists, and the Progress dashboard's per-Topic table, draw the shared `AccuracyRow`
+rather than writing the row out again: three surfaces reached the same shape within two changes of
+each other, and three copies are three chances to disagree about the type scale of a percentage. It
+is deliberately not `PerformanceCard` with a flag. The card carries an accent border, a comparison
+meter, and a low-emphasis action line, all of which are container features a grouped row cannot
+hold, so the two stay separate components over one shared reading. The row merges its descendants
+whether or not it is navigable — a `clickable` merges on its own, but an inert row inside a group
+has no card edge left to imply that its name, score, and rate belong together, and unmerged it
+would be announced as three unrelated fragments.
+
+`AssessmentResultOutcome` owns the action hierarchy, which depends on what the run produced rather
+than on which product it was. With unresolved mistakes, practising them is the primary action and
+the retake is the outlined alternative; with nothing left to fix there is no remediation to offer, so
+the retake takes the filled weight. `AssessmentActionEmphasis` is how `AssessmentRetakeAction`
+receives that, and a busy retake keeps its enabled colours in either weight because its spinner and
+changed label already say it is working.
+
 Once the learner has finished an interview, `InterviewStartScreen` shows their record
-through `InterviewStartViewModel`; each row opens the result it came from. The most recent
+through `InterviewStartViewModel` as one `ContentGroup`; each row opens the result it came from.
+At most two rows ever reach it and they answer the same question about the same thing, so the pair
+is one record with two lines rather than two unrelated results stacked under a heading. The most recent
 interview leads and carries its date, because "how did I do last time, and how long ago was
 that?" is the question a returning learner has. A personal best is kept and kept *second*:
 it is genuine information the data model already supports, but promoting it above the latest
@@ -234,8 +303,17 @@ equal saved list produces no new `StateFlow` emission to react to.
 historical attempt, and a saved Question has none — the learner may have saved it having answered it
 either way. Nothing about correctness, selection, or score is fabricated to reuse
 `ReviewQuestionCard`. What is shared is the neutral presentation in `QuestionContentComponents.kt`
-— the answer-option container and tag, the explanation block, and the source links with their
-open-failure notice — which both `ReviewQuestionCard` and the saved-Question card render.
+— the answer-option container and tag, the explanation block, the source links with their
+open-failure notice, and `QuestionDisclosure` — which both `ReviewQuestionCard` and the
+saved-Question card render.
+
+The disclosure is shared and its *default* is not, because the default is a statement about the
+surface. A result transcript opens the Questions the learner got wrong, because they came to read it
+through. A saved collection opens nothing: the question text is the browsing key and the detail is
+on request. The saved card previously had no disclosure at all, so a collection saved over weeks was
+that many permanently open blocks of options, explanation and sources, and finding one meant
+scrolling past all the others in full. The screen also states its own size, as the Mistakes queue
+beside it always has.
 
 Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and

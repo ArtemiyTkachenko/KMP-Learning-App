@@ -23,6 +23,7 @@ import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -343,6 +344,17 @@ internal class LearningLessonScreenTest {
         assertWithinRootWidth(LearningLessonComparisonTag, rootWidth)
     }
 
+    /**
+     * At phone width a comparison is not a table: each row becomes a subject with its columns
+     * beneath it as labelled facts, so every cell still reaches the reader and none of them is only
+     * reachable by scrolling sideways.
+     *
+     * The two assertions about the *headers* are the compact layout's actual contract. A column
+     * header repeats once per row, because it is a caption on that row's answer rather than a
+     * heading over a column that no longer exists. The first header does not appear at all: the
+     * subject cell stands in its place, and printing "Concern" above every "Creating the UI" would
+     * label the thing with the name of the question it answers.
+     */
     @Test
     fun comparisonBlocksRenderHeadersAndCells() = runComposeUiTest {
         setContentWith(
@@ -367,6 +379,9 @@ internal class LearningLessonScreenTest {
         ).forEach { cell ->
             onNodeWithText(cell).performScrollTo().assertIsDisplayed()
         }
+        onNodeWithTag(LearningLessonComparisonTag).performScrollTo()
+        onAllNodesWithText("Views").assertCountEquals(2)
+        onNodeWithText("Concern").assertDoesNotExist()
     }
 
     /**
@@ -997,6 +1012,60 @@ internal class LearningLessonScreenTest {
     private fun ComposeUiTest.assertWithinRootWidth(tag: String, rootWidth: Float) {
         val width = onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot.width
         assertTrue(width <= rootWidth, "$tag was $width wide in a $rootWidth viewport.")
+    }
+
+    /**
+     * The authored title is the heading; the depth layer above it is a marker.
+     *
+     * The layer used to be a `SectionHeading` — the app's `titleLarge` component — above a title at
+     * `titleMedium`, so the page said the layer contained the title while the outline said the
+     * title was the entry. Both were also published as bare `heading()` with no level, so a screen
+     * reader heard two peers where one was drawn inside the other. What is asserted here is the
+     * rule rather than the type sizes: exactly one of the two is a heading, and it is the authored
+     * one.
+     */
+    @Test
+    fun anAuthoredSectionTitleIsTheHeadingAndItsDepthLayerIsNot() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                LessonScreen(
+                    state = content(
+                        sections = listOf(
+                            LearningSection(
+                                depth = LearningDepth.CORE,
+                                title = "Core idea",
+                                blocks = listOf(LearningBlock.Paragraph("Body.")),
+                            ),
+                        ),
+                    ),
+                )
+            }
+        }
+
+        onNodeWithText("Core idea").assert(isHeading())
+        onNodeWithText("Core").assertIsDisplayed()
+        onNodeWithText("Core").assert(isHeading().not())
+    }
+
+    /**
+     * With no authored title the layer is the only thing naming that region, so it keeps the
+     * heading — which is the same fallback `lessonOutlineEntries` makes when it labels an entry
+     * `section.title ?: depth`. The page and its outline agree about what a heading is in both
+     * directions, not just one.
+     */
+    @Test
+    fun anUntitledSectionLeavesItsDepthLayerAsTheHeading() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                LessonScreen(
+                    state = content(
+                        sections = listOf(section(LearningBlock.Paragraph("Body."))),
+                    ),
+                )
+            }
+        }
+
+        onNodeWithText("Core").assert(isHeading())
     }
 }
 

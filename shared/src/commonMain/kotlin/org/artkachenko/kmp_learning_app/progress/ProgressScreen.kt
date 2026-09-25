@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,7 +22,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
@@ -32,12 +33,6 @@ import kmp_learning_app.shared.generated.resources.mistake_review_unresolved_cou
 import kmp_learning_app.shared.generated.resources.progress_review_mistakes_action
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import kmp_learning_app.shared.generated.resources.practice_shortcut_weak_area
-import kmp_learning_app.shared.generated.resources.progress_accuracy_caption
-import kmp_learning_app.shared.generated.resources.progress_completed_attempts_label
-import kmp_learning_app.shared.generated.resources.progress_correct_answers_label
-import kmp_learning_app.shared.generated.resources.progress_coverage_count
-import kmp_learning_app.shared.generated.resources.progress_coverage_title
-import kmp_learning_app.shared.generated.resources.progress_coverage_unavailable
 import kmp_learning_app.shared.generated.resources.progress_empty
 import kmp_learning_app.shared.generated.resources.progress_empty_action
 import kmp_learning_app.shared.generated.resources.progress_error
@@ -45,12 +40,9 @@ import kmp_learning_app.shared.generated.resources.progress_focused_practice
 import kmp_learning_app.shared.generated.resources.progress_focused_subtopic_scope
 import kmp_learning_app.shared.generated.resources.progress_history
 import kmp_learning_app.shared.generated.resources.progress_loading
-import kmp_learning_app.shared.generated.resources.progress_overall
-import kmp_learning_app.shared.generated.resources.progress_questions_answered_label
 import kmp_learning_app.shared.generated.resources.progress_recent_title
 import kmp_learning_app.shared.generated.resources.progress_recent_trend_description
 import kmp_learning_app.shared.generated.resources.progress_recent_trend_insufficient
-import kmp_learning_app.shared.generated.resources.progress_recent_trend_title
 import kmp_learning_app.shared.generated.resources.progress_recent_window_one
 import kmp_learning_app.shared.generated.resources.progress_recent_window_other
 import kmp_learning_app.shared.generated.resources.progress_score
@@ -62,10 +54,12 @@ import kmp_learning_app.shared.generated.resources.progress_weak_areas
 import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_detail
 import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_title
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
-import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.AccuracyRow
 import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
+import org.artkachenko.kmp_learning_app.ui.ContentGroup
+import org.artkachenko.kmp_learning_app.ui.GroupRowPadding
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -73,10 +67,6 @@ import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.MetricFigure
-import org.artkachenko.kmp_learning_app.ui.MetricRow
-import org.artkachenko.kmp_learning_app.ui.PerformanceCard
-import org.artkachenko.kmp_learning_app.ui.ProgressMeter
-import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
@@ -104,6 +94,12 @@ internal const val ProgressContentTag = "progress_content"
  */
 internal const val ProgressStandingPaneTag = "progress_standing_pane"
 internal const val ProgressActionPaneTag = "progress_action_pane"
+
+/**
+ * The one container the per-Topic table draws, so a test can assert that the section is a group
+ * rather than a column of cards without reading a corner radius.
+ */
+internal const val ProgressTopicGroupTag = "progress_topic_group"
 
 /** Stable per-row handle so tests can target a Topic card without depending on label uniqueness. */
 internal fun progressTopicCardTag(topicId: String): String = "progress_topic_card_$topicId"
@@ -254,19 +250,28 @@ private fun ProgressPane(
     )
 }
 
-/** Where the learner stands: lifetime accuracy, how much of the bank they have seen, and lately. */
+/**
+ * Where the learner stands: lifetime accuracy with its coverage context, and how lately has gone.
+ *
+ * There is no section heading above the hero any more. It sat directly under a `TopAppBar` already
+ * reading "Progress", introducing a surface that states its own subject in the largest type on the
+ * screen — so it was a third naming of the same thing, and it cost the hero the top of the page.
+ *
+ * Coverage no longer has a card either. It was one of three similarly sized summaries each leading
+ * with a percentage, which is how a dashboard ends up with three headlines and therefore none; it
+ * is context for the accuracy above it and now sits inside the hero saying so. Recent performance
+ * keeps its own surface, because it is a genuinely different window over genuinely different
+ * evidence and routinely reads a different number.
+ */
 private fun LazyListScope.standingSection(state: ProgressUiState.Content) {
     item {
-        ProgressSectionTitle(stringResource(Res.string.progress_overall))
-    }
-    item {
-        OverallSummary(state)
-    }
-    // Coverage and recent performance sit under the headline as quieter summaries: they answer
-    // different questions from all-time accuracy, so they must be separate surfaces, but making
-    // all three equally dominant would leave the screen with no headline at all.
-    item {
-        CurriculumCoverageSummary(state.coverage)
+        ProgressHero(
+            percentage = state.percentage,
+            completedAttemptCount = state.completedAttemptCount,
+            answeredQuestionCount = state.answeredQuestionCount,
+            correctAnswerCount = state.correctAnswerCount,
+            coverage = state.coverage,
+        )
     }
     state.recentPerformance?.let { recent ->
         item {
@@ -289,10 +294,7 @@ private fun LazyListScope.actionableSection(
     }
     if (state.weakAreas.isNotEmpty()) {
         item {
-            ProgressSectionTitle(
-                stringResource(Res.string.progress_weak_areas),
-                topPadding = AppSpacing.Grouped,
-            )
+            WeakAreasHeading()
         }
         items(state.weakAreas, key = { "${it.type}:${it.stableId}" }) { area ->
             WeakAreaCard(area) { onPracticePreset(area.toPracticePreset()) }
@@ -312,10 +314,7 @@ private fun LazyListScope.actionableSection(
         // Nothing is classified here to fill the gap either way: which areas qualify as weak
         // remains the P0 evidence rule's answer.
         item {
-            ProgressSectionTitle(
-                stringResource(Res.string.progress_weak_areas),
-                topPadding = AppSpacing.Grouped,
-            )
+            WeakAreasHeading()
         }
         item {
             WeakAreasEarlyState(answeredQuestionCount = state.answeredQuestionCount)
@@ -338,8 +337,24 @@ private fun LazyListScope.detailSection(
                 topPadding = AppSpacing.Grouped,
             )
         }
-        items(state.topics, key = ProgressTopicUiModel::topicId) { topic ->
-            TopicPerformanceCard(topic) { onTopicClick(topic.topicId) }
+        // One container for the whole per-Topic table rather than one card per Topic.
+        //
+        // These rows are the most homogeneous thing on the dashboard — a name, a score, a rate, a
+        // chevron, every one of them — and a card each spent an edge saying what the heading above
+        // already said. They are also bounded: the length is the number of Topics the learner has
+        // answered anything in, so the group composes a table and not a scroll.
+        //
+        // Weak areas above stay cards on purpose. A weak row is singled out by an accent border,
+        // which is a property of a container; inside a group there is no container to put it on,
+        // and the contrast between the bordered cards and this quiet table is now what separates
+        // "these need attention" from "here is everything".
+        item {
+            ContentGroup(
+                modifier = Modifier.testTag(ProgressTopicGroupTag),
+                rows = state.topics.map { topic ->
+                    { TopicPerformanceRow(topic) { onTopicClick(topic.topicId) } }
+                },
+            )
         }
     }
     if (state.history.isNotEmpty()) {
@@ -350,11 +365,34 @@ private fun LazyListScope.detailSection(
             )
         }
         items(state.history, key = CompletedAttemptUiModel::attemptId) { attempt ->
-            HistoryCard(attempt) {
+            HistoryRow(attempt) {
                 onHistoryClick(attempt.assessmentType, attempt.attemptId)
             }
         }
     }
+}
+
+/**
+ * The weak-areas heading, with the app's warning tone on it.
+ *
+ * The accent is at the heading rather than on the rows, which is the whole reason the rows carry no
+ * badge: one amber mark introducing a section says "these need attention" once, where the same mark
+ * repeated down six rows says it six times and stops being a mark at all. It is the small
+ * [AppSemanticColors.partiallyCorrect] accent rather than a filled container, because being behind
+ * in a topic is guidance and not a fault — the tonal containers are for a surface a whole block of
+ * text sits on, and this is an icon beside a heading.
+ *
+ * The icon is decorative and announces nothing: the heading's own words are what carry the status,
+ * so it is never the colour alone that says this section is a warning.
+ */
+@Composable
+private fun WeakAreasHeading() {
+    ProgressSectionTitle(
+        text = stringResource(Res.string.progress_weak_areas),
+        topPadding = AppSpacing.Grouped,
+        icon = AppIcons.Warning,
+        iconTint = AppThemeExtras.semanticColors.partiallyCorrect,
+    )
 }
 
 /**
@@ -389,102 +427,59 @@ private fun WeakAreasEarlyState(answeredQuestionCount: Int) {
 }
 
 /**
- * Accuracy is the headline of the whole app, so it leads at display size with a meter behind it;
- * the counts that support it become a scannable label/value column instead of four equal lines.
- */
-@Composable
-private fun OverallSummary(state: ProgressUiState.Content) {
-    PrimarySummaryCard {
-        AccuracyHeadline(
-            percentage = state.percentage,
-            caption = stringResource(Res.string.progress_accuracy_caption),
-        )
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
-            MetricRow(
-                label = stringResource(Res.string.progress_completed_attempts_label),
-                value = state.completedAttemptCount.toString(),
-            )
-            MetricRow(
-                label = stringResource(Res.string.progress_questions_answered_label),
-                value = state.answeredQuestionCount.toString(),
-            )
-            MetricRow(
-                label = stringResource(Res.string.progress_correct_answers_label),
-                value = state.correctAnswerCount.toString(),
-            )
-        }
-    }
-}
-
-/**
- * How much of the current question bank the learner has seen — a different question from how
- * accurately they answered it, and one the percentage alone cannot answer, so the raw counts are
- * always shown beside it and the meter is never the only representation.
- *
- * The figure is deliberately not tinted with [accuracyColor]: colouring 30% coverage red would read
- * as a bad score, when it only means most of the bank is still ahead of the learner.
- */
-@Composable
-private fun CurriculumCoverageSummary(coverage: ProgressCoverageUiModel) {
-    SecondarySummaryCard {
-        Text(
-            text = stringResource(Res.string.progress_coverage_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        val percentage = coverage.percentage
-        if (percentage == null) {
-            // 0/0 is "nothing to cover", not 0% covered, so say that rather than draw an empty bar.
-            Text(
-                text = stringResource(Res.string.progress_coverage_unavailable),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            Text(
-                text = stringResource(
-                    Res.string.progress_coverage_count,
-                    coverage.attemptedQuestionCount,
-                    coverage.totalQuestionCount,
-                ),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            ProgressMeter(
-                // The exact count ratio, not the rounded percentage above it.
-                fraction = coverage.attemptedQuestionCount.toFloat() / coverage.totalQuestionCount,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-    }
-}
-
-/**
  * The latest few assessments, kept visibly apart from the lifetime figures above: all-time accuracy
  * moves very slowly once history is long, so a learner who has improved needs a second, explicitly
  * labelled signal rather than a reweighted first one.
  *
  * The percentage is the domain's question-weighted accuracy across the whole window, not the mean of
  * the plotted attempts — a 1/1 attempt and a 10/20 attempt make 11/21, not 75%.
+ *
+ * ## Hierarchy inside the card
+ *
+ * The figure moved onto the title's own line, at [MetricFigure] scale rather than the hero's. It
+ * used to stack under the title at nearly hero weight, which — a card below a card carrying the
+ * same shape of content — is what made the standing group read as three equal summaries. Heading
+ * and figure on one line, the window and the counts as one quiet evidence line beneath, and then
+ * the drawing: the card now has one thing to read at each level instead of four things at the same
+ * one.
+ *
+ * The chart lost its own "Recent session trend" label in the process. The card above it says what
+ * window this is, the axis beside it says what the scale is, and a third caption between the two
+ * was naming the drawing rather than telling the learner anything about it.
+ *
+ * No up or down indicator is derived here, and none should be. The domain publishes the raw
+ * attempt series and deliberately derives no direction, momentum, or velocity from it; turning a
+ * comparison of two of those points into "+6%" in presentation would be this screen inventing a
+ * verdict the rest of the app declines to reach. The trajectory is shown and the learner reads it.
  */
 @Composable
 private fun RecentPerformanceSummary(recent: ProgressRecentPerformanceUiModel) {
     SecondarySummaryCard {
-        Text(
-            text = stringResource(Res.string.progress_recent_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        MetricFigure(
-            text = formatAccuracy(recent.percentage),
-            color = accuracyColor(recent.percentage),
-        )
-        Text(
-            text = recentWindowLabel(recent.attemptCount),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+            ) {
+                Text(
+                    text = stringResource(Res.string.progress_recent_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = recentWindowLabel(recent.attemptCount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            MetricFigure(
+                text = formatAccuracy(recent.percentage),
+                color = accuracyColor(recent.percentage),
+            )
+        }
         Text(
             text = stringResource(
                 Res.string.progress_score,
@@ -506,11 +501,6 @@ private fun RecentPerformanceSummary(recent: ProgressRecentPerformanceUiModel) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             is ProgressRecentTrendUiModel.Available -> {
-                Text(
-                    text = stringResource(Res.string.progress_recent_trend_title),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
                 val percentages = trend.attempts.map(ProgressRecentAttemptUiModel::percentage)
                 RecentTrendChart(
                     percentages = percentages,
@@ -661,46 +651,119 @@ private fun WeakAreaCard(
     )
 }
 
+/**
+ * One Topic's standing, as a row of the performance table.
+ *
+ * This was a `ProgressPerformanceCard` — the same component a weak area draws — so the two adjacent
+ * sections differed only by a 1dp border, and the diagnostic one was the harder of the two to pick
+ * out. It is the shared [AccuracyRow] now rather than a row written out here, because a Mixed
+ * interview's performance breakdown and the Interview record reached the same shape within two
+ * changes of this one. Every part a learner acts on survives: the figure at its own weight and in
+ * `accuracyColor`, the counts that earned it, the chevron, `Role.Button`, and the stable per-Topic
+ * handle. What it gives up is the edge, which the group now draws once for all of them.
+ */
 @Composable
-private fun TopicPerformanceCard(
+private fun TopicPerformanceRow(
     topic: ProgressTopicUiModel,
     onClick: () -> Unit,
 ) {
-    ProgressPerformanceCard(
+    AccuracyRow(
         title = topic.topicName ?: stringResource(Res.string.progress_topic_unavailable),
-        subtitle = null,
-        correctCount = topic.correctCount,
-        answeredCount = topic.answeredCount,
+        detail = stringResource(
+            Res.string.progress_score,
+            topic.correctCount,
+            topic.answeredCount,
+        ),
         percentage = topic.percentage,
         modifier = Modifier.testTag(progressTopicCardTag(topic.topicId)),
         onClick = onClick,
     )
 }
 
+/**
+ * One completed attempt: the most tertiary thing on the dashboard, and now drawn like it.
+ *
+ * This was a [PerformanceCard], the same container at the same tonal level with the same corner
+ * radius as a Topic row — so a list of past sessions, which a learner scans for one entry to
+ * reopen, had exactly the weight of the diagnostic section above it. It is a row now: the smaller
+ * shape, a denser inset, a `titleSmall` name, and the score and the date folded onto one supporting
+ * line instead of two. The container stays, because the row is a tap target and a clipped surface
+ * is what keeps hover and press from drawing a band whose edges land on the text — on a desktop
+ * host hover is the resting state of whatever the pointer is over, and a `PerformanceCard` was
+ * doing this correctly.
+ *
+ * The accuracy keeps [accuracyColor] and its own line weight, since finding the session worth
+ * reopening is the reason to look at this list at all. The chevron and `Role.Button` stay: history
+ * rows navigate, and nothing about that changed.
+ */
 @Composable
-private fun HistoryCard(
+private fun HistoryRow(
     attempt: CompletedAttemptUiModel,
     onClick: () -> Unit,
 ) {
-    PerformanceCard(
-        title = when (attempt.assessmentType) {
-            CompletedAssessmentType.MIXED -> stringResource(Res.string.mixed_interview_title)
-            CompletedAssessmentType.FOCUSED -> stringResource(Res.string.progress_focused_practice)
-        },
-        detail = stringResource(
-            Res.string.progress_score,
-            attempt.correctAnswers,
-            attempt.totalQuestions,
-        ),
-        percentage = attempt.percentage,
-        modifier = Modifier.testTag(progressHistoryCardTag(attempt.attemptId)),
-        subtitle = focusedScopeLabel(attempt.focusedScope),
-        // Formatted here, where the reader's zone and their idea of "today" are available; the state
-        // carries the instant itself. See ui/time/TimestampText.kt.
-        caption = timestampText(attempt.completedAt),
-        onClick = onClick,
+    val title = when (attempt.assessmentType) {
+        CompletedAssessmentType.MIXED -> stringResource(Res.string.mixed_interview_title)
+        CompletedAssessmentType.FOCUSED -> stringResource(Res.string.progress_focused_practice)
+    }
+    val score = stringResource(
+        Res.string.progress_score,
+        attempt.correctAnswers,
+        attempt.totalQuestions,
     )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            // Clipped before the click so the state layer follows the row's corners. Nothing is
+            // filled at rest — the row sits on the page — but a pointer host shows hover as the
+            // resting state of whatever it is over, and an unclipped layer would draw a rectangle
+            // with its edges on the text.
+            .clip(MaterialTheme.shapes.small)
+            .clickable(role = Role.Button, onClick = onClick)
+            .testTag(progressHistoryCardTag(attempt.attemptId))
+            .padding(horizontal = AppSpacing.Comfortable, vertical = AppSpacing.Grouped),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            focusedScopeLabel(attempt.focusedScope)?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                // Formatted here, where the reader's zone and their idea of "today" are
+                // available; the state carries the instant itself. See ui/time/TimestampText.kt.
+                text = "$score  ·  ${timestampText(attempt.completedAt)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = formatAccuracy(attempt.percentage),
+            style = MaterialTheme.typography.titleMedium,
+            color = accuracyColor(attempt.percentage),
+        )
+        Icon(
+            imageVector = AppIcons.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(NavigationChevronSize),
+        )
+    }
 }
+
+/** The trailing navigation affordance, at the size every other row in the app draws it. */
+private val NavigationChevronSize = 20.dp
 
 @Composable
 private fun focusedScopeLabel(scope: FocusedScopeUiModel?): String? =

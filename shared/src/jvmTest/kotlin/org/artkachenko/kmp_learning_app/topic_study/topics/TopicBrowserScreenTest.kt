@@ -16,6 +16,8 @@ import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertTouchHeightIsEqualTo
 import androidx.compose.ui.test.assertTouchWidthIsEqualTo
@@ -1111,6 +1113,75 @@ internal class TopicBrowserScreenTest {
             onNodeWithText("Recommended next").assertDoesNotExist()
             onNodeWithText("Pick up where you left off").assertDoesNotExist()
         }
+
+    /**
+     * The two continuation shortcuts share one container.
+     *
+     * They were two cards of identical anatomy stacked under a third of the same shape, so the
+     * screen opened on a wall of boxes rather than on the catalogue it is named for. The assertion
+     * is an ancestry one, because what changed is the number of containers and not what any row
+     * says or does: both rows still navigate, and both still name exactly what the domain resolved.
+     */
+    @Test
+    fun theTwoContinuationShortcutsShareOneContainer() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        continueStudying = ContinueStudyingContext(
+                            target = ContinueStudyingTarget.Topic("kotlin"),
+                            scopeName = "Kotlin",
+                        ),
+                        continueLearning = ContinueLearningUiModel.Next(
+                            target = ContinueLearningTarget("unit", "lesson"),
+                            lessonTitle = "Recomposition",
+                            unitTitle = "Thinking in Compose",
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        val insideGroup = hasAnyAncestor(hasTestTag(TopicBrowserContinueGroupTag))
+        onNodeWithTag(TopicBrowserContinueStudyingTag).assert(insideGroup)
+        onNodeWithTag(TopicBrowserContinueLearningTag).assert(insideGroup)
+        // The recommendation keeps its own accented surface: it is the one policy-driven action,
+        // not a third way back into something already started.
+        onNodeWithTag(TopicBrowserSavedQuestionsTag).assert(insideGroup.not())
+    }
+
+    /**
+     * A group is a container decision and must not reach into its members. With only one shortcut
+     * derivable, the group holds exactly that one and the absent one is still absent — the learner
+     * never sees an empty half of a container.
+     */
+    @Test
+    fun oneDerivableShortcutFillsTheGroupAloneRatherThanLeavingAGap() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("kotlin", "Kotlin")),
+                        continueLearning = ContinueLearningUiModel.Next(
+                            target = ContinueLearningTarget("unit", "lesson"),
+                            lessonTitle = "Recomposition",
+                            unitTitle = "Thinking in Compose",
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithTag(TopicBrowserContinueLearningTag)
+            .assert(hasAnyAncestor(hasTestTag(TopicBrowserContinueGroupTag)))
+        onNodeWithTag(TopicBrowserContinueStudyingTag).assertDoesNotExist()
+        onNodeWithText("Pick up where you left off").assertDoesNotExist()
+    }
 
     @Test
     fun theSavedQuestionsEntryIsOneTargetEmittingASemanticClick() = runComposeUiTest {

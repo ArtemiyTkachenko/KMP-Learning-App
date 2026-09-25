@@ -2,7 +2,9 @@ package org.artkachenko.kmp_learning_app.mistake_review
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -25,6 +27,33 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
 @OptIn(ExperimentalTestApi::class)
 internal class MistakeReviewScreenTest {
+    /**
+     * What this queue currently holds is the screen's subject, and is announced as a heading.
+     *
+     * The bar above says which screen this is; this says what is in it. It was the only subject
+     * line in the app a screen reader could not jump to, and the only styled `Text` whose colour
+     * came from the ambient `LocalContentColor` rather than from a named role — correct inside the
+     * shell, black in a preview or an isolated composition.
+     */
+    @Test
+    fun theOutstandingCountIsTheScreensHeading() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        mistakes = listOf(availableMistake("q1", subtopicId = "flows")),
+                    ),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithText("1 unresolved mistakes to review").assertIsDisplayed().assert(isHeading())
+    }
+
     @Test
     fun aMappedMistakeNavigatesToItsStableLessonIds() = runComposeUiTest {
         val opened = mutableListOf<MistakeStudyLesson>()
@@ -82,6 +111,11 @@ internal class MistakeReviewScreenTest {
         }
 
         onNodeWithText("3 unresolved mistakes to review").assertIsDisplayed()
+        // Why the button offers fewer than the count above it. Without this line the learner reads
+        // "3 unresolved mistakes" over an offer to practise two, with nothing accounting for the
+        // third.
+        onNodeWithText("1 of 3 are no longer in the curriculum and cannot be practised.")
+            .assertIsDisplayed()
         onNodeWithText("Practice 2 mistakes").performClick()
 
         assertEquals(
@@ -95,6 +129,30 @@ internal class MistakeReviewScreenTest {
             ),
             configs,
         )
+    }
+
+    /** With nothing missing there is no discrepancy, so the screen says nothing about one. */
+    @Test
+    fun aFullyPractisableQueueCarriesNoUnavailableNotice() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(
+                            availableMistake("q1", subtopicId = "flows"),
+                            availableMistake("q2", subtopicId = "coroutines"),
+                        ),
+                    ),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithText("no longer in the curriculum", substring = true).assertDoesNotExist()
+        onNodeWithText("Practice 2 mistakes").assertIsDisplayed()
     }
 
     @Test

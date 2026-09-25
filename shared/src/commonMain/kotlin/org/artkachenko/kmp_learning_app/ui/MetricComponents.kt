@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,23 +9,28 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -54,44 +60,6 @@ internal fun accuracyColor(percentage: Double): Color {
 private const val StrongAccuracyThreshold = 85.0
 
 /**
- * The headline number for a screen: an accuracy percentage with a supporting caption and a meter.
- * Used by the progress dashboard, the topic drill-down, and both result screens so the primary
- * outcome reads the same way everywhere.
- */
-@Composable
-internal fun AccuracyHeadline(
-    percentage: Double,
-    caption: String,
-    modifier: Modifier = Modifier,
-    supporting: String? = null,
-) {
-    val color = accuracyColor(percentage)
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = formatAccuracy(percentage),
-                style = MaterialTheme.typography.displaySmall,
-                color = color,
-            )
-            Text(
-                text = caption,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 6.dp),
-            )
-        }
-        ProgressMeter(fraction = (percentage / 100.0).toFloat(), color = color)
-        supporting?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-/**
  * The horizontal meter under a figure, in the one style the product uses for all of them.
  *
  * This existed four times with the same styling copied out, and three of those copies passed their
@@ -104,16 +72,14 @@ internal fun AccuracyHeadline(
  * reason — a bar growing from zero every time a screen opens would be stating a change that did not
  * happen.
  *
- * [growFromEmptyMillis] is the one case where it did. A completed assessment's score is a figure
- * that came into existence moments ago, so on that screen — and only there — the meter fills from
- * empty over the given duration. It is opt-in rather than the default precisely because the claim
- * it makes is false everywhere else: the accuracy on the Progress dashboard is a standing figure,
- * not something that just happened.
+ * There is deliberately no "fill from empty" option. The completion hero had one, for the one figure
+ * in the app that genuinely came into existence moments ago — and it meant that screen ran two
+ * animations, this meter's and the hero's own count, matched by hand on duration. The hero now draws
+ * a ring swept by the same value that counts its figure, so the two are one movement and this meter
+ * is back to doing exactly one thing.
  *
  * [trackColor] is a parameter for the same reason the neutral container of an answer option is: the
  * default is a statement about the *page's* surface ramp, which is not where this meter always sits.
- * On the completion hero it sits on a gradient, where a neutral grey track would read as a control
- * borrowed from another screen.
  */
 @Composable
 internal fun ProgressMeter(
@@ -121,10 +87,9 @@ internal fun ProgressMeter(
     color: Color,
     modifier: Modifier = Modifier,
     trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
-    growFromEmptyMillis: Int? = null,
 ) {
     val target = fraction.coerceIn(0f, 1f)
-    val animated = remember { Animatable(if (growFromEmptyMillis == null) target else 0f) }
+    val animated = remember { Animatable(target) }
     LaunchedEffect(target) {
         // Nothing to travel on the first composition, where the Animatable was seeded with this
         // very value — and `animateTo` does not know that, so it would run a full invisible tween
@@ -134,16 +99,7 @@ internal fun ProgressMeter(
         if (animated.value != target) {
             animated.animateTo(
                 targetValue = target,
-                animationSpec = if (growFromEmptyMillis == null) {
-                    AppMotion.effectSpec(AppMotion.ProgressDurationMillis)
-                } else {
-                    // Decelerating, and over the hero's own duration, so the bar and the figure
-                    // counting above it are one movement rather than two that happen to overlap.
-                    tween(
-                        durationMillis = growFromEmptyMillis,
-                        easing = AppMotion.EmphasizedDecelerateEasing,
-                    )
-                },
+                animationSpec = AppMotion.effectSpec(AppMotion.ProgressDurationMillis),
             )
         }
     }
@@ -164,7 +120,59 @@ internal fun ProgressMeter(
 private val MeterHeight = 8.dp
 
 /**
- * The figure a card exists to show, one step below [AccuracyHeadline]'s screen headline.
+ * An accuracy as a swept ring: the form the product uses wherever a fraction-correct is the subject
+ * of the surface it sits on rather than a figure inside a row.
+ *
+ * Material's determinate `CircularProgressIndicator` at a larger size and a heavier stroke, not a
+ * `Canvas` of its own — the arc, the rounded cap, and the sweep from twelve o'clock are exactly what
+ * the component already draws. The gap and the stop indicator are removed for the same reason
+ * [ProgressMeter] removes them: this is a measurement of what happened, not an operation in flight.
+ *
+ * There is one size on purpose. The two surfaces that use it — the completion hero and the Progress
+ * standing hero — are the two places in the app where the headline *is* an accuracy, and a ring that
+ * changed size between them would read as two different controls rather than one product idea.
+ *
+ * Wrapped in a cleared box rather than given a `contentDescription`. The component publishes
+ * `progressBarRangeInfo`, which beside a figure that already states the same number would be a
+ * second announcement of it — and, wherever the ring is animated into place, a wrong one for the
+ * duration of the animation.
+ */
+@Composable
+internal fun AccuracyRing(
+    fraction: Float,
+    color: Color,
+    trackColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.clearAndSetSemantics {}) {
+        CircularProgressIndicator(
+            progress = { fraction.coerceIn(0f, 1f) },
+            modifier = Modifier.size(AccuracyRingSize),
+            color = color,
+            trackColor = trackColor,
+            strokeWidth = AccuracyRingStroke,
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+        )
+    }
+}
+
+/** Large enough to read as the surface's own indicator beside a display-scale figure, small enough
+ *  that it never becomes the subject; the stroke is scaled with it. */
+private val AccuracyRingSize = 64.dp
+private val AccuracyRingStroke = 6.dp
+
+/**
+ * The unswept part of a ring, as a share of whatever colour the text on that surface takes.
+ *
+ * Stated once because both heroes need the same answer and neither can use a neutral track: a grey
+ * from the page's surface ramp reads as a control borrowed from another screen when it sits on a
+ * gradient, and reads as a different grey from the card under it when it sits on a raised surface.
+ */
+internal const val AccuracyRingTrackAlpha = 0.22f
+
+/**
+ * The figure a card exists to show, one step below [AccuracyHeroCard]'s screen headline.
  *
  * This exists because three cards — coverage, recent performance, and the interview question count
  * — each set `FontWeight.Bold` on a headline role at their own call site, while the same roles are
@@ -185,6 +193,52 @@ internal fun MetricFigure(
         color = color,
         modifier = modifier,
     )
+}
+
+/**
+ * A figure that is being counted out, stated and announced at once.
+ *
+ * [shownText] is what is drawn and changes every frame; [settledText] is what the node *says* it
+ * is, from the first frame onward. Without that split a screen reader would be handed a number
+ * that is merely passing through — announcing "three of ten" because that is where the tween
+ * happened to be — and every test that reads the figure would depend on animation timing. The
+ * count is presentation; the value is the fact.
+ *
+ * The figure also reserves the width of [settledText] for the whole count. A number that grows
+ * from one digit to two grows *sideways* as well, and everything beside it is pushed along with it
+ * for half a second. Laying the settled text out invisibly underneath costs one extra measure and
+ * makes the count a change of digits rather than a change of layout.
+ *
+ * Shared rather than private to the completion hero because the Progress hero counts its accuracy
+ * the same way, and two copies of this would be two chances to drop the semantics half of it.
+ * [style] is a parameter only so a hero can choose its own display role; everything else about the
+ * component is fixed, because the split above is the whole point of it.
+ */
+@Composable
+internal fun CountedFigure(
+    shownText: String,
+    settledText: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.displaySmall,
+) {
+    Box(modifier, contentAlignment = Alignment.CenterStart) {
+        Text(
+            text = settledText,
+            style = style,
+            fontWeight = FontWeight.Bold,
+            // Present for measurement only: drawn at zero alpha and carrying no semantics, so the
+            // figure is announced once rather than twice.
+            modifier = Modifier.alpha(0f).clearAndSetSemantics {},
+        )
+        Text(
+            text = shownText,
+            style = style,
+            fontWeight = FontWeight.Bold,
+            color = color,
+            modifier = Modifier.semantics { text = AnnotatedString(settledText) },
+        )
+    }
 }
 
 /** Whole number when exact, otherwise one decimal place, with the percent sign attached. */
@@ -210,7 +264,7 @@ internal fun StatusBadge(
     ) {
         Row(
             modifier = Modifier.padding(horizontal = AppSpacing.Grouped, vertical = AppSpacing.Tight),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             icon?.let {
@@ -237,6 +291,13 @@ internal fun MetricRow(
     value: String,
     modifier: Modifier = Modifier,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    /**
+     * The label's colour, for the same reason [ProgressMeter] takes a track colour: the default
+     * names a role on the *page's* surface ramp, and this row is also used on the Progress hero's
+     * gradient, where `onSurfaceVariant` is a grey borrowed from a surface that is not underneath
+     * it.
+     */
+    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     Row(
         modifier = modifier
@@ -248,7 +309,7 @@ internal fun MetricRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = labelColor,
         )
         Text(
             text = value,

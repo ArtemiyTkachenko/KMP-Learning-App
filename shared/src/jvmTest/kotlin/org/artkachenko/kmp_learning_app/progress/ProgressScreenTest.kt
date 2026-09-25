@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
@@ -638,6 +639,47 @@ internal class ProgressScreenTest {
             )
     }
 
+    /**
+     * The chart grows up out of its own axis on first appearance, and none of that may reach a
+     * screen reader or a test.
+     *
+     * The description is the settled series from the first frame — before the growth has moved at
+     * all — rather than something that becomes true once the animation lands. The clock is held
+     * still deliberately: with it running, a passing assertion would prove only that the animation
+     * finished before the assertion ran.
+     */
+    @Test
+    fun theTrendIsDescribedInFullBeforeItHasFinishedDrawing() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        recentPerformance = recentState(
+                            attemptPercentages = listOf(60.0, 68.0, 72.0),
+                            correctAnswerCount = 20,
+                            answeredQuestionCount = 30,
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                    {},
+                    {},
+                )
+            }
+        }
+        mainClock.advanceTimeByFrame()
+
+        onNodeWithTag(ProgressRecentTrendChartTag)
+            .assertIsDisplayed()
+            .assertContentDescriptionEquals(
+                "Recent session accuracy, oldest to newest: 60%, 68%, 72%.",
+            )
+    }
+
     @Test
     fun theFiveAttemptWindowIsPlottedWhole() = runComposeUiTest {
         setContent {
@@ -728,6 +770,212 @@ internal class ProgressScreenTest {
         onNodeWithText("Topic performance").assertIsDisplayed()
         onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Session history"))
         onNodeWithText("Session history").assertIsDisplayed()
+    }
+
+    /**
+     * Coverage stopped being a card of its own and became context inside the hero, which is a claim
+     * about *where* it is rather than about how it looks — so the assertion is an ancestry one and
+     * not a colour or a spacing.
+     *
+     * Everything it said before, it still says: the title, the raw counts that make the percentage
+     * interpretable, and the percentage itself.
+     */
+    @Test
+    fun curriculumCoverageIsStatedInsideTheHeroRatherThanAsItsOwnCard() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(coverage = ProgressCoverageUiModel(25, 100, 25.0)),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                    {},
+                    {},
+                )
+            }
+        }
+
+        val insideHero = hasAnyAncestor(hasTestTag(ProgressHeroTag))
+        onNode(hasText("Curriculum coverage") and insideHero).assertIsDisplayed()
+        onNode(hasText("25 of 100 questions explored") and insideHero).assertIsDisplayed()
+        // The lifetime evidence stayed with the figure it is evidence for.
+        onNode(hasText("Questions answered") and hasText("30") and insideHero).assertIsDisplayed()
+    }
+
+    /**
+     * An empty ACTIVE bank reports that there is nothing to cover, in the hero, rather than drawing
+     * a meter at 0% — 0/0 is not 0% covered, and moving the block did not change that.
+     */
+    @Test
+    fun anEmptyActiveBankIsStillReportedInsideTheHero() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(coverage = ProgressCoverageUiModel(0, 0, null)),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                    {},
+                    {},
+                )
+            }
+        }
+
+        onNode(
+            hasText("No active curriculum available") and
+                hasAnyAncestor(hasTestTag(ProgressHeroTag)),
+        ).assertIsDisplayed()
+    }
+
+    /**
+     * The hero counts its accuracy up on first appearance, and none of that may reach a screen
+     * reader or a test.
+     *
+     * The figure states the settled value from the first frame — before the count has moved at all
+     * — rather than becoming true once the animation lands, exactly as the trend chart's
+     * description does. The clock is held still deliberately: with it running, a passing assertion
+     * would prove only that the animation finished before the assertion ran.
+     */
+    @Test
+    fun theHeroAnnouncesItsSettledAccuracyBeforeTheCountHasFinished() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent {
+            MaterialTheme {
+                ProgressScreen(contentState(), {}, {}, {}, {}, { _, _ -> }, {}, {})
+            }
+        }
+        mainClock.advanceTimeByFrame()
+
+        // 70% is the lifetime figure in `contentState`, and the count starts at 0.
+        onAllNodesWithText("70%").assertCountEquals(1)
+    }
+
+    /**
+     * Session history is the most tertiary thing on the dashboard and is drawn as a row rather than
+     * a card now. What must survive that is everything a learner acts with: the scope it was run
+     * over, the score, the accuracy, and a button that navigates by stable attempt ID.
+     */
+    @Test
+    fun aHistoryRowKeepsItsEvidenceAndItsNavigation() = runComposeUiTest {
+        val clicks = mutableListOf<Pair<CompletedAssessmentType, String>>()
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        history = listOf(
+                            CompletedAttemptUiModel(
+                                "focused-id",
+                                CompletedAssessmentType.FOCUSED,
+                                FocusedScopeUiModel.Subtopic("Kotlin", "Coroutines"),
+                                10,
+                                8,
+                                80.0,
+                                Instant.parse("2026-08-28T21:30:00Z"),
+                            ),
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { type, id -> clicks += type to id },
+                    {},
+                    {},
+                )
+            }
+        }
+
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasTestTag(progressHistoryCardTag("focused-id")))
+        onNodeWithTag(progressHistoryCardTag("focused-id"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            // The score and the completion time fold onto one supporting line; both are still there.
+            .assert(hasText("8 / 10 correct", substring = true))
+            .assert(hasText("Kotlin · Coroutines", substring = true))
+            .assert(hasText("80%", substring = true))
+            .performClick()
+
+        assertEquals(listOf(CompletedAssessmentType.FOCUSED to "focused-id"), clicks)
+    }
+
+    /**
+     * Per-Topic performance is one grouped table rather than a card each, and the assertion is an
+     * ancestry one: what changed is how many containers the section draws, not what any row says.
+     *
+     * Every row keeps what a learner acts on — the name, the counts, the accuracy, and a button
+     * that navigates by stable Topic ID.
+     */
+    @Test
+    fun topicPerformanceRowsShareOneContainerAndKeepTheirOwnNavigation() = runComposeUiTest {
+        val clicked = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        topics = listOf(
+                            ProgressTopicUiModel("a", "Kotlin", 20, 14, 70.0),
+                            ProgressTopicUiModel("b", "Compose", 30, 27, 90.0),
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    { clicked += it },
+                    { _, _ -> },
+                    {},
+                    {},
+                )
+            }
+        }
+
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasTestTag(progressTopicCardTag("b")))
+        // Both rows hang off one container, which is the whole point of the section's new shape.
+        onNodeWithTag(progressTopicCardTag("a"))
+            .assert(hasAnyAncestor(hasTestTag(ProgressTopicGroupTag)))
+        onNodeWithTag(progressTopicCardTag("b"))
+            .assert(hasAnyAncestor(hasTestTag(ProgressTopicGroupTag)))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .assert(hasText("27 / 30 correct", substring = true))
+            .assert(hasText("90%", substring = true))
+            .performClick()
+
+        assertEquals(listOf("b"), clicked)
+    }
+
+    /**
+     * A weak area is deliberately *not* in that group. It is singled out by an accent border, which
+     * is a property of a container, and the contrast between the bordered cards and the quiet table
+     * beneath them is what separates "these need attention" from "here is everything".
+     */
+    @Test
+    fun aWeakAreaRowStaysOutsideTheTopicPerformanceGroup() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        weakAreas = listOf(
+                            WeakAreaUiModel(WeakAreaType.TOPIC, "a", "Kotlin", null, 20, 8, 40.0),
+                        ),
+                        topics = listOf(ProgressTopicUiModel("a", "Kotlin", 20, 8, 40.0)),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                    {},
+                    {},
+                )
+            }
+        }
+
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasTestTag(progressTopicCardTag("a")))
+        onNodeWithTag(progressWeakAreaPracticeTag(
+            WeakAreaUiModel(WeakAreaType.TOPIC, "a", "Kotlin", null, 20, 8, 40.0),
+        )).assert(hasAnyAncestor(hasTestTag(ProgressTopicGroupTag)).not())
     }
 
     @Test

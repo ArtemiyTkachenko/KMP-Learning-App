@@ -138,10 +138,20 @@ width it would have had alone.
 
 The outline is derived from the Lesson's own structure, not from rendered text. A Section
 earns an entry when it starts a depth run — which is exactly when `LearningSectionContent`
-draws the depth heading — or when it carries an authored title, and its label is that title
+draws the depth marker — or when it carries an authored title, and its label is that title
 where there is one and the depth otherwise. So every entry names something the reader can
 actually see on the page, and the outline cannot drift from it. A Section with no title in
 the middle of a depth run has no heading and gets no entry.
+
+The page draws the same rule the outline states. The authored title is the heading, at
+`titleLarge`; the depth layer above it is a *marker*, at `labelLarge` in `primary` — the
+treatment the assessment screen gives "Question 3 of 10", because it says where you are in a
+document rather than what the document says next. It was the other way round: the layer was a
+`SectionHeading` above a title at `titleMedium`, so a single-Section layer printed "Core" in
+the larger type directly over "Core idea" in the smaller, and the page claimed a containment
+its own outline contradicted. Both were additionally published as bare `heading()` with no
+level, so assistive technology heard two peers. The marker keeps `heading()` in exactly the
+case the outline falls back to it — a Section with no title of its own.
 
 Anchors are measured with `onGloballyPositioned` rather than estimated: block heights
 depend on the font scale, the window width, and how a paragraph happened to wrap, none of

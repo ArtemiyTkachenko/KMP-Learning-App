@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
@@ -17,7 +18,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 
 /**
@@ -38,6 +42,14 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
  * ordering puts weak rows first, and [weakLabel] is available wherever the surrounding context does
  * not already say what these rows are.
  *
+ * [comparesWithSiblings] adds a meter under the row, and is off by default because most lists of
+ * these cards are not comparisons. A Topic's Subtopics are: they are parts of one whole, measured on
+ * one scale, and the question the learner opened the screen to ask is which of them is worst. Four
+ * percentages down the right-hand edge answer that only by being read and remembered one at a time,
+ * where four bars answer it at a glance. A session-history list is the counter-example — consecutive
+ * attempts of different lengths on different scopes are not rows to compare against each other, and
+ * a bar on each would invite exactly that.
+ *
  * [onClick] makes the whole card a button and adds the navigation chevron. Keeping the callback and
  * affordance together prevents an inert card from advertising navigation. [action] is an optional
  * low-emphasis control on its own line under the figures. It is absent by
@@ -55,7 +67,7 @@ internal fun PerformanceCard(
     caption: String? = null,
     isWeak: Boolean = false,
     weakLabel: String? = null,
-    isSummary: Boolean = false,
+    comparesWithSiblings: Boolean = false,
     onClick: (() -> Unit)? = null,
     action: (@Composable () -> Unit)? = null,
 ) {
@@ -73,29 +85,36 @@ internal fun PerformanceCard(
                     Modifier.clickable(role = Role.Button, onClick = onClick)
                 },
             ),
-        shape = if (isSummary) MaterialTheme.shapes.large else MaterialTheme.shapes.medium,
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = if (isSummary) {
-                MaterialTheme.colorScheme.surfaceContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerLow
-            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
         border = if (isWeak) BorderStroke(WeakBorderWidth, semantic.partiallyCorrect) else null,
     ) {
+        val meter = percentage.takeIf { comparesWithSiblings }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                // The action supplies the card's bottom inset when there is one, so the row does
-                // not leave a full gap above a control that belongs to it.
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp)
-                .padding(bottom = if (action == null) 16.dp else 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                // Whatever comes next supplies the card's bottom inset, so the row does not leave a
+                // full gap above a meter or a control that belongs to it.
+                .padding(
+                    start = AppSpacing.Comfortable,
+                    end = AppSpacing.Comfortable,
+                    top = AppSpacing.Comfortable,
+                )
+                .padding(
+                    bottom = when {
+                        action != null -> AppSpacing.Tight
+                        meter != null -> AppSpacing.Grouped
+                        else -> AppSpacing.Comfortable
+                    },
+                ),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             ) {
                 Text(
                     title,
@@ -149,15 +168,134 @@ internal fun PerformanceCard(
                 )
             }
         }
+        meter?.let {
+            ProgressMeter(
+                fraction = (it / 100.0).toFloat(),
+                color = accuracyColor(it),
+                // The figure above it is already announced; a second progress node saying the same
+                // number is noise to a screen reader, so the bar is drawing only.
+                modifier = Modifier
+                    .padding(
+                        start = AppSpacing.Comfortable,
+                        end = AppSpacing.Comfortable,
+                        bottom = AppSpacing.Comfortable,
+                    )
+                    .clearAndSetSemantics {},
+            )
+        }
         action?.let {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = AppSpacing.Related,
+                        end = AppSpacing.Related,
+                        bottom = AppSpacing.Tight,
+                    ),
             ) {
                 it()
             }
         }
     }
 }
+
+/**
+ * The same accuracy row as [PerformanceCard], without the card.
+ *
+ * A row inside a [ContentGroup] and a row inside a Card are the same reading: what it is on the
+ * left, how the learner is doing on the right. Three screens reached the group form within two
+ * changes of each other — the Progress dashboard's per-Topic table, a Mixed interview's
+ * performance-by-topic breakdown, and the Interview start screen's own record — and each wrote the
+ * row out again, so three surfaces were one edit away from disagreeing about the type scale of a
+ * percentage.
+ *
+ * This is deliberately *not* `PerformanceCard(inGroup = true)`. The card carries three things a
+ * grouped row cannot: an accent border, which is a property of a container; a comparison meter,
+ * which belongs under a row rather than in it; and a low-emphasis action on its own line, which a
+ * group would let bleed into the divider below it. A flag would have to answer for all three, and
+ * the answer is the same every time — those are card features. Two components, one shared reading.
+ *
+ * [onClick] makes the whole row a button and adds the navigation chevron, for the same reason the
+ * card keeps them together: an inert row must not advertise navigation. The minimum touch target
+ * sits inside the `clickable`, so the state layer spans the row rather than being inset from it and
+ * a two-line row still clears 48dp.
+ *
+ * The row merges its descendants whether or not it is navigable. A `clickable` merges on its own,
+ * so a navigable row was already announced as one thing — but an inert one was three separate
+ * nodes, and inside a group there is no longer a card edge to imply that the name, the score, and
+ * the rate belong together. A Mixed interview's breakdown would have been read as nine unrelated
+ * fragments. Merging is what makes a row a row to a screen reader as well as to the eye.
+ */
+@Composable
+internal fun AccuracyRow(
+    title: String,
+    detail: String,
+    percentage: Double?,
+    modifier: Modifier = Modifier,
+    caption: String? = null,
+    onClick: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick == null) {
+                    Modifier
+                } else {
+                    Modifier.clickable(role = Role.Button, onClick = onClick)
+                },
+            )
+            .heightIn(min = MinimumTouchTargetSize)
+            .padding(GroupRowPadding)
+            .semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            caption?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        percentage?.let {
+            Text(
+                text = formatAccuracy(it),
+                style = MaterialTheme.typography.titleLarge,
+                color = accuracyColor(it),
+            )
+        }
+        if (onClick != null) {
+            Icon(
+                imageVector = AppIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(NavigationChevronSize),
+            )
+        }
+    }
+}
+
+/** Material's minimum touch target, stated here because a bare row is not a Material component. */
+private val MinimumTouchTargetSize = 48.dp
+
+/** The trailing navigation affordance, at the size every other row in the app draws it. */
+private val NavigationChevronSize = 20.dp
 
 /** Thick enough to read as a deliberate accent at a glance, thin enough not to become a frame. */
 private val WeakBorderWidth = 1.dp

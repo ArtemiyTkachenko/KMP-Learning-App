@@ -1,8 +1,15 @@
 package org.artkachenko.kmp_learning_app.assessment_review
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,13 +22,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.assessment_review_collapse
 import kmp_learning_app.shared.generated.resources.assessment_review_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_correctly_selected
+import kmp_learning_app.shared.generated.resources.assessment_review_expand
 import kmp_learning_app.shared.generated.resources.assessment_review_explanation
 import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
 import kmp_learning_app.shared.generated.resources.assessment_review_incorrectly_selected
@@ -31,6 +42,7 @@ import kmp_learning_app.shared.generated.resources.assessment_review_source
 import kmp_learning_app.shared.generated.resources.assessment_review_source_open_failed
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
@@ -280,7 +292,9 @@ internal fun QuestionSources(
 ) {
     if (sources.isEmpty()) return
     Column(modifier, verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
-        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        // Flush: consecutive `TextButton`s already carry Material's own vertical padding,
+        // so arrangement spacing here would be added on top of two lots of it.
+        Column(verticalArrangement = Arrangement.Top) {
             sources.forEach { source ->
                 // A link, not a primary action: these used to be filled buttons stacked inside the
                 // card, which competed with the answer content.
@@ -309,3 +323,108 @@ internal fun QuestionSources(
         }
     }
 }
+
+/**
+ * A Question's detail, behind the one disclosure the product uses for it.
+ *
+ * Three surfaces show the same authored content — a result transcript, the Mistakes queue, and
+ * Saved Questions — and until now only two of them could close it. `SavedQuestionCard` had no
+ * disclosure at all, so a collection of twenty saved Questions was twenty permanently open blocks
+ * of options, explanation and sources, and finding one meant scrolling past all the others in full.
+ * That is not a decision the screen had made; it is a control it never got. Sharing the control is
+ * what makes it one control rather than a second one that looks similar.
+ *
+ * The caller owns [expanded], because the right default differs and is a statement about the
+ * content: a result transcript opens the questions the learner got wrong, and a saved collection
+ * opens nothing, because it is a list to browse rather than a transcript to read through.
+ *
+ * [detail] is an `AnimatedVisibilityScope` so its pieces can take `Modifier.animateEnterExit` with
+ * staggered specs. That is how the opened card relayouts once while its contents still arrive in
+ * reading order, instead of several coroutines coordinating delays.
+ */
+@Composable
+internal fun ColumnScope.QuestionDisclosure(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    detail: @Composable AnimatedVisibilityScope.() -> Unit,
+) {
+    QuestionDisclosureAction(expanded = expanded, onClick = onToggle)
+    // The transcript's answer rows arrive the same way the practice screen's reveal does, and for
+    // the same reason: this is the identical content — the options, the verdict on each, the
+    // explanation, the sources — met minutes later instead of seconds. It used to appear and
+    // disappear in a single frame, so opening one card in a list of twenty moved everything below
+    // it by several hundred pixels with nothing to follow.
+    AnimatedVisibility(
+        visible = expanded,
+        // From the top, not Compose's default of from the bottom: the first strip of a card
+        // opening downwards should be the first thing there is to read. Left on the default, the
+        // sliver revealed in the first hundred milliseconds is the *end* of the content — the
+        // explanation and the source links — which is both the wrong reading order and the part
+        // deliberately held back, so the card appeared to open empty.
+        enter = expandVertically(AppMotion.spatialSpec(), expandFrom = Alignment.Top),
+        // Collapsing is the learner putting something away, so it accelerates out: the card should
+        // be closed before they have finished looking at it.
+        exit = shrinkVertically(AppMotion.spatialSpec(), shrinkTowards = Alignment.Top) +
+            fadeOut(AppMotion.effectSpec(AppMotion.StateChangeDurationMillis / 2)),
+        content = detail,
+    )
+}
+
+/**
+ * The control that opens a Question card, as a disclosure rather than as two commands.
+ *
+ * It was a bare text button whose word was replaced outright — "Review answer" one frame and "Hide
+ * answer" the next — which reads as two different buttons occupying one place. A chevron that
+ * turns over is the conventional way to say *this thing opens*, and rotating one glyph rather than
+ * swapping two means the control travels between its states instead of arriving in the new one.
+ *
+ * The rotation is decoration: the word beside it states the action outright, and Material's button
+ * semantics announce that word, so nothing here depends on the angle being seen.
+ */
+@Composable
+private fun QuestionDisclosureAction(expanded: Boolean, onClick: () -> Unit) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) ExpandedChevronRotation else 0f,
+        animationSpec = AppMotion.spatialSpec(),
+        label = "questionDisclosureChevron",
+    )
+    TextButton(onClick = onClick) {
+        Icon(
+            imageVector = AppIcons.ExpandMore,
+            contentDescription = null,
+            modifier = Modifier
+                .size(DisclosureIconSize)
+                .graphicsLayer { rotationZ = rotation },
+        )
+        Text(
+            text = stringResource(
+                if (expanded) {
+                    Res.string.assessment_review_collapse
+                } else {
+                    Res.string.assessment_review_expand
+                },
+            ),
+            modifier = Modifier.padding(start = AppSpacing.Tight),
+        )
+    }
+}
+
+/** Half a turn, so the chevron ends pointing up rather than having spun all the way round. */
+private const val ExpandedChevronRotation = 180f
+
+/** Matches the leading-icon size Material gives a text button, as the save action does. */
+private val DisclosureIconSize = 18.dp
+
+/**
+ * How far an opened card's contents trail the expansion that makes room for them.
+ *
+ * The same ordering the practice reveal uses — options, then the reason for them — so a learner who
+ * answers a question and a learner who reviews it later watch the same thing happen.
+ *
+ * The answers themselves are given no delay at all, which is where this differs from the practice
+ * reveal: there the staggered piece is a small badge, while here the options *are* most of the
+ * height being opened. Holding them back even 60ms was visibly a card opening an empty space and
+ * then filling it. The thing that makes the room arrives with the room.
+ */
+internal const val QuestionAnswersRevealDelayMillis = 0
+internal const val QuestionExplanationRevealDelayMillis = 120

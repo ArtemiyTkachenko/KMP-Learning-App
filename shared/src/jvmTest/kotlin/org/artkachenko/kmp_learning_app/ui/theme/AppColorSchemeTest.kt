@@ -207,12 +207,14 @@ internal class AppColorSchemeTest {
     }
 
     /**
-     * The hero gradient is a token with no call site yet, so this is what keeps it honest.
-     *
-     * Two properties make it usable by a later screen without that screen having to re-derive them:
-     * the endpoints are actually different (a gradient between equal colours is a fill wearing a
-     * more expensive API), and `onPrimaryContainer` carries text across the whole sweep, which is
+     * The hero gradient's two properties, checked once here so neither call site has to re-derive
+     * them: the endpoints are actually different (a gradient between equal colours is a fill wearing
+     * a more expensive API), and `onPrimaryContainer` carries text across the whole sweep, which is
      * the contract the token documents instead of shipping an on-colour of its own.
+     *
+     * A surface that puts something *other* than `onPrimaryContainer` on the sweep is outside this
+     * contract and checks its own colours — `AssessmentCompletionHeroTest` and
+     * `ProgressHeroThemeTest` both do.
      */
     @Test
     fun theHeroGradientIsASweepThatTextCanCross() {

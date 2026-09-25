@@ -7,9 +7,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +21,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,19 +31,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.text
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
-import kmp_learning_app.shared.generated.resources.assessment_review_score
+import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_correct
+import kmp_learning_app.shared.generated.resources.assessment_review_score_figure
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
+import org.artkachenko.kmp_learning_app.ui.AccuracyRing
+import org.artkachenko.kmp_learning_app.ui.AccuracyRingTrackAlpha
 import org.artkachenko.kmp_learning_app.ui.AppIcons
-import org.artkachenko.kmp_learning_app.ui.ProgressMeter
-import org.artkachenko.kmp_learning_app.ui.accuracyColor
+import org.artkachenko.kmp_learning_app.ui.CountedFigure
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -58,24 +56,45 @@ import org.jetbrains.compose.resources.stringResource
  * **moment**: finishing a run is the one arrival in the product, and it looked like one more row in
  * a list of surfaces. Nothing on the screen said "this just happened".
  *
- * Two things are different here and nothing else is. The card takes the app's hero gradient, which
- * has existed as a token since the colour system landed and has had no call site until now — it is
- * documented as being for "the rare surface that is the single most important thing on its screen",
- * and this is that surface. And the figure is *counted out* rather than printed, with the meter
- * filling underneath it over the same duration.
+ * Four things make this a hero rather than a card, and nothing else does. It takes the app's hero
+ * gradient, which is documented as being for "the rare surface that is the single most important
+ * thing on its screen" and has this as its only call site. It carries a hairline edge and a shadow,
+ * so the gradient is an object lifted off the page rather than a patch of colour on it — which
+ * matters most in light, where the sweep is a pale tint over an off-white background. Its figure is
+ * the score itself at display scale. And that figure is *counted out*, with the ring beside it
+ * sweeping to the same value over the same movement.
  *
  * The celebration stops there. There is no confetti, no streak, no points, and no praise: the app
  * has none of those anywhere else, and a learner who scored 30% is not owed a party. What the
  * motion is actually for is that a score arriving over half a second is a score the learner
  * *watches land*, and a score they watch land is one they have read.
  *
- * ## Colour
+ * ## What the figure is
+ *
+ * `8 / 10` is the figure and `80% correct` is the line under it. It was the other way round, with
+ * the percentage at display scale and the score printed below as `Score: 8 / 10`. Two things were
+ * wrong with that. The fraction is what the learner actually did — ten questions happened, eight
+ * went well — and the percentage is a derivation of it, so the derivation was shouting over the
+ * fact. And a display-scale figure that needs the word `Score:` in front of it is a figure whose
+ * own placement is not doing its job; the label is gone and the hierarchy says it instead.
+ *
+ * ## Colour, and why this card does not use `accuracyColor`
  *
  * The gradient carries no on-colour of its own; `onPrimaryContainer` is legible across the whole
- * sweep in both schemes by construction, and `AppColorSchemeTest` asserts that. The percentage
- * keeps its own [accuracyColor], which is the one piece of information on this card that is not
- * decoration, and all three of those colours clear WCAG body-text contrast over the sweep in both
- * themes — verified in `AssessmentCompletionHeroTest` rather than left to the eye, because a later
+ * sweep in both schemes by construction, and `AppColorSchemeTest` asserts that. The figure always
+ * takes it, so the largest thing on the screen is always the brand.
+ *
+ * The performance signal is [ResultEmphasis], applied only to the ring and the accuracy line. It is
+ * deliberately *not* [org.artkachenko.kmp_learning_app.ui.accuracyColor], which every other metric
+ * in the app uses: that scale bottoms out at `semanticColors.incorrect`, the same red an answer
+ * gets for being wrong, and this card previously gave that red to its largest element for anything
+ * under 70%. A weak Topic on the dashboard is a fact about a Topic and can be marked as a fault; a
+ * finished run is a fact about a person, and the error role is for errors, not for verdicts on the
+ * learner. So the low band wears the app's warning amber — the same "you are not strong here yet"
+ * tone a weak Topic card takes — and red never appears on this surface at all.
+ *
+ * Both colours the ring can take clear WCAG body-text contrast over both ends of the sweep in both
+ * themes, verified in `AssessmentCompletionHeroTest` rather than left to the eye, because a later
  * change to either palette could quietly break it.
  */
 @Composable
@@ -88,15 +107,27 @@ internal fun AssessmentCompletionHero(
 ) {
     val semantic = AppThemeExtras.semanticColors
     val onHero = MaterialTheme.colorScheme.onPrimaryContainer
-    val scoreText = stringResource(Res.string.assessment_review_score, correctAnswers, totalQuestions)
+    val scoreFigure =
+        stringResource(Res.string.assessment_review_score_figure, correctAnswers, totalQuestions)
 
-    // One value drives the whole reveal, held across the pane's scrolling so the score is counted
-    // out once per visit rather than replayed every time the card comes back into view. A result is
-    // a settled fact; counting it again would suggest something had changed.
+    // Below five questions a percentage reports a precision the run does not have: four questions
+    // can only ever produce 0, 25, 50, 75, or 100, and "25%" from one mistake claims an accuracy
+    // the run never measured. The fraction is the figure either way, so the moment is the same
+    // shape; what a short run loses is the percentage line and the ring, both of which would be
+    // restating that same absent precision.
+    val statesAccuracy = totalQuestions >= MeaningfulPercentageQuestionCount
+    val emphasis = if (statesAccuracy) resultEmphasisColor(percentage) else onHero
+
+    // One value drives the whole reveal — the count and the ring's sweep are the same movement
+    // rather than two animations matched on duration — and it is held across the pane's scrolling
+    // so the score is counted out once per visit. A result is a settled fact; counting it again
+    // would suggest something had changed. The flag is claimed *before* the count rather than after
+    // it, so scrolling the hero out of view mid-count and back does not start it over either.
     var alreadyRevealed by rememberSaveable { mutableStateOf(false) }
     val reveal = remember { Animatable(if (alreadyRevealed) 1f else 0f) }
     LaunchedEffect(Unit) {
         if (!alreadyRevealed) {
+            alreadyRevealed = true
             reveal.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
@@ -104,7 +135,6 @@ internal fun AssessmentCompletionHero(
                     easing = AppMotion.EmphasizedDecelerateEasing,
                 ),
             )
-            alreadyRevealed = true
         }
     }
 
@@ -119,6 +149,13 @@ internal fun AssessmentCompletionHero(
         // Transparent, because the fill is a brush rather than a colour and `Surface` takes only
         // the latter. The shape still clips the gradient and still owns the elevation semantics.
         color = Color.Transparent,
+        // The edge and the shadow are what separate the hero from the page. A border in the hero's
+        // own on-colour works in both schemes without a token of its own — a faint light hairline
+        // over the dark sweep, a faint dark one over the pale sweep — where a fixed grey would be
+        // invisible in one of them. The shadow does the same job for light, where the gradient is
+        // closest in value to the background it sits on.
+        border = BorderStroke(HeroBorderWidth, onHero.copy(alpha = HeroBorderAlpha)),
+        shadowElevation = HeroElevation,
     ) {
         AnimatedVisibility(
             visibleState = entrance,
@@ -134,7 +171,7 @@ internal fun AssessmentCompletionHero(
                         ),
                     )
                     .padding(AppSpacing.Generous),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable),
             ) {
                 if (title != null) {
                     Row(
@@ -163,64 +200,55 @@ internal fun AssessmentCompletionHero(
                         )
                     }
                 }
-                if (totalQuestions < MeaningfulPercentageQuestionCount) {
-                    // Too few questions for a percentage to mean anything: four questions can only
-                    // ever produce 0, 25, 50, 75, or 100, and reporting "25%" from one mistake
-                    // claims a precision the run does not have. The raw score is counted out
-                    // instead, so the moment is the same even where the figure is not a percentage.
-                    CountedFigure(
-                        shownText = if (reveal.value >= 1f) {
-                            scoreText
-                        } else {
-                            stringResource(
-                                Res.string.assessment_review_score,
-                                (correctAnswers * reveal.value).toInt(),
-                                totalQuestions,
-                            )
-                        },
-                        settledText = scoreText,
-                        color = onHero,
-                    )
-                } else {
-                    val accuracy = accuracyColor(percentage)
-                    Row(
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
-                    ) {
-                        CountedFigure(
-                            // Whole percent while counting, and the authored value — which may
-                            // carry a decimal — only once it has landed. Truncating keeps every
-                            // intermediate no wider than the figure it is heading for, which is
-                            // what the width reserve below depends on.
-                            shownText = if (reveal.value >= 1f) {
-                                formatAccuracy(percentage)
-                            } else {
-                                formatAccuracy((percentage * reveal.value).toInt().toDouble())
-                            },
-                            settledText = formatAccuracy(percentage),
-                            color = accuracy,
-                        )
-                        Text(
-                            text = stringResource(Res.string.assessment_review_accuracy_caption),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = onHero,
-                            modifier = Modifier.padding(bottom = CaptionBaselineNudge),
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (statesAccuracy) {
+                        AccuracyRing(
+                            fraction = (percentage / 100.0).toFloat() * reveal.value,
+                            color = emphasis,
+                            // The hero's own on-colour, because a neutral track would be the only
+                            // part of this card still referring to the page's surface ramp.
+                            trackColor = onHero.copy(alpha = AccuracyRingTrackAlpha),
                         )
                     }
-                    ProgressMeter(
-                        fraction = (percentage / 100.0).toFloat(),
-                        color = accuracy,
-                        // A neutral track would be the only part of this card still referring to
-                        // the page's surface ramp. The hero's own on-colour at low opacity reads as
-                        // an unfilled part of the same object in both schemes.
-                        trackColor = onHero.copy(alpha = MeterTrackAlpha),
-                        growFromEmptyMillis = AppMotion.ScoreRevealDurationMillis,
-                    )
-                    Text(
-                        text = scoreText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = onHero,
-                    )
+                    Column(
+                        // Weighted so the figure and its line wrap inside the space left beside the
+                        // ring rather than pushing the row past the window, which is what a large
+                        // type scale on a narrow phone does to a fixed row.
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+                    ) {
+                        CountedFigure(
+                            // Only the numerator counts. The denominator is how many questions
+                            // there were, which was settled before the learner answered any of
+                            // them, and a count that moved it would be animating the wrong fact.
+                            shownText = if (reveal.value >= 1f) {
+                                scoreFigure
+                            } else {
+                                stringResource(
+                                    Res.string.assessment_review_score_figure,
+                                    (correctAnswers * reveal.value).toInt(),
+                                    totalQuestions,
+                                )
+                            },
+                            settledText = scoreFigure,
+                            color = onHero,
+                        )
+                        Text(
+                            text = if (statesAccuracy) {
+                                stringResource(
+                                    Res.string.assessment_review_accuracy_correct,
+                                    formatAccuracy(percentage),
+                                )
+                            } else {
+                                stringResource(Res.string.assessment_review_accuracy_caption)
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            color = emphasis,
+                        )
+                    }
                 }
             }
         }
@@ -228,48 +256,45 @@ internal fun AssessmentCompletionHero(
 }
 
 /**
- * The score itself, mid-count and settled at once.
+ * How strongly a finished run went, as the three bands the hero is allowed to distinguish.
  *
- * [shownText] is what is drawn and changes every frame; [settledText] is what the node *says* it
- * is, from the first frame onward. Without that split a screen reader would be handed a number
- * that is merely passing through — announcing "seven percent" because that is where the tween
- * happened to be — and every test that reads this figure would depend on animation timing. The
- * count is presentation; the value is the fact.
+ * Separate from the colour so the *policy* is testable without asserting a colour value: what has
+ * to hold is that a weak run is [LOW] rather than anything the app renders as a fault. The upper
+ * boundary is the same 85% the dashboard calls comfortably-strong, and the lower one is the domain's
+ * own [LearningProgressPolicy.WeakAccuracyThresholdPercentage], so "the hero is being encouraging"
+ * and "the domain thinks this area is weak" cannot drift apart.
+ */
+internal enum class ResultEmphasis { STRONG, MIXED, LOW }
+
+internal fun resultEmphasisFor(percentage: Double): ResultEmphasis = when {
+    percentage >= StrongResultThresholdPercentage -> ResultEmphasis.STRONG
+    percentage >= LearningProgressPolicy.WeakAccuracyThresholdPercentage -> ResultEmphasis.MIXED
+    else -> ResultEmphasis.LOW
+}
+
+/**
+ * The accent for the ring and the accuracy line.
  *
- * The figure also reserves the width of [settledText] for the whole count. A number that grows
- * from one digit to three grows *sideways* as well, and everything beside it — the caption, and on
- * a narrow window the line below — is pushed along with it for half a second. Laying the settled
- * text out invisibly underneath costs one extra measure and makes the count a change of digits
- * rather than a change of layout.
+ * [ResultEmphasis.MIXED] resolves to the hero's own on-colour rather than to a third hue: most runs
+ * land there, and a middling result is not a state the card should be tinting at all. The brand
+ * stays dominant by being what "nothing in particular to say" looks like.
  */
 @Composable
-private fun CountedFigure(
-    shownText: String,
-    settledText: String,
-    color: Color,
-) {
-    val style = MaterialTheme.typography.displaySmall
-    Box(contentAlignment = Alignment.CenterStart) {
-        Text(
-            text = settledText,
-            style = style,
-            fontWeight = FontWeight.Bold,
-            // Present for measurement only: drawn at zero alpha and carrying no semantics, so the
-            // figure is announced once rather than twice.
-            modifier = Modifier.alpha(0f).clearAndSetSemantics {},
-        )
-        Text(
-            text = shownText,
-            style = style,
-            fontWeight = FontWeight.Bold,
-            color = color,
-            modifier = Modifier.semantics { text = AnnotatedString(settledText) },
-        )
+@ReadOnlyComposable
+private fun resultEmphasisColor(percentage: Double): Color {
+    val semantic = AppThemeExtras.semanticColors
+    return when (resultEmphasisFor(percentage)) {
+        ResultEmphasis.STRONG -> semantic.correct
+        ResultEmphasis.MIXED -> MaterialTheme.colorScheme.onPrimaryContainer
+        ResultEmphasis.LOW -> semantic.partiallyCorrect
     }
 }
 
 /** Below this, a percentage reports a precision the run does not have. */
 private const val MeaningfulPercentageQuestionCount = 5
+
+/** Comfortably above the domain's weakness threshold, so "good" and "only just passing" differ. */
+private const val StrongResultThresholdPercentage = 85.0
 
 /** The card rises by a fraction of its own height, so the distance suits the card rather than
  *  being a fixed offset that reads as a long slide on a short card and a twitch on a tall one. */
@@ -278,10 +303,9 @@ private const val EntranceRiseFraction = 6
 private const val IconRevealDelayMillis = 90
 private const val IconInitialScale = 0.6f
 
-/** Enough to read as the unfilled half of the same bar, not as a second colour on the card. */
-private const val MeterTrackAlpha = 0.22f
+/** An edge, not an outline: visible where the gradient meets the page and nowhere else. */
+private const val HeroBorderAlpha = 0.14f
+private val HeroBorderWidth = 1.dp
+private val HeroElevation = 2.dp
 
 private val CompletionIconSize = 20.dp
-
-/** Sits the caption on the figure's baseline rather than on the bottom of its line box. */
-private val CaptionBaselineNudge = 6.dp

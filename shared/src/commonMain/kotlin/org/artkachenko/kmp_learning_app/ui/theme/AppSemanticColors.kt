@@ -36,8 +36,17 @@ import androidx.compose.ui.graphics.Color
  *
  * [heroGradientStart] and [heroGradientEnd] are the one shared brand flourish the product allows: a
  * short indigo-to-violet sweep across the two hues the accent range already spans, for the rare
- * surface that is the single most important thing on its screen. It is a *token only* — nothing
- * draws it yet, and a screen that adopts it is a later change.
+ * surface that is the single most important thing on its screen.
+ *
+ * It has two call sites, and the second was the deliberate decision this comment used to ask for.
+ * `AssessmentCompletionHero` is an *arrival*: a run has just finished and the score is counted out
+ * over the app's one celebratory duration. `ProgressHero` is a *standing* answer, and it is here
+ * because the Progress dashboard runs six or more containers down the page — against that many
+ * neighbours, one surface-ramp step reads as "the first card" rather than as the screen's headline.
+ * It settles into place over the ordinary content-reveal duration instead, so the two remain
+ * distinguishable by their motion rather than needing two palettes. A third screen adopting this
+ * still has to make the same argument: that nothing else on it competes, and that the surface is
+ * genuinely the answer the learner came for — not that a card should look important.
  *
  * It carries no on-colour of its own. Both endpoints are chosen to sit within the `primaryContainer`
  * tone of their scheme, so `colorScheme.onPrimaryContainer` is legible across the whole sweep;

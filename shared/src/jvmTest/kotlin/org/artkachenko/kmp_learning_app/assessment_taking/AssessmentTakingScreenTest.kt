@@ -1,7 +1,13 @@
 package org.artkachenko.kmp_learning_app.assessment_taking
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -21,13 +27,19 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.v2.runSkikoComposeUiTest
+import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
+import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
 @OptIn(ExperimentalTestApi::class)
 internal class AssessmentTakingScreenTest {
@@ -390,6 +402,83 @@ internal class AssessmentTakingScreenTest {
             .assertRangeInfoEquals(ProgressBarRangeInfo(1f / 6f, 0f..1f))
     }
 
+    /**
+     * Finishing states its own condition instead of removing the word that explains it.
+     *
+     * The button used to replace its label with a bare `CircularProgressIndicator`, which is
+     * Material's 40dp standalone size — so the one moment the control was busy was the one moment
+     * it changed height, and what it changed into said nothing about why. It is the same rule the
+     * retake control and the practice Submit follow, and this was the last control in the app not
+     * following it.
+     */
+    @Test
+    fun finishingKeepsTheButtonSayingWhatItIsDoing() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = AssessmentTakingUiState.ReadyToComplete(
+                        attemptId = "attempt",
+                        totalQuestions = 3,
+                        isCompleting = true,
+                    ),
+                    onAnswerClick = {}, onSubmit = {}, onRetry = {}, onBack = {}, onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithTag(AssessmentTakingFinishTag).assertIsNotEnabled()
+        onNodeWithText("Finishing").assertIsDisplayed()
+        onNodeWithText("Finish and view results").assertDoesNotExist()
+    }
+
+    /**
+     * The meter measures the question column, so it has to be the width of the question column.
+     *
+     * It is pinned outside the scrolling pane, which is right — it must stay readable while a long
+     * question scrolls — but it took the window's full width to get there. That is the same thing
+     * as the content column only while the window is narrower than `AppContentWidth.Standard`'s
+     * cap; past that the question is centred in 840dp and the meter ran the whole 1440dp, so the
+     * bar and the thing it measured no longer started at the same place.
+     */
+    @Test
+    fun theProgressMeterIsTheWidthOfTheQuestionColumnRatherThanTheWindow() =
+        runSkikoComposeUiTest(size = WideDisplay) {
+            setContent {
+                AppTheme {
+                    CompositionLocalProvider(
+                        LocalAppWindowSizeClass provides AppWindowSizeClass.Expanded,
+                    ) {
+                        Box(Modifier.size(WideWidth, WideHeight).testTag(WindowRootTag)) {
+                            AssessmentTakingScreen(
+                                title = "Focused practice",
+                                state = contentState(AnswerSelectionMode.SINGLE),
+                                onAnswerClick = {}, onSubmit = {}, onRetry = {}, onBack = {},
+                                onComplete = {},
+                            )
+                        }
+                    }
+                }
+            }
+
+            val windowWidth = onNodeWithTag(WindowRootTag).fetchSemanticsNode().boundsInRoot.width
+            val meter = onNodeWithTag(AssessmentProgressMeterTag)
+                .assertIsDisplayed()
+                .fetchSemanticsNode().boundsInRoot
+            val question = onNodeWithText("Question text").fetchSemanticsNode().boundsInRoot
+
+            assertTrue(
+                meter.width < windowWidth * 0.75f,
+                "The meter spanned ${meter.width}px of a ${windowWidth}px window; it should take " +
+                    "the capped content column instead.",
+            )
+            // The bar and the question it measures begin together, within a pixel of rounding.
+            assertTrue(
+                kotlin.math.abs(meter.left - question.left) <= 1f,
+                "The meter starts at ${meter.left}px and the question at ${question.left}px.",
+            )
+        }
+
     @Test
     fun screensWithoutAQuestionCarryNoProgressMeter() = runComposeUiTest {
         setContent {
@@ -619,3 +708,10 @@ internal class AssessmentTakingScreenTest {
         )
     }
 }
+
+private const val WindowRootTag = "assessment_taking_window_root"
+
+/** Comfortably past the expanded breakpoint, so the content column is actually capped. */
+private val WideWidth = 1440.dp
+private val WideHeight = 900.dp
+private val WideDisplay = Size(WideWidth.value, WideHeight.value)

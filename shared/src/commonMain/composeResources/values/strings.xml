@@ -64,7 +64,6 @@
     <string name="learning_context_accuracy">accuracy</string>
     <string name="progress_title">Progress</string>
     <string name="progress_loading">Loading progress</string>
-    <string name="progress_overall">Overall progress</string>
     <string name="progress_accuracy_caption">All-time accuracy</string>
     <string name="progress_completed_attempts_label">Completed sessions</string>
     <string name="progress_questions_answered_label">Questions answered</string>
@@ -76,7 +75,6 @@
     <string name="progress_recent_title">Recent performance</string>
     <string name="progress_recent_window_one">Last completed session</string>
     <string name="progress_recent_window_other">Last %1$d completed sessions</string>
-    <string name="progress_recent_trend_title">Recent session trend</string>
     <string name="progress_recent_trend_insufficient">A trend appears after %1$d completed sessions.</string>
     <string name="progress_recent_trend_description">Recent session accuracy, oldest to newest: %1$s.</string>
     <string name="progress_weak_areas">Weak areas</string>
@@ -114,6 +112,7 @@
     <string name="mistake_review_empty_action">Browse topics</string>
     <string name="mistake_review_title">Mistake Review</string>
     <string name="mistake_review_description">Questions stay here until your most recent completed answer is correct.</string>
+    <string name="mistake_review_unavailable">%1$d of %2$d are no longer in the curriculum and cannot be practised.</string>
     <string name="mistake_review_loading">Loading mistakes</string>
     <string name="mistake_review_empty">No unresolved mistakes.</string>
     <string name="mistake_review_empty_detail">Questions disappear from this list after your most recent completed answer is correct.</string>
@@ -217,6 +216,7 @@
     <string name="assessment_taking_start_error">Practice could not be started.</string>
     <string name="assessment_taking_ready">All questions answered. Ready to finish.</string>
     <string name="assessment_taking_finish">Finish and view results</string>
+    <string name="assessment_taking_finishing">Finishing</string>
     <string name="assessment_taking_completion_save_error">Results could not be saved. Try again.</string>
     <string name="assessment_taking_results_opening">Opening results</string>
     <string name="focused_result_title">Results</string>
@@ -224,8 +224,9 @@
     <string name="focused_result_attempt_not_found">This practice session could not be found.</string>
     <string name="focused_result_not_completed">This practice session is not complete yet.</string>
     <string name="focused_result_error">Results could not be loaded.</string>
-    <string name="assessment_review_score">Score: %1$d / %2$d</string>
+    <string name="assessment_review_score_figure">%1$d / %2$d</string>
     <string name="assessment_review_accuracy_caption">correct</string>
+    <string name="assessment_review_accuracy_correct">%1$s correct</string>
     <string name="progress_not_enough_data">Not enough data yet. Practice more to measure this area.</string>
     <string name="assessment_review_correct">Correct</string>
     <string name="assessment_review_incorrect">Incorrect</string>
@@ -265,6 +266,10 @@
     <string name="saved_questions_title">Saved questions</string>
     <string name="saved_questions_entry_subtitle">Review questions you saved</string>
     <string name="saved_questions_description">Questions you saved while reviewing, most recently saved first.</string>
+    <plurals name="saved_questions_count">
+        <item quantity="one">1 saved question</item>
+        <item quantity="other">%1$d saved questions</item>
+    </plurals>
     <string name="saved_questions_loading">Loading saved questions</string>
     <string name="saved_questions_empty">No saved questions yet.</string>
     <string name="saved_questions_empty_detail">Save a question while reviewing Results or Mistakes and it will appear here.</string>

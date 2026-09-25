@@ -122,7 +122,9 @@ private fun LearningUnitList(
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxSize().testTag(TopicStudyListTag),
-        contentPadding = appListContentPadding(top = AppSpacing.Related),
+        // The header is a header, not the first row. At the old 8dp it sat against the tab row's
+        // underline and read as content that had already been scrolled into.
+        contentPadding = appListContentPadding(top = AppSpacing.Comfortable),
     ) {
         item {
             TopicStudyProgressHeader(studyProgress)
@@ -254,6 +256,9 @@ private fun LearningUnitRow(
     LearningUnitRowContent(
         unit = unit,
         studyProgress = studyProgress,
+        // The affordance travels with the callback, which is the same rule `PerformanceCard`
+        // keeps: a row that cannot go anywhere must not draw a chevron promising that it can.
+        showNavigation = onLearningUnitClick != null,
         modifier = clickable.padding(horizontal = LocalAppContentMargin.current),
     )
 }
@@ -285,76 +290,94 @@ private fun LearningUnitRow(
 private fun LearningUnitRowContent(
     unit: LearningUnitItemUiModel,
     studyProgress: LearningUnitStudyProgress?,
+    showNavigation: Boolean,
     modifier: Modifier,
 ) {
     val summary = studyProgress?.summary as? StudyProgressSummary.Progress
     val isComplete = summary?.isComplete == true
-    Column(
+    Row(
         modifier = modifier.padding(vertical = AppSpacing.Comfortable),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
         ) {
-            Text(
-                text = unit.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = if (isComplete) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                modifier = Modifier.weight(1f),
-            )
-            if (isComplete) {
-                Icon(
-                    imageVector = AppIcons.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = unit.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isComplete) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    modifier = Modifier.weight(1f),
                 )
+                if (isComplete) {
+                    Icon(
+                        imageVector = AppIcons.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(RowIconSize),
+                    )
+                }
             }
+            // The only clipped prose in the app: everywhere else text wraps and the layout absorbs it,
+            // because no other row carries a whole authored paragraph. Six of them do here, and at full
+            // length each Unit runs to most of a phone screen — the list stops being a progression the
+            // learner can scan and becomes an essay they have to read to find the row they wanted. The
+            // Unit overview opens with this same summary in full, one tap away and a type step larger,
+            // so nothing is lost by ending the sentence here.
+            Text(
+                text = unit.summary,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = SummaryMaxLines,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = if (summary == null) {
+                    pluralStringResource(
+                        Res.plurals.topic_detail_learning_unit_lessons,
+                        unit.activeLessonCount,
+                        unit.activeLessonCount,
+                    )
+                } else {
+                    pluralStringResource(
+                        Res.plurals.learning_unit_lessons_studied,
+                        summary.totalCount,
+                        summary.studiedCount,
+                        summary.totalCount,
+                    )
+                },
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = if (summary == null) {
+                    Modifier
+                } else {
+                    Modifier.testTag(learningUnitStudyTag(unit.unitId))
+                },
+            )
         }
-        // The only clipped prose in the app: everywhere else text wraps and the layout absorbs it,
-        // because no other row carries a whole authored paragraph. Six of them do here, and at full
-        // length each Unit runs to most of a phone screen — the list stops being a progression the
-        // learner can scan and becomes an essay they have to read to find the row they wanted. The
-        // Unit overview opens with this same summary in full, one tap away and a type step larger,
-        // so nothing is lost by ending the sentence here.
-        Text(
-            text = unit.summary,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = SummaryMaxLines,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = if (summary == null) {
-                pluralStringResource(
-                    Res.plurals.topic_detail_learning_unit_lessons,
-                    unit.activeLessonCount,
-                    unit.activeLessonCount,
-                )
-            } else {
-                pluralStringResource(
-                    Res.plurals.learning_unit_lessons_studied,
-                    summary.totalCount,
-                    summary.studiedCount,
-                    summary.totalCount,
-                )
-            },
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = if (summary == null) {
-                Modifier
-            } else {
-                Modifier.testTag(learningUnitStudyTag(unit.unitId))
-            },
-        )
+        if (showNavigation) {
+            Icon(
+                imageVector = AppIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(RowIconSize),
+            )
+        }
     }
 }
 
 /** Enough of the Unit's description to tell two Units apart, and no more. */
 private const val SummaryMaxLines = 2
+
+/** The completion mark and the navigation chevron, at the size every other row draws them. */
+private val RowIconSize = 20.dp

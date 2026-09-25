@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.app_retry
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
@@ -89,8 +90,8 @@ internal fun ScreenStatus(
     content: @Composable () -> Unit,
 ) {
     Column(
-        modifier = modifier.fillMaxSize().padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        modifier = modifier.fillMaxSize().padding(AppSpacing.Section),
+        verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         content()

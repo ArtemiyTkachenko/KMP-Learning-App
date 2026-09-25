@@ -36,8 +36,9 @@ internal val AppTypography = Default.copy(
         fontWeight = FontWeight.Bold,
         letterSpacing = (-0.75).sp,
     ),
-    // The headline accuracy figure. It is the largest number on four screens and previously carried
-    // `FontWeight.Bold` inline in AccuracyHeadline.
+    // The headline figure of a hero: an accuracy beside its ring, or a completed assessment's
+    // score. The weight is on the role rather than at the call sites so the three heroes cannot
+    // drift apart on it.
     displaySmall = Default.displaySmall.copy(
         fontWeight = FontWeight.Bold,
         letterSpacing = (-0.5).sp,

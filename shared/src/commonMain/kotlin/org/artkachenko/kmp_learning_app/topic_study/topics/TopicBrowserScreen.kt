@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -34,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -88,6 +91,8 @@ import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTa
 import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
+import org.artkachenko.kmp_learning_app.ui.ContentGroup
+import org.artkachenko.kmp_learning_app.ui.GroupRowPadding
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
@@ -124,6 +129,12 @@ internal const val TopicBrowserContinueStudyingTag = "topic_browser_continue_stu
 internal const val TopicBrowserRecommendedNextTag = "topic_browser_recommended_next"
 internal const val TopicBrowserContinueLearningTag = "topic_browser_continue_learning"
 internal const val TopicBrowserSavedQuestionsTag = "topic_browser_saved_questions"
+
+/**
+ * The single container the two continuation shortcuts share, so a test can assert that they are one
+ * surface rather than two without reading a corner radius or a tonal value.
+ */
+internal const val TopicBrowserContinueGroupTag = "topic_browser_continue_group"
 internal const val TopicBrowserSettingsTag = "topic_browser_settings"
 
 /** The deliberate no-match state, so a test can tell it from a merely empty catalogue. */
@@ -533,25 +544,30 @@ private fun LazyListScope.guidanceSection(
             )
         }
     }
-    continueStudying?.let { context ->
-        item(key = "continue_studying") {
-            ContinueStudyingCard(
-                context = context,
-                onClick = onContinueStudyingClick,
-            )
-        }
-    }
-    // Below the two assessment-derived cards rather than between them: those two already state a
-    // priority between themselves, and inserting a card derived from entirely different inputs
-    // into that pair would restate it as a three-way ranking nobody decided. This is a third
-    // axis — reading rather than practice — so it sits after them and before the catalogue.
-    continueLearning?.let { model ->
-        item(key = "continue_learning") {
-            ContinueLearningCard(
-                model = model,
-                onClick = onContinueLearningClick,
-            )
-        }
+    // One container for the two continuation shortcuts rather than one each.
+    //
+    // They were two cards of identical anatomy — eyebrow, headline, supporting line, chevron —
+    // stacked under a third of the same shape, and the screen opened on that stack rather than on
+    // the catalogue it is named for. They are a set: both answer "take me back to something I was
+    // already doing", both are derived, and either may be absent. A set is one surface.
+    //
+    // The order inside it is unchanged, and so is the reasoning for it. Continue Learning sits
+    // below Continue Studying rather than between it and the recommendation above: those two
+    // already state a priority between themselves, and interleaving a row derived from entirely
+    // different inputs would restate it as a three-way ranking nobody decided. This is a third
+    // axis — reading rather than practice — so it comes after, and both come before the catalogue.
+    item(key = "continue_group") {
+        ContentGroup(
+            modifier = Modifier.testTag(TopicBrowserContinueGroupTag),
+            rows = buildList {
+                continueStudying?.let { context ->
+                    add { ContinueStudyingRow(context, onContinueStudyingClick) }
+                }
+                continueLearning?.let { model ->
+                    add { ContinueLearningRow(model, onContinueLearningClick) }
+                }
+            },
+        )
     }
     // Below the guidance and above the catalogue, and always present: it is a way into content
     // the learner curated themselves, not one more thing the app is suggesting they do.
@@ -612,7 +628,12 @@ private fun SavedQuestionsEntry(
         shape = MaterialTheme.shapes.medium,
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+            modifier = Modifier
+                .fillMaxWidth()
+                // Tighter than a card's inset, because this is not a card. At the full
+                // `Comfortable` box it stood the same height as the derived guidance above it and
+                // read as a fourth suggestion, which is precisely what the outline exists to deny.
+                .padding(horizontal = AppSpacing.Comfortable, vertical = AppSpacing.Grouped),
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -622,12 +643,12 @@ private fun SavedQuestionsEntry(
             ) {
                 Text(
                     text = stringResource(Res.string.saved_questions_title),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = stringResource(Res.string.saved_questions_entry_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -635,7 +656,7 @@ private fun SavedQuestionsEntry(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(NavigationChevronSize),
             )
         }
     }
@@ -644,75 +665,38 @@ private fun SavedQuestionsEntry(
 /**
  * The way back into what the learner was last working on.
  *
- * One card and one tap, deliberately: it names the context and goes there. It carries no score, no
+ * One row and one tap, deliberately: it names the context and goes there. It carries no score, no
  * coverage figure, and no explanation of why it is being offered — the reason is simply that this
- * is where they were. Whether the destination is Topic detail or a practice setup is the card's
+ * is where they were. Whether the destination is Topic detail or a practice setup is the row's
  * supporting line, not a choice presented here.
  *
- * It remains a compact continuity shortcut beneath the one policy-driven action above it: Recommended
- * Next is the primary guidance, and this is the secondary way back. E22-05 added Continue Learning
- * below it, which answers a third question from inputs neither of these two reads; the Saved
- * Questions entry under all three is a learner-owned collection rather than a further suggestion. No
- * card here turns the Topic rows below into recommendation cards.
+ * It is a row inside the continuation group rather than a card of its own, which is the visual
+ * statement the screen was failing to make: Recommended Next is the one policy-driven action and
+ * keeps its own accented surface, while this and Continue Learning are the way back and the way
+ * onward and belong together. Nothing about what it says, where it goes, or when it appears
+ * changed with the container — it still states exactly the context the domain resolved.
  */
 @Composable
-private fun ContinueStudyingCard(
+private fun ContinueStudyingRow(
     context: ContinueStudyingContext,
     onClick: (ContinueStudyingTarget) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        onClick = { onClick(context.target) },
-        modifier = modifier.fillMaxWidth().testTag(TopicBrowserContinueStudyingTag),
-        shape = MaterialTheme.shapes.medium,
-        // A quiet container rather than the primaryContainer the Interview hero uses: this is a
-        // shortcut sitting above the Topic cards, and it should read as one of them with emphasis.
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    GuidanceRow(
+        label = stringResource(
+            when (context.target) {
+                is ContinueStudyingTarget.Practice -> Res.string.continue_practice_action
+                is ContinueStudyingTarget.Topic -> Res.string.continue_lesson_action
+            },
         ),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
-            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
-            ) {
-                Text(
-                    text = stringResource(
-                        when (context.target) {
-                            is ContinueStudyingTarget.Practice -> Res.string.continue_practice_action
-                            is ContinueStudyingTarget.Topic -> Res.string.continue_lesson_action
-                        },
-                    ),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    // Resolved from the current curriculum, so a renamed Topic is named correctly
-                    // here without anything stored in history being migrated.
-                    text = context.scopeName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                context.supportingLabel()?.let { label ->
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Icon(
-                imageVector = AppIcons.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
+        // Resolved from the current curriculum, so a renamed Topic is named correctly here without
+        // anything stored in history being migrated.
+        headline = context.scopeName,
+        supporting = context.supportingLabel(),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        onClick = { onClick(context.target) },
+        modifier = modifier.testTag(TopicBrowserContinueStudyingTag),
+    )
 }
 
 /**
@@ -739,73 +723,79 @@ private fun ContinueStudyingContext.supportingLabel(): String? =
 /**
  * The next Lesson in the authored sequence, or the fact that there is not one.
  *
- * Explicitly named "Next lesson" so it cannot be confused with the separate practice-continuation
- * shortcut. Both supporting actions use neutral containers; the policy recommendation is the only
- * surface that receives the strongest accent treatment.
+ * Explicitly labelled "Next lesson" so it cannot be confused with the practice-continuation row
+ * above it. Both are neutral rows in the continuation group; the policy recommendation is the only
+ * surface on this screen that receives an accent container.
  *
- * [ContinueLearningUiModel.Complete] deliberately loses both the accent container and the chevron
- * and takes no click: a state with nowhere to go must not look like a state with somewhere to go.
- * Compose gives a `Card` without `onClick` no click semantics at all, so the completion card is
- * announced as content rather than as an action, which is exactly what it is.
+ * [ContinueLearningUiModel.Complete] deliberately loses the chevron and takes no click: a state
+ * with nowhere to go must not look like a state with somewhere to go, and a row without `onClick`
+ * has no click semantics at all, so it is announced as content rather than as an action. It also
+ * drops to the variant on-colour, which is the row's whole way of saying "nothing to do here" now
+ * that it no longer has a container of its own to recolour.
  *
- * There is no card for a curriculum with no ACTIVE Lesson: `TopicBrowserViewModel` maps that outcome
- * to nothing, so an empty document costs the learner a card rather than earning them a notice.
+ * There is no row for a curriculum with no ACTIVE Lesson: `TopicBrowserViewModel` maps that outcome
+ * to nothing, so an empty document costs the learner a row rather than earning them a notice.
  */
 @Composable
-private fun ContinueLearningCard(
+private fun ContinueLearningRow(
     model: ContinueLearningUiModel,
     onClick: (ContinueLearningTarget) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val tagged = modifier.testTag(TopicBrowserContinueLearningTag)
+    val label = stringResource(Res.string.continue_learning_title)
     when (model) {
-        is ContinueLearningUiModel.Next -> Card(
+        is ContinueLearningUiModel.Next -> GuidanceRow(
+            label = label,
+            // Resolved from the current learning document, so a re-authored Lesson is named
+            // correctly here without anything stored being migrated.
+            headline = model.lessonTitle,
+            supporting = model.unitTitle,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             onClick = { onClick(model.target) },
-            modifier = modifier.fillMaxWidth().testTag(TopicBrowserContinueLearningTag),
-            shape = MaterialTheme.shapes.medium,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            ),
-        ) {
-            ContinueLearningCardContent(
-                label = stringResource(Res.string.continue_learning_title),
-                // Resolved from the current learning document, so a re-authored Lesson is named
-                // correctly here without anything stored being migrated.
-                headline = model.lessonTitle,
-                supporting = model.unitTitle,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                showChevron = true,
-            )
-        }
+            modifier = tagged,
+        )
 
-        ContinueLearningUiModel.Complete -> Card(
-            modifier = modifier.fillMaxWidth().testTag(TopicBrowserContinueLearningTag),
-            shape = MaterialTheme.shapes.medium,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
-        ) {
-            ContinueLearningCardContent(
-                label = stringResource(Res.string.continue_learning_title),
-                headline = stringResource(Res.string.continue_learning_complete_title),
-                supporting = stringResource(Res.string.continue_learning_complete_message),
-                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                showChevron = false,
-            )
-        }
+        ContinueLearningUiModel.Complete -> GuidanceRow(
+            label = label,
+            headline = stringResource(Res.string.continue_learning_complete_title),
+            supporting = stringResource(Res.string.continue_learning_complete_message),
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            onClick = null,
+            modifier = tagged,
+        )
     }
 }
 
-/** The shared body of both Continue Learning states, so only the container and the action differ. */
+/**
+ * One row of the continuation group: what kind of continuation it is, what it is, and where it sits.
+ *
+ * The three lines are the anatomy both continuation shortcuts already had as cards, kept verbatim
+ * so nothing a learner reads changed when the containers merged. What the row adds is the two
+ * things a member of a group owes: its own inset, matching the divider above it, and — when it
+ * navigates — its own `clickable` with its own `Role`, so the group can hold a tappable row and an
+ * inert one beside each other without a flag distinguishing them.
+ *
+ * [onClick] being null is the whole representation of "nowhere to go": no click semantics, and no
+ * chevron promising one. The minimum touch target is applied inside the `clickable` so the state
+ * layer spans the row rather than being inset from it, and so the row still clears 48dp when its
+ * three lines happen to be short.
+ */
 @Composable
-private fun ContinueLearningCardContent(
+private fun GuidanceRow(
     label: String,
     headline: String,
-    supporting: String,
+    supporting: String?,
     contentColor: Color,
-    showChevron: Boolean,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (onClick == null) Modifier else Modifier.clickable(role = Role.Button, onClick = onClick))
+            .heightIn(min = MinimumTouchTargetSize)
+            .padding(GroupRowPadding),
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -823,18 +813,24 @@ private fun ContinueLearningCardContent(
                 style = MaterialTheme.typography.titleMedium,
                 color = contentColor,
             )
-            Text(
-                text = supporting,
-                style = MaterialTheme.typography.bodyMedium,
-                color = contentColor,
-            )
+            supporting?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (contentColor == MaterialTheme.colorScheme.onSurface) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        contentColor
+                    },
+                )
+            }
         }
-        if (showChevron) {
+        if (onClick != null) {
             Icon(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(NavigationChevronSize),
             )
         }
     }
@@ -848,9 +844,11 @@ private fun ContinueLearningCardContent(
  * action from an ordered decision tree, and the card's job is to say what it chose and why — the
  * rationale is already typed, so nothing here infers a reason of its own.
  *
- * It uses the primary container while Continue Studying stays on the secondary one and Continue
- * Learning on the tertiary, which is the whole visual statement being made: of the guided cards,
- * this is the one to act on, and the others are the way back and the way onward.
+ * It is the only surface on this screen with an accent container, and now the only guidance with a
+ * container of its own at all: the two continuation shortcuts share one grouped surface beneath it.
+ * That is the whole visual statement being made, and it is made by container count rather than by
+ * three different tones — of the guidance, this is the one to act on, and the others are the way
+ * back and the way onward.
  */
 @Composable
 private fun RecommendedNextCard(
@@ -987,14 +985,14 @@ private fun TopicRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(AppSpacing.Comfortable),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TopicVisualMarker(topicId = topic.topicId)
             Column(
                 // Long Topic names wrap rather than push the marker out of the card.
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             ) {
                 Text(
                     text = topic.topicName,
@@ -1191,8 +1189,8 @@ private fun SubtopicResultRow(
         ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // The parent Topic's marker, resolved from its stable ID rather than its display name,
@@ -1200,7 +1198,7 @@ private fun SubtopicResultRow(
             TopicVisualMarker(topicId = result.parentTopicId)
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             ) {
                 Text(
                     text = result.subtopicName,
@@ -1278,3 +1276,9 @@ private fun TopicBrowserScreenPreview() {
         )
     }
 }
+
+/** Material's minimum touch target, stated here because a group row is not a Material component. */
+private val MinimumTouchTargetSize = 48.dp
+
+/** The trailing navigation affordance, at the size every other row in the app draws it. */
+private val NavigationChevronSize = 20.dp

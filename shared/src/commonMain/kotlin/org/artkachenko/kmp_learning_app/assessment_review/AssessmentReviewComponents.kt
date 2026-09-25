@@ -1,13 +1,10 @@
 package org.artkachenko.kmp_learning_app.assessment_review
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,7 +23,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -139,6 +135,11 @@ private fun ReviewQuestionUiModel.outcome(): QuestionOutcome = questionOutcome(
  * action sits beside the heading and leaves the outcome, answers, explanation, and source links
  * exactly as they were.
  *
+ * [footer] is what the hosting surface offers to do about this particular Question — practise its
+ * Subtopic, open the Lesson behind it — and is a slot rather than a fixed pair of buttons because
+ * only the Mistakes queue has anything to put there. It renders inside the card, below the
+ * disclosure, so an action about one Question cannot be mistaken for an action about the screen.
+ *
  * [statesOutcome] says whether the surface around this card has already told the learner what these
  * questions are. A result screen lists correct, partially correct, and incorrect questions together,
  * so every card has to declare which it is. The Mistakes queue does not: it is titled by its count
@@ -156,6 +157,7 @@ internal fun ReviewQuestionCard(
     saveAction: ReviewSaveAction? = null,
     statesOutcome: Boolean = true,
     modifier: Modifier = Modifier,
+    footer: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     var expanded by rememberSaveable(question.questionId) { mutableStateOf(!question.isCorrect) }
     Card(
@@ -184,35 +186,14 @@ internal fun ReviewQuestionCard(
                 }
             }
             QuestionOutcomeLabel(outcome = question.outcome(), statesOutcome = statesOutcome)
-            ReviewDisclosureAction(expanded = expanded, onClick = { expanded = !expanded })
-            // The transcript's answer rows arrive the same way the practice screen's reveal does,
-            // and for the same reason: this is the identical content — the options, the verdict on
-            // each, the explanation, the sources — met minutes later instead of seconds. It used to
-            // appear and disappear in a single frame, so opening one card in a list of twenty moved
-            // everything below it by several hundred pixels with nothing to follow.
-            //
-            // One container owns the expansion and the children fade in behind it on staggered
-            // specs, so the list relayouts once while the answers still read as arriving before
-            // the paragraph explaining them.
-            AnimatedVisibility(
-                visible = expanded,
-                // From the top, not Compose's default of from the bottom: the first strip of a
-                // card opening downwards should be the first thing there is to read. Left on the
-                // default, the sliver revealed in the first hundred milliseconds is the *end* of
-                // the content — the explanation and the source links — which is both the wrong
-                // reading order and the part deliberately held back, so the card appeared to open
-                // empty.
-                enter = expandVertically(AppMotion.spatialSpec(), expandFrom = Alignment.Top),
-                // Collapsing is the learner putting something away, so it accelerates out: the
-                // card should be closed before they have finished looking at it.
-                exit = shrinkVertically(AppMotion.spatialSpec(), shrinkTowards = Alignment.Top) +
-                    fadeOut(AppMotion.effectSpec(AppMotion.StateChangeDurationMillis / 2)),
-            ) {
+            QuestionDisclosure(expanded = expanded, onToggle = { expanded = !expanded }) {
                 Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
                         modifier = Modifier.animateEnterExit(
-                            enter = fadeIn(AppMotion.revealSpec(AnswersRevealDelayMillis)),
+                            enter = fadeIn(
+                                AppMotion.revealSpec(QuestionAnswersRevealDelayMillis),
+                            ),
                         ),
                     ) {
                         question.answers.forEach { ReviewAnswerRow(it) }
@@ -220,7 +201,9 @@ internal fun ReviewQuestionCard(
                     QuestionExplanationBlock(
                         explanation = question.explanation,
                         modifier = Modifier.animateEnterExit(
-                            enter = fadeIn(AppMotion.revealSpec(ExplanationRevealDelayMillis)),
+                            enter = fadeIn(
+                                AppMotion.revealSpec(QuestionExplanationRevealDelayMillis),
+                            ),
                         ),
                     )
                     QuestionSources(
@@ -228,73 +211,21 @@ internal fun ReviewQuestionCard(
                         onSourceClick = onSourceClick,
                         failedSourceUrl = failedSourceUrl,
                         modifier = Modifier.animateEnterExit(
-                            enter = fadeIn(AppMotion.revealSpec(ExplanationRevealDelayMillis)),
+                            enter = fadeIn(
+                                AppMotion.revealSpec(QuestionExplanationRevealDelayMillis),
+                            ),
                         ),
                     )
                 }
             }
+            // Whatever this surface offers to do about this Question, inside the card it belongs
+            // to. The Mistakes queue used to emit its two shortcuts as siblings of the card, which
+            // left two full-width text links floating on the page background between entries,
+            // reading as navigation for the screen rather than as actions for one Question.
+            footer?.invoke(this)
         }
     }
 }
-
-/**
- * The control that opens a review card, as a disclosure rather than as two commands.
- *
- * It was a bare text button whose word was replaced outright — "Review answer" one frame and "Hide
- * answer" the next — which reads as two different buttons occupying one place. A chevron that
- * turns over is the conventional way to say *this thing opens*, and rotating one glyph rather than
- * swapping two means the control travels between its states instead of arriving in the new one.
- *
- * The rotation is decoration: the word beside it states the action outright, and Material's button
- * semantics announce that word, so nothing here depends on the angle being seen.
- */
-@Composable
-private fun ReviewDisclosureAction(expanded: Boolean, onClick: () -> Unit) {
-    val rotation by animateFloatAsState(
-        targetValue = if (expanded) ExpandedChevronRotation else 0f,
-        animationSpec = AppMotion.spatialSpec(),
-        label = "reviewDisclosureChevron",
-    )
-    TextButton(onClick = onClick) {
-        Icon(
-            imageVector = AppIcons.ExpandMore,
-            contentDescription = null,
-            modifier = Modifier
-                .size(DisclosureIconSize)
-                .graphicsLayer { rotationZ = rotation },
-        )
-        Text(
-            text = stringResource(
-                if (expanded) {
-                    Res.string.assessment_review_collapse
-                } else {
-                    Res.string.assessment_review_expand
-                },
-            ),
-            modifier = Modifier.padding(start = AppSpacing.Tight),
-        )
-    }
-}
-
-/** Half a turn, so the chevron ends pointing up rather than having spun all the way round. */
-private const val ExpandedChevronRotation = 180f
-
-/** Matches the leading-icon size Material gives a text button, as the save action does. */
-private val DisclosureIconSize = 18.dp
-
-/**
- * How far the opened card's contents trail the expansion that makes room for them.
- *
- * The same ordering the practice reveal uses — options, then the reason for them — so a learner
- * who answers a question and a learner who reviews it later watch the same thing happen.
- *
- * The answers themselves are given no delay at all, which is where this differs from the practice
- * reveal: there the staggered piece is a small badge, while here the options *are* most of the
- * height being opened. Holding them back even 60ms was visibly a card opening an empty space and
- * then filling it. The thing that makes the room arrives with the room.
- */
-private const val AnswersRevealDelayMillis = 0
-private const val ExplanationRevealDelayMillis = 120
 
 /**
  * The bookmark control: one affordance whose two states are distinguishable three ways over.

@@ -114,6 +114,7 @@
     <string name="mistake_review_empty_action">Browse topics</string>
     <string name="mistake_review_title">Mistake Review</string>
     <string name="mistake_review_description">Questions stay here until your most recent completed answer is correct.</string>
+    <string name="mistake_review_unavailable">%1$d of %2$d are no longer in the curriculum and cannot be practised.</string>
     <string name="mistake_review_loading">Loading mistakes</string>
     <string name="mistake_review_empty">No unresolved mistakes.</string>
     <string name="mistake_review_empty_detail">Questions disappear from this list after your most recent completed answer is correct.</string>
@@ -266,6 +267,10 @@
     <string name="saved_questions_title">Saved questions</string>
     <string name="saved_questions_entry_subtitle">Review questions you saved</string>
     <string name="saved_questions_description">Questions you saved while reviewing, most recently saved first.</string>
+    <plurals name="saved_questions_count">
+        <item quantity="one">1 saved question</item>
+        <item quantity="other">%1$d saved questions</item>
+    </plurals>
     <string name="saved_questions_loading">Loading saved questions</string>
     <string name="saved_questions_empty">No saved questions yet.</string>
     <string name="saved_questions_empty_detail">Save a question while reviewing Results or Mistakes and it will appear here.</string>

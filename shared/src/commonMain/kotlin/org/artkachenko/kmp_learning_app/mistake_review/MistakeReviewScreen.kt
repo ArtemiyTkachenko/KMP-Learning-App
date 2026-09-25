@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.mistake_review
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +27,7 @@ import kmp_learning_app.shared.generated.resources.mistake_review_loading
 import kmp_learning_app.shared.generated.resources.mistake_review_practice_all
 import kmp_learning_app.shared.generated.resources.mistake_review_study_lesson
 import kmp_learning_app.shared.generated.resources.mistake_review_title
+import kmp_learning_app.shared.generated.resources.mistake_review_unavailable
 import kmp_learning_app.shared.generated.resources.mistake_review_unresolved_count
 import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
@@ -265,6 +267,23 @@ private fun LazyListScope.remediationSection(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // Why the button below can offer fewer than the count above it. The two figures
+            // differ whenever a curriculum import drops a Question the history still refers to,
+            // and without this the learner reads "12 unresolved mistakes" over a button offering
+            // to practise nine and has no way to account for the other three. The same caveat the
+            // result screens state, in the same warning tone — this is missing content, not a
+            // failure.
+            if (practiceableMistakeCount < mistakeCount) {
+                Text(
+                    text = stringResource(
+                        Res.string.mistake_review_unavailable,
+                        mistakeCount - practiceableMistakeCount,
+                        mistakeCount,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AppThemeExtras.semanticColors.partiallyCorrect,
+                )
+            }
             if (practiceableMistakeCount > 0) {
                 Button(
                     onClick = {
@@ -309,60 +328,67 @@ private fun LazyListScope.queueSection(
     // shows which one resolved; without it the remaining cards simply jump up a slot.
     items(state.mistakes, key = UnresolvedMistake::questionId) { mistake ->
         when (val item = mistake.reviewItem) {
-            is ReviewQuestionItem.Available -> Column(
+            is ReviewQuestionItem.Available -> ReviewQuestionCard(
+                question = item.question,
+                onSourceClick = onSourceClick,
+                failedSourceUrl = failedSourceUrl,
+                // The screen is titled "N unresolved mistakes to review" and every entry
+                // under it is one, so the card does not repeat that verdict per row. A
+                // partially correct answer still earns its badge: that is a different fact
+                // from the one the heading states.
+                statesOutcome = false,
+                // Saving is learner intent about this Question, independent of the scoped
+                // practice shortcut below and of whether the mistake is still unresolved.
+                saveAction = savedQuestions.reviewSaveAction(
+                    questionId = item.question.questionId,
+                    onToggleSaved = onToggleSaved,
+                ),
                 modifier = Modifier.animateItem(),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             ) {
-                ReviewQuestionCard(
-                    question = item.question,
-                    onSourceClick = onSourceClick,
-                    failedSourceUrl = failedSourceUrl,
-                    // The screen is titled "N unresolved mistakes to review" and every entry
-                    // under it is one, so the card does not repeat that verdict per row. A
-                    // partially correct answer still earns its badge: that is a different fact
-                    // from the one the heading states.
-                    statesOutcome = false,
-                    // Saving is learner intent about this Question, independent of the scoped
-                    // practice shortcut below and of whether the mistake is still unresolved.
-                    saveAction = savedQuestions.reviewSaveAction(
-                        questionId = item.question.questionId,
-                        onToggleSaved = onToggleSaved,
-                    ),
-                )
-                // Secondary to the explanation above it, and offered per entry rather than for
-                // the queue as a whole: this Question names its own Subtopic, so the scope is
-                // read off the card the learner is looking at instead of being ranked out of
-                // the queue. The clicked Question is context, not a candidate list — nothing
-                // about which Questions the run will draw travels with it.
-                if (item.question.subtopicId.isNotBlank()) {
-                    TextButton(
-                        onClick = {
-                            onPracticePreset(
-                                PracticePreset(
-                                    scope = AssessmentScope.Subtopic(item.question.subtopicId),
-                                    source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
+                // Inside the card, in a row that wraps. These two were siblings of the card, so on
+                // a phone they were two full-width text links on the page background between
+                // entries and on a desktop they sat in the gutter — either way reading as
+                // navigation for the screen rather than as what this Question offers. A `FlowRow`
+                // because the lesson label is an authored title of unknown length: side by side
+                // where they fit, stacked where they do not.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+                ) {
+                    // Offered per entry rather than for the queue as a whole: this Question names
+                    // its own Subtopic, so the scope is read off the card the learner is looking at
+                    // instead of being ranked out of the queue. The clicked Question is context,
+                    // not a candidate list — nothing about which Questions the run will draw
+                    // travels with it.
+                    if (item.question.subtopicId.isNotBlank()) {
+                        TextButton(
+                            onClick = {
+                                onPracticePreset(
+                                    PracticePreset(
+                                        scope = AssessmentScope.Subtopic(item.question.subtopicId),
+                                        source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
+                                    ),
+                                )
+                            },
+                            modifier = Modifier.testTag(
+                                mistakePracticeShortcutTag(item.question.questionId),
+                            ),
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    Res.string.practice_shortcut_subtopic_mistakes,
                                 ),
                             )
-                        },
-                        modifier = Modifier.testTag(
-                            mistakePracticeShortcutTag(item.question.questionId),
-                        ),
-                    ) {
-                        Text(
-                            text = stringResource(
-                                Res.string.practice_shortcut_subtopic_mistakes,
-                            ),
-                        )
+                        }
                     }
-                }
-                mistake.studyLesson?.let { lesson ->
-                    TextButton(onClick = { onStudyLesson(lesson) }) {
-                        Text(
-                            stringResource(
-                                Res.string.mistake_review_study_lesson,
-                                lesson.title,
-                            ),
-                        )
+                    mistake.studyLesson?.let { lesson ->
+                        TextButton(onClick = { onStudyLesson(lesson) }) {
+                            Text(
+                                stringResource(
+                                    Res.string.mistake_review_study_lesson,
+                                    lesson.title,
+                                ),
+                            )
+                        }
                     }
                 }
             }

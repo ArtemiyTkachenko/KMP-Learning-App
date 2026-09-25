@@ -82,6 +82,11 @@ internal class MistakeReviewScreenTest {
         }
 
         onNodeWithText("3 unresolved mistakes to review").assertIsDisplayed()
+        // Why the button offers fewer than the count above it. Without this line the learner reads
+        // "3 unresolved mistakes" over an offer to practise two, with nothing accounting for the
+        // third.
+        onNodeWithText("1 of 3 are no longer in the curriculum and cannot be practised.")
+            .assertIsDisplayed()
         onNodeWithText("Practice 2 mistakes").performClick()
 
         assertEquals(
@@ -95,6 +100,30 @@ internal class MistakeReviewScreenTest {
             ),
             configs,
         )
+    }
+
+    /** With nothing missing there is no discrepancy, so the screen says nothing about one. */
+    @Test
+    fun aFullyPractisableQueueCarriesNoUnavailableNotice() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(
+                            availableMistake("q1", subtopicId = "flows"),
+                            availableMistake("q2", subtopicId = "coroutines"),
+                        ),
+                    ),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithText("no longer in the curriculum", substring = true).assertDoesNotExist()
+        onNodeWithText("Practice 2 mistakes").assertIsDisplayed()
     }
 
     @Test

@@ -7,6 +7,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -81,6 +82,9 @@ internal class SavedQuestionsScreenTest {
         }
 
         onNodeWithText("Question q1").assertIsDisplayed()
+        // A saved collection is a list to browse, so a card opens on request rather than on
+        // arrival; the content assertions below are about what the card holds, not when.
+        onNodeWithText("Review answer").performClick()
         onNodeWithText("Answer A").assertIsDisplayed()
         onNodeWithText("Answer B").assertIsDisplayed()
         onNodeWithText("Answer C").assertIsDisplayed()
@@ -100,6 +104,65 @@ internal class SavedQuestionsScreenTest {
     }
 
     /**
+     * A saved collection is browsed, not read through.
+     *
+     * Every other Question card in the app can be closed; this one had no disclosure at all, so a
+     * collection saved over weeks was that many permanently open blocks of options, explanation and
+     * sources, and finding one meant scrolling past all the others in full. The default is the one
+     * place this differs from a result transcript, which opens what the learner got wrong because
+     * they came to read it: here the question text is the browsing key and the rest is on request.
+     */
+    @Test
+    fun savedCardsListTheirQuestionsAndKeepTheDetailBehindADisclosure() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                screen(
+                    SavedQuestionsUiState.Content(listOf(availableItem("q1"), availableItem("q2"))),
+                )
+            }
+        }
+
+        // Both questions are readable at once, which is the whole point of the list.
+        onNodeWithText("Question q1").assertIsDisplayed()
+        onNodeWithText("Question q2").assertIsDisplayed()
+        onNodeWithText("Authored explanation").assertDoesNotExist()
+        onNodeWithText("Answer A").assertDoesNotExist()
+
+        // Opening one leaves the other closed: the state is the card's, not the screen's.
+        onAllNodesWithText("Review answer")[0].performClick()
+        onNodeWithText("Answer A").assertIsDisplayed()
+        onNodeWithText("Review answer").assertIsDisplayed()
+    }
+
+    /** The screen says how much it holds, as the Mistakes queue beside it always has. */
+    @Test
+    fun theListStatesItsOwnSize() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                screen(
+                    SavedQuestionsUiState.Content(
+                        listOf(availableItem("q1"), availableItem("q2")),
+                    ),
+                )
+            }
+        }
+
+        onNodeWithText("2 saved questions").assertIsDisplayed()
+    }
+
+    /** One saved Question is "1 saved question", not "1 saved questions". */
+    @Test
+    fun aSingleSavedQuestionReadsAsSingular() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                screen(SavedQuestionsUiState.Content(listOf(availableItem("q1"))))
+            }
+        }
+
+        onNodeWithText("1 saved question").assertIsDisplayed()
+    }
+
+    /**
      * A DEPRECATED Question resolves to ordinary content, so it must render as ordinary content:
      * the acceptance criterion is that retired Questions stay reviewable.
      */
@@ -113,6 +176,7 @@ internal class SavedQuestionsScreenTest {
         setContent { AppTheme { screen(SavedQuestionsUiState.Content(items)) } }
 
         onNodeWithText("Question q_old").assertIsDisplayed()
+        onNodeWithText("Review answer").performClick()
         onNodeWithText("Answer A").assertIsDisplayed()
         onNodeWithText("Correct answer").assertIsDisplayed()
         onNodeWithText("Authored explanation").assertIsDisplayed()
@@ -177,6 +241,7 @@ internal class SavedQuestionsScreenTest {
             }
         }
 
+        onNodeWithText("Review answer").performClick()
         onNodeWithText("Source: Source A").performScrollTo().performClick()
 
         assertEquals(listOf("https://example.com/q1/a"), openedUrls)
@@ -195,6 +260,7 @@ internal class SavedQuestionsScreenTest {
         }
 
         // The same message the result screens show, beside the link that failed.
+        onNodeWithText("Review answer").performClick()
         onNodeWithText("This source could not be opened.").performScrollTo().assertIsDisplayed()
     }
 

@@ -268,8 +268,17 @@ equal saved list produces no new `StateFlow` emission to react to.
 historical attempt, and a saved Question has none — the learner may have saved it having answered it
 either way. Nothing about correctness, selection, or score is fabricated to reuse
 `ReviewQuestionCard`. What is shared is the neutral presentation in `QuestionContentComponents.kt`
-— the answer-option container and tag, the explanation block, and the source links with their
-open-failure notice — which both `ReviewQuestionCard` and the saved-Question card render.
+— the answer-option container and tag, the explanation block, the source links with their
+open-failure notice, and `QuestionDisclosure` — which both `ReviewQuestionCard` and the
+saved-Question card render.
+
+The disclosure is shared and its *default* is not, because the default is a statement about the
+surface. A result transcript opens the Questions the learner got wrong, because they came to read it
+through. A saved collection opens nothing: the question text is the browsing key and the detail is
+on request. The saved card previously had no disclosure at all, so a collection saved over weeks was
+that many permanently open blocks of options, explanation and sources, and finding one meant
+scrolling past all the others in full. The screen also states its own size, as the Mistakes queue
+beside it always has.
 
 Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and

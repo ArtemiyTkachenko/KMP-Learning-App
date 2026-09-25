@@ -252,6 +252,14 @@ short or heterogeneous lists, flat divider rows for the long ones.
   scale of about 0.98 in a `graphicsLayer`. Draw-layer only, so layout, hit testing, and
   when the click callback runs are all untouched — a press treatment must never be
   something the callback waits for. Never hand-roll a gesture detector for this.
+- **An action about one item belongs inside that item.** A per-entry control emitted as a sibling
+  of the card it acts on lands on the page background between entries, where it reads as navigation
+  for the screen rather than as what that entry offers. `ReviewQuestionCard(footer = …)` is the slot
+  for those; the Mistakes queue's scoped-practice and study-lesson shortcuts are its only caller.
+  Several such controls go in a `FlowRow`, because an authored Lesson title has no known length.
+- **A list that is browsed closes its items; a list that is read through opens them.** Both share
+  `QuestionDisclosure`, and the default is the caller's, because it is a statement about the
+  surface rather than about the control.
 - **Stagger a reveal in the animation spec, not in a coroutine.** When several pieces of
   one reveal should arrive in order, give one container the layout expansion and give the
   children delayed specs through `AppMotion.revealSpec(delayMillis)` and

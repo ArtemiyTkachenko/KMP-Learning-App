@@ -82,7 +82,18 @@ internal val AppLightColorScheme = lightColorScheme(
     onPrimaryContainer = Color(0xFF141C5C),
     secondary = Color(0xFF565D7D),
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFE0E2F6),
+    // A step deeper than the other tonal containers, which all sit at roughly one luminance by
+    // design. This one has a different job: it is the app's *selection* fill, and unlike a callout
+    // or a badge it is also drawn on raised chrome — the compact navigation pill sits on
+    // `surfaceContainer`, not on the page. At the family's shared luminance it separated from that
+    // bar by 1.04:1, so the pill marking which of four areas the learner is in was very nearly
+    // invisible in this scheme, and moving it between destinations did not make it visible. This
+    // value is on the same hue line, between the old fill and `secondaryFixedDim`, and clears the
+    // ramp's own visibility floor against every level it is drawn on: 1.34 against `background`
+    // (the rail indicator and the practice-builder chips), 1.25 against `surfaceContainerLow` (the
+    // Topic row badge), and 1.16 against `surfaceContainer` (the navigation pill) — better than the
+    // 1.09 Material's own baseline puts between these two roles.
+    secondaryContainer = Color(0xFFD3D6EF),
     onSecondaryContainer = Color(0xFF141A33),
     tertiary = Color(0xFF6F4BA0),
     onTertiary = Color(0xFFFFFFFF),
@@ -123,7 +134,7 @@ internal val AppLightColorScheme = lightColorScheme(
     primaryFixedDim = Color(0xFFBAC3FF),
     onPrimaryFixed = Color(0xFF141C5C),
     onPrimaryFixedVariant = Color(0xFF2F3C93),
-    secondaryFixed = Color(0xFFE0E2F6),
+    secondaryFixed = Color(0xFFD3D6EF),
     secondaryFixedDim = Color(0xFFC0C4E4),
     onSecondaryFixed = Color(0xFF141A33),
     onSecondaryFixedVariant = Color(0xFF404667),
@@ -178,7 +189,7 @@ internal val AppDarkColorScheme = darkColorScheme(
     primaryFixedDim = Color(0xFFBAC3FF),
     onPrimaryFixed = Color(0xFF141C5C),
     onPrimaryFixedVariant = Color(0xFF2F3C93),
-    secondaryFixed = Color(0xFFE0E2F6),
+    secondaryFixed = Color(0xFFD3D6EF),
     secondaryFixedDim = Color(0xFFC0C4E4),
     onSecondaryFixed = Color(0xFF141A33),
     onSecondaryFixedVariant = Color(0xFF404667),

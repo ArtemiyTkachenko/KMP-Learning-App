@@ -17,6 +17,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -120,11 +121,7 @@ internal class AppNavigationBarTest {
         val itemBoundsBefore = destinationBounds()
         val iconBoundsBefore = destinationIconBounds()
         val labelBoundsBefore = destinationLabelBounds()
-        assertSelectedPillContains(AppTopLevelDestination.TOPICS)
-        onNodeWithTag(
-            appNavigationBarSelectedPillTag(AppTopLevelDestination.INTERVIEW),
-            useUnmergedTree = true,
-        ).assertDoesNotExist()
+        assertSelectedIndicatorWraps(AppTopLevelDestination.TOPICS)
 
         runOnIdle { selected = AppTopLevelDestination.INTERVIEW }
         waitForIdle()
@@ -132,7 +129,50 @@ internal class AppNavigationBarTest {
         assertEquals(itemBoundsBefore, destinationBounds())
         assertEquals(iconBoundsBefore, destinationIconBounds())
         assertEquals(labelBoundsBefore, destinationLabelBounds())
-        assertSelectedPillContains(AppTopLevelDestination.INTERVIEW)
+        assertSelectedIndicatorWraps(AppTopLevelDestination.INTERVIEW)
+    }
+
+    /**
+     * The pill is one travelling indicator rather than a background each destination owns, so the
+     * behaviour worth protecting is that there is never more than one of it and that it ends up over
+     * whichever destination is selected — including a jump across the bar rather than to a
+     * neighbour, and including a return to the first slot.
+     */
+    @Test
+    fun oneSelectedIndicatorSettlesOverWhicheverDestinationIsSelected() = runComposeUiTest {
+        var selected by mutableStateOf(AppTopLevelDestination.TOPICS)
+        setContent {
+            AppTheme {
+                Box(Modifier.size(390.dp, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = selected,
+                        onSelect = {},
+                        showsNavigation = true,
+                    ) { }
+                }
+            }
+        }
+
+        val visited = listOf(
+            AppTopLevelDestination.MISTAKES,
+            AppTopLevelDestination.PROGRESS,
+            AppTopLevelDestination.TOPICS,
+        )
+        visited.forEach { destination ->
+            runOnIdle { selected = destination }
+            waitForIdle()
+
+            assertSelectedIndicatorWraps(destination)
+            val indicator = selectedIndicatorBounds()
+            val item = onNodeWithTag(appNavigationBarItemTag(destination))
+                .fetchSemanticsNode().boundsInRoot
+            assertEquals(
+                item.center.x,
+                indicator.center.x,
+                LayoutTolerancePx,
+                "the indicator settled away from the $destination slot",
+            )
+        }
     }
 
     @Test
@@ -374,13 +414,19 @@ internal class AppNavigationBarTest {
         useUnmergedTree = true,
     ).fetchSemanticsNode().boundsInRoot
 
-    private fun androidx.compose.ui.test.ComposeUiTest.assertSelectedPillContains(
+    private fun androidx.compose.ui.test.ComposeUiTest.selectedIndicatorBounds(): Rect {
+        val indicators = onAllNodesWithTag(
+            AppNavigationSelectedIndicatorTag,
+            useUnmergedTree = true,
+        ).fetchSemanticsNodes()
+        assertEquals(1, indicators.size, "a compact bar draws exactly one selection indicator")
+        return indicators.single().boundsInRoot
+    }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.assertSelectedIndicatorWraps(
         destination: AppTopLevelDestination,
     ) {
-        val pill = onNodeWithTag(
-            appNavigationBarSelectedPillTag(destination),
-            useUnmergedTree = true,
-        ).fetchSemanticsNode().boundsInRoot
+        val pill = selectedIndicatorBounds()
         val icon = navigationIconBounds(destination)
         val label = navigationLabelBounds(destination)
 

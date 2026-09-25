@@ -97,10 +97,14 @@ theme, and a test asserts it. A product whose failed answer and failed operation
 has two error languages and teaches neither.
 
 An answer option has exactly three states and they are drawn in that order of strength: at rest it
-is a level-1 surface with a hairline `outlineVariant` border; chosen, it takes `secondaryContainer`
-with a 2dp `primary` border; marked, it takes its `AnswerOutcome` colours. Practice and review share
-that vocabulary — `AnswerOutcome`, `QuestionOutcome`, and their colours live in
-`assessment_review/QuestionContentComponents.kt` and neither screen keeps a colour rule of its own.
+is a level-1 surface with a hairline `outlineVariant` border; chosen, it takes `primaryContainer`
+with a 2dp `primary` border; marked, it takes its `AnswerOutcome` colours. The chosen state used to
+fill with `secondaryContainer`, which is the primary hue drained of chroma and therefore one more
+step on the neutral ramp rather than a different kind of thing; `AssessmentTakingScreen` records
+why it is now the brand at container strength, agreeing with the border it already carried.
+Practice and review share that vocabulary — `AnswerOutcome`, `QuestionOutcome`, and their
+colours live in `assessment_review/QuestionContentComponents.kt` and neither screen keeps a
+colour rule of its own.
 A marked option keeps the answer text in `onSurface` rather than an outcome colour, because the text
 is the authored question and the mark is the label and border around it.
 

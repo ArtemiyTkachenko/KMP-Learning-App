@@ -313,7 +313,7 @@ private fun QuestionContent(
             // coroutine to finish before the learner can press Next.
             AnimatedVisibility(
                 visible = state.feedback != null,
-                enter = expandVertically(AppMotion.spatialSpec()),
+                enter = expandVertically(AppMotion.spatialSpec(), expandFrom = Alignment.Top),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
                     QuestionOutcomeBadge(

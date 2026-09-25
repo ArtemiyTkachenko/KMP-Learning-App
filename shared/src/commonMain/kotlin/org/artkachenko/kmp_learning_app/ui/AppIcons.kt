@@ -41,6 +41,20 @@ internal object AppIcons {
         }
     }
 
+    /**
+     * The standard Material `expand_more` chevron, pointing down.
+     *
+     * Declared pointing down rather than as a separate `expand_less`, because the one call site
+     * rotates it through 180 degrees to show the other state — a disclosure control that swapped
+     * between two glyphs would arrive at the new one without having travelled.
+     */
+    val ExpandMore: ImageVector by lazy {
+        icon("ExpandMore") {
+            moveTo(16.59f, 8.59f); lineTo(12f, 13.17f); lineTo(7.41f, 8.59f); lineTo(6f, 10f)
+            lineTo(12f, 16f); lineTo(18f, 10f); close()
+        }
+    }
+
     val Search: ImageVector by lazy {
         icon("Search") {
             moveTo(9.5f, 3f)

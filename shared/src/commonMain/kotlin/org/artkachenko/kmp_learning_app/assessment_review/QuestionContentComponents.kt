@@ -25,7 +25,7 @@ import kmp_learning_app.shared.generated.resources.assessment_review_correctly_s
 import kmp_learning_app.shared.generated.resources.assessment_review_explanation
 import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
 import kmp_learning_app.shared.generated.resources.assessment_review_incorrectly_selected
-import kmp_learning_app.shared.generated.resources.assessment_review_missed
+import kmp_learning_app.shared.generated.resources.assessment_review_missed_correct_answer
 import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_source
 import kmp_learning_app.shared.generated.resources.assessment_review_source_open_failed
@@ -141,7 +141,11 @@ internal fun AnswerOutcome.colors(neutralContainer: Color): AnswerOutcomeColors 
 @Composable
 internal fun AnswerOutcome.tagLabel(): String? = when (this) {
     AnswerOutcome.CORRECT -> stringResource(Res.string.assessment_review_correctly_selected)
-    AnswerOutcome.MISSED -> stringResource(Res.string.assessment_review_missed)
+    // "Correct answer", not "Missed". This row wears the success accent because it *is* the right
+    // answer, and it used to carry a cross beside it — so the one row on the screen that answers
+    // "what should I have picked?" was marked with the glyph the app uses for wrong. The outcome
+    // is still MISSED, which is what it is; the label is what the learner needs it to say.
+    AnswerOutcome.MISSED -> stringResource(Res.string.assessment_review_missed_correct_answer)
     AnswerOutcome.WRONG -> stringResource(Res.string.assessment_review_incorrectly_selected)
     AnswerOutcome.NEUTRAL -> null
 }

@@ -143,7 +143,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             // partial case, and C is left marked as the one that was missed.
             onNodeWithTag(AssessmentTakingOutcomeTag).assert(hasAnyDescendant(hasText("Incorrect")))
             onNodeWithText("\u2715 Incorrectly selected").assertIsDisplayed()
-            onNodeWithText("\u2715 Missed").assertIsDisplayed()
+            onNodeWithText("\u2713 Correct answer").assertIsDisplayed()
             onNodeWithText("Next question").performClick()
 
             onNodeWithText("Score: 1 / 2").assertIsDisplayed()

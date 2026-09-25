@@ -87,7 +87,7 @@ internal class AssessmentReviewComponentsTest {
 
         onNodeWithText("Incorrect").assertIsDisplayed()
         onNodeWithText("✕ Incorrectly selected").assertIsDisplayed()
-        onNodeWithText("✕ Missed").assertIsDisplayed()
+        onNodeWithText("✓ Correct answer").assertIsDisplayed()
         onNodeWithText("Authored explanation").assertIsDisplayed()
         onNodeWithText("Source: Source B").performClick()
         onNodeWithText("Source: Source A").performClick()
@@ -285,7 +285,7 @@ internal class AssessmentReviewComponentsTest {
         // Answer review is unchanged by the addition of the save action.
         onNodeWithText("Incorrect").assertIsDisplayed()
         onNodeWithText("✕ Incorrectly selected").assertIsDisplayed()
-        onNodeWithText("✕ Missed").assertIsDisplayed()
+        onNodeWithText("✓ Correct answer").assertIsDisplayed()
         onNodeWithText("Authored explanation").assertIsDisplayed()
     }
 
@@ -298,6 +298,30 @@ internal class AssessmentReviewComponentsTest {
         }
 
         onNodeWithText("Question missing-id is no longer available.").assertIsDisplayed()
+    }
+
+    /**
+     * The disclosure round trip, now that opening and closing a card are animated.
+     *
+     * An `AnimatedVisibility` keeps its content composed for the whole of the exit, so "collapsed"
+     * has to mean *gone* and not merely "on its way out" — a card whose answers stayed in the tree
+     * would leave every review surface quietly holding twenty expanded transcripts. The assertions
+     * are on presence, never on the transition: the test harness settles the clock before each one.
+     *
+     * A correctly answered question starts collapsed, which is also what makes this the right
+     * fixture — there is nothing to review on a question the learner got right until they ask.
+     */
+    @Test
+    fun aReviewCardOpensAndCloses() = runComposeUiTest {
+        setContent { AppTheme { ReviewQuestionCard(question(isCorrect = true), {}) } }
+
+        onNodeWithText("Authored explanation").assertDoesNotExist()
+
+        onNodeWithText("Review answer").performClick()
+        onNodeWithText("Authored explanation").assertIsDisplayed()
+
+        onNodeWithText("Hide answer review").performClick()
+        onNodeWithText("Authored explanation").assertDoesNotExist()
     }
 
     private fun question(

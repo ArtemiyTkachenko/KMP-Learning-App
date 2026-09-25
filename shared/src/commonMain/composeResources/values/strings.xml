@@ -233,7 +233,7 @@
     <string name="assessment_review_selected">Your answer</string>
     <string name="assessment_review_correct_answer">Correct answer</string>
     <string name="assessment_review_correctly_selected">✓ Correctly selected</string>
-    <string name="assessment_review_missed">✕ Missed</string>
+    <string name="assessment_review_missed_correct_answer">✓ Correct answer</string>
     <string name="assessment_review_incorrectly_selected">✕ Incorrectly selected</string>
     <string name="assessment_review_expand">Review answer</string>
     <string name="assessment_review_collapse">Hide answer review</string>

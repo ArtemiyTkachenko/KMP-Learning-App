@@ -227,6 +227,17 @@ short or heterogeneous lists, flat divider rows for the long ones.
   children delayed specs through `AppMotion.revealSpec(delayMillis)` and
   `Modifier.animateEnterExit`. The page then relayouts once, the order is still legible,
   and nothing in the interaction is gated on an animation finishing.
+- **Expand downwards from the top.** `expandVertically` and `shrinkVertically` default to
+  `Alignment.Bottom`, which reveals the *end* of the content first: for the first hundred
+  milliseconds the visible sliver of an opening block is its last paragraph. Content that
+  opens below a control the learner just pressed takes `expandFrom = Alignment.Top`, so the
+  first thing revealed is the first thing to read. Combined with a stagger, the default is
+  worse than wrong — the only strip on screen is also the piece deliberately held back, so
+  the block appears to open empty.
+- **Give the piece that opens the space no delay of its own.** In a staggered reveal, the
+  content that accounts for most of the new height arrives at zero delay and only the
+  supporting pieces trail it. Holding the bulk back even 60ms reads as a container opening
+  an empty space and then filling it.
 
 ## Deliberate deviations
 

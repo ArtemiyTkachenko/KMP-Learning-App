@@ -230,7 +230,7 @@ internal class ProgressLearningJourneyIntegrationTest {
                         onAllNodesWithText("✕ Incorrectly selected").fetchSemanticsNodes().isNotEmpty(),
                     )
                     onNodeWithText("Correct legacy answer").performScrollTo().assertIsDisplayed()
-                    assertTrue(onAllNodesWithText("✕ Missed").fetchSemanticsNodes().isNotEmpty())
+                    assertTrue(onAllNodesWithText("✓ Correct answer").fetchSemanticsNodes().isNotEmpty())
                     onNodeWithText("Legacy explanation").performScrollTo().assertIsDisplayed()
                     scrollToText("Source: Lifecycle docs")
                     onNodeWithText("Source: Lifecycle docs").performClick()

@@ -445,7 +445,7 @@ internal class AssessmentTakingScreenTest {
 
         onNodeWithTag(AssessmentTakingOutcomeTag).assert(hasAnyDescendant(hasText("Incorrect")))
         onNodeWithText("\u2715 Incorrectly selected").assertIsDisplayed()
-        onNodeWithText("\u2715 Missed").assertIsDisplayed()
+        onNodeWithText("\u2713 Correct answer").assertIsDisplayed()
         onNodeWithText("Explanation").assertIsDisplayed()
         onNodeWithText("Because A.").assertIsDisplayed()
     }
@@ -478,7 +478,7 @@ internal class AssessmentTakingScreenTest {
 
         onNodeWithTag(AssessmentTakingOutcomeTag).assert(hasAnyDescendant(hasText("Partially correct")))
         onNodeWithText("\u2713 Correctly selected").assertIsDisplayed()
-        onNodeWithText("\u2715 Missed").assertIsDisplayed()
+        onNodeWithText("\u2713 Correct answer").assertIsDisplayed()
     }
 
     /** Once the answer is revealed the rows are a record, so the choice can no longer be changed. */

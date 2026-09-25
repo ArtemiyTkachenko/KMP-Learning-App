@@ -209,7 +209,7 @@ internal class MixedInterviewJourneyIntegrationTest {
                     onNodeWithText("Compose multiple question").assertIsDisplayed()
                     assertTrue(onAllNodesWithText("Incorrect").fetchSemanticsNodes().isNotEmpty())
                     assertTrue(onAllNodesWithText("✓ Correctly selected").fetchSemanticsNodes().isNotEmpty())
-                    assertTrue(onAllNodesWithText("✕ Missed").fetchSemanticsNodes().isNotEmpty())
+                    assertTrue(onAllNodesWithText("✓ Correct answer").fetchSemanticsNodes().isNotEmpty())
                     assertTrue(onAllNodesWithText("✕ Incorrectly selected").fetchSemanticsNodes().isNotEmpty())
                     scrollToText("Compose exact-set explanation")
                     onNodeWithText("Compose exact-set explanation").assertIsDisplayed()

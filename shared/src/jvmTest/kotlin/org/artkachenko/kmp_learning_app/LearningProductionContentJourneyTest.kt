@@ -513,12 +513,10 @@ internal class LearningProductionContentJourneyTest {
                 }
                 answerRow(chosen.text).performSemanticsAction(SemanticsActions.OnClick)
 
-                // Feedback names the outcome and carries the authored explanation either way.
-                val verdict = if (firstQuestion) {
-                    "Not quite. Review the correct answer below."
-                } else {
-                    "Correct. Nice work."
-                }
+                // Feedback names the outcome and carries the authored explanation either way. The
+                // wrong branch always picks an option outside the correct set, so it is the plain
+                // incorrect verdict rather than the partial one.
+                val verdict = if (firstQuestion) "Incorrect" else "Correct"
                 onNode(hasScrollAction())
                     .performScrollToNode(hasTestTag(AssessmentTakingSubmitTag))
                 // Submit is disabled until the selection above has been applied, and it is not
@@ -532,8 +530,19 @@ internal class LearningProductionContentJourneyTest {
                 waitForText(verdict)
                 assertReadableWithin(question.explanation, rootWidth)
                 if (firstQuestion) {
+                    // The answer they should have picked is marked on its own row now, so what has
+                    // to be readable is the option itself carrying that label — not a sentence
+                    // restating it under the list.
+                    //
+                    // Scrolled to explicitly, because the assertion above left the list at the
+                    // explanation: these are lazy rows, and how many of them fit above it depends
+                    // on how long this run's randomly selected options happen to be.
+                    val correctAnswerLabel = "\u2713 Correct answer"
+                    onNode(hasScrollAction())
+                        .performScrollToNode(hasText(correctAnswerLabel))
+                    onNodeWithText(correctAnswerLabel).assertIsDisplayed()
                     val key = question.answers.single { it.id in question.correctAnswerIds }
-                    assertReadableWithin("Correct answer: ${key.text}", rootWidth)
+                    assertReadableWithin(key.text, rootWidth)
                 }
 
                 answered += question.id

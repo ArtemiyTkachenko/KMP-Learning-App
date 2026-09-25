@@ -210,9 +210,6 @@
     <string name="assessment_taking_select_all">Select all that apply</string>
     <string name="assessment_taking_submit">Submit</string>
     <string name="assessment_taking_submitting">Submitting</string>
-    <string name="assessment_taking_feedback_correct">Correct. Nice work.</string>
-    <string name="assessment_taking_feedback_incorrect">Not quite. Review the correct answer below.</string>
-    <string name="assessment_taking_correct_answer">Correct answer: %1$s</string>
     <string name="assessment_taking_next_question">Next question</string>
     <string name="assessment_taking_loading">Preparing questions</string>
     <string name="assessment_taking_answer_save_error">Answer could not be saved. Try again.</string>
@@ -236,7 +233,7 @@
     <string name="assessment_review_selected">Your answer</string>
     <string name="assessment_review_correct_answer">Correct answer</string>
     <string name="assessment_review_correctly_selected">✓ Correctly selected</string>
-    <string name="assessment_review_missed">✕ Missed</string>
+    <string name="assessment_review_missed_correct_answer">✓ Correct answer</string>
     <string name="assessment_review_incorrectly_selected">✕ Incorrectly selected</string>
     <string name="assessment_review_expand">Review answer</string>
     <string name="assessment_review_collapse">Hide answer review</string>

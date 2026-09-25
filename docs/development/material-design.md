@@ -54,6 +54,55 @@ No literal `.dp` spacing in a screen when a scale step says the same thing. A pi
 exception `AppShapes` documents: `RoundedCornerShape(percent = 50)` locally, because a pill
 is a function of the element's own height.
 
+## Surfaces are three levels, not a spectrum
+
+The palette has a full Material container ramp, but the product only draws three levels, and a
+change picks one of them rather than a tone it likes the look of.
+
+| Level | Role | What belongs here |
+| --- | --- | --- |
+| 0 — page | `background` | The screen itself. Only `AppNavigationScaffold` paints it. |
+| 1 — ordinary content | `surfaceContainerLow` | Most Cards: a list row, a review question, `SecondarySummaryCard`. |
+| 2 — raised / interactive | `surfaceContainer` and above | The one surface on a screen that outranks the rest: `PrimarySummaryCard`, a weak `PerformanceCard`, a code block, a menu or sheet. |
+
+Level 2 is a claim about importance, so a screen that puts everything on it has said nothing. If two
+sibling cards both want it, neither should have it.
+
+The two themes reach the separation differently, and neither is the other inverted. **Light is
+tonal**: the page is the brightest surface — a cool off-white, never white — and each level above it
+is a deeper, bluer tint, so layering never becomes white on white and never needs a shadow to be
+legible. **Dark is luminance**: the page is near black and each level is lifted toward light, so
+separation comes from brightness rather than from borders, which is what keeps dark cards from
+flattening into grey rectangles.
+
+`AppColorSchemeTest` holds a floor on the step between consecutive levels. The ramp it replaced
+stepped as little as 4/255, which is below what a display in a lit room resolves — a card on a page
+and a card on a card read as one tone, and no call site was at fault.
+
+## Semantic colour is a mark, not a fill
+
+`AppSemanticColors` gives each of correct, partially-correct, and incorrect three values: a
+**container** for a block, an **on-container** for text in it, and a bare **accent** for a border, an
+icon, or a tag beside neutral text. The containers are the quietest member on purpose — pale tints
+in light, deep and desaturated in dark — because saturation belongs on the 1dp border and the line of
+tag text, not on the 200dp block. Six review cards should read as six results, not six alarms.
+
+`colorScheme.error` and `AppSemanticColors.incorrect` are deliberately the same colour in each
+theme, and a test asserts it. A product whose failed answer and failed operation are different reds
+has two error languages and teaches neither.
+
+An answer option has exactly three states and they are drawn in that order of strength: at rest it
+is a level-1 surface with a hairline `outlineVariant` border; chosen, it takes `secondaryContainer`
+with a 2dp `primary` border; marked, it takes its `AnswerOutcome` colours. Practice and review share
+that vocabulary — `AnswerOutcome`, `QuestionOutcome`, and their colours live in
+`assessment_review/QuestionContentComponents.kt` and neither screen keeps a colour rule of its own.
+A marked option keeps the answer text in `onSurface` rather than an outcome colour, because the text
+is the authored question and the mark is the label and border around it.
+
+`AppSemanticColors.heroGradientStart`/`heroGradientEnd` is a defined token with no call site yet. It
+carries no on-colour: both endpoints sit within the scheme's `primaryContainer` tone, so
+`onPrimaryContainer` is the text colour across the sweep.
+
 ## Adaptive layout
 
 **Never measure the window in a screen.** `AppNavigationScaffold` is the only composable
@@ -161,6 +210,47 @@ short or heterogeneous lists, flat divider rows for the long ones.
   whose fill, shape, and word all change together, and publishes `stateDescription` plus
   `toggleableState` beside its action label, so assistive technology hears both what
   pressing it does and what is true now.
+- **One discrete state, one `Transition`.** Where several properties of a component are
+  decided by the same fact — an answer option's container, border, border width, label
+  colour, and control tints — name that fact as an enum and drive them from a single
+  `updateTransition`, not from one `animate*AsState` per property. Independent animations
+  on the same input drift apart under a fast state change and let a later edit teach one
+  property a rule the others do not know.
+- **A row that can be pressed responds to being pressed.** An option the learner is asked
+  to choose takes its own `MutableInteractionSource`, hands it to `selectable`/`toggleable`
+  so Material still draws the ripple from it, and reads `collectIsPressedAsState` for a
+  scale of about 0.98 in a `graphicsLayer`. Draw-layer only, so layout, hit testing, and
+  when the click callback runs are all untouched — a press treatment must never be
+  something the callback waits for. Never hand-roll a gesture detector for this.
+- **Stagger a reveal in the animation spec, not in a coroutine.** When several pieces of
+  one reveal should arrive in order, give one container the layout expansion and give the
+  children delayed specs through `AppMotion.revealSpec(delayMillis)` and
+  `Modifier.animateEnterExit`. The page then relayouts once, the order is still legible,
+  and nothing in the interaction is gated on an animation finishing.
+- **Expand downwards from the top.** `expandVertically` and `shrinkVertically` default to
+  `Alignment.Bottom`, which reveals the *end* of the content first: for the first hundred
+  milliseconds the visible sliver of an opening block is its last paragraph. Content that
+  opens below a control the learner just pressed takes `expandFrom = Alignment.Top`, so the
+  first thing revealed is the first thing to read. Combined with a stagger, the default is
+  worse than wrong — the only strip on screen is also the piece deliberately held back, so
+  the block appears to open empty.
+- **A busy control states its own condition, in place.** When an action is working, the
+  button keeps its place, its size and its emphasis, and its content crosses over to a
+  word plus a spinner sized like a leading icon (18dp, 2dp stroke — not Material's
+  standalone 40dp indicator, which grows the button it sits in). Never put the
+  explanation for a button's busy state in a separate line beside it: that is a second
+  piece of layout appearing and disappearing, and it leaves the button saying nothing
+  about why it stopped working.
+- **Disabled-because-working is not disabled-because-unavailable.** Material fades a
+  disabled button's content to 38% of `onSurface`, which is right for an action the
+  learner cannot take and wrong for one that is reporting progress — it dims the spinner
+  and its label at the moment they are the only things saying anything. Such a control
+  keeps `enabled = false` for its semantics and overrides `disabledContentColor` so the
+  state stays readable.
+- **Give the piece that opens the space no delay of its own.** In a staggered reveal, the
+  content that accounts for most of the new height arrives at zero delay and only the
+  supporting pieces trail it. Holding the bulk back even 60ms reads as a container opening
+  an empty space and then filling it.
 
 ## Deliberate deviations
 

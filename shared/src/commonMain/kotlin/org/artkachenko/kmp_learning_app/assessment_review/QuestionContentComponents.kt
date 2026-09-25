@@ -14,28 +14,168 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.assessment_review_correct
+import kmp_learning_app.shared.generated.resources.assessment_review_correctly_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_explanation
+import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
+import kmp_learning_app.shared.generated.resources.assessment_review_incorrectly_selected
+import kmp_learning_app.shared.generated.resources.assessment_review_missed_correct_answer
+import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_source
 import kmp_learning_app.shared.generated.resources.assessment_review_source_open_failed
 import org.artkachenko.kmp_learning_app.ui.AppIcons
+import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The parts of a reviewed Question that are authored content rather than attempt outcome.
+ * How an answered Question is presented, wherever it is answered.
  *
  * An explanation, a source list, and an answer option read the same whether the learner is looking
  * at a Question they answered or at one they deliberately saved, so those pieces live here and are
- * shared. What stays in [ReviewQuestionCard] is everything that only means something in the context
- * of an attempt: the correct/partial/incorrect outcome and which answers were selected. Saved
- * Questions carry no attempt, so they render these components with no outcome at all rather than
- * with a fabricated one.
+ * shared. Saved Questions carry no attempt, so they render these components with no outcome at all
+ * rather than with a fabricated one.
+ *
+ * The outcome vocabulary below — which option was right, which was picked, and what the Question as
+ * a whole came to — used to be private to [ReviewQuestionCard], because the results screen was the
+ * only place a learner ever saw it. Formative practice reveals the same thing the moment an answer
+ * is submitted, so the boundary moved: the derivation and the colours are stated once here and both
+ * surfaces read them. Two copies of "what does a wrong answer look like" is how a product ends up
+ * teaching two.
  */
+
+/**
+ * One option's relation to the authored correct set, once an answer has been submitted.
+ *
+ * [MISSED] is the case that makes this worth naming: an option the learner did not pick and should
+ * have. It is not a failure of that option, so it is marked rather than filled — the row keeps the
+ * neutral container of its surroundings and takes only the accent border and the label.
+ */
+internal enum class AnswerOutcome { CORRECT, MISSED, WRONG, NEUTRAL }
+
+/** Pure derivation, so the same two facts always produce the same mark on either surface. */
+internal fun answerOutcome(wasSelected: Boolean, isCorrectAnswer: Boolean): AnswerOutcome = when {
+    wasSelected && isCorrectAnswer -> AnswerOutcome.CORRECT
+    wasSelected -> AnswerOutcome.WRONG
+    isCorrectAnswer -> AnswerOutcome.MISSED
+    else -> AnswerOutcome.NEUTRAL
+}
+
+/** Overall outcome of one answered question. */
+internal enum class QuestionOutcome { CORRECT, PARTIAL, INCORRECT }
+
+/**
+ * Derived from what was selected against what was authored, with scoring left alone.
+ *
+ * Persisted correctness stays authoritative for [QuestionOutcome.CORRECT]; the partial case only
+ * refines how a question that was *scored incorrect* is presented. A learner who picked two of
+ * three correct options and nothing wrong has not done the same thing as one who picked the wrong
+ * option, and saying so costs nothing and changes no score.
+ */
+internal fun questionOutcome(
+    scoredCorrect: Boolean,
+    selectedAnswerIds: Set<String>,
+    correctAnswerIds: Collection<String>,
+): QuestionOutcome {
+    if (scoredCorrect) return QuestionOutcome.CORRECT
+    val pickedWrong = selectedAnswerIds.any { it !in correctAnswerIds }
+    val pickedAnyCorrect = selectedAnswerIds.any { it in correctAnswerIds }
+    return if (!pickedWrong && pickedAnyCorrect) QuestionOutcome.PARTIAL else QuestionOutcome.INCORRECT
+}
+
+/** The three colours one option needs: its border, its fill, and the colour of its label. */
+@Immutable
+internal data class AnswerOutcomeColors(
+    val border: Color,
+    val container: Color,
+    val tagColor: Color?,
+)
+
+/**
+ * [neutralContainer] is the caller's, because it is a statement about depth rather than about
+ * outcome: an option on a practice page sits one level above that page, while an option inside a
+ * review card sits inside the card. Only the two filled outcomes override it — semantic colour
+ * marks an answer, it does not repaint every row around it.
+ */
+@Composable
+internal fun AnswerOutcome.colors(neutralContainer: Color): AnswerOutcomeColors {
+    val semantic = AppThemeExtras.semanticColors
+    return when (this) {
+        AnswerOutcome.CORRECT -> AnswerOutcomeColors(
+            border = semantic.correct,
+            container = semantic.correctContainer,
+            tagColor = semantic.correct,
+        )
+        AnswerOutcome.WRONG -> AnswerOutcomeColors(
+            border = semantic.incorrect,
+            container = semantic.incorrectContainer,
+            tagColor = semantic.incorrect,
+        )
+        AnswerOutcome.MISSED -> AnswerOutcomeColors(
+            border = semantic.correct,
+            container = neutralContainer,
+            tagColor = semantic.correct,
+        )
+        AnswerOutcome.NEUTRAL -> AnswerOutcomeColors(
+            border = MaterialTheme.colorScheme.outlineVariant,
+            container = neutralContainer,
+            tagColor = null,
+        )
+    }
+}
+
+/**
+ * The label beside a marked option.
+ *
+ * Every outcome that carries colour also carries a word, because colour alone is not a channel this
+ * app is willing to state a result in. [AnswerOutcome.NEUTRAL] has nothing to add, and returns null
+ * so a plain option does not gain the spacing of an empty tag row.
+ */
+@Composable
+internal fun AnswerOutcome.tagLabel(): String? = when (this) {
+    AnswerOutcome.CORRECT -> stringResource(Res.string.assessment_review_correctly_selected)
+    // "Correct answer", not "Missed". This row wears the success accent because it *is* the right
+    // answer, and it used to carry a cross beside it — so the one row on the screen that answers
+    // "what should I have picked?" was marked with the glyph the app uses for wrong. The outcome
+    // is still MISSED, which is what it is; the label is what the learner needs it to say.
+    AnswerOutcome.MISSED -> stringResource(Res.string.assessment_review_missed_correct_answer)
+    AnswerOutcome.WRONG -> stringResource(Res.string.assessment_review_incorrectly_selected)
+    AnswerOutcome.NEUTRAL -> null
+}
+
+/** The Question's own verdict, as the app's status pill. */
+@Composable
+internal fun QuestionOutcomeBadge(
+    outcome: QuestionOutcome,
+    modifier: Modifier = Modifier,
+) {
+    val semantic = AppThemeExtras.semanticColors
+    val (text, content, container) = when (outcome) {
+        QuestionOutcome.CORRECT -> Triple(
+            stringResource(Res.string.assessment_review_correct),
+            semantic.onCorrectContainer,
+            semantic.correctContainer,
+        )
+        QuestionOutcome.PARTIAL -> Triple(
+            stringResource(Res.string.assessment_review_partially_correct),
+            semantic.onPartiallyCorrectContainer,
+            semantic.partiallyCorrectContainer,
+        )
+        QuestionOutcome.INCORRECT -> Triple(
+            stringResource(Res.string.assessment_review_incorrect),
+            semantic.onIncorrectContainer,
+            semantic.incorrectContainer,
+        )
+    }
+    StatusBadge(text = text, contentColor = content, containerColor = container, modifier = modifier)
+}
 
 /** Links sit flush with the card's text column rather than inset like a button. */
 private val SourceLinkPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)

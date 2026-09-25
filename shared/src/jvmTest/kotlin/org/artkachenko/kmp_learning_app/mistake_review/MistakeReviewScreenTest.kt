@@ -181,7 +181,7 @@ internal class MistakeReviewScreenTest {
         // learner did not know when they opened the screen.
         onNodeWithText("Incorrect").assertDoesNotExist()
         onNodeWithText("✕ Incorrectly selected").assertExists()
-        onNodeWithText("✕ Missed").assertExists()
+        onNodeWithText("✓ Correct answer").assertExists()
         onNodeWithText("Explanation").performScrollTo().assertIsDisplayed()
         onNodeWithText("Explanation for q1").assertExists()
         onNodeWithText("Source: Kotlin docs").assertExists()

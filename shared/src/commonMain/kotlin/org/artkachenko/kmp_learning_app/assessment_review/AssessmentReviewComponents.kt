@@ -1,5 +1,11 @@
 package org.artkachenko.kmp_learning_app.assessment_review
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -28,77 +35,28 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
-import kmp_learning_app.shared.generated.resources.assessment_review_correct
-import kmp_learning_app.shared.generated.resources.assessment_review_correct_answer
-import kmp_learning_app.shared.generated.resources.assessment_review_correctly_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_collapse
 import kmp_learning_app.shared.generated.resources.assessment_review_expand
-import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
-import kmp_learning_app.shared.generated.resources.assessment_review_incorrectly_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_missing_question
 import kmp_learning_app.shared.generated.resources.assessment_review_interview_complete
 import kmp_learning_app.shared.generated.resources.assessment_review_practice_complete
 import kmp_learning_app.shared.generated.resources.assessment_review_mistakes_retained
-import kmp_learning_app.shared.generated.resources.assessment_review_missed
 import kmp_learning_app.shared.generated.resources.assessment_review_practice_mistakes
-import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_save_question
 import kmp_learning_app.shared.generated.resources.assessment_review_saved_state
 import kmp_learning_app.shared.generated.resources.assessment_review_unsaved_state
-import kmp_learning_app.shared.generated.resources.assessment_review_score
 import kmp_learning_app.shared.generated.resources.assessment_review_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
 import kmp_learning_app.shared.generated.resources.assessment_review_unsave_question
-import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
-import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
-import org.artkachenko.kmp_learning_app.ui.StatusBadge
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
-
-@Composable
-internal fun AssessmentScoreSummary(
-    correctAnswers: Int,
-    totalQuestions: Int,
-    percentage: Double,
-    title: String? = null,
-    modifier: Modifier = Modifier,
-) {
-    PrimarySummaryCard(modifier) {
-        title?.let {
-            Text(it, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-        }
-        if (totalQuestions < MeaningfulPercentageQuestionCount) {
-            Text(
-                text = stringResource(
-                    Res.string.assessment_review_score,
-                    correctAnswers,
-                    totalQuestions,
-                ),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        } else {
-            AccuracyHeadline(
-                percentage = percentage,
-                caption = stringResource(Res.string.assessment_review_accuracy_caption),
-                supporting = stringResource(
-                    Res.string.assessment_review_score,
-                    correctAnswers,
-                    totalQuestions,
-                ),
-            )
-        }
-    }
-}
-
-private const val MeaningfulPercentageQuestionCount = 5
 
 @Composable
 internal fun MistakeRetentionNotice(
@@ -188,30 +146,17 @@ internal fun UnresolvedReviewQuestionsNotice(
 internal fun reviewQuestionSaveTag(questionId: String): String =
     "review_question_save_$questionId"
 
-/** How a reviewed answer relates to the authored correct set, for colouring only. */
-private enum class AnswerOutcome { CORRECT, MISSED, WRONG, NEUTRAL }
-
-/** Overall outcome of one reviewed question. */
-private enum class QuestionOutcome { CORRECT, PARTIAL, INCORRECT }
-
 /**
- * Derived purely from what the review model already carries. Persisted correctness stays
- * authoritative for [QuestionOutcome.CORRECT]; the partial case only refines how a question that
- * was *scored incorrect* is presented, so no scoring behaviour changes.
+ * The attempt's answers, put through the shared derivation in [questionOutcome].
+ *
+ * The review model carries a per-answer `wasSelected` flag rather than a set of selected IDs, so
+ * this is where the two shapes meet; the rule itself is not restated here.
  */
-private fun ReviewQuestionUiModel.outcome(): QuestionOutcome {
-    if (isCorrect) return QuestionOutcome.CORRECT
-    val pickedWrong = answers.any { it.wasSelected && !it.isCorrectAnswer }
-    val pickedAnyCorrect = answers.any { it.wasSelected && it.isCorrectAnswer }
-    return if (!pickedWrong && pickedAnyCorrect) QuestionOutcome.PARTIAL else QuestionOutcome.INCORRECT
-}
-
-private fun ReviewAnswerUiModel.outcome(): AnswerOutcome = when {
-    wasSelected && isCorrectAnswer -> AnswerOutcome.CORRECT
-    wasSelected -> AnswerOutcome.WRONG
-    isCorrectAnswer -> AnswerOutcome.MISSED
-    else -> AnswerOutcome.NEUTRAL
-}
+private fun ReviewQuestionUiModel.outcome(): QuestionOutcome = questionOutcome(
+    scoredCorrect = isCorrect,
+    selectedAnswerIds = answers.filter { it.wasSelected }.map { it.id }.toSet(),
+    correctAnswerIds = answers.filter { it.isCorrectAnswer }.map { it.id },
+)
 
 /**
  * [saveAction] is optional so this component stays usable where saved state is unknown, or where a
@@ -244,7 +189,10 @@ internal fun ReviewQuestionCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier.padding(AppSpacing.Comfortable),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
@@ -261,31 +209,117 @@ internal fun ReviewQuestionCard(
                 }
             }
             QuestionOutcomeLabel(outcome = question.outcome(), statesOutcome = statesOutcome)
-            TextButton(onClick = { expanded = !expanded }) {
-                Text(
-                    stringResource(
-                        if (expanded) {
-                            Res.string.assessment_review_collapse
-                        } else {
-                            Res.string.assessment_review_expand
-                        },
-                    ),
-                )
-            }
-            if (expanded) {
-                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Related)) {
-                    question.answers.forEach { ReviewAnswerRow(it) }
+            ReviewDisclosureAction(expanded = expanded, onClick = { expanded = !expanded })
+            // The transcript's answer rows arrive the same way the practice screen's reveal does,
+            // and for the same reason: this is the identical content — the options, the verdict on
+            // each, the explanation, the sources — met minutes later instead of seconds. It used to
+            // appear and disappear in a single frame, so opening one card in a list of twenty moved
+            // everything below it by several hundred pixels with nothing to follow.
+            //
+            // One container owns the expansion and the children fade in behind it on staggered
+            // specs, so the list relayouts once while the answers still read as arriving before
+            // the paragraph explaining them.
+            AnimatedVisibility(
+                visible = expanded,
+                // From the top, not Compose's default of from the bottom: the first strip of a
+                // card opening downwards should be the first thing there is to read. Left on the
+                // default, the sliver revealed in the first hundred milliseconds is the *end* of
+                // the content — the explanation and the source links — which is both the wrong
+                // reading order and the part deliberately held back, so the card appeared to open
+                // empty.
+                enter = expandVertically(AppMotion.spatialSpec(), expandFrom = Alignment.Top),
+                // Collapsing is the learner putting something away, so it accelerates out: the
+                // card should be closed before they have finished looking at it.
+                exit = shrinkVertically(AppMotion.spatialSpec(), shrinkTowards = Alignment.Top) +
+                    fadeOut(AppMotion.effectSpec(AppMotion.StateChangeDurationMillis / 2)),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+                        modifier = Modifier.animateEnterExit(
+                            enter = fadeIn(AppMotion.revealSpec(AnswersRevealDelayMillis)),
+                        ),
+                    ) {
+                        question.answers.forEach { ReviewAnswerRow(it) }
+                    }
+                    QuestionExplanationBlock(
+                        explanation = question.explanation,
+                        modifier = Modifier.animateEnterExit(
+                            enter = fadeIn(AppMotion.revealSpec(ExplanationRevealDelayMillis)),
+                        ),
+                    )
+                    QuestionSources(
+                        sources = question.sources,
+                        onSourceClick = onSourceClick,
+                        failedSourceUrl = failedSourceUrl,
+                        modifier = Modifier.animateEnterExit(
+                            enter = fadeIn(AppMotion.revealSpec(ExplanationRevealDelayMillis)),
+                        ),
+                    )
                 }
-                QuestionExplanationBlock(question.explanation)
-                QuestionSources(
-                    sources = question.sources,
-                    onSourceClick = onSourceClick,
-                    failedSourceUrl = failedSourceUrl,
-                )
             }
         }
     }
 }
+
+/**
+ * The control that opens a review card, as a disclosure rather than as two commands.
+ *
+ * It was a bare text button whose word was replaced outright — "Review answer" one frame and "Hide
+ * answer" the next — which reads as two different buttons occupying one place. A chevron that
+ * turns over is the conventional way to say *this thing opens*, and rotating one glyph rather than
+ * swapping two means the control travels between its states instead of arriving in the new one.
+ *
+ * The rotation is decoration: the word beside it states the action outright, and Material's button
+ * semantics announce that word, so nothing here depends on the angle being seen.
+ */
+@Composable
+private fun ReviewDisclosureAction(expanded: Boolean, onClick: () -> Unit) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) ExpandedChevronRotation else 0f,
+        animationSpec = AppMotion.spatialSpec(),
+        label = "reviewDisclosureChevron",
+    )
+    TextButton(onClick = onClick) {
+        Icon(
+            imageVector = AppIcons.ExpandMore,
+            contentDescription = null,
+            modifier = Modifier
+                .size(DisclosureIconSize)
+                .graphicsLayer { rotationZ = rotation },
+        )
+        Text(
+            text = stringResource(
+                if (expanded) {
+                    Res.string.assessment_review_collapse
+                } else {
+                    Res.string.assessment_review_expand
+                },
+            ),
+            modifier = Modifier.padding(start = AppSpacing.Tight),
+        )
+    }
+}
+
+/** Half a turn, so the chevron ends pointing up rather than having spun all the way round. */
+private const val ExpandedChevronRotation = 180f
+
+/** Matches the leading-icon size Material gives a text button, as the save action does. */
+private val DisclosureIconSize = 18.dp
+
+/**
+ * How far the opened card's contents trail the expansion that makes room for them.
+ *
+ * The same ordering the practice reveal uses — options, then the reason for them — so a learner
+ * who answers a question and a learner who reviews it later watch the same thing happen.
+ *
+ * The answers themselves are given no delay at all, which is where this differs from the practice
+ * reveal: there the staggered piece is a small badge, while here the options *are* most of the
+ * height being opened. Holding them back even 60ms was visibly a card opening an empty space and
+ * then filling it. The thing that makes the room arrives with the room.
+ */
+private const val AnswersRevealDelayMillis = 0
+private const val ExplanationRevealDelayMillis = 120
 
 /**
  * The bookmark control: one affordance whose two states are distinguishable three ways over.
@@ -359,26 +393,7 @@ private val SaveIconSize = 18.dp
 @Composable
 private fun QuestionOutcomeLabel(outcome: QuestionOutcome, statesOutcome: Boolean) {
     if (!statesOutcome && outcome == QuestionOutcome.INCORRECT) return
-    val semantic = AppThemeExtras.semanticColors
-    val (text, content, container) = when (outcome) {
-        QuestionOutcome.CORRECT -> Triple(
-            stringResource(Res.string.assessment_review_correct),
-            semantic.onCorrectContainer,
-            semantic.correctContainer,
-        )
-        QuestionOutcome.PARTIAL -> Triple(
-            stringResource(Res.string.assessment_review_partially_correct),
-            semantic.onPartiallyCorrectContainer,
-            semantic.partiallyCorrectContainer,
-        )
-        QuestionOutcome.INCORRECT -> Triple(
-            stringResource(Res.string.assessment_review_incorrect),
-            semantic.onIncorrectContainer,
-            semantic.incorrectContainer,
-        )
-    }
-
-    StatusBadge(text = text, contentColor = content, containerColor = container)
+    QuestionOutcomeBadge(outcome)
 }
 
 /**
@@ -387,36 +402,20 @@ private fun QuestionOutcomeLabel(outcome: QuestionOutcome, statesOutcome: Boolea
  */
 @Composable
 private fun ReviewAnswerRow(answer: ReviewAnswerUiModel) {
-    val semantic = AppThemeExtras.semanticColors
-    val outcome = answer.outcome()
-    val border = when (outcome) {
-        AnswerOutcome.CORRECT, AnswerOutcome.MISSED -> semantic.correct
-        AnswerOutcome.WRONG -> semantic.incorrect
-        AnswerOutcome.NEUTRAL -> MaterialTheme.colorScheme.outlineVariant
-    }
-    val container = when (outcome) {
-        AnswerOutcome.CORRECT -> semantic.correctContainer
-        AnswerOutcome.WRONG -> semantic.incorrectContainer
-        AnswerOutcome.MISSED, AnswerOutcome.NEUTRAL -> MaterialTheme.colorScheme.surface
-    }
-
-    val label = when (outcome) {
-        AnswerOutcome.CORRECT -> stringResource(Res.string.assessment_review_correctly_selected)
-        AnswerOutcome.MISSED -> stringResource(Res.string.assessment_review_missed)
-        AnswerOutcome.WRONG -> stringResource(Res.string.assessment_review_incorrectly_selected)
-        AnswerOutcome.NEUTRAL -> null
-    }
+    val outcome = answerOutcome(
+        wasSelected = answer.wasSelected,
+        isCorrectAnswer = answer.isCorrectAnswer,
+    )
+    // These options sit inside a `surfaceContainerLow` card, so an unmarked one takes the page tone
+    // and reads as a well within it rather than as another card on top of one.
+    val colors = outcome.colors(neutralContainer = MaterialTheme.colorScheme.surface)
+    val label = outcome.tagLabel()
     QuestionAnswerOption(
         text = answer.text,
-        borderColor = border,
-        containerColor = container,
-        tags = if (label != null) {
-            {
-                QuestionAnswerTag(
-                    text = label,
-                    color = if (outcome == AnswerOutcome.WRONG) semantic.incorrect else semantic.correct,
-                )
-            }
+        borderColor = colors.border,
+        containerColor = colors.container,
+        tags = if (label != null && colors.tagColor != null) {
+            { QuestionAnswerTag(text = label, color = colors.tagColor) }
         } else {
             null
         },

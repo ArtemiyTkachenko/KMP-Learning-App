@@ -44,6 +44,27 @@ internal object AppMotion {
     const val ProgressDurationMillis: Int = 300
 
     /**
+     * A completed assessment's score arriving on the result screen.
+     *
+     * The one duration in the app deliberately past the ~400ms ceiling the rest of the motion keeps
+     * to. Everything else here is a *state change* — something that was already on screen becoming
+     * something else — where length reads as sluggishness. This is the opposite case: a figure
+     * being counted out and a meter being filled, which is the app's single celebratory beat and
+     * the only place where the travel itself is the content. Below about half a second a count-up
+     * reads as a flicker rather than as counting.
+     */
+    const val ScoreRevealDurationMillis: Int = 620
+
+    /**
+     * New content arriving underneath something the learner is already reading.
+     *
+     * Longer than a state change because it is an arrival rather than an adjustment, and short
+     * enough that nothing has to be waited for: a reveal that runs past roughly a third of a second
+     * stops reading as the answer appearing and starts reading as the app thinking about it.
+     */
+    const val ContentRevealDurationMillis: Int = 280
+
+    /**
      * Colour, border, and other non-spatial properties.
      *
      * Effects are tweened rather than sprung on purpose: overshoot is meaningless for a colour —
@@ -52,6 +73,21 @@ internal object AppMotion {
      */
     fun <T> effectSpec(durationMillis: Int = StateChangeDurationMillis): FiniteAnimationSpec<T> =
         tween(durationMillis = durationMillis, easing = EmphasizedEasing)
+
+    /**
+     * Content entering the screen, optionally after [delayMillis].
+     *
+     * Decelerating rather than emphasized: this is content that was not there a moment ago, so it
+     * settles into place instead of travelling through. [delayMillis] is what lets several pieces
+     * of one reveal arrive in order without a coroutine orchestrating them — the stagger is part of
+     * the animation spec, so it cannot leave the interaction waiting on it.
+     */
+    fun <T> revealSpec(delayMillis: Int = 0): FiniteAnimationSpec<T> =
+        tween(
+            durationMillis = ContentRevealDurationMillis,
+            delayMillis = delayMillis,
+            easing = EmphasizedDecelerateEasing,
+        )
 
     /**
      * Anything that moves or resizes.

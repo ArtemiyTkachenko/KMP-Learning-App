@@ -11,7 +11,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -21,7 +20,6 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertNotEquals
-import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.topic_study.topics.SubtopicSearchResult
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserItemUiModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
@@ -33,6 +31,7 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppDarkSemanticColors
 import org.artkachenko.kmp_learning_app.ui.theme.AppLightColorScheme
 import org.artkachenko.kmp_learning_app.ui.theme.AppLightSemanticColors
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.artkachenko.kmp_learning_app.ui.theme.assertContrastAtLeast
 import org.artkachenko.kmp_learning_app.ui.topicVisualMarkerTag
 
 /**
@@ -228,25 +227,6 @@ internal class TopicDiscoveryThemeTest {
         onNodeWithText("Retry").assertIsDisplayed()
     }
 
-    private fun assertContrastAtLeast(
-        foreground: Color,
-        background: Color,
-        minimumRatio: Double,
-        description: String,
-    ) {
-        val ratio = contrastRatio(foreground, background)
-        assertTrue(
-            ratio >= minimumRatio,
-            "$description contrast is $ratio, below the required $minimumRatio",
-        )
-    }
-
-    /** WCAG 2.1 contrast ratio; Compose's [luminance] is already the relative luminance it uses. */
-    private fun contrastRatio(first: Color, second: Color): Double {
-        val lighter = maxOf(first.luminance(), second.luminance()).toDouble()
-        val darker = minOf(first.luminance(), second.luminance()).toDouble()
-        return (lighter + 0.05) / (darker + 0.05)
-    }
 }
 
 private const val UiTopicId = "android_ui"

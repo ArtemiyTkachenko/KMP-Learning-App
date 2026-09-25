@@ -5,9 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -30,6 +27,8 @@ import kmp_learning_app.shared.generated.resources.mixed_result_topic_score
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_unavailable
 import kmp_learning_app.shared.generated.resources.assessment_review_interview_complete
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentCompletionHero
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentRetakeAction
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentRetakeWording
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
@@ -184,43 +183,19 @@ private fun LazyListScope.outcomeSection(
             )
             UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
             MistakeRetentionNotice(state.questions, onPracticeMistakes)
-            when (retakeState) {
-                AssessmentRetakeState.Idle -> Unit
-                AssessmentRetakeState.Creating,
-                is AssessmentRetakeState.Created,
-                ->
-                    Text(stringResource(Res.string.mixed_result_practice_starting))
-                AssessmentRetakeState.SourceAttemptNotFound ->
-                    Text(
-                        stringResource(Res.string.mixed_result_repeat_source_missing),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                AssessmentRetakeState.NoEligibleQuestions ->
-                    Text(
-                        stringResource(Res.string.mixed_result_repeat_no_questions),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                AssessmentRetakeState.Error ->
-                    Text(
-                        stringResource(Res.string.mixed_result_repeat_error),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-            }
-            OutlinedButton(
-                onClick = onRepeatInterview,
-                enabled = retakeState !is AssessmentRetakeState.Creating &&
-                    retakeState !is AssessmentRetakeState.Created,
-                modifier = Modifier.testTag(MixedResultPracticeAgainTag),
-            ) {
-                if (
-                    retakeState is AssessmentRetakeState.Creating ||
-                    retakeState is AssessmentRetakeState.Created
-                ) {
-                    CircularProgressIndicator(Modifier.testTag(MixedResultCreatingIndicatorTag))
-                } else {
-                    Text(stringResource(Res.string.mixed_result_practice_again))
-                }
-            }
+            AssessmentRetakeAction(
+                state = retakeState,
+                wording = AssessmentRetakeWording(
+                    action = stringResource(Res.string.mixed_result_practice_again),
+                    starting = stringResource(Res.string.mixed_result_practice_starting),
+                    sourceMissing = stringResource(Res.string.mixed_result_repeat_source_missing),
+                    noQuestions = stringResource(Res.string.mixed_result_repeat_no_questions),
+                    error = stringResource(Res.string.mixed_result_repeat_error),
+                ),
+                onRetake = onRepeatInterview,
+                actionTestTag = MixedResultPracticeAgainTag,
+                progressTestTag = MixedResultCreatingIndicatorTag,
+            )
         }
     }
     item {

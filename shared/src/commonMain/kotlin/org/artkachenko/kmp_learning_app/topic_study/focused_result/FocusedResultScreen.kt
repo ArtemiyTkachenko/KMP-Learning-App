@@ -5,9 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -27,6 +24,8 @@ import kmp_learning_app.shared.generated.resources.focused_result_repeat_error
 import kmp_learning_app.shared.generated.resources.assessment_review_practice_complete
 import kmp_learning_app.shared.generated.resources.assessment_review_question_review
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentCompletionHero
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentRetakeAction
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentRetakeWording
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
@@ -50,6 +49,7 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 
 internal const val FocusedResultLoadingTag = "focused_result_loading"
 internal const val FocusedResultPracticeAgainTag = "focused_result_practice_again"
+internal const val FocusedResultCreatingIndicatorTag = "focused_result_creating_indicator"
 
 /** The two panes of the expanded result, named for the same reason the Progress panes are. */
 internal const val FocusedResultSummaryPaneTag = "focused_result_summary_pane"
@@ -170,43 +170,19 @@ private fun LazyListScope.outcomeSection(
             )
             UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
             MistakeRetentionNotice(state.questions, onPracticeMistakes)
-            when (retakeState) {
-                AssessmentRetakeState.Idle -> Unit
-                AssessmentRetakeState.Creating,
-                is AssessmentRetakeState.Created,
-                ->
-                    Text(stringResource(Res.string.focused_result_practice_starting))
-                AssessmentRetakeState.SourceAttemptNotFound ->
-                    Text(
-                        stringResource(Res.string.focused_result_repeat_source_missing),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                AssessmentRetakeState.NoEligibleQuestions ->
-                    Text(
-                        stringResource(Res.string.focused_result_repeat_no_questions),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                AssessmentRetakeState.Error ->
-                    Text(
-                        stringResource(Res.string.focused_result_repeat_error),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-            }
-            OutlinedButton(
-                onClick = onRepeatPractice,
-                enabled = retakeState !is AssessmentRetakeState.Creating &&
-                    retakeState !is AssessmentRetakeState.Created,
-                modifier = Modifier.testTag(FocusedResultPracticeAgainTag),
-            ) {
-                if (
-                    retakeState is AssessmentRetakeState.Creating ||
-                    retakeState is AssessmentRetakeState.Created
-                ) {
-                    CircularProgressIndicator()
-                } else {
-                    Text(stringResource(Res.string.focused_result_practice_again))
-                }
-            }
+            AssessmentRetakeAction(
+                state = retakeState,
+                wording = AssessmentRetakeWording(
+                    action = stringResource(Res.string.focused_result_practice_again),
+                    starting = stringResource(Res.string.focused_result_practice_starting),
+                    sourceMissing = stringResource(Res.string.focused_result_repeat_source_missing),
+                    noQuestions = stringResource(Res.string.focused_result_repeat_no_questions),
+                    error = stringResource(Res.string.focused_result_repeat_error),
+                ),
+                onRetake = onRepeatPractice,
+                actionTestTag = FocusedResultPracticeAgainTag,
+                progressTestTag = FocusedResultCreatingIndicatorTag,
+            )
         }
     }
 }

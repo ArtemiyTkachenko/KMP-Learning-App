@@ -234,6 +234,19 @@ short or heterogeneous lists, flat divider rows for the long ones.
   first thing revealed is the first thing to read. Combined with a stagger, the default is
   worse than wrong — the only strip on screen is also the piece deliberately held back, so
   the block appears to open empty.
+- **A busy control states its own condition, in place.** When an action is working, the
+  button keeps its place, its size and its emphasis, and its content crosses over to a
+  word plus a spinner sized like a leading icon (18dp, 2dp stroke — not Material's
+  standalone 40dp indicator, which grows the button it sits in). Never put the
+  explanation for a button's busy state in a separate line beside it: that is a second
+  piece of layout appearing and disappearing, and it leaves the button saying nothing
+  about why it stopped working.
+- **Disabled-because-working is not disabled-because-unavailable.** Material fades a
+  disabled button's content to 38% of `onSurface`, which is right for an action the
+  learner cannot take and wrong for one that is reporting progress — it dims the spinner
+  and its label at the moment they are the only things saying anything. Such a control
+  keeps `enabled = false` for its semantics and overrides `disabledContentColor` so the
+  state stays readable.
 - **Give the piece that opens the space no delay of its own.** In a staggered reveal, the
   content that accounts for most of the new height arrives at zero delay and only the
   supporting pieces trail it. Holding the bulk back even 60ms reads as a container opening

@@ -1,23 +1,29 @@
 package org.artkachenko.kmp_learning_app.topic_study.learning_unit
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.learning_lesson_not_studied
 import kmp_learning_app.shared.generated.resources.learning_lesson_studied
@@ -33,6 +39,7 @@ import kmp_learning_app.shared.generated.resources.learning_unit_title
 import org.artkachenko.kmp_learning_app.lesson_study.LearningUnitStudyProgress
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
+import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ProgressMeter
 import org.artkachenko.kmp_learning_app.ui.ScreenError
@@ -41,7 +48,8 @@ import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
-import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
+import org.artkachenko.kmp_learning_app.ui.theme.appListContentPadding
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
@@ -112,13 +120,20 @@ private fun LearningUnitContent(
     onPracticeUnit: () -> Unit,
     modifier: Modifier,
 ) {
+    // Full-bleed, because the Lessons below own their horizontal margin: a row's state layer has
+    // to reach the pane edges rather than being inset with the row and drawing a band that hugs the
+    // text. Everything that is not a row therefore applies the margin itself. See
+    // `appListContentPadding`.
+    val margin = LocalAppContentMargin.current
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = appScreenContentPadding(),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        contentPadding = appListContentPadding(),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Related)) {
+            Column(
+                modifier = Modifier.padding(horizontal = margin),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+            ) {
                 Text(
                     text = state.title,
                     style = MaterialTheme.typography.headlineSmall,
@@ -148,7 +163,11 @@ private fun LearningUnitContent(
             // length, levels, and source.
             Button(
                 onClick = onPracticeUnit,
-                modifier = Modifier.fillMaxWidth().testTag(LearningUnitPracticeButtonTag),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = margin)
+                    .padding(top = AppSpacing.Comfortable)
+                    .testTag(LearningUnitPracticeButtonTag),
             ) {
                 Text(text = stringResource(Res.string.learning_practice_unit))
             }
@@ -161,11 +180,26 @@ private fun LearningUnitContent(
                     text = stringResource(Res.string.learning_unit_no_lessons),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(horizontal = margin)
+                        .padding(top = AppSpacing.Comfortable),
                 )
             }
         } else {
             item {
-                SectionHeading(text = stringResource(Res.string.learning_unit_lessons))
+                SectionHeading(
+                    text = stringResource(Res.string.learning_unit_lessons),
+                    modifier = Modifier.padding(horizontal = margin),
+                )
+                // The rule under the heading is what opens the list, exactly as the Topic's Unit
+                // list opens under its progress header. Without it the first Lesson would be the
+                // only row in either list with nothing above it.
+                HorizontalDivider(
+                    modifier = Modifier
+                        .padding(horizontal = margin)
+                        .padding(top = AppSpacing.Related),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
             }
             // Authored order, exactly as the repository returned it: that sequence is how the Unit
             // is meant to be read, so nothing here sorts by title or length. Studied state is an
@@ -177,6 +211,11 @@ private fun LearningUnitContent(
                     lesson = lesson,
                     isStudied = studiedLessonIds?.contains(lesson.lessonId),
                     onClick = { onLessonClick(lesson.lessonId) },
+                )
+                HorizontalDivider(
+                    // Inset to the row's own margin, so the rule stays aligned with the text.
+                    modifier = Modifier.padding(horizontal = margin),
+                    color = MaterialTheme.colorScheme.outlineVariant,
                 )
             }
         }
@@ -249,14 +288,24 @@ private val StudyProgressUiState<LearningUnitStudyProgress>.studiedLessonIds: Se
         ?.mapTo(mutableSetOf()) { it.lessonId }
 
 /**
- * One Lesson as an ordinary clickable card, which carries its own click semantics — the title and
- * summary are already read out, so no content description repeats them.
+ * One Lesson, as a row of the Unit's table of contents.
  *
- * [isStudied] is null when study state is unknown, and the row then says nothing about it. When it
- * is known both values are stated in words: an unstudied Lesson reads "Not studied" rather than
- * being left blank, so a row with no marker cannot be mistaken for one that simply has not been
- * studied. Nothing about the state changes what the row does — studied Lessons are not moved,
- * hidden, ticked off, or made unclickable.
+ * This was a Card, and it was the only list in the study hierarchy still drawn as one. The Topic's
+ * Units and a Topic's Subtopics are both full-bleed rows separated by rules, for a reason that
+ * applies just as exactly one level further down: an authored sequence is a *progression*, and a
+ * card per member draws five independent choices where the content is one ordered document. The
+ * rule under each row is now what the container used to be, and the three lists finally read as
+ * three depths of one table of contents rather than as three unrelated screens.
+ *
+ * Emphasis follows the study record and adds no information of its own, exactly as a Unit row's
+ * does: a studied Lesson steps its title down to the variant colour and gains a completion mark.
+ * [isStudied] is null when study state is unknown, and the row then says nothing about it — no
+ * words, no mark, no colour change — because unknown progress must not look like unstarted
+ * progress. When it *is* known both values are stated in words, so a row with no mark cannot be
+ * mistaken for one that simply has not been studied and the colour is never the only channel.
+ *
+ * Nothing about the state changes what the row does. Studied Lessons are not moved, hidden, or made
+ * unclickable, and the chevron is on every row because every row navigates.
  */
 @Composable
 private fun LearningLessonRow(
@@ -264,23 +313,47 @@ private fun LearningLessonRow(
     isStudied: Boolean?,
     onClick: () -> Unit,
 ) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().testTag(learningLessonRowTag(lesson.lessonId)),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(learningLessonRowTag(lesson.lessonId))
+            .clickable(role = Role.Button, onClick = onClick)
+            // The margin goes inside the clickable, so the state layer spans the pane rather than
+            // being inset with the row. See `appListContentPadding`.
+            .padding(horizontal = LocalAppContentMargin.current, vertical = AppSpacing.Comfortable),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+            modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
         ) {
-            Text(
-                text = lesson.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = lesson.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (isStudied == true) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                if (isStudied == true) {
+                    Icon(
+                        imageVector = AppIcons.CheckCircle,
+                        // The line below says "Studied" in words; the mark is how a learner finds
+                        // it while scanning, and repeating it here would announce it twice.
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(StudiedMarkSize),
+                    )
+                }
+            }
             Text(
                 text = lesson.summary,
                 style = MaterialTheme.typography.bodyMedium,
@@ -305,5 +378,15 @@ private fun LearningLessonRow(
                 )
             }
         }
+        Icon(
+            imageVector = AppIcons.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(NavigationChevronSize),
+        )
     }
 }
+
+/** The completion mark and the navigation chevron, at the size every other row draws them. */
+private val StudiedMarkSize = 20.dp
+private val NavigationChevronSize = 20.dp

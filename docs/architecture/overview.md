@@ -330,6 +330,9 @@ had always produced and nothing had ever rendered — as one figure and one mete
 the Unit list, the same shape `UnitStudyProgress` gives the Unit overview one level
 down. The Units themselves state their fractions in words only: a meter per row plus the
 header's turned a curriculum into a stack of bars, each redrawing the sentence above it.
+A Unit row draws a navigation chevron exactly when it has a handler to navigate with —
+the shell supplies one and a preview or a test does not — which keeps an inert row from
+advertising a control that goes nowhere, the same rule `PerformanceCard` keeps.
 Practice keeps its summary card and one filled action, with the targeted shortcuts moved
 *inside* the card, where the weak verdict and coverage counts that justify them are — the
 arrangement `PerformanceCard` already uses for its action slot on the progress screens.

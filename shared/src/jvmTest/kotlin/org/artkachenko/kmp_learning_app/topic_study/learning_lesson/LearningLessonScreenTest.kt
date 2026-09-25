@@ -344,6 +344,17 @@ internal class LearningLessonScreenTest {
         assertWithinRootWidth(LearningLessonComparisonTag, rootWidth)
     }
 
+    /**
+     * At phone width a comparison is not a table: each row becomes a subject with its columns
+     * beneath it as labelled facts, so every cell still reaches the reader and none of them is only
+     * reachable by scrolling sideways.
+     *
+     * The two assertions about the *headers* are the compact layout's actual contract. A column
+     * header repeats once per row, because it is a caption on that row's answer rather than a
+     * heading over a column that no longer exists. The first header does not appear at all: the
+     * subject cell stands in its place, and printing "Concern" above every "Creating the UI" would
+     * label the thing with the name of the question it answers.
+     */
     @Test
     fun comparisonBlocksRenderHeadersAndCells() = runComposeUiTest {
         setContentWith(
@@ -368,6 +379,9 @@ internal class LearningLessonScreenTest {
         ).forEach { cell ->
             onNodeWithText(cell).performScrollTo().assertIsDisplayed()
         }
+        onNodeWithTag(LearningLessonComparisonTag).performScrollTo()
+        onAllNodesWithText("Views").assertCountEquals(2)
+        onNodeWithText("Concern").assertDoesNotExist()
     }
 
     /**

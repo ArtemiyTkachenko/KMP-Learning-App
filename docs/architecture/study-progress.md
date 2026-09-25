@@ -726,9 +726,21 @@ available in this unit." is the honest explanation. `Loading` renders nothing ei
 
 Each ACTIVE Lesson row states "Studied" or "Not studied" in words when study state is
 `Available`, and says nothing in the other two cases — so a row with no marker cannot be
-mistaken for one that is merely unstudied. Study state is an annotation and never a
-navigation rule: rows keep authored order, unstudied Lessons are not hidden, moved, locked,
-or made unclickable, and completion is described as studied rather than mastered.
+mistaken for one that is merely unstudied. A studied Lesson additionally steps its title
+down to the variant colour and gains a completion mark, which is exactly the emphasis a
+completed Unit row carries one level up; the words remain, so colour is never the only
+channel. Study state is an annotation and never a navigation rule: rows keep authored order,
+unstudied Lessons are not hidden, moved, locked, or made unclickable, and completion is
+described as studied rather than mastered.
+
+Those rows are full-bleed rows separated by rules, not Cards. This was the only list in the
+study hierarchy still drawn as a deck: a Topic's Units and a Topic's Subtopics are both
+ruled rows, for a reason that applies just as exactly one level further down — an authored
+sequence is a progression, and a card per member draws five independent choices where the
+content is one ordered document. The Unit overview's whole column is therefore full-bleed:
+the rows own the horizontal margin so their state layers reach the pane edges, and the
+title block, "Practice this unit", and the "Lessons" heading each apply the margin
+themselves. Every row carries a navigation chevron, because every row navigates.
 
 ### Topic Detail
 

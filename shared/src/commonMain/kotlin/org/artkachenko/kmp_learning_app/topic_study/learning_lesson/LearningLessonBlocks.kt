@@ -333,16 +333,27 @@ private fun WideComparison(block: LearningBlock.Comparison) {
     }
 }
 
-/** On phones, rows become labelled facts rather than a hidden horizontal spreadsheet. */
+/**
+ * On phones, rows become labelled facts rather than a hidden horizontal spreadsheet.
+ *
+ * The three levels are the subject, the column it is being described under, and the answer — and
+ * they used to be rendered as two. The subject sat at `titleSmall` SemiBold and each column label
+ * at `labelLarge` Medium, which at this scale is the same size in the same colour, so "remember"
+ * and "Survives" read as siblings and the actual answer beneath them was the quietest line in the
+ * block. That is the emphasis exactly inverted: a learner reads a comparison for the answers.
+ *
+ * So the label steps down to the block's quiet key and the value steps up to ordinary body colour.
+ * A column label is now a caption on the fact under it rather than a heading over it, which is what
+ * makes the subject the only prominent thing in its row again.
+ */
 @Composable
 private fun CompactComparison(block: LearningBlock.Comparison) {
     Column(
         Modifier.fillMaxWidth().testTag(LearningLessonComparisonTag),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
         block.rows.forEachIndexed { rowIndex, row ->
             Column(
-                Modifier.fillMaxWidth().padding(AppSpacing.Grouped),
+                Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
             ) {
                 row.firstOrNull()?.let { concern ->
@@ -356,21 +367,25 @@ private fun CompactComparison(block: LearningBlock.Comparison) {
                 }
                 row.drop(1).forEachIndexed { index, value ->
                     val heading = block.headers.getOrNull(index + 1) ?: return@forEachIndexed
-                    Text(
-                        text = heading.toLessonAnnotatedString(),
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Medium,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = value.toLessonAnnotatedString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    // Label and value are one block, so the pair holds together more tightly than
+                    // one pair does to the next.
+                    Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
+                        Text(
+                            text = heading.toLessonAnnotatedString(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = value.toLessonAnnotatedString(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
             }
-            if (rowIndex < block.rows.lastIndex) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            if (rowIndex < block.rows.lastIndex) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            }
         }
     }
 }

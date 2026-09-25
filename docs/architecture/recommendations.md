@@ -139,7 +139,24 @@ Practice Builder preset route, so returning to a learning context can never beco
 resuming an assessment. A navigation test asserts no Continue target reaches
 `FocusedPracticeAttempt`, `MixedInterviewAttempt`, or a route that starts a run.
 
-The card lives on the existing Topics surface as optional enrichment on
+Continue Studying and Continue Learning are presented as two rows of a single
+`ContentGroup` rather than as a card each. They were two surfaces of identical
+anatomy — eyebrow, headline, supporting line, chevron — stacked under a third of
+the same shape, so the Topics screen opened on a wall of boxes instead of on the
+catalogue it is named for. They are a set: both answer "take me back to something
+I was already doing", both are derived, and either may be absent, so they are one
+surface with a hairline between them. Nothing about what either row says, where
+it goes, or when it appears changed with the container; each keeps its own
+`clickable`, its own `Role`, its own minimum touch target, and its own test
+handle, and the `Complete` state of Continue Learning still takes no click at
+all. The Recommended Next card keeps its own `primaryContainer` surface above the
+group, which is the visual statement that was previously being made by tone alone
+and is now made by container count: one policy-driven action, then the ways back
+and onward. The Saved Questions entry stays outside both — it is an outlined
+utility row, not a fourth suggestion — and was tightened to a denser inset and a
+smaller type pairing so it can no longer be mistaken for one.
+
+The shortcut lives on the existing Topics surface as optional enrichment on
 `TopicBrowserUiState.Content`, never as a screen state of its own: unknown,
 failed, or empty history and a failed resolution all leave Topics browsing,
 searching, and opening exactly as they were, with the card simply absent.
@@ -153,7 +170,8 @@ shortcut is not a search result.
 A third question — which current Lesson to study next — belongs to Continue
 Learning, which is separately named, separately derived, and defined in
 [study progress](study-progress.md). It never redefines Continue Studying.
-E22-05 added it as a third card on the same Topic Browser, below this one:
+E22-05 added it as a third shortcut on the same Topic Browser, below this one in
+the same group:
 `ContinueLearningPolicy` walks current ACTIVE learning content against the
 learner's study records and reads no assessment history at all, so the three
 cards may point at three different places and none suppresses, deduplicates, or

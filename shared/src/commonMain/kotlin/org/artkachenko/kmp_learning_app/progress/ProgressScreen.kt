@@ -16,13 +16,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.testTag
@@ -57,6 +57,8 @@ import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
+import org.artkachenko.kmp_learning_app.ui.ContentGroup
+import org.artkachenko.kmp_learning_app.ui.GroupRowPadding
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -91,6 +93,12 @@ internal const val ProgressContentTag = "progress_content"
  */
 internal const val ProgressStandingPaneTag = "progress_standing_pane"
 internal const val ProgressActionPaneTag = "progress_action_pane"
+
+/**
+ * The one container the per-Topic table draws, so a test can assert that the section is a group
+ * rather than a column of cards without reading a corner radius.
+ */
+internal const val ProgressTopicGroupTag = "progress_topic_group"
 
 /** Stable per-row handle so tests can target a Topic card without depending on label uniqueness. */
 internal fun progressTopicCardTag(topicId: String): String = "progress_topic_card_$topicId"
@@ -328,8 +336,24 @@ private fun LazyListScope.detailSection(
                 topPadding = AppSpacing.Grouped,
             )
         }
-        items(state.topics, key = ProgressTopicUiModel::topicId) { topic ->
-            TopicPerformanceCard(topic) { onTopicClick(topic.topicId) }
+        // One container for the whole per-Topic table rather than one card per Topic.
+        //
+        // These rows are the most homogeneous thing on the dashboard — a name, a score, a rate, a
+        // chevron, every one of them — and a card each spent an edge saying what the heading above
+        // already said. They are also bounded: the length is the number of Topics the learner has
+        // answered anything in, so the group composes a table and not a scroll.
+        //
+        // Weak areas above stay cards on purpose. A weak row is singled out by an accent border,
+        // which is a property of a container; inside a group there is no container to put it on,
+        // and the contrast between the bordered cards and this quiet table is now what separates
+        // "these need attention" from "here is everything".
+        item {
+            ContentGroup(
+                modifier = Modifier.testTag(ProgressTopicGroupTag),
+                rows = state.topics.map { topic ->
+                    { TopicPerformanceRow(topic) { onTopicClick(topic.topicId) } }
+                },
+            )
         }
     }
     if (state.history.isNotEmpty()) {
@@ -626,20 +650,61 @@ private fun WeakAreaCard(
     )
 }
 
+/**
+ * One Topic's standing, as a row of the performance table.
+ *
+ * This was a `ProgressPerformanceCard`, which is the same component a weak area draws — so the two
+ * adjacent sections differed only by a 1dp border, and the diagnostic one was the harder of the two
+ * to pick out. The row keeps every part a learner acts on: the accuracy figure at its own weight
+ * and in [accuracyColor], the counts that earned it, the chevron, `Role.Button`, and the stable
+ * per-Topic handle. What it gives up is the edge, which the group now draws once for all of them.
+ */
 @Composable
-private fun TopicPerformanceCard(
+private fun TopicPerformanceRow(
     topic: ProgressTopicUiModel,
     onClick: () -> Unit,
 ) {
-    ProgressPerformanceCard(
-        title = topic.topicName ?: stringResource(Res.string.progress_topic_unavailable),
-        subtitle = null,
-        correctCount = topic.correctCount,
-        answeredCount = topic.answeredCount,
-        percentage = topic.percentage,
-        modifier = Modifier.testTag(progressTopicCardTag(topic.topicId)),
-        onClick = onClick,
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .testTag(progressTopicCardTag(topic.topicId))
+            .heightIn(min = MinimumTouchTargetSize)
+            .padding(GroupRowPadding),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+        ) {
+            Text(
+                text = topic.topicName ?: stringResource(Res.string.progress_topic_unavailable),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(
+                    Res.string.progress_score,
+                    topic.correctCount,
+                    topic.answeredCount,
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = formatAccuracy(topic.percentage),
+            style = MaterialTheme.typography.titleLarge,
+            color = accuracyColor(topic.percentage),
+        )
+        Icon(
+            imageVector = AppIcons.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(NavigationChevronSize),
+        )
+    }
 }
 
 /**
@@ -672,57 +737,55 @@ private fun HistoryRow(
         attempt.correctAnswers,
         attempt.totalQuestions,
     )
-    Surface(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
+            // Clipped before the click so the state layer follows the row's corners. Nothing is
+            // filled at rest — the row sits on the page — but a pointer host shows hover as the
+            // resting state of whatever it is over, and an unclipped layer would draw a rectangle
+            // with its edges on the text.
+            .clip(MaterialTheme.shapes.small)
             .clickable(role = Role.Button, onClick = onClick)
-            .testTag(progressHistoryCardTag(attempt.attemptId)),
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+            .testTag(progressHistoryCardTag(attempt.attemptId))
+            .padding(horizontal = AppSpacing.Comfortable, vertical = AppSpacing.Grouped),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = AppSpacing.Comfortable, vertical = AppSpacing.Grouped),
-            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
-            ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            focusedScopeLabel(attempt.focusedScope)?.let {
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                focusedScopeLabel(attempt.focusedScope)?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Text(
-                    // Formatted here, where the reader's zone and their idea of "today" are
-                    // available; the state carries the instant itself. See ui/time/TimestampText.kt.
-                    text = "$score  ·  ${timestampText(attempt.completedAt)}",
+                    text = it,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
-                text = formatAccuracy(attempt.percentage),
-                style = MaterialTheme.typography.titleMedium,
-                color = accuracyColor(attempt.percentage),
-            )
-            Icon(
-                imageVector = AppIcons.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(NavigationChevronSize),
+                // Formatted here, where the reader's zone and their idea of "today" are
+                // available; the state carries the instant itself. See ui/time/TimestampText.kt.
+                text = "$score  ·  ${timestampText(attempt.completedAt)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        Text(
+            text = formatAccuracy(attempt.percentage),
+            style = MaterialTheme.typography.titleMedium,
+            color = accuracyColor(attempt.percentage),
+        )
+        Icon(
+            imageVector = AppIcons.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(NavigationChevronSize),
+        )
     }
 }
 

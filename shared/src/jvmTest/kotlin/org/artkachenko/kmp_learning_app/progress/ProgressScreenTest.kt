@@ -901,6 +901,83 @@ internal class ProgressScreenTest {
         assertEquals(listOf(CompletedAssessmentType.FOCUSED to "focused-id"), clicks)
     }
 
+    /**
+     * Per-Topic performance is one grouped table rather than a card each, and the assertion is an
+     * ancestry one: what changed is how many containers the section draws, not what any row says.
+     *
+     * Every row keeps what a learner acts on — the name, the counts, the accuracy, and a button
+     * that navigates by stable Topic ID.
+     */
+    @Test
+    fun topicPerformanceRowsShareOneContainerAndKeepTheirOwnNavigation() = runComposeUiTest {
+        val clicked = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        topics = listOf(
+                            ProgressTopicUiModel("a", "Kotlin", 20, 14, 70.0),
+                            ProgressTopicUiModel("b", "Compose", 30, 27, 90.0),
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    { clicked += it },
+                    { _, _ -> },
+                    {},
+                    {},
+                )
+            }
+        }
+
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasTestTag(progressTopicCardTag("b")))
+        // Both rows hang off one container, which is the whole point of the section's new shape.
+        onNodeWithTag(progressTopicCardTag("a"))
+            .assert(hasAnyAncestor(hasTestTag(ProgressTopicGroupTag)))
+        onNodeWithTag(progressTopicCardTag("b"))
+            .assert(hasAnyAncestor(hasTestTag(ProgressTopicGroupTag)))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .assert(hasText("27 / 30 correct", substring = true))
+            .assert(hasText("90%", substring = true))
+            .performClick()
+
+        assertEquals(listOf("b"), clicked)
+    }
+
+    /**
+     * A weak area is deliberately *not* in that group. It is singled out by an accent border, which
+     * is a property of a container, and the contrast between the bordered cards and the quiet table
+     * beneath them is what separates "these need attention" from "here is everything".
+     */
+    @Test
+    fun aWeakAreaRowStaysOutsideTheTopicPerformanceGroup() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        weakAreas = listOf(
+                            WeakAreaUiModel(WeakAreaType.TOPIC, "a", "Kotlin", null, 20, 8, 40.0),
+                        ),
+                        topics = listOf(ProgressTopicUiModel("a", "Kotlin", 20, 8, 40.0)),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                    {},
+                    {},
+                )
+            }
+        }
+
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasTestTag(progressTopicCardTag("a")))
+        onNodeWithTag(progressWeakAreaPracticeTag(
+            WeakAreaUiModel(WeakAreaType.TOPIC, "a", "Kotlin", null, 20, 8, 40.0),
+        )).assert(hasAnyAncestor(hasTestTag(ProgressTopicGroupTag)).not())
+    }
+
     @Test
     fun aWeakTopicRowOffersPracticeForItsExactScopeAndSource() = runComposeUiTest {
         val presets = mutableListOf<PracticePreset>()

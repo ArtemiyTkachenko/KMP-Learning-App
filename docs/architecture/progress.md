@@ -164,14 +164,28 @@ already had and still pass no badge: one amber mark introducing a section says
 "these need attention" once, where the same mark repeated down six rows stops
 being a mark at all. The icon is decorative and announces nothing — the heading's
 words are what carry the status, so colour is never the only channel. Topic
-performance is unchanged and recedes because the hero advanced rather than
-because anything was taken from it. Session history is the most tertiary thing
-here and is drawn as a row rather than a `PerformanceCard`: the smaller shape, a
-denser inset, a `titleSmall` name, and the score and completion time folded onto
-one supporting line. It keeps a clipped container, because the row is a tap
-target and an unclipped one draws hover and press as a band whose edges land on
-the text — which is permanent on a pointer host — and it keeps its chevron,
-`Role.Button`, and stable-attempt-ID navigation unchanged.
+performance is one `ContentGroup` rather than a card per Topic: those rows are
+the most homogeneous thing on the dashboard — a name, a score, a rate, a chevron,
+every one of them — and a card each spent an edge saying what the heading above
+already said. The length is bounded by the Topics the learner has answered
+anything in, which is what makes an eagerly composed group the right shape for
+them. Weak areas stay cards on purpose, because a weak row is singled out by an
+accent border and a border is a property of a container; the contrast between the
+bordered cards and the quiet table under them is now what separates "these need
+attention" from "here is everything". Session history is the most tertiary thing
+here and is drawn as a bare row on the page: no container at all, a smaller
+shape, a denser inset, a `titleSmall` name, and the score and completion time
+folded onto one supporting line. It stays a lazy list of its own rows rather than
+a group because its length is unbounded — a group that composed four hundred
+attempts to draw one border would be paying for the border with the scroll — and
+it clips itself before its `clickable` so hover and press follow the row's
+corners instead of drawing a band whose edges land on the text, which is
+permanent on a pointer host. Its chevron, `Role.Button`, and stable-attempt-ID
+navigation are unchanged.
+
+Those four ranks — the gradient hero, the recent-performance card, the grouped
+per-Topic table, and the bare history rows — are the dashboard's whole statement
+of what matters more than what, and none of them changes colour to make it.
 
 Motion on this screen belongs to the hero and to the chart, and to nothing else.
 The hero's ring sweep and its accuracy count are one `Animatable` over the

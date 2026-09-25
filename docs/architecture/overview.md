@@ -301,12 +301,17 @@ opened from search still landed at `index + 1`. The Subtopics list now holds
 Subtopics and nothing else, so the row's index in the state *is* its index in the
 list and the offset is gone.
 
-The selected tab is marked by a filled pill rather than by Material's underline
-indicator, reusing the `secondaryContainer` treatment the navigation bar already
-gives the current area so "this is what you are looking at" reads the same
-everywhere. The indicator slot is left empty because `TabRow` places it over the
-tabs, where a filled shape would cover its own label; the tab's hover, focus, and
-press layer is clipped to the same pill, which matters on the pointer hosts where
+The selected tab is marked by a `primary` rule of Material's own
+`ActiveIndicatorHeight` with the label in `primary`, not by the filled
+`secondaryContainer` pill the navigation bar gives the current area. It
+carried that pill until P2, on the reasoning that "this is what you are
+looking at" should read the same everywhere; the reasoning was right about
+the fact and wrong about the level, and `TopicDetailScreen` records why area
+navigation and a page control are not peers. The tab draws the rule itself
+rather than through `PrimaryTabRow`'s indicator slot, which is measured and
+placed after the tabs and so would sit on top of the label it marks; with no
+pill, the tab keeps Material's full-cell hover, focus, and press layer, which
+is what makes the whole cell visibly the target on the pointer hosts where
 hover is a resting state rather than a flash. The pager's fling is pinned to
 `PagerSnapDistance.atMost(1)` with a positional threshold below Compose's 0.5
 default, so a swipe commits to the neighbouring capability rather than depending

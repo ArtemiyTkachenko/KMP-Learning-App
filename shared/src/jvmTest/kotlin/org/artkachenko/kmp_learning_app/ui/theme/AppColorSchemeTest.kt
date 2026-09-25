@@ -190,6 +190,64 @@ internal class AppColorSchemeTest {
     }
 
     /**
+     * The selection fill has to be visible on the raised chrome it is drawn on, not only on a page.
+     *
+     * `secondaryContainer` is the app's selection fill, and it is the one container role used above
+     * level 1: the compact navigation pill sits on `surfaceContainer`. The other tonal containers are
+     * exempt from the deeper levels for the reason argued on
+     * [theSemanticFamilyReadsOnEverySurfaceLevel] — a callout or a badge is only ever drawn on the
+     * page or in an ordinary card — and that exemption is exactly what let this one collide with the
+     * navigation bar at 1.04:1 in the light scheme, where the pill marking which of four areas the
+     * learner is in was very nearly invisible.
+     *
+     * The levels asserted are the ones the role is actually drawn on, listed so a new call site on a
+     * deeper surface is a decision rather than a discovery: `background` (the `NavigationRailItem`
+     * indicator, and the practice-builder `FilterChip`s), `surfaceContainerLow` (the Topic row's
+     * learning-units badge, inside an ordinary card), and `surfaceContainer` (the compact navigation
+     * pill).
+     */
+    @Test
+    fun theSelectionFillIsVisibleOnEverySurfaceItIsDrawnOn() {
+        forEachScheme { name, scheme ->
+            scheme.surfaceLevels().take(3).forEach { (level, surface) ->
+                val ratio = contrastRatio(scheme.secondaryContainer, surface)
+                assertTrue(
+                    ratio >= MinimumSurfaceStep,
+                    "$name secondaryContainer is indistinguishable from $level at $ratio",
+                )
+            }
+        }
+    }
+
+    /**
+     * A fixed role is the light scheme's container value, held across both themes.
+     *
+     * That is what "fixed" means, and the schemes state it by hand, so it is only as true as the
+     * last edit to the file: when the light selection fill was deepened to clear the navigation bar,
+     * `secondaryFixed` had to move with it in *both* schemes or the definition would have quietly
+     * stopped holding for one family out of three.
+     */
+    @Test
+    fun fixedRolesRestateTheLightSchemeContainers() {
+        val light = AppLightColorScheme
+        listOf(
+            "primaryFixed" to (light.primaryContainer to { s: ColorScheme -> s.primaryFixed }),
+            "secondaryFixed" to (light.secondaryContainer to { s: ColorScheme -> s.secondaryFixed }),
+            "tertiaryFixed" to (light.tertiaryContainer to { s: ColorScheme -> s.tertiaryFixed }),
+            "onPrimaryFixed" to (light.onPrimaryContainer to { s: ColorScheme -> s.onPrimaryFixed }),
+            "onSecondaryFixed" to
+                (light.onSecondaryContainer to { s: ColorScheme -> s.onSecondaryFixed }),
+            "onTertiaryFixed" to
+                (light.onTertiaryContainer to { s: ColorScheme -> s.onTertiaryFixed }),
+        ).forEach { (role, expectation) ->
+            val (container, read) = expectation
+            forEachScheme { name, scheme ->
+                assertEquals(container, read(scheme), "$name $role")
+            }
+        }
+    }
+
+    /**
      * One red, not two.
      *
      * The scheme's `error` family and the semantic `incorrect` family are the same colours by

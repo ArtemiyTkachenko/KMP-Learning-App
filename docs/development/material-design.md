@@ -252,6 +252,10 @@ short or heterogeneous lists, flat divider rows for the long ones.
   scale of about 0.98 in a `graphicsLayer`. Draw-layer only, so layout, hit testing, and
   when the click callback runs are all untouched — a press treatment must never be
   something the callback waits for. Never hand-roll a gesture detector for this.
+- **A marker is not a heading.** Metadata about *where* content sits — a depth layer, a position,
+  a band label — takes `labelLarge` in `primary` and publishes no `heading()`. `SectionHeading` is
+  for the thing that introduces content, and giving it to a marker makes the metadata outrank the
+  content and hands assistive technology two peer headings where the page drew one inside the other.
 - **Chrome pinned outside the content pane still takes the content pane's width.** A bar, meter or
   counter that describes the column below it has to be capped and centred the same way, or it lines
   up with the column only until the window passes `AppContentWidth`'s cap. Wrap it and apply the

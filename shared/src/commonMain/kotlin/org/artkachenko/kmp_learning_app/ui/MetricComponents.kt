@@ -1,6 +1,7 @@
 package org.artkachenko.kmp_learning_app.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -149,6 +152,58 @@ internal fun ProgressMeter(
 }
 
 private val MeterHeight = 8.dp
+
+/**
+ * An accuracy as a swept ring: the form the product uses wherever a fraction-correct is the subject
+ * of the surface it sits on rather than a figure inside a row.
+ *
+ * Material's determinate `CircularProgressIndicator` at a larger size and a heavier stroke, not a
+ * `Canvas` of its own — the arc, the rounded cap, and the sweep from twelve o'clock are exactly what
+ * the component already draws. The gap and the stop indicator are removed for the same reason
+ * [ProgressMeter] removes them: this is a measurement of what happened, not an operation in flight.
+ *
+ * There is one size on purpose. The two surfaces that use it — the completion hero and the Progress
+ * standing hero — are the two places in the app where the headline *is* an accuracy, and a ring that
+ * changed size between them would read as two different controls rather than one product idea.
+ *
+ * Wrapped in a cleared box rather than given a `contentDescription`. The component publishes
+ * `progressBarRangeInfo`, which beside a figure that already states the same number would be a
+ * second announcement of it — and, wherever the ring is animated into place, a wrong one for the
+ * duration of the animation.
+ */
+@Composable
+internal fun AccuracyRing(
+    fraction: Float,
+    color: Color,
+    trackColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier.clearAndSetSemantics {}) {
+        CircularProgressIndicator(
+            progress = { fraction.coerceIn(0f, 1f) },
+            modifier = Modifier.size(AccuracyRingSize),
+            color = color,
+            trackColor = trackColor,
+            strokeWidth = AccuracyRingStroke,
+            strokeCap = StrokeCap.Round,
+            gapSize = 0.dp,
+        )
+    }
+}
+
+/** Large enough to read as the surface's own indicator beside a display-scale figure, small enough
+ *  that it never becomes the subject; the stroke is scaled with it. */
+private val AccuracyRingSize = 64.dp
+private val AccuracyRingStroke = 6.dp
+
+/**
+ * The unswept part of a ring, as a share of whatever colour the text on that surface takes.
+ *
+ * Stated once because both heroes need the same answer and neither can use a neutral track: a grey
+ * from the page's surface ramp reads as a control borrowed from another screen when it sits on a
+ * gradient, and reads as a different grey from the card under it when it sits on a raised surface.
+ */
+internal const val AccuracyRingTrackAlpha = 0.22f
 
 /**
  * The figure a card exists to show, one step below [AccuracyHeadline]'s screen headline.

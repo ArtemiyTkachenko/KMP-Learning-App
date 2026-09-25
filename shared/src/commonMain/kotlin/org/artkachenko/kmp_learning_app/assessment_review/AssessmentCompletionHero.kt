@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
@@ -46,6 +44,8 @@ import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_ca
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_correct
 import kmp_learning_app.shared.generated.resources.assessment_review_score_figure
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
+import org.artkachenko.kmp_learning_app.ui.AccuracyRing
+import org.artkachenko.kmp_learning_app.ui.AccuracyRingTrackAlpha
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
@@ -211,13 +211,12 @@ internal fun AssessmentCompletionHero(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (statesAccuracy) {
-                        ScoreRing(
+                        AccuracyRing(
                             fraction = (percentage / 100.0).toFloat() * reveal.value,
                             color = emphasis,
-                            // A neutral track would be the only part of this card still referring
-                            // to the page's surface ramp. The hero's own on-colour at low opacity
-                            // reads as the unswept part of the same ring in both schemes.
-                            trackColor = onHero.copy(alpha = RingTrackAlpha),
+                            // The hero's own on-colour, because a neutral track would be the only
+                            // part of this card still referring to the page's surface ramp.
+                            trackColor = onHero.copy(alpha = AccuracyRingTrackAlpha),
                         )
                     }
                     Column(
@@ -298,43 +297,6 @@ private fun resultEmphasisColor(percentage: Double): Color {
 }
 
 /**
- * The score as a swept ring.
- *
- * Material's determinate `CircularProgressIndicator` at a larger size and a heavier stroke, not a
- * `Canvas` of its own: the arc, the rounded cap, and the sweep from twelve o'clock are exactly what
- * the component already draws. It replaces the linear `ProgressMeter` the hero used to share with
- * the dashboard, the topic pages, and the lesson reader — the bar is the right form for "how far
- * through something you are", and the one screen whose whole subject is a finished result was
- * wearing the same control as five screens about work in progress.
- *
- * The gap and the stop indicator are removed for the same reason the linear meter removes them:
- * this is a measurement of what happened, not an operation in flight.
- *
- * Wrapped in a cleared box rather than given a `contentDescription`. The component publishes
- * `progressBarRangeInfo`, which here would hand assistive technology a value that is both redundant
- * — the figure beside it says `8 / 10` and the line below says `80% correct` — and, for the first
- * half-second, wrong, because it would be reporting wherever the reveal had got to.
- */
-@Composable
-private fun ScoreRing(
-    fraction: Float,
-    color: Color,
-    trackColor: Color,
-) {
-    Box(Modifier.clearAndSetSemantics {}) {
-        CircularProgressIndicator(
-            progress = { fraction },
-            modifier = Modifier.size(ScoreRingSize),
-            color = color,
-            trackColor = trackColor,
-            strokeWidth = ScoreRingStroke,
-            strokeCap = StrokeCap.Round,
-            gapSize = 0.dp,
-        )
-    }
-}
-
-/**
  * The score itself, mid-count and settled at once.
  *
  * [shownText] is what is drawn and changes every frame; [settledText] is what the node *says* it
@@ -387,17 +349,9 @@ private const val EntranceRiseFraction = 6
 private const val IconRevealDelayMillis = 90
 private const val IconInitialScale = 0.6f
 
-/** Enough to read as the unswept part of the same ring, not as a second colour on the card. */
-private const val RingTrackAlpha = 0.22f
-
 /** An edge, not an outline: visible where the gradient meets the page and nowhere else. */
 private const val HeroBorderAlpha = 0.14f
 private val HeroBorderWidth = 1.dp
 private val HeroElevation = 2.dp
 
 private val CompletionIconSize = 20.dp
-
-/** Large enough to read as the card's own indicator beside a display-scale figure, small enough
- *  that it never becomes the subject; the stroke is scaled with it. */
-private val ScoreRingSize = 64.dp
-private val ScoreRingStroke = 6.dp

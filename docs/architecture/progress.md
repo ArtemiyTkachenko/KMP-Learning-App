@@ -108,9 +108,16 @@ resolved queue keeps no action, because an empty destination is not worth a tap.
 
 The dashboard presents the snapshot's three signals as three separate surfaces,
 because they answer three different questions and are routinely different
-numbers. All-time accuracy keeps the primary summary card and is now labelled as
+numbers. All-time accuracy leads as the screen's standing hero and is labelled as
 all-time rather than "overall", since an unqualified accuracy figure beside a
-recent one is ambiguous. Curriculum coverage and recent performance follow it as
+recent one is ambiguous. That hero is `surfaceContainerHigh` with a hairline
+`outlineVariant` edge and a small shadow, and states its figure beside the shared
+`AccuracyRing` rather than over a bar: as an ordinary `PrimarySummaryCard` it sat one
+surface step above the two cards qualifying it, which in dark — where separation is
+luminance rather than tone — left the screen's headline with no more weight than its
+footnotes. It is deliberately not the hero gradient, which is reserved for an
+arrival; a lifetime accuracy is a figure a learner checks, not a moment. The figure
+keeps `accuracyColor`, because diagnosis is what this screen is for. Curriculum coverage and recent performance follow it as
 quieter tonal cards: important, but not three competing headlines. Coverage always
 prints its raw attempted/total counts beside the percentage, because coverage and
 accuracy differ substantially for normal learners and the denominator is what
@@ -139,7 +146,16 @@ included — does not appear until the window is full, and a three-point drawing
 presented as a trajectory is unreachable. The three fixed guides are labelled with
 their percentages, which is what makes the drawing a chart rather than a shape: a
 learner can read that a point sits just under half, and the labels state that the
-axis is the full 0-100 range rather than fitted to the data. It plots `attemptSeries` and not `answerSeries` — one visualization is the
+axis is the full 0-100 range rather than fitted to the data. The line carries a
+`primary` area fade beneath it and no longer caps its width: five points across an
+expanded pane span a small share of the height, so a bare 2dp polyline read as a
+scratch on the card, and the previous 420dp cap left the right third of a
+desktop-width card visibly empty. The newest attempt wears a halo rather than a
+larger dot, so the one point the learner came for is findable without the series
+acquiring two marker sizes. On first appearance the whole series rises from the 0%
+guide to its values together over the app's ordinary content-reveal duration — one
+`Animatable` read in the draw scope, held by a `rememberSaveable` flag so a card
+scrolling back into view does not redraw itself and imply something changed. It plots `attemptSeries` and not `answerSeries` — one visualization is the
 budget — draws no direction colouring or "improving"/"declining" label, since the
 domain deliberately exposes raw observations, and carries a semantic description
 listing every plotted percentage oldest-first so the drawing is never the only

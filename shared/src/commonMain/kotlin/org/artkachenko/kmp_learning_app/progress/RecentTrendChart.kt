@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.progress
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -8,13 +9,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -22,6 +30,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 
 /**
@@ -80,17 +89,37 @@ internal fun trendPoints(percentages: List<Double>): List<TrendPoint> {
 /** Where the horizontal guides sit: the two ends of the fixed scale, plus its midpoint. */
 private val GuideFractions = listOf(0f, 0.5f, 1f)
 
-private val ChartHeight = 120.dp
+/**
+ * Taller than it was, which is the part of this drawing that carries the reading.
+ *
+ * A five-point series spans at most the full 0-100 axis and usually far less, so the height is what
+ * decides whether a 20-point swing is visible at all. At 120dp a 55-to-90 climb was about 42dp of
+ * travel and read as a scratch.
+ */
+private val ChartHeight = 148.dp
+
+private val MarkerRadius = 4.dp
+
+/** The newest attempt gets a halo rather than a bigger dot, so the series keeps one marker size. */
+private val LatestMarkerHaloRadius = 9.dp
+private const val LatestMarkerHaloAlpha = 0.28f
 
 /**
- * Fills a phone's card, and stops there. On a desktop window the card is several times wider, and a
- * five-point series drawn across all of it flattens into a nearly horizontal line; capping the
- * drawing keeps its proportions readable without giving the dashboard an adaptive layout of its own.
+ * The margin the plot keeps inside its own box, top and bottom.
+ *
+ * Sized to the widest thing drawn at a point rather than to the marker, so a 0% or a 100% attempt —
+ * and the newest one in particular, which wears the halo — is drawn whole instead of half clipped.
+ * The axis label column takes the same inset, which is what keeps the top label on the 100% guide
+ * and the bottom label on the 0% guide at any font scale.
  */
-private val MaxChartWidth = 420.dp
-private val MarkerRadius = 4.dp
+private val PlotInset = LatestMarkerHaloRadius
+
 private val LineWidth = 2.dp
 private val GuideWidth = 1.dp
+
+/** The area under the line: a tint at the curve, gone by the axis. */
+private const val AreaTopAlpha = 0.24f
+private const val AreaBottomAlpha = 0.02f
 
 /**
  * One compact accuracy trajectory across the recent window, oldest on the left.
@@ -110,7 +139,7 @@ internal fun RecentTrendChart(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.widthIn(max = MaxChartWidth + AxisLabelWidth).fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
     ) {
         // The guides were drawn unlabelled, which left the drawing readable only as "the line went
@@ -128,7 +157,7 @@ internal fun RecentTrendChart(
                 // guides span: the top label sits on the 100% line and the bottom label on the 0%
                 // line rather than half a line outside each. Robust at any font scale, which an
                 // offset by half a text height would not be.
-                .padding(vertical = MarkerRadius)
+                .padding(vertical = PlotInset)
                 .clearAndSetSemantics {},
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.End,
@@ -170,24 +199,41 @@ private fun TrendPlot(
 ) {
     val lineColor = MaterialTheme.colorScheme.primary
     val guideColor = MaterialTheme.colorScheme.outlineVariant
+
+    // The chart grows up out of its own axis once per visit, rather than being there already.
+    //
+    // One value, read in the draw scope, so the growth invalidates drawing and never recomposition.
+    // It is held in a `rememberSaveable` flag and claimed before the animation starts, for the same
+    // reason the completion hero's reveal is: this card sits in a scrolling list, and a chart that
+    // redrew itself every time it came back into view would be claiming that something had changed.
+    // It is the app's ordinary content-reveal duration, not the result screen's celebratory one —
+    // a dashboard a learner opens to check on themselves should not perform.
+    var alreadyDrawn by rememberSaveable { mutableStateOf(false) }
+    val reveal = remember { Animatable(if (alreadyDrawn) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        if (!alreadyDrawn) {
+            alreadyDrawn = true
+            reveal.animateTo(targetValue = 1f, animationSpec = AppMotion.revealSpec())
+        }
+    }
+
     Canvas(
         // A Canvas publishes no semantics for what it draws, so the whole chart is one described
-        // node rather than a cluster of focusable decorative shapes.
+        // node rather than a cluster of focusable decorative shapes. The description states the
+        // settled values from the first frame, so the growth above is never something a screen
+        // reader has to wait out.
         modifier = modifier
-            // The cap has to precede fillMaxWidth: the other order fills first and leaves nothing
-            // for the cap to narrow.
-            .widthIn(max = MaxChartWidth)
             .fillMaxWidth()
             .height(ChartHeight)
             .semantics { contentDescription = description },
     ) {
-        val markerRadius = MarkerRadius.toPx()
-        // Inset by the marker radius so a 0% or 100% point is drawn whole instead of half clipped.
-        val plotWidth = (size.width - markerRadius * 2).coerceAtLeast(0f)
-        val plotHeight = (size.height - markerRadius * 2).coerceAtLeast(0f)
+        val inset = PlotInset.toPx()
+        val plotWidth = (size.width - inset * 2).coerceAtLeast(0f)
+        val plotHeight = (size.height - inset * 2).coerceAtLeast(0f)
+        val baselineY = inset + plotHeight
 
         GuideFractions.forEach { fraction ->
-            val y = markerRadius + plotHeight * fraction
+            val y = inset + plotHeight * fraction
             drawLine(
                 color = guideColor,
                 start = Offset(0f, y),
@@ -198,10 +244,36 @@ private fun TrendPlot(
 
         val offsets = trendPoints(percentages).map { point ->
             Offset(
-                x = markerRadius + plotWidth * point.x,
-                y = markerRadius + plotHeight * point.y,
+                x = inset + plotWidth * point.x,
+                // Every point starts on the 0% guide and rises to its own value together, so the
+                // series keeps its shape the whole way up instead of assembling point by point.
+                y = inset + plotHeight * (1f - (1f - point.y) * reveal.value),
             )
         }
+        if (offsets.isEmpty()) return@Canvas
+
+        // The area is what makes a shallow series legible. Five points across a desktop-width pane
+        // span at most a fifth of the height, and a 2dp polyline across that reads as a scratch on
+        // the card; the same line with the ground under it filled reads as a quantity. It is a tint
+        // that fades out before the axis, so it never competes with the guides it crosses.
+        val area = Path().apply {
+            moveTo(offsets.first().x, baselineY)
+            offsets.forEach { lineTo(it.x, it.y) }
+            lineTo(offsets.last().x, baselineY)
+            close()
+        }
+        drawPath(
+            path = area,
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    lineColor.copy(alpha = AreaTopAlpha),
+                    lineColor.copy(alpha = AreaBottomAlpha),
+                ),
+                startY = inset,
+                endY = baselineY,
+            ),
+        )
+
         offsets.zipWithNext { from, to ->
             drawLine(
                 color = lineColor,
@@ -211,8 +283,17 @@ private fun TrendPlot(
                 cap = StrokeCap.Round,
             )
         }
+
+        // The newest attempt is the one the learner came to the card for, so it is the one point
+        // that is found without counting along the line. A halo rather than a larger dot, because
+        // a series whose markers are different sizes reads as a series of different things.
+        drawCircle(
+            color = lineColor.copy(alpha = LatestMarkerHaloAlpha),
+            radius = LatestMarkerHaloRadius.toPx(),
+            center = offsets.last(),
+        )
         offsets.forEach { offset ->
-            drawCircle(color = lineColor, radius = markerRadius, center = offset)
+            drawCircle(color = lineColor, radius = MarkerRadius.toPx(), center = offset)
         }
     }
 }

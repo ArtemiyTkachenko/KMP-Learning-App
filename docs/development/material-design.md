@@ -107,6 +107,16 @@ its own on-colour at low alpha plus a small `shadowElevation`, because a gradien
 change rather than a lifted object — most noticeably in light, where the sweep is a pale tint over an
 off-white page.
 
+A screen may have a hero without the gradient, and the Progress dashboard does: its standing
+summary is `surfaceContainerHigh` with the same hairline edge and small shadow, which is how a
+level-2 surface outranks the level-1 cards under it in dark, where separation is luminance and one
+container step is nearly invisible. Reach for the gradient only where the surface is an arrival.
+
+Both heroes state their figure beside `AccuracyRing` rather than over a `ProgressMeter`. A bar is
+the picture of "how far through something you are" — which is what curriculum coverage shows — and
+a ring is the picture of a rate. One ring size exists on purpose: a ring that changed size between
+the two surfaces would read as two controls rather than one product idea.
+
 A completed assessment is the one surface where a performance colour must **not** come from
 `accuracyColor`. That scale bottoms out at `AppSemanticColors.incorrect`, and the error role is for a
 wrong answer or a failed operation, not for a verdict on the learner; the hero's own

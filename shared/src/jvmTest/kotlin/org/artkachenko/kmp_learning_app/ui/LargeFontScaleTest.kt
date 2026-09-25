@@ -117,6 +117,11 @@ internal class LargeFontScaleTest {
 
             val windowWidth = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.width
 
+            // The standing hero is a fixed-size ring beside a display-scale figure, which is the
+            // shape that runs off the edge of a small phone at this type size. Its column is
+            // weighted rather than laid out at its intrinsic width precisely so this holds.
+            onNodeWithText("70%").assertIsDisplayed().assertWithin(windowWidth)
+            onNodeWithText("All-time accuracy").assertWithin(windowWidth)
             onNodeWithText("Questions answered").assertWithin(windowWidth)
             onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Kotlin"))
             onNodeWithText("Kotlin").assertWithin(windowWidth)

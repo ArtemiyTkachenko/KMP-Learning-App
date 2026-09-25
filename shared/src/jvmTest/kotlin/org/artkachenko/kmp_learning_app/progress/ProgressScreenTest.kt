@@ -638,6 +638,47 @@ internal class ProgressScreenTest {
             )
     }
 
+    /**
+     * The chart grows up out of its own axis on first appearance, and none of that may reach a
+     * screen reader or a test.
+     *
+     * The description is the settled series from the first frame — before the growth has moved at
+     * all — rather than something that becomes true once the animation lands. The clock is held
+     * still deliberately: with it running, a passing assertion would prove only that the animation
+     * finished before the assertion ran.
+     */
+    @Test
+    fun theTrendIsDescribedInFullBeforeItHasFinishedDrawing() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent {
+            MaterialTheme {
+                ProgressScreen(
+                    contentState(
+                        recentPerformance = recentState(
+                            attemptPercentages = listOf(60.0, 68.0, 72.0),
+                            correctAnswerCount = 20,
+                            answeredQuestionCount = 30,
+                        ),
+                    ),
+                    {},
+                    {},
+                    {},
+                    {},
+                    { _, _ -> },
+                    {},
+                    {},
+                )
+            }
+        }
+        mainClock.advanceTimeByFrame()
+
+        onNodeWithTag(ProgressRecentTrendChartTag)
+            .assertIsDisplayed()
+            .assertContentDescriptionEquals(
+                "Recent session accuracy, oldest to newest: 60%, 68%, 72%.",
+            )
+    }
+
     @Test
     fun theFiveAttemptWindowIsPlottedWhole() = runComposeUiTest {
         setContent {

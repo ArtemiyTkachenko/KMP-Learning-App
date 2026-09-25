@@ -99,9 +99,18 @@ that vocabulary — `AnswerOutcome`, `QuestionOutcome`, and their colours live i
 A marked option keeps the answer text in `onSurface` rather than an outcome colour, because the text
 is the authored question and the mark is the label and border around it.
 
-`AppSemanticColors.heroGradientStart`/`heroGradientEnd` is a defined token with no call site yet. It
-carries no on-colour: both endpoints sit within the scheme's `primaryContainer` tone, so
-`onPrimaryContainer` is the text colour across the sweep.
+`AppSemanticColors.heroGradientStart`/`heroGradientEnd` has exactly one call site,
+`AssessmentCompletionHero`, and is reserved for a surface that is the single most important thing on
+its screen. It carries no on-colour: both endpoints sit within the scheme's `primaryContainer` tone,
+so `onPrimaryContainer` is the text colour across the sweep. A hero also takes a hairline border in
+its own on-colour at low alpha plus a small `shadowElevation`, because a gradient alone is a colour
+change rather than a lifted object — most noticeably in light, where the sweep is a pale tint over an
+off-white page.
+
+A completed assessment is the one surface where a performance colour must **not** come from
+`accuracyColor`. That scale bottoms out at `AppSemanticColors.incorrect`, and the error role is for a
+wrong answer or a failed operation, not for a verdict on the learner; the hero's own
+`ResultEmphasis` band resolves a weak run to `partiallyCorrect` and never to a red.
 
 ## Adaptive layout
 

@@ -565,7 +565,7 @@ internal class LearningProductionContentJourneyTest {
             waitForTag(FocusedResultPracticeAgainTag)
             // Scored over the authored keys: one deliberate wrong answer out of the whole pool.
             onNodeWithText("Practice complete").assertIsDisplayed()
-            onNodeWithText("Score: ${candidates.size - 1} / ${candidates.size}").assertIsDisplayed()
+            onNodeWithText("${candidates.size - 1} / ${candidates.size}").assertIsDisplayed()
         }
 
     /** The Unit overview offers the same handoff, so practice is not a Lesson-only affair. */

@@ -146,7 +146,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithText("\u2713 Correct answer").assertIsDisplayed()
             onNodeWithText("Next question").performClick()
 
-            onNodeWithText("Score: 1 / 2").assertIsDisplayed()
+            onNodeWithText("1 / 2").assertIsDisplayed()
             onNodeWithText("Review answer").performClick()
             onNodeWithText("Single explanation").performScrollTo().assertIsDisplayed()
             onNodeWithText("Source: Single source").performScrollTo().assertIsDisplayed()
@@ -179,8 +179,8 @@ internal class FocusedLearningJourneyIntegrationTest {
             assertEquals(null, components.repository.getById("attempt-retake-2"))
 
             onNodeWithContentDescription("Back").performClick()
-            onNode(hasScrollAction()).performScrollToNode(hasText("Score: 1 / 2"))
-            onNodeWithText("Score: 1 / 2").assertIsDisplayed()
+            onNode(hasScrollAction()).performScrollToNode(hasText("1 / 2"))
+            onNodeWithText("1 / 2").assertIsDisplayed()
 
             // Result, then the builder it was configured in, then the Topic: backing out of a run
             // returns to the setup rather than skipping past it.
@@ -203,7 +203,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNode(hasScrollAction()).performScrollToNode(hasText("Practice"))
             onNodeWithText("Practice").performClick()
             waitUntil(timeoutMillis = 5_000) {
-                onAllNodesWithText("Score: 1 / 2").fetchSemanticsNodes().isNotEmpty()
+                onAllNodesWithText("1 / 2").fetchSemanticsNodes().isNotEmpty()
             }
             onNodeWithContentDescription("Back").performClick()
             waitUntil(timeoutMillis = 5_000) {

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,7 +40,6 @@ import kmp_learning_app.shared.generated.resources.assessment_review_missing_que
 import kmp_learning_app.shared.generated.resources.assessment_review_interview_complete
 import kmp_learning_app.shared.generated.resources.assessment_review_practice_complete
 import kmp_learning_app.shared.generated.resources.assessment_review_mistakes_retained
-import kmp_learning_app.shared.generated.resources.assessment_review_practice_mistakes
 import kmp_learning_app.shared.generated.resources.assessment_review_save_question
 import kmp_learning_app.shared.generated.resources.assessment_review_saved_state
 import kmp_learning_app.shared.generated.resources.assessment_review_unsaved_state
@@ -49,68 +47,45 @@ import kmp_learning_app.shared.generated.resources.assessment_review_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
 import kmp_learning_app.shared.generated.resources.assessment_review_unsave_question
 import org.artkachenko.kmp_learning_app.ui.AppIcons
-import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
-import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
-import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
-import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
+/**
+ * That the mistakes in this run are still waiting in the Mistakes queue.
+ *
+ * A caveat about the transcript below, not an action: the button that offers to practise them is a
+ * result *action* and lives with the other one in [AssessmentResultOutcome], which is what decides
+ * which of the two is the screen's primary. Keeping the button here made it the only filled control
+ * on the screen and put it between two warning lines, and left a run with nothing to fix with no
+ * primary action at all.
+ *
+ * Emits nothing at zero, so a clean run adds no gap to the column it sits in.
+ */
 @Composable
 internal fun MistakeRetentionNotice(
-    questions: List<ReviewQuestionItem>,
-    onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)? = null,
+    retainedCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    val retainedQuestions = questions.mapNotNull { item ->
-        (item as? ReviewQuestionItem.Available)?.question?.takeIf { !it.isCorrect }
-    }
-    val retained = retainedQuestions.size
-    if (retained > 0) {
-        Column(modifier, verticalArrangement = Arrangement.spacedBy(AppSpacing.Related)) {
-            Text(
-                text = org.jetbrains.compose.resources.pluralStringResource(
-                    Res.plurals.assessment_review_mistakes_retained,
-                    retained,
-                    retained,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = AppThemeExtras.semanticColors.partiallyCorrect,
-            )
-            if (onPracticeMistakes != null) {
-                Button(
-                    onClick = {
-                        onPracticeMistakes(
-                            AssessmentConfig.Focused(
-                                scope = AssessmentScope.Subtopics(
-                                    retainedQuestions.mapTo(linkedSetOf()) { it.subtopicId },
-                                ),
-                                questionCount = retained,
-                                levels = AllQuestionLevels,
-                                source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
-                            ),
-                        )
-                    },
-                ) {
-                    Text(
-                        org.jetbrains.compose.resources.pluralStringResource(
-                            Res.plurals.assessment_review_practice_mistakes,
-                            retained,
-                            retained,
-                        ),
-                    )
-                }
-            }
-        }
-    }
+    if (retainedCount <= 0) return
+    Text(
+        text = pluralStringResource(
+            Res.plurals.assessment_review_mistakes_retained,
+            retainedCount,
+            retainedCount,
+        ),
+        modifier = modifier,
+        style = MaterialTheme.typography.bodyMedium,
+        color = AppThemeExtras.semanticColors.partiallyCorrect,
+    )
 }
 
 /**
  * Explains why the score above can exceed the questions listed below.
  *
- * [AssessmentScoreSummary] renders the persisted AssessmentScore and stays
+ * [AssessmentCompletionHero] renders the persisted AssessmentScore and stays
  * authoritative, while review items and any topic breakdown can only count
  * questions whose curriculum content still resolves. The count is derived here
  * rather than in each result ViewModel so both result screens share one rule.

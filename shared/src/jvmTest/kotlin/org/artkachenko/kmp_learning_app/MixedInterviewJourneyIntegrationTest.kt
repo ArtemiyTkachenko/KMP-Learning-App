@@ -166,8 +166,8 @@ internal class MixedInterviewJourneyIntegrationTest {
                     assertNull(ready.completedAt)
                     onNodeWithTag(AssessmentTakingFinishTag).performClick()
 
-                    waitForText("Score: 2 / 4")
-                    onNodeWithText("Score: 2 / 4").assertIsDisplayed()
+                    waitForText("2 / 4")
+                    onNodeWithText("2 / 4").assertIsDisplayed()
                     // ... and back to normal application chrome the moment the assessment ends:
                     // reviewing answers is reading, and there is nothing left to interrupt.
                     onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS))
@@ -243,8 +243,8 @@ internal class MixedInterviewJourneyIntegrationTest {
                     assertEquals(sourceBeforeRetake, components.repository.getById(OriginalAttemptId))
 
                     onNodeWithContentDescription("Back").performClick()
-                    waitForText("Score: 2 / 4")
-                    onNodeWithText("Score: 2 / 4").assertIsDisplayed()
+                    waitForText("2 / 4")
+                    onNodeWithText("2 / 4").assertIsDisplayed()
                     // ... and back to normal application chrome the moment the assessment ends:
                     // reviewing answers is reading, and there is nothing left to interrupt.
                     onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS))

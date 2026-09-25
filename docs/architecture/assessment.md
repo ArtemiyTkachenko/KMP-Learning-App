@@ -86,6 +86,40 @@ The partial case is derived at presentation from `selectedAnswerIds` against
 `isCorrect`, and a partially correct answer is recorded exactly as incorrect as it always
 was; what changed is that the learner is told which kind of wrong it was.
 
+## Completion
+
+Both result screens are the same three shared pieces. `AssessmentResultLayout` is the adaptive
+shell — one `LazyColumn` at compact and medium widths, two independently scrolling panes at
+expanded, with the outcome pane declared first so traversal order matches the single-column
+reading order. `AssessmentResultOutcome` is the summary block: the hero, the caveats about the
+transcript, and the actions. `AssessmentCompletionHero` is the figure. Only three things differ
+between the products — the completion title, the five retake strings, and the test tags — and the
+Mixed result appends its per-Topic breakdown to the outcome pane after the shared block. There is
+no `isInterview` flag anywhere in the path.
+
+`AssessmentCompletionHero` is the product's one use of the hero gradient. It states the score as
+the display figure (`8 / 10`) with the percentage beneath it (`80% correct`), a determinate ring
+beside it, and nothing else; below five questions the percentage and the ring are both withheld,
+because four questions can only produce 0, 25, 50, 75, or 100 and reporting a percentage from one
+of them claims an accuracy the run never measured. One `Animatable`, held in a `rememberSaveable`
+flag so it runs once per visit rather than once per composition, counts the numerator and sweeps the
+ring as a single movement. The figure's node overrides its own `text` with the settled value, so the
+score is readable — to a test and to a screen reader — on the first frame, and the ring's
+`progressBarRangeInfo` is cleared rather than described, because the number is already written twice
+beside it.
+
+Performance emphasis on that card is `ResultEmphasis`, not `accuracyColor`: a run below the
+domain's weakness threshold resolves to `partiallyCorrect`, never to `incorrect`. The error role
+belongs to a wrong answer and a failed operation, not to a verdict on the learner, and the figure
+itself stays `onPrimaryContainer` at every band so the brand remains the dominant colour.
+
+`AssessmentResultOutcome` owns the action hierarchy, which depends on what the run produced rather
+than on which product it was. With unresolved mistakes, practising them is the primary action and
+the retake is the outlined alternative; with nothing left to fix there is no remediation to offer, so
+the retake takes the filled weight. `AssessmentActionEmphasis` is how `AssessmentRetakeAction`
+receives that, and a busy retake keeps its enabled colours in either weight because its spinner and
+changed label already say it is working.
+
 Once the learner has finished an interview, `InterviewStartScreen` shows their record
 through `InterviewStartViewModel`; each row opens the result it came from. The most recent
 interview leads and carries its date, because "how did I do last time, and how long ago was

@@ -1,10 +1,16 @@
 package org.artkachenko.kmp_learning_app.mixed_interview
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -12,6 +18,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.v2.runSkikoComposeUiTest
+import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -25,6 +34,9 @@ import org.artkachenko.kmp_learning_app.assessment_review.ReviewSourceUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.reviewQuestionSaveTag
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
+import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
 @OptIn(ExperimentalTestApi::class)
 internal class MixedInterviewResultScreenTest {
@@ -42,7 +54,7 @@ internal class MixedInterviewResultScreenTest {
             }
         }
 
-        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+        onNodeWithText("3 / 5").assertIsDisplayed()
         onNodeWithText("60", substring = true).assertIsDisplayed()
         onNodeWithText("Performance by topic").performScrollTo().assertIsDisplayed()
         onNodeWithText("Kotlin").performScrollTo().assertIsDisplayed()
@@ -225,7 +237,7 @@ internal class MixedInterviewResultScreenTest {
         onNodeWithTag(MixedResultPracticeAgainTag).assertIsNotEnabled()
         onNodeWithTag(MixedResultCreatingIndicatorTag).assertIsDisplayed()
         onNodeWithText("Starting interview").assertIsDisplayed()
-        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+        onNodeWithText("3 / 5").assertIsDisplayed()
         onNodeWithText("Performance by topic").performScrollTo().assertIsDisplayed()
         onNode(hasScrollAction()).performScrollToNode(hasText("Review answer"))
         onNodeWithText("Review answer").performClick()
@@ -250,7 +262,7 @@ internal class MixedInterviewResultScreenTest {
         }
 
         onNodeWithText("The original interview is no longer available.").assertIsDisplayed()
-        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+        onNodeWithText("3 / 5").assertIsDisplayed()
 
         repeatState = AssessmentRetakeState.NoEligibleQuestions
         onNodeWithText("No interview questions are currently available.").assertIsDisplayed()
@@ -258,7 +270,7 @@ internal class MixedInterviewResultScreenTest {
 
         repeatState = AssessmentRetakeState.Error
         onNodeWithText("Interview could not be started. Try again.").assertIsDisplayed()
-        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+        onNodeWithText("3 / 5").assertIsDisplayed()
     }
 
     /** The same shared card and the same saved identity the other review surfaces use. */
@@ -300,7 +312,7 @@ internal class MixedInterviewResultScreenTest {
             }
         }
 
-        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+        onNodeWithText("3 / 5").assertIsDisplayed()
         onNodeWithText("Kotlin").performScrollTo().assertIsDisplayed()
         onNodeWithText("2 / 3 correct").performScrollTo().assertIsDisplayed()
         onNodeWithText("Saved").performScrollTo().assertIsDisplayed()
@@ -323,10 +335,60 @@ internal class MixedInterviewResultScreenTest {
             }
         }
 
-        onNodeWithText("Score: 3 / 5").assertIsDisplayed()
+        onNodeWithText("3 / 5").assertIsDisplayed()
         onNodeWithText("Question review").performScrollTo().assertIsDisplayed()
         onNodeWithTag(reviewQuestionSaveTag("q1")).assertDoesNotExist()
     }
+
+    /**
+     * The expanded arrangement, which had no test of its own.
+     *
+     * Two panes, each holding what it is for: the outcome and the per-Topic breakdown on one side,
+     * the transcript on the other. The assertions go through the pane tags rather than through bare
+     * text, because "both are on screen somewhere" would pass just as well if the split had silently
+     * collapsed back to one column — which is the regression worth catching, now that the hero and
+     * the review heading both change their treatment with the window class.
+     */
+    @Test
+    fun theExpandedResultAnchorsTheSummaryPaneAndScrollsTheTranscriptBesideIt() =
+        runSkikoComposeUiTest(size = DesktopDisplay) {
+            setContent {
+                AppTheme {
+                    CompositionLocalProvider(
+                        LocalAppWindowSizeClass provides AppWindowSizeClass.Expanded,
+                    ) {
+                        Box(Modifier.size(DesktopWidth, DesktopHeight)) {
+                            MixedInterviewResultScreen(
+                                state = contentState(),
+                                onRetry = {},
+                                onBack = {},
+                                onSourceClick = {},
+                            )
+                        }
+                    }
+                }
+            }
+
+            onNodeWithTag(MixedResultSummaryPaneTag).assertIsDisplayed()
+            onNodeWithTag(MixedResultReviewPaneTag).assertIsDisplayed()
+
+            onNode(
+                hasText("3 / 5") and hasAnyAncestor(hasTestTag(MixedResultSummaryPaneTag)),
+            ).assertIsDisplayed()
+            onNode(
+                hasText("Retake interview") and hasAnyAncestor(hasTestTag(MixedResultSummaryPaneTag)),
+            ).assertIsDisplayed()
+            onNode(
+                hasText("Performance by topic") and
+                    hasAnyAncestor(hasTestTag(MixedResultSummaryPaneTag)),
+            ).assertIsDisplayed()
+            onNode(
+                hasText("Question review") and hasAnyAncestor(hasTestTag(MixedResultReviewPaneTag)),
+            ).assertIsDisplayed()
+            onNode(
+                hasText("Question text") and hasAnyAncestor(hasTestTag(MixedResultReviewPaneTag)),
+            ).assertIsDisplayed()
+        }
 
     private fun contentState() = MixedInterviewResultUiState.Content(
         attemptId = "attempt",
@@ -358,3 +420,8 @@ internal class MixedInterviewResultScreenTest {
         ),
     )
 }
+
+/** Comfortably past the expanded breakpoint, so the two-pane arrangement actually composes. */
+private val DesktopWidth = 1440.dp
+private val DesktopHeight = 900.dp
+private val DesktopDisplay = Size(DesktopWidth.value, DesktopHeight.value)

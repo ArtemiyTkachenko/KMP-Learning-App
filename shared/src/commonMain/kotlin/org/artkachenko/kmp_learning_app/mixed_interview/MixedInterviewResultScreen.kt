@@ -1,11 +1,9 @@
 package org.artkachenko.kmp_learning_app.mixed_interview
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -26,14 +24,12 @@ import kmp_learning_app.shared.generated.resources.mixed_result_title
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_score
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_unavailable
 import kmp_learning_app.shared.generated.resources.assessment_review_interview_complete
-import org.artkachenko.kmp_learning_app.assessment_review.AssessmentCompletionHero
-import org.artkachenko.kmp_learning_app.assessment_review.AssessmentRetakeAction
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentResultOutcome
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentRetakeWording
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
+import org.artkachenko.kmp_learning_app.assessment_review.ResultReviewHeading
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
-import org.artkachenko.kmp_learning_app.assessment_review.UnresolvedReviewQuestionsNotice
-import org.artkachenko.kmp_learning_app.assessment_review.MistakeRetentionNotice
 import org.artkachenko.kmp_learning_app.assessment_review.reviewSaveAction
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
@@ -49,7 +45,6 @@ import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.jetbrains.compose.resources.stringResource
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
-import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 
 internal const val MixedResultLoadingTag = "mixed_result_loading"
 internal const val MixedResultPracticeAgainTag = "mixed_result_practice_again"
@@ -174,35 +169,31 @@ private fun LazyListScope.outcomeSection(
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)?,
 ) {
     item {
-        Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable)) {
-            AssessmentCompletionHero(
-                correctAnswers = state.correctAnswers,
-                totalQuestions = state.totalQuestions,
-                percentage = state.percentage,
-                title = stringResource(Res.string.assessment_review_interview_complete),
-            )
-            UnresolvedReviewQuestionsNotice(state.questions, state.totalQuestions)
-            MistakeRetentionNotice(state.questions, onPracticeMistakes)
-            AssessmentRetakeAction(
-                state = retakeState,
-                wording = AssessmentRetakeWording(
-                    action = stringResource(Res.string.mixed_result_practice_again),
-                    starting = stringResource(Res.string.mixed_result_practice_starting),
-                    sourceMissing = stringResource(Res.string.mixed_result_repeat_source_missing),
-                    noQuestions = stringResource(Res.string.mixed_result_repeat_no_questions),
-                    error = stringResource(Res.string.mixed_result_repeat_error),
-                ),
-                onRetake = onRepeatInterview,
-                actionTestTag = MixedResultPracticeAgainTag,
-                progressTestTag = MixedResultCreatingIndicatorTag,
-            )
-        }
+        AssessmentResultOutcome(
+            title = stringResource(Res.string.assessment_review_interview_complete),
+            correctAnswers = state.correctAnswers,
+            totalQuestions = state.totalQuestions,
+            percentage = state.percentage,
+            questions = state.questions,
+            retakeState = retakeState,
+            retakeWording = AssessmentRetakeWording(
+                action = stringResource(Res.string.mixed_result_practice_again),
+                starting = stringResource(Res.string.mixed_result_practice_starting),
+                sourceMissing = stringResource(Res.string.mixed_result_repeat_source_missing),
+                noQuestions = stringResource(Res.string.mixed_result_repeat_no_questions),
+                error = stringResource(Res.string.mixed_result_repeat_error),
+            ),
+            onRetake = onRepeatInterview,
+            retakeActionTestTag = MixedResultPracticeAgainTag,
+            retakeProgressTestTag = MixedResultCreatingIndicatorTag,
+            onPracticeMistakes = onPracticeMistakes,
+        )
     }
     item {
-        SectionHeading(
-            stringResource(Res.string.mixed_result_performance_by_topic),
-            topPadding = AppSpacing.Related,
-        )
+        // A full section break rather than the 8dp this used to take: the breakdown always follows
+        // the outcome, so it is dividing content rather than leading a pane, which is the same
+        // argument `ResultReviewHeading` makes for the transcript heading in one scroll.
+        SectionHeading(stringResource(Res.string.mixed_result_performance_by_topic))
     }
     items(state.topicPerformance, key = { it.topicId }) { topic ->
         TopicPerformanceCard(topic)
@@ -218,10 +209,7 @@ private fun LazyListScope.reviewSection(
     failedSourceUrl: String?,
 ) {
     item {
-        SectionHeading(
-            stringResource(Res.string.mixed_result_question_review),
-            topPadding = AppSpacing.Related,
-        )
+        ResultReviewHeading(stringResource(Res.string.mixed_result_question_review))
     }
     items(state.questions) { item ->
         when (item) {

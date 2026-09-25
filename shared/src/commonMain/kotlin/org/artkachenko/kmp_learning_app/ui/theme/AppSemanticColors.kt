@@ -36,8 +36,9 @@ import androidx.compose.ui.graphics.Color
  *
  * [heroGradientStart] and [heroGradientEnd] are the one shared brand flourish the product allows: a
  * short indigo-to-violet sweep across the two hues the accent range already spans, for the rare
- * surface that is the single most important thing on its screen. It is a *token only* — nothing
- * draws it yet, and a screen that adopts it is a later change.
+ * surface that is the single most important thing on its screen. It has exactly one call site,
+ * `AssessmentCompletionHero`, and a second screen adopting it should be a deliberate decision that
+ * this is *that* screen's one arrival, not a way of making a card look important.
  *
  * It carries no on-colour of its own. Both endpoints are chosen to sit within the `primaryContainer`
  * tone of their scheme, so `colorScheme.onPrimaryContainer` is legible across the whole sweep;

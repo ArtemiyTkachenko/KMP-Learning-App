@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -44,6 +46,20 @@ internal data class AssessmentRetakeWording(
 )
 
 /**
+ * Whether a result action is the screen's primary continuation or an alternative to it.
+ *
+ * The retake is one or the other depending on what the run produced, which is why this is a
+ * parameter and not a fixed choice inside the control: a learner who got everything right has
+ * nothing to go and fix, so taking it again *is* the next thing to do; a learner with unresolved
+ * mistakes has something better to do first, and the retake becomes the alternative beside it.
+ * [AssessmentResultOutcome] is where that decision is made, once, for both products.
+ *
+ * An enum rather than a boolean because the two values name what the caller means. `isPrimary =
+ * false` would read as "not important", which a recovery action is not.
+ */
+internal enum class AssessmentActionEmphasis { PRIMARY, SECONDARY }
+
+/**
  * Taking a completed assessment again: one control, in all six states the retake can be in.
  *
  * Both result screens had a copy of this — the same `when` over
@@ -75,6 +91,7 @@ internal fun AssessmentRetakeAction(
     state: AssessmentRetakeState,
     wording: AssessmentRetakeWording,
     onRetake: () -> Unit,
+    emphasis: AssessmentActionEmphasis,
     actionTestTag: String,
     progressTestTag: String,
     modifier: Modifier = Modifier,
@@ -112,21 +129,9 @@ internal fun AssessmentRetakeAction(
                 )
             }
         }
-        OutlinedButton(
-            onClick = onRetake,
-            enabled = !isBusy,
-            // Disabled here means *working*, not unavailable, and those want opposite treatments.
-            // Material fades a disabled button's content to 38% of `onSurface`, which is the right
-            // answer for an action the learner cannot take — and the wrong one for a control whose
-            // whole job at that moment is to report that something is happening: it would dim the
-            // spinner and the word explaining it at the exact moment they are the only things on
-            // screen saying so. This is the same argument the practice screen makes for drawing a
-            // revealed answer's radio button as live rather than as disabled.
-            colors = ButtonDefaults.outlinedButtonColors(
-                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            ),
-            modifier = Modifier.testTag(actionTestTag),
-        ) {
+        // The same content in either weight. `ButtonColors` is resolved per emphasis and the body
+        // is written once, so the two weights cannot drift on what the control says.
+        val content: @Composable () -> Unit = {
             AnimatedContent(
                 targetState = isBusy,
                 transitionSpec = {
@@ -156,8 +161,49 @@ internal fun AssessmentRetakeAction(
                 }
             }
         }
+        when (emphasis) {
+            AssessmentActionEmphasis.PRIMARY -> Button(
+                onClick = onRetake,
+                enabled = !isBusy,
+                colors = busyAwareFilledColors(),
+                modifier = Modifier.testTag(actionTestTag),
+                content = { content() },
+            )
+            AssessmentActionEmphasis.SECONDARY -> OutlinedButton(
+                onClick = onRetake,
+                enabled = !isBusy,
+                colors = busyAwareOutlinedColors(),
+                modifier = Modifier.testTag(actionTestTag),
+                content = { content() },
+            )
+        }
     }
 }
+
+/**
+ * A filled retake whose disabled state still reads as live.
+ *
+ * Disabled here means *working*, not unavailable, and those want opposite treatments. Material fades
+ * a disabled button to 12% container and 38% content, which is the right answer for an action the
+ * learner cannot take — and the wrong one for a control whose whole job at that moment is to report
+ * that something is happening: it would dim the spinner and the word explaining it at the exact
+ * moment they are the only things on screen saying so. This is the same argument the practice screen
+ * makes for drawing a revealed answer's radio button as live rather than as disabled.
+ *
+ * Keeping the enabled colours is safe precisely because the content changes: a spinner beside
+ * "Starting practice" cannot be mistaken for an idle button, so nothing has to be greyed to say so.
+ */
+@Composable
+private fun busyAwareFilledColors(): ButtonColors = ButtonDefaults.buttonColors(
+    disabledContainerColor = MaterialTheme.colorScheme.primary,
+    disabledContentColor = MaterialTheme.colorScheme.onPrimary,
+)
+
+/** The same argument as [busyAwareFilledColors], for the weight that has no container to keep. */
+@Composable
+private fun busyAwareOutlinedColors(): ButtonColors = ButtonDefaults.outlinedButtonColors(
+    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+)
 
 /**
  * Sized as the leading icon it effectively is, rather than as Material's standalone 40dp indicator.

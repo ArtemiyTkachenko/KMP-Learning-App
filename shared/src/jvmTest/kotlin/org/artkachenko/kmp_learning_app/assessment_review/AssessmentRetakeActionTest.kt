@@ -41,6 +41,7 @@ internal class AssessmentRetakeActionTest {
                     state = AssessmentRetakeState.Creating,
                     wording = wording,
                     onRetake = { taps += 1 },
+                    emphasis = AssessmentActionEmphasis.PRIMARY,
                     actionTestTag = ActionTag,
                     progressTestTag = ProgressTag,
                 )
@@ -69,6 +70,7 @@ internal class AssessmentRetakeActionTest {
                     state = AssessmentRetakeState.Created("retake-attempt"),
                     wording = wording,
                     onRetake = {},
+                    emphasis = AssessmentActionEmphasis.PRIMARY,
                     actionTestTag = ActionTag,
                     progressTestTag = ProgressTag,
                 )
@@ -96,6 +98,7 @@ internal class AssessmentRetakeActionTest {
                     state = state,
                     wording = wording,
                     onRetake = { taps += 1 },
+                    emphasis = AssessmentActionEmphasis.PRIMARY,
                     actionTestTag = ActionTag,
                     progressTestTag = ProgressTag,
                 )
@@ -125,6 +128,7 @@ internal class AssessmentRetakeActionTest {
                     state = AssessmentRetakeState.Idle,
                     wording = wording,
                     onRetake = {},
+                    emphasis = AssessmentActionEmphasis.PRIMARY,
                     actionTestTag = ActionTag,
                     progressTestTag = ProgressTag,
                 )
@@ -135,6 +139,42 @@ internal class AssessmentRetakeActionTest {
         onNodeWithText("Practice again").assertIsDisplayed()
         onNodeWithTag(ProgressTag).assertDoesNotExist()
         onNodeWithText("Could not start. Try again.").assertDoesNotExist()
+    }
+
+    /**
+     * The weight is a parameter, and both of its values are the same control.
+     *
+     * A learner with mistakes to fix gets the retake as the alternative beside them, which is a
+     * different button — filled becomes outlined — and must not be a different *offer*. What is
+     * asserted is the part that could silently diverge now that the body is composed twice: the
+     * label, the busy crossover, and the callback are the same either way. Which weight a run
+     * actually gets is `AssessmentResultOutcome`'s decision and is covered there.
+     */
+    @Test
+    fun theSecondaryWeightIsTheSameOfferAndTheSameStates() = runComposeUiTest {
+        var state: AssessmentRetakeState by mutableStateOf(AssessmentRetakeState.Idle)
+        var taps = 0
+        setContent {
+            AppTheme {
+                AssessmentRetakeAction(
+                    state = state,
+                    wording = wording,
+                    onRetake = { taps += 1 },
+                    emphasis = AssessmentActionEmphasis.SECONDARY,
+                    actionTestTag = ActionTag,
+                    progressTestTag = ProgressTag,
+                )
+            }
+        }
+
+        onNodeWithText("Practice again").assertIsDisplayed()
+        onNodeWithTag(ActionTag).assertIsEnabled().performClick()
+        assertEquals(1, taps)
+
+        state = AssessmentRetakeState.Creating
+        onNodeWithTag(ActionTag).assertIsNotEnabled()
+        onNodeWithTag(ProgressTag).assertIsDisplayed()
+        onNodeWithText("Starting practice").assertIsDisplayed()
     }
 
     private val wording = AssessmentRetakeWording(

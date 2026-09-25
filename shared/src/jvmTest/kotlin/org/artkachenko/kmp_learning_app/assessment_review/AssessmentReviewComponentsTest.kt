@@ -15,47 +15,39 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
-import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
-import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
-import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
-import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 
 @OptIn(ExperimentalTestApi::class)
 internal class AssessmentReviewComponentsTest {
+    /**
+     * The notice states the count and nothing else.
+     *
+     * The button that offers to practise these moved to `AssessmentResultOutcome`, where the screen's
+     * action hierarchy is decided; what is left here is a caveat about the transcript, so this
+     * asserts it says the number and offers nothing to press.
+     */
     @Test
-    fun retainedMistakesStartAnExactUnresolvedPractice() = runComposeUiTest {
-        val configs = mutableListOf<AssessmentConfig.Focused>()
+    fun theRetentionNoticeCountsTheMistakesWithoutOfferingAnAction() = runComposeUiTest {
         setContent {
             AppTheme {
-                MistakeRetentionNotice(
-                    questions = listOf(
-                        ReviewQuestionItem.Available(question(isCorrect = false)),
-                        ReviewQuestionItem.Available(
-                            question(isCorrect = false).copy(questionId = "q2", subtopicId = "other"),
-                        ),
-                        ReviewQuestionItem.Available(
-                            question(isCorrect = true).copy(questionId = "q3"),
-                        ),
-                    ),
-                    onPracticeMistakes = configs::add,
-                )
+                MistakeRetentionNotice(retainedCount = 2)
             }
         }
 
-        onNodeWithText("Practice 2 mistakes").performClick()
+        onNodeWithText("2 questions remain in Mistakes for review.").assertIsDisplayed()
+        onNodeWithText("Practice 2 mistakes").assertDoesNotExist()
+    }
 
-        assertEquals(
-            listOf(
-                AssessmentConfig.Focused(
-                    scope = AssessmentScope.Subtopics(setOf("topic_basics", "other")),
-                    questionCount = 2,
-                    levels = AllQuestionLevels,
-                    source = PracticeQuestionSource.UNRESOLVED_MISTAKES,
-                ),
-            ),
-            configs,
-        )
+    /** Nothing left wrong is nothing to say, and no gap in the column it would have sat in. */
+    @Test
+    fun aCleanRunGetsNoRetentionNotice() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                MistakeRetentionNotice(retainedCount = 0)
+            }
+        }
+
+        onNodeWithText("remain in Mistakes", substring = true).assertDoesNotExist()
     }
 
     @Test

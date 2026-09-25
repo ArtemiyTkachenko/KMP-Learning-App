@@ -20,6 +20,12 @@ import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentResultOutcome
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentRetakeWording
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.progress.ProgressActionPaneTag
 import org.artkachenko.kmp_learning_app.progress.ProgressContentTag
@@ -153,6 +159,70 @@ internal class LargeFontScaleTest {
             onNodeWithTag(ProgressActionPaneTag).performScrollToNode(hasText("Kotlin"))
             onNodeWithText("Kotlin").assertWithin(windowWidth)
         }
+
+    /**
+     * The completion hero, whose figure is the largest type in the product.
+     *
+     * A display-scale numeral at a doubled type size beside a fixed 64dp ring is the exact shape that
+     * runs off the right-hand edge of a small phone, and the score is the one thing on this screen
+     * the learner came for. The figure block is weighted rather than laid out at its intrinsic width
+     * precisely so this holds; the assertion is that it does, for the widest figure the app produces
+     * — a two-digit numerator over a two-digit total.
+     *
+     * The second assertion is the one about usability: the reveal is an animation over a control that
+     * must stay pressable, so the primary action has to be both inside the window and reachable.
+     */
+    @Test
+    fun theCompletionHeroKeepsItsFigureAndItsActionInsideTheWindow() =
+        runSkikoComposeUiTest(size = PhoneDisplay, density = DoubledText) {
+            setContent {
+                AppTheme {
+                    Box(Modifier.size(PhoneWidth, PhoneHeight).testTag(TestRootTag)) {
+                        AssessmentResultOutcome(
+                            title = "Interview complete",
+                            correctAnswers = 16,
+                            totalQuestions = 20,
+                            percentage = 80.0,
+                            questions = List(20) { index ->
+                                ReviewQuestionItem.Available(
+                                    ReviewQuestionUiModel(
+                                        questionId = "q$index",
+                                        topicId = "kotlin",
+                                        subtopicId = "kotlin_basics",
+                                        text = "Question $index",
+                                        isCorrect = index >= 4,
+                                        answers = listOf(
+                                            ReviewAnswerUiModel("a", "Answer A", true, index >= 4),
+                                        ),
+                                        explanation = "Explanation",
+                                        sources = emptyList(),
+                                    ),
+                                )
+                            },
+                            retakeState = AssessmentRetakeState.Idle,
+                            retakeWording = AssessmentRetakeWording(
+                                action = "Retake interview",
+                                starting = "Starting interview",
+                                sourceMissing = "Gone.",
+                                noQuestions = "None.",
+                                error = "Failed.",
+                            ),
+                            onRetake = {},
+                            retakeActionTestTag = HeroRetakeTag,
+                            retakeProgressTestTag = HeroRetakeProgressTag,
+                            onPracticeMistakes = {},
+                        )
+                    }
+                }
+            }
+
+            val windowWidth = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.width
+
+            onNodeWithText("16 / 20").assertIsDisplayed().assertWithin(windowWidth)
+            onNodeWithText("80% correct").assertWithin(windowWidth)
+            onNodeWithText("Practice 4 mistakes").assertWithin(windowWidth)
+            onNodeWithTag(HeroRetakeTag).assertIsDisplayed().assertWithin(windowWidth)
+        }
 }
 
 private fun SemanticsNodeInteraction.assertWithin(windowWidth: Float): SemanticsNodeInteraction {
@@ -178,6 +248,8 @@ private val DesktopDisplay = Size(DesktopWidth.value, DesktopHeight.value)
 private val DoubledText = Density(density = 1f, fontScale = 2f)
 
 private const val TestRootTag = "large_font_test_root"
+private const val HeroRetakeTag = "large_font_hero_retake"
+private const val HeroRetakeProgressTag = "large_font_hero_retake_progress"
 
 private fun builderState() = PracticeBuilderUiState(
     scope = PracticeScopeUiModel(kind = PracticeScopeKind.TOPIC, name = "Kotlin"),

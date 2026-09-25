@@ -224,8 +224,9 @@
     <string name="focused_result_attempt_not_found">This practice session could not be found.</string>
     <string name="focused_result_not_completed">This practice session is not complete yet.</string>
     <string name="focused_result_error">Results could not be loaded.</string>
-    <string name="assessment_review_score">Score: %1$d / %2$d</string>
+    <string name="assessment_review_score_figure">%1$d / %2$d</string>
     <string name="assessment_review_accuracy_caption">correct</string>
+    <string name="assessment_review_accuracy_correct">%1$s correct</string>
     <string name="progress_not_enough_data">Not enough data yet. Practice more to measure this area.</string>
     <string name="assessment_review_correct">Correct</string>
     <string name="assessment_review_incorrect">Incorrect</string>

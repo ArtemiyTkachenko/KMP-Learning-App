@@ -68,6 +68,11 @@ change picks one of them rather than a tone it likes the look of.
 Level 2 is a claim about importance, so a screen that puts everything on it has said nothing. If two
 sibling cards both want it, neither should have it.
 
+Three tones, but four *ranks*: the fourth — a set of rows under one shared edge — is stated by how
+much container there is rather than by a tone the ramp has no room for, and the brand gradient sits
+outside the ramp entirely. Which container a section belongs in, and which component draws it, is
+[surface hierarchy](surface-hierarchy.md); this section stays the answer for the tones themselves.
+
 The two themes reach the separation differently, and neither is the other inverted. **Light is
 tonal**: the page is the brightest surface — a cool off-white, never white — and each level above it
 is a deeper, bluer tint, so layering never becomes white on white and never needs a shadow to be
@@ -204,6 +209,10 @@ at the compact margin.
 internal padding, and clips its own state layer, so those lists use
 `appScreenContentPadding()` as normal. Both shapes exist in the app on purpose: Cards for
 short or heterogeneous lists, flat divider rows for the long ones.
+
+A bare row inside a list that *does* supply the horizontal margin is the third case — it clips
+itself before its `clickable` instead. That, and rows inside a `ContentGroup`, are in
+[surface hierarchy](surface-hierarchy.md).
 
 ## Components
 

@@ -39,7 +39,9 @@ This file is an index. Load a linked document only when the task touches its sub
 - **Narrowest visibility** for new and touched Kotlin declarations. See
   [Kotlin style](docs/development/kotlin.md).
 - **Compose UI follows Material 3** and the theme scales in `ui/theme/`, never literal
-  values. See [Material Design 3](docs/development/material-design.md).
+  values. See [Material Design 3](docs/development/material-design.md). Which *container* a
+  section belongs in — hero, card, group, or bare row — is
+  [surface hierarchy](docs/development/surface-hierarchy.md).
 - **Test meaningful behavior changes**, in the source set the behavior belongs to. See
   [testing](docs/development/testing.md).
 - **Validate every question you write or change.** Generation is not validation: solve the
@@ -95,6 +97,7 @@ does not cover: [CI](docs/workflows/ci.md).
 **Development** — how to write code here:
 [Kotlin style](docs/development/kotlin.md) ·
 [Material Design 3](docs/development/material-design.md) ·
+[surface hierarchy](docs/development/surface-hierarchy.md) ·
 [KMP boundaries](docs/development/kmp.md) ·
 [Gradle](docs/development/gradle.md) ·
 [versioning](docs/development/versioning.md) ·

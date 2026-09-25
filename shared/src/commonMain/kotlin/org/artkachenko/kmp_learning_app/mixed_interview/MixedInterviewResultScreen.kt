@@ -29,7 +29,7 @@ import kmp_learning_app.shared.generated.resources.mixed_result_title
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_score
 import kmp_learning_app.shared.generated.resources.mixed_result_topic_unavailable
 import kmp_learning_app.shared.generated.resources.assessment_review_interview_complete
-import org.artkachenko.kmp_learning_app.assessment_review.AssessmentScoreSummary
+import org.artkachenko.kmp_learning_app.assessment_review.AssessmentCompletionHero
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionCard
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
@@ -176,7 +176,7 @@ private fun LazyListScope.outcomeSection(
 ) {
     item {
         Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable)) {
-            AssessmentScoreSummary(
+            AssessmentCompletionHero(
                 correctAnswers = state.correctAnswers,
                 totalQuestions = state.totalQuestions,
                 percentage = state.percentage,

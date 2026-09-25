@@ -28,7 +28,6 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
 import kmp_learning_app.shared.generated.resources.assessment_review_collapse
 import kmp_learning_app.shared.generated.resources.assessment_review_expand
 import kmp_learning_app.shared.generated.resources.assessment_review_missing_question
@@ -39,58 +38,17 @@ import kmp_learning_app.shared.generated.resources.assessment_review_practice_mi
 import kmp_learning_app.shared.generated.resources.assessment_review_save_question
 import kmp_learning_app.shared.generated.resources.assessment_review_saved_state
 import kmp_learning_app.shared.generated.resources.assessment_review_unsaved_state
-import kmp_learning_app.shared.generated.resources.assessment_review_score
 import kmp_learning_app.shared.generated.resources.assessment_review_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
 import kmp_learning_app.shared.generated.resources.assessment_review_unsave_question
-import org.artkachenko.kmp_learning_app.ui.AccuracyHeadline
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
-import org.artkachenko.kmp_learning_app.ui.PrimarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
-
-@Composable
-internal fun AssessmentScoreSummary(
-    correctAnswers: Int,
-    totalQuestions: Int,
-    percentage: Double,
-    title: String? = null,
-    modifier: Modifier = Modifier,
-) {
-    PrimarySummaryCard(modifier) {
-        title?.let {
-            Text(it, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-        }
-        if (totalQuestions < MeaningfulPercentageQuestionCount) {
-            Text(
-                text = stringResource(
-                    Res.string.assessment_review_score,
-                    correctAnswers,
-                    totalQuestions,
-                ),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        } else {
-            AccuracyHeadline(
-                percentage = percentage,
-                caption = stringResource(Res.string.assessment_review_accuracy_caption),
-                supporting = stringResource(
-                    Res.string.assessment_review_score,
-                    correctAnswers,
-                    totalQuestions,
-                ),
-            )
-        }
-    }
-}
-
-private const val MeaningfulPercentageQuestionCount = 5
 
 @Composable
 internal fun MistakeRetentionNotice(

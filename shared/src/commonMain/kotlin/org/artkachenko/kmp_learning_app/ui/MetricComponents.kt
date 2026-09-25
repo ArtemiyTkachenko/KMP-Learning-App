@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
@@ -102,15 +103,28 @@ internal fun AccuracyHeadline(
  * says something a redrawn bar at 60% does not. The first composition is not animated for the same
  * reason — a bar growing from zero every time a screen opens would be stating a change that did not
  * happen.
+ *
+ * [growFromEmptyMillis] is the one case where it did. A completed assessment's score is a figure
+ * that came into existence moments ago, so on that screen — and only there — the meter fills from
+ * empty over the given duration. It is opt-in rather than the default precisely because the claim
+ * it makes is false everywhere else: the accuracy on the Progress dashboard is a standing figure,
+ * not something that just happened.
+ *
+ * [trackColor] is a parameter for the same reason the neutral container of an answer option is: the
+ * default is a statement about the *page's* surface ramp, which is not where this meter always sits.
+ * On the completion hero it sits on a gradient, where a neutral grey track would read as a control
+ * borrowed from another screen.
  */
 @Composable
 internal fun ProgressMeter(
     fraction: Float,
     color: Color,
     modifier: Modifier = Modifier,
+    trackColor: Color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    growFromEmptyMillis: Int? = null,
 ) {
     val target = fraction.coerceIn(0f, 1f)
-    val animated = remember { Animatable(target) }
+    val animated = remember { Animatable(if (growFromEmptyMillis == null) target else 0f) }
     LaunchedEffect(target) {
         // Nothing to travel on the first composition, where the Animatable was seeded with this
         // very value — and `animateTo` does not know that, so it would run a full invisible tween
@@ -118,14 +132,26 @@ internal fun ProgressMeter(
         // spends the first frames of its life requesting frames for animations that cannot move,
         // and a list whose rows each carry one can keep that going as new rows scroll in.
         if (animated.value != target) {
-            animated.animateTo(target, AppMotion.effectSpec(AppMotion.ProgressDurationMillis))
+            animated.animateTo(
+                targetValue = target,
+                animationSpec = if (growFromEmptyMillis == null) {
+                    AppMotion.effectSpec(AppMotion.ProgressDurationMillis)
+                } else {
+                    // Decelerating, and over the hero's own duration, so the bar and the figure
+                    // counting above it are one movement rather than two that happen to overlap.
+                    tween(
+                        durationMillis = growFromEmptyMillis,
+                        easing = AppMotion.EmphasizedDecelerateEasing,
+                    )
+                },
+            )
         }
     }
     LinearProgressIndicator(
         progress = { animated.value },
         modifier = modifier.fillMaxWidth().height(MeterHeight),
         color = color,
-        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        trackColor = trackColor,
         strokeCap = StrokeCap.Round,
         // The default gap and stop indicator are Material's own progress affordances. They are
         // removed because this is a static measurement of how much has been covered, not an

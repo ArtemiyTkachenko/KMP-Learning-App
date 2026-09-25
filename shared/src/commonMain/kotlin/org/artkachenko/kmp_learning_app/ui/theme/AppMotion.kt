@@ -44,6 +44,18 @@ internal object AppMotion {
     const val ProgressDurationMillis: Int = 300
 
     /**
+     * A completed assessment's score arriving on the result screen.
+     *
+     * The one duration in the app deliberately past the ~400ms ceiling the rest of the motion keeps
+     * to. Everything else here is a *state change* — something that was already on screen becoming
+     * something else — where length reads as sluggishness. This is the opposite case: a figure
+     * being counted out and a meter being filled, which is the app's single celebratory beat and
+     * the only place where the travel itself is the content. Below about half a second a count-up
+     * reads as a flicker rather than as counting.
+     */
+    const val ScoreRevealDurationMillis: Int = 620
+
+    /**
      * New content arriving underneath something the learner is already reading.
      *
      * Longer than a state change because it is an arrival rather than an adjustment, and short

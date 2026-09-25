@@ -13,7 +13,9 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -269,6 +271,32 @@ internal class PracticeBuilderScreenTest {
                 )
             }
         }
+    }
+
+    /**
+     * The thing being configured is announced as a heading, like every other screen's subject line.
+     *
+     * The three field labels under it were already headings — `SectionHeading` applies it — so
+     * heading navigation reached "Questions", "Levels" and "Draw from" while the scope they all
+     * apply to was reachable only by reading past them.
+     */
+    @Test
+    fun theScopeBeingConfiguredIsAHeading() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                PracticeBuilderScreen(
+                    state = state(),
+                    onBack = {},
+                    onQuestionCountClick = {},
+                    onLevelClick = {},
+                    onSourceClick = {},
+                    onStartClick = {},
+                    onRetryAvailability = {},
+                )
+            }
+        }
+
+        onNodeWithText("Topic: Coroutines").assertIsDisplayed().assert(isHeading())
     }
 
     private fun state(

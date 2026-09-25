@@ -2,7 +2,9 @@ package org.artkachenko.kmp_learning_app.mistake_review
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -25,6 +27,33 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 
 @OptIn(ExperimentalTestApi::class)
 internal class MistakeReviewScreenTest {
+    /**
+     * What this queue currently holds is the screen's subject, and is announced as a heading.
+     *
+     * The bar above says which screen this is; this says what is in it. It was the only subject
+     * line in the app a screen reader could not jump to, and the only styled `Text` whose colour
+     * came from the ambient `LocalContentColor` rather than from a named role — correct inside the
+     * shell, black in a preview or an isolated composition.
+     */
+    @Test
+    fun theOutstandingCountIsTheScreensHeading() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        mistakes = listOf(availableMistake("q1", subtopicId = "flows")),
+                    ),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithText("1 unresolved mistakes to review").assertIsDisplayed().assert(isHeading())
+    }
+
     @Test
     fun aMappedMistakeNavigatesToItsStableLessonIds() = runComposeUiTest {
         val opened = mutableListOf<MistakeStudyLesson>()

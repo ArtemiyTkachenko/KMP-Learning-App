@@ -254,6 +254,15 @@ are marked where they appear.
   a band label — takes `labelLarge` in `primary` and publishes no `heading()`. `SectionHeading` is
   for the thing that introduces content, and giving it to a marker makes the metadata outrank the
   content and hands assistive technology two peer headings where the page drew one inside the other.
+- **A screen's own subject line *is* a heading**, and publishes `heading()` even though it is not a
+  `SectionHeading`. The bar says which screen this is; the subject line says what this instance of
+  it holds — the Topic being configured, how many mistakes are outstanding, which Unit is open. A
+  screen whose field labels are headings while the thing they describe is not leaves heading
+  navigation landing in the middle of the page.
+- **Name the colour role on every styled `Text`.** `LocalContentColor` resolves correctly inside
+  the shell, because the `Scaffold` supplies `onBackground` — but a preview, a test, or any
+  composition outside it gets Compose's default black. A screen should not depend on an ambient it
+  does not control to be legible in dark.
 - **Semantic colour marks, it does not flood.** A weak row carries an accent border and a
   tinted figure over the ordinary neutral container rather than filling the whole card
   with `partiallyCorrectContainer`: one saturated card reads as emphasis, six in a column

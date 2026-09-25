@@ -65,6 +65,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
@@ -217,6 +218,10 @@ private fun LazyListScope.configurationSection(
             text = state.scope.label(),
             style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.onSurface,
+            // What is being configured, announced as a heading like every other screen's subject
+            // line. The three `SectionHeading`s below it already were, so the form's fields were
+            // reachable by heading navigation while the thing they configure was not.
+            modifier = Modifier.semantics { heading() },
         )
     }
     item {

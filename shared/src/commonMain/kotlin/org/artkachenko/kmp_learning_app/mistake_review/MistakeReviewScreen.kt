@@ -17,6 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_description
 import kmp_learning_app.shared.generated.resources.mistake_review_empty
@@ -255,12 +257,24 @@ private fun LazyListScope.remediationSection(
 ) {
     item {
         Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Related)) {
+            // The screen's own subject, so it is announced as a heading for the same reason every
+            // other screen's is: the bar above says which screen this is, and this says what this
+            // instance of it holds. It was the only subject line in the app a screen reader could
+            // not jump to.
+            //
+            // The colour is named rather than inherited. It resolved correctly through
+            // `LocalContentColor` — the shell's `Scaffold` supplies `onBackground`, which this
+            // palette keeps equal to `onSurface` — but it was the one styled `Text` in the app
+            // whose colour depended on an ambient the screen does not control, and it renders
+            // black outside that shell, as a preview or an isolated test composes it.
             Text(
                 text = stringResource(
                     Res.string.mistake_review_unresolved_count,
                     mistakeCount,
                 ),
                 style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.semantics { heading() },
             )
             Text(
                 text = stringResource(Res.string.mistake_review_description),

@@ -10,7 +10,9 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithTag
@@ -95,6 +97,42 @@ internal class InterviewStartScreenTest {
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
         onNodeWithText("Best")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
+
+        assertEquals(listOf("latest", "best"), opened)
+    }
+
+    /**
+     * The latest and the best are one record, not two stacked results.
+     *
+     * The assertion is an ancestry one, because what changed is the number of containers and not
+     * what either row says or does: both still navigate by their own stable attempt ID, and both
+     * still carry their own `Role.Button` — a group takes no click of its own that could make one
+     * row reachable through the other.
+     */
+    @Test
+    fun bothRecordRowsShareOneContainerAndKeepTheirOwnNavigation() = runComposeUiTest {
+        val opened = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                InterviewStartScreen(
+                    onStartMixedInterview = {},
+                    history = historyState(
+                        attemptCount = 4,
+                        latest = InterviewAttemptUiModel("latest", 5, 20, 25.0, CompletedAt),
+                        best = InterviewAttemptUiModel("best", 18, 20, 90.0, CompletedAt),
+                    ),
+                    onOpenResult = { opened += it },
+                )
+            }
+        }
+
+        val insideGroup = hasAnyAncestor(hasTestTag(InterviewRecordGroupTag))
+        onNode(hasText("Last interview") and insideGroup)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
+        onNode(hasText("Best") and insideGroup)
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
 

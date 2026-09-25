@@ -112,6 +112,14 @@ between the products — the completion title, the five retake strings, and the 
 Mixed result appends its per-Topic breakdown to the outcome pane after the shared block. There is
 no `isInterview` flag anywhere in the path.
 
+That breakdown is one `ContentGroup` rather than a card per Topic. Its rows are the most
+homogeneous thing on the screen — a Topic, a score, a rate, every one of them — they navigate
+nowhere, and there are at most as many as the interview drew Topics from, so a card each spent an
+edge saying what the heading above already said. It did that directly above a transcript of
+question cards that genuinely are separate surfaces, which left the two halves of the summary
+reading as one undifferentiated column of boxes. Every row is inert and therefore chevron-free: a
+result is a record of what happened and there is no per-Topic destination to reach from one.
+
 `AssessmentCompletionHero` is the product's one use of the hero gradient. It states the score as
 the display figure (`8 / 10`) with the percentage beneath it (`80% correct`), a determinate ring
 beside it, and nothing else; below five questions the percentage and the ring are both withheld,
@@ -128,6 +136,16 @@ domain's weakness threshold resolves to `partiallyCorrect`, never to `incorrect`
 belongs to a wrong answer and a failed operation, not to a verdict on the learner, and the figure
 itself stays `onPrimaryContainer` at every band so the brand remains the dominant colour.
 
+Both of those lists, and the Progress dashboard's per-Topic table, draw the shared `AccuracyRow`
+rather than writing the row out again: three surfaces reached the same shape within two changes of
+each other, and three copies are three chances to disagree about the type scale of a percentage. It
+is deliberately not `PerformanceCard` with a flag. The card carries an accent border, a comparison
+meter, and a low-emphasis action line, all of which are container features a grouped row cannot
+hold, so the two stay separate components over one shared reading. The row merges its descendants
+whether or not it is navigable — a `clickable` merges on its own, but an inert row inside a group
+has no card edge left to imply that its name, score, and rate belong together, and unmerged it
+would be announced as three unrelated fragments.
+
 `AssessmentResultOutcome` owns the action hierarchy, which depends on what the run produced rather
 than on which product it was. With unresolved mistakes, practising them is the primary action and
 the retake is the outlined alternative; with nothing left to fix there is no remediation to offer, so
@@ -136,7 +154,9 @@ receives that, and a busy retake keeps its enabled colours in either weight beca
 changed label already say it is working.
 
 Once the learner has finished an interview, `InterviewStartScreen` shows their record
-through `InterviewStartViewModel`; each row opens the result it came from. The most recent
+through `InterviewStartViewModel` as one `ContentGroup`; each row opens the result it came from.
+At most two rows ever reach it and they answer the same question about the same thing, so the pair
+is one record with two lines rather than two unrelated results stacked under a heading. The most recent
 interview leads and carries its date, because "how did I do last time, and how long ago was
 that?" is the question a returning learner has. A personal best is kept and kept *second*:
 it is genuine information the data model already supports, but promoting it above the latest

@@ -56,6 +56,7 @@ import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_titl
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.AccuracyRow
 import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
 import org.artkachenko.kmp_learning_app.ui.ContentGroup
 import org.artkachenko.kmp_learning_app.ui.GroupRowPadding
@@ -653,58 +654,30 @@ private fun WeakAreaCard(
 /**
  * One Topic's standing, as a row of the performance table.
  *
- * This was a `ProgressPerformanceCard`, which is the same component a weak area draws — so the two
- * adjacent sections differed only by a 1dp border, and the diagnostic one was the harder of the two
- * to pick out. The row keeps every part a learner acts on: the accuracy figure at its own weight
- * and in [accuracyColor], the counts that earned it, the chevron, `Role.Button`, and the stable
- * per-Topic handle. What it gives up is the edge, which the group now draws once for all of them.
+ * This was a `ProgressPerformanceCard` — the same component a weak area draws — so the two adjacent
+ * sections differed only by a 1dp border, and the diagnostic one was the harder of the two to pick
+ * out. It is the shared [AccuracyRow] now rather than a row written out here, because a Mixed
+ * interview's performance breakdown and the Interview record reached the same shape within two
+ * changes of this one. Every part a learner acts on survives: the figure at its own weight and in
+ * `accuracyColor`, the counts that earned it, the chevron, `Role.Button`, and the stable per-Topic
+ * handle. What it gives up is the edge, which the group now draws once for all of them.
  */
 @Composable
 private fun TopicPerformanceRow(
     topic: ProgressTopicUiModel,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(role = Role.Button, onClick = onClick)
-            .testTag(progressTopicCardTag(topic.topicId))
-            .heightIn(min = MinimumTouchTargetSize)
-            .padding(GroupRowPadding),
-        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
-        ) {
-            Text(
-                text = topic.topicName ?: stringResource(Res.string.progress_topic_unavailable),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(
-                    Res.string.progress_score,
-                    topic.correctCount,
-                    topic.answeredCount,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Text(
-            text = formatAccuracy(topic.percentage),
-            style = MaterialTheme.typography.titleLarge,
-            color = accuracyColor(topic.percentage),
-        )
-        Icon(
-            imageVector = AppIcons.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(NavigationChevronSize),
-        )
-    }
+    AccuracyRow(
+        title = topic.topicName ?: stringResource(Res.string.progress_topic_unavailable),
+        detail = stringResource(
+            Res.string.progress_score,
+            topic.correctCount,
+            topic.answeredCount,
+        ),
+        percentage = topic.percentage,
+        modifier = Modifier.testTag(progressTopicCardTag(topic.topicId)),
+        onClick = onClick,
+    )
 }
 
 /**

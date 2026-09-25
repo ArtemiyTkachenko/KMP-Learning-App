@@ -210,8 +210,8 @@ internal fun SecondarySummaryCard(
  * ## What a row owes
  *
  * The group draws no padding and no click of its own. Each row states its own [GroupRowPadding]
- * inset, and each row that navigates carries its own `clickable`, its own `Role`, and its own test
- * handle — so an item inside a group is exactly as identifiable, as tappable, and as announceable
+ * inset — [AccuracyRow] is the shared row for the common case, a name and a rate — and each row
+ * that navigates carries its own `clickable`, its own `Role`, and its own test handle — so an item inside a group is exactly as identifiable, as tappable, and as announceable
  * as the card it replaced, and the group can hold a mix of navigable and inert rows without a flag
  * saying which is which. Because the container clips, a row's state layer follows the group's
  * corners at the ends and runs edge to edge in the middle, which is what makes a hover read as one

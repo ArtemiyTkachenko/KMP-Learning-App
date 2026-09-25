@@ -7,6 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollAction
@@ -389,6 +391,39 @@ internal class MixedInterviewResultScreenTest {
                 hasText("Question text") and hasAnyAncestor(hasTestTag(MixedResultReviewPaneTag)),
             ).assertIsDisplayed()
         }
+
+    /**
+     * The per-Topic breakdown is one grouped table rather than a card per Topic, and every row in
+     * it stays inert.
+     *
+     * A result is a record of what happened, and there is no per-Topic destination to reach from
+     * one — so a chevron or a click here would advertise navigation the screen cannot perform. The
+     * group takes no click of its own either, which is what keeps that true for the whole section
+     * rather than row by row.
+     */
+    @Test
+    fun theTopicBreakdownIsOneInertGroupedTable() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState(),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                )
+            }
+        }
+
+        onNode(hasScrollAction()).performScrollToNode(hasTestTag(MixedResultTopicGroupTag))
+        val insideGroup = hasAnyAncestor(hasTestTag(MixedResultTopicGroupTag))
+        onNode(hasText("Kotlin") and insideGroup)
+            .assertIsDisplayed()
+            .assert(hasText("2 / 3 correct", substring = true))
+            .assertHasNoClickAction()
+        // A Topic the curriculum has dropped still gets its row and its fallback name.
+        onNode(hasText("Topic unavailable") and insideGroup).assertHasNoClickAction()
+        onNodeWithTag(MixedResultTopicGroupTag).assertHasNoClickAction()
+    }
 
     private fun contentState() = MixedInterviewResultUiState.Content(
         attemptId = "attempt",

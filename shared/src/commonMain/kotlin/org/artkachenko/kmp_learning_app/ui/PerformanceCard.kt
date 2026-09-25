@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
@@ -196,6 +198,104 @@ internal fun PerformanceCard(
         }
     }
 }
+
+/**
+ * The same accuracy row as [PerformanceCard], without the card.
+ *
+ * A row inside a [ContentGroup] and a row inside a Card are the same reading: what it is on the
+ * left, how the learner is doing on the right. Three screens reached the group form within two
+ * changes of each other — the Progress dashboard's per-Topic table, a Mixed interview's
+ * performance-by-topic breakdown, and the Interview start screen's own record — and each wrote the
+ * row out again, so three surfaces were one edit away from disagreeing about the type scale of a
+ * percentage.
+ *
+ * This is deliberately *not* `PerformanceCard(inGroup = true)`. The card carries three things a
+ * grouped row cannot: an accent border, which is a property of a container; a comparison meter,
+ * which belongs under a row rather than in it; and a low-emphasis action on its own line, which a
+ * group would let bleed into the divider below it. A flag would have to answer for all three, and
+ * the answer is the same every time — those are card features. Two components, one shared reading.
+ *
+ * [onClick] makes the whole row a button and adds the navigation chevron, for the same reason the
+ * card keeps them together: an inert row must not advertise navigation. The minimum touch target
+ * sits inside the `clickable`, so the state layer spans the row rather than being inset from it and
+ * a two-line row still clears 48dp.
+ *
+ * The row merges its descendants whether or not it is navigable. A `clickable` merges on its own,
+ * so a navigable row was already announced as one thing — but an inert one was three separate
+ * nodes, and inside a group there is no longer a card edge to imply that the name, the score, and
+ * the rate belong together. A Mixed interview's breakdown would have been read as nine unrelated
+ * fragments. Merging is what makes a row a row to a screen reader as well as to the eye.
+ */
+@Composable
+internal fun AccuracyRow(
+    title: String,
+    detail: String,
+    percentage: Double?,
+    modifier: Modifier = Modifier,
+    caption: String? = null,
+    onClick: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick == null) {
+                    Modifier
+                } else {
+                    Modifier.clickable(role = Role.Button, onClick = onClick)
+                },
+            )
+            .heightIn(min = MinimumTouchTargetSize)
+            .padding(GroupRowPadding)
+            .semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            caption?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        percentage?.let {
+            Text(
+                text = formatAccuracy(it),
+                style = MaterialTheme.typography.titleLarge,
+                color = accuracyColor(it),
+            )
+        }
+        if (onClick != null) {
+            Icon(
+                imageVector = AppIcons.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(NavigationChevronSize),
+            )
+        }
+    }
+}
+
+/** Material's minimum touch target, stated here because a bare row is not a Material component. */
+private val MinimumTouchTargetSize = 48.dp
+
+/** The trailing navigation affordance, at the size every other row in the app draws it. */
+private val NavigationChevronSize = 20.dp
 
 /** Thick enough to read as a deliberate accent at a glance, thin enough not to become a frame. */
 private val WeakBorderWidth = 1.dp

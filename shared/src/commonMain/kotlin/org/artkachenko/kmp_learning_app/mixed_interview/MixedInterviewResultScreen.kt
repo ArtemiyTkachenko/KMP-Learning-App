@@ -37,7 +37,8 @@ import org.artkachenko.kmp_learning_app.assessment_review.AssessmentResultLayout
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
-import org.artkachenko.kmp_learning_app.ui.PerformanceCard
+import org.artkachenko.kmp_learning_app.ui.AccuracyRow
+import org.artkachenko.kmp_learning_app.ui.ContentGroup
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
@@ -53,6 +54,12 @@ internal const val MixedResultCreatingIndicatorTag = "mixed_result_creating_indi
 /** The two panes of the expanded result, named for the same reason the Progress panes are. */
 internal const val MixedResultSummaryPaneTag = "mixed_result_summary_pane"
 internal const val MixedResultReviewPaneTag = "mixed_result_review_pane"
+
+/**
+ * The single container the per-Topic breakdown draws, so a test can assert the section is one
+ * grouped table rather than a column of cards without reading a corner radius.
+ */
+internal const val MixedResultTopicGroupTag = "mixed_result_topic_group"
 
 @Composable
 internal fun MixedInterviewResultScreen(
@@ -195,8 +202,18 @@ private fun LazyListScope.outcomeSection(
         // argument `ResultReviewHeading` makes for the transcript heading in one scroll.
         SectionHeading(stringResource(Res.string.mixed_result_performance_by_topic))
     }
-    items(state.topicPerformance, key = { it.topicId }) { topic ->
-        TopicPerformanceCard(topic)
+    // One container for the whole breakdown rather than one card per Topic.
+    //
+    // These rows are the most homogeneous thing on the screen — a Topic, a score, a rate, every one
+    // of them — they navigate nowhere, and there are at most as many as the interview drew Topics
+    // from. A card each spent an edge saying what the heading above already said, and did it
+    // directly above a transcript of question cards that genuinely are separate surfaces, so the
+    // two halves of the summary read as one undifferentiated column of boxes.
+    item {
+        ContentGroup(
+            modifier = Modifier.testTag(MixedResultTopicGroupTag),
+            rows = state.topicPerformance.map { topic -> { TopicPerformanceRow(topic) } },
+        )
     }
 }
 
@@ -229,11 +246,19 @@ private fun LazyListScope.reviewSection(
     }
 }
 
+/**
+ * One Topic's share of the interview, as a row of the breakdown table.
+ *
+ * Inert on purpose, and therefore chevron-free: a result is a record of what happened, and there is
+ * no per-Topic destination to reach from one. The shared [AccuracyRow] is what keeps this reading
+ * identical to the Progress dashboard's per-Topic table, which answers the same question over a
+ * different window.
+ */
 @Composable
-private fun TopicPerformanceCard(
+private fun TopicPerformanceRow(
     topic: TopicPerformanceUiModel,
 ) {
-    PerformanceCard(
+    AccuracyRow(
         title = topic.topicName ?: stringResource(Res.string.mixed_result_topic_unavailable),
         detail = stringResource(
             Res.string.mixed_result_topic_score,

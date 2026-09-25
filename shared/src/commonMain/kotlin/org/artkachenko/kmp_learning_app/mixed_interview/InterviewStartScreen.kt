@@ -41,7 +41,8 @@ import kmp_learning_app.shared.generated.resources.mixed_interview_review_note
 import kmp_learning_app.shared.generated.resources.mixed_interview_start
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import org.artkachenko.kmp_learning_app.ui.MetricFigure
-import org.artkachenko.kmp_learning_app.ui.PerformanceCard
+import org.artkachenko.kmp_learning_app.ui.AccuracyRow
+import org.artkachenko.kmp_learning_app.ui.ContentGroup
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.time.timestampText
@@ -56,6 +57,12 @@ import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 internal const val InterviewStartButtonTag = "interview_start"
 
 internal const val InterviewRecordTag = "interview_record"
+
+/**
+ * The single container the record's rows share, so a test can assert that the latest and the best
+ * are one record rather than two stacked results.
+ */
+internal const val InterviewRecordGroupTag = "interview_record_group"
 
 /** The deliberate first-visit state, so a test can tell it from an absent record. */
 internal const val InterviewNoHistoryTag = "interview_no_history"
@@ -298,22 +305,35 @@ private fun InterviewRecord(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        InterviewRecordRow(
-            title = stringResource(Res.string.interview_history_latest),
-            attempt = history.latest,
-            showsDate = true,
-            onOpenResult = onOpenResult,
+        // One container for the record rather than a card per entry. At most two rows ever reach
+        // this, they answer the same question about the same thing, and the pair was reading as two
+        // unrelated results stacked under a heading instead of as one record with two lines in it.
+        ContentGroup(
+            modifier = Modifier.testTag(InterviewRecordGroupTag),
+            rows = buildList {
+                add {
+                    InterviewRecordRow(
+                        title = stringResource(Res.string.interview_history_latest),
+                        attempt = history.latest,
+                        showsDate = true,
+                        onOpenResult = onOpenResult,
+                    )
+                }
+                if (history.best.attemptId != history.latest.attemptId) {
+                    add {
+                        InterviewRecordRow(
+                            title = stringResource(Res.string.interview_history_best),
+                            attempt = history.best,
+                            // The best result's own date is not the point of the row — it is the
+                            // score that earns it a place — and printing two dates invites reading
+                            // the pair as a timeline.
+                            showsDate = false,
+                            onOpenResult = onOpenResult,
+                        )
+                    }
+                }
+            },
         )
-        if (history.best.attemptId != history.latest.attemptId) {
-            InterviewRecordRow(
-                title = stringResource(Res.string.interview_history_best),
-                attempt = history.best,
-                // The best result's own date is not the point of the row — it is the score that
-                // earns it a place — and printing two dates invites reading the pair as a timeline.
-                showsDate = false,
-                onOpenResult = onOpenResult,
-            )
-        }
     }
 }
 
@@ -324,7 +344,7 @@ private fun InterviewRecordRow(
     showsDate: Boolean,
     onOpenResult: (String) -> Unit,
 ) {
-    PerformanceCard(
+    AccuracyRow(
         title = title,
         detail = stringResource(
             Res.string.interview_history_score,

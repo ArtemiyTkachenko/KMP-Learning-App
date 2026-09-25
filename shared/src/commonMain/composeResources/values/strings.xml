@@ -218,6 +218,7 @@
     <string name="assessment_taking_start_error">Practice could not be started.</string>
     <string name="assessment_taking_ready">All questions answered. Ready to finish.</string>
     <string name="assessment_taking_finish">Finish and view results</string>
+    <string name="assessment_taking_finishing">Finishing</string>
     <string name="assessment_taking_completion_save_error">Results could not be saved. Try again.</string>
     <string name="assessment_taking_results_opening">Opening results</string>
     <string name="focused_result_title">Results</string>

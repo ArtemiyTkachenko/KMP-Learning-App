@@ -61,6 +61,21 @@ taking screen pins a linear meter under its top bar, driven by the same
 `questionNumber`/`totalQuestions` as the counter, so how far through the assessment
 the learner is stays answerable while they read a long question.
 
+The progress meter is pinned above the scrolling pane rather than placed in it, so how far
+through the assessment the learner is stays answerable while they read a long question. It is
+given the content column's width explicitly, because "outside the pane" and "the width of the
+pane" are only the same thing at a compact width: past `AppContentWidth.Standard`'s cap the
+question column is centred and a full-bleed meter measured a column it no longer lined up with.
+It draws with the product's shared `ProgressMeter` — not a second `LinearProgressIndicator` with
+Material's track gap, stop indicator and default height, which is what it was.
+
+The commit action is separated from the options by a section break rather than by the same gap
+that separates the options from each other: choosing and committing are different acts, and on a
+touch screen a button one option-gap below the last option is a mis-tap. Finishing follows the
+same busy-control rule as every other action in the app — the button keeps its place, its size and
+its emphasis, and states its condition as a word beside an 18dp spinner rather than replacing its
+label with Material's 40dp standalone indicator.
+
 The Mixed Android Interview product has its own top-level area, and the asymmetry with
 Practice is intentional rather than an omission: **Practice is the learner choosing what to
 work on, Interview is the app testing them.** There is no interview builder and no

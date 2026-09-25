@@ -252,6 +252,21 @@ short or heterogeneous lists, flat divider rows for the long ones.
   scale of about 0.98 in a `graphicsLayer`. Draw-layer only, so layout, hit testing, and
   when the click callback runs are all untouched — a press treatment must never be
   something the callback waits for. Never hand-roll a gesture detector for this.
+- **Chrome pinned outside the content pane still takes the content pane's width.** A bar, meter or
+  counter that describes the column below it has to be capped and centred the same way, or it lines
+  up with the column only until the window passes `AppContentWidth`'s cap. Wrap it and apply the
+  same `maxWidth()` and `LocalAppContentMargin`.
+- **One meter style.** `ProgressMeter` is the product's linear bar: 8dp, rounded, no track gap and
+  no stop indicator, because these are measurements of how much has been covered rather than
+  operations in flight. Do not configure a second `LinearProgressIndicator` by hand.
+- **A primary action fills its container only when the container is the window.** A button that
+  takes `fillMaxWidth` inside a pane two fifths of a desktop window is not a larger affordance, it
+  is a bar that happens to be pressable. Read `LocalAppWindowSizeClass` and let it size to its
+  label where the pane is wide.
+- **A modal's states share a container.** A hand-rolled `Surface` inside a `Dialog` defaults to
+  `surface` at whatever shape it is given, while `AlertDialog` takes `DialogTokens.ContainerColor`
+  (`surfaceContainerHigh`) at `CornerExtraLarge` — so one dialog's busy state and its failure state
+  arrived on different containers. Quote `AlertDialogDefaults.shape` and `.containerColor`.
 - **An action about one item belongs inside that item.** A per-entry control emitted as a sibling
   of the card it acts on lands on the page background between entries, where it reads as navigation
   for the screen rather than as what that entry offers. `ReviewQuestionCard(footer = …)` is the slot

@@ -77,6 +77,17 @@ stays `Error` and re-resolves on Retry. A Topic or Subtopic target cannot produc
 so those flows are unchanged — their scope is known from the ID, and the curriculum is
 read only for a display name whose absence has never blocked practice.
 
+The verdict those states produce is the screen's conclusion, so it renders as one:
+availability, its Retry, and Start sit together on a `SecondarySummaryCard` rather than
+loose under the last chip row. The sentence itself is `titleMedium` and carries a tone —
+neutral while checking or when a run is ready, the app's warning amber for every setup that
+cannot run, and `colorScheme.error` for the one state that is a failed read rather than a
+settled answer. It was `bodyMedium onSurfaceVariant` in all six, which made "No questions
+match this setup. Try more levels." — the one sentence explaining why the learner cannot
+proceed — the quietest text on the screen, directly above a disabled button. Start fills the
+card's width on a phone, where the card is the window, and takes its own width at an expanded
+width, where `fillMaxWidth` produced a five-hundred-pixel bar in a two-fifths pane.
+
 A Learning Unit's scope is the deduplicated union of `primarySubtopicIds` across its
 ACTIVE Lessons. Four authoring rules are enforced by that one derivation:
 

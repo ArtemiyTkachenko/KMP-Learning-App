@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -51,11 +52,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import org.artkachenko.kmp_learning_app.ui.LocalAppSnackbarHostState
 import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
@@ -91,8 +95,12 @@ internal fun appNavigationBarItemTag(destination: AppTopLevelDestination): Strin
 internal fun appNavigationBarIconTag(destination: AppTopLevelDestination): String =
     "app_nav_icon_${destination.name.lowercase()}"
 
-internal fun appNavigationBarSelectedPillTag(destination: AppTopLevelDestination): String =
-    "app_nav_selected_pill_${destination.name.lowercase()}"
+/**
+ * The travelling selection pill. There is exactly one of these in a compact bar, which is the point
+ * of it: the tag is per-bar rather than per-destination because the indicator is no longer something
+ * each destination owns a copy of.
+ */
+internal const val AppNavigationSelectedIndicatorTag = "app_nav_selected_indicator"
 
 /** The rail needs a rule because its surface and the adjacent page share the same theme colour. */
 internal const val AppNavigationRailDividerTag = "app_nav_rail_divider"
@@ -120,6 +128,7 @@ internal fun AppNavigationBar(
     modifier: Modifier = Modifier,
     badges: AppNavigationBadges = emptyMap(),
 ) {
+    val destinations = AppTopLevelDestination.entries
     Surface(
         modifier = modifier
             .height(AppLayout.CompactNavigationHeight)
@@ -129,24 +138,87 @@ internal fun AppNavigationBar(
         tonalElevation = NavigationContainerElevation,
         shadowElevation = NavigationContainerElevation,
     ) {
-        Row(
+        // The pill is a sibling of the destination row rather than a background belonging to the
+        // selected destination. Per-destination backgrounds meant a switch faded one pill out while
+        // fading a second one in somewhere else, so nothing travelled and the selection had no
+        // identity; with one indicator behind the row, Learn -> Progress is a single movement. Every
+        // destination now draws only its icon and label, over whatever the indicator has painted.
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
                     horizontal = NavigationContentHorizontalPadding,
                     vertical = NavigationContentVerticalPadding,
-                )
-                .selectableGroup(),
+                ),
         ) {
-            AppTopLevelDestination.entries.forEach { destination ->
-                CompactNavigationDestination(
-                    destination = destination,
-                    selected = destination == selected,
-                    onClick = { onSelect(destination) },
-                    badges = badges,
-                )
+            SelectedDestinationIndicator(
+                selectedSlot = destinations.indexOf(selected).coerceAtLeast(0),
+                slotCount = destinations.size,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .selectableGroup(),
+            ) {
+                destinations.forEach { destination ->
+                    CompactNavigationDestination(
+                        destination = destination,
+                        selected = destination == selected,
+                        onClick = { onSelect(destination) },
+                        badges = badges,
+                    )
+                }
             }
         }
+    }
+}
+
+/**
+ * The selected pill, drawn once behind the destination row and moved between slots.
+ *
+ * Every destination takes an equal `weight(1f)`, so a slot's geometry is arithmetic — width divided
+ * by [slotCount] — and the indicator needs no measurement of the destinations, no reported
+ * coordinates, and no state of its own beyond the selection it is handed. The animated slot index is
+ * read inside [Modifier.layout], which makes it a layout-phase read: the pill re-places itself every
+ * frame without recomposing a single destination.
+ */
+@Composable
+private fun SelectedDestinationIndicator(selectedSlot: Int, slotCount: Int) {
+    // Spatial, not effect: this is the one thing in the bar that actually travels. The spring
+    // settles ahead of the destination cross-fade it accompanies, which is the intended order — the
+    // indicator must never be the thing the learner is waiting for.
+    val slot = animateFloatAsState(
+        targetValue = selectedSlot.toFloat(),
+        animationSpec = AppMotion.spatialSpec(),
+        label = "compactNavigationIndicator",
+    )
+    // The outer box spans the bar and holds one slot-wide child; the pill itself is the child, so
+    // its own bounds are the pill's bounds rather than the whole strip it travels along.
+    Box(
+        Modifier
+            .layout { measurable, constraints ->
+                val slotWidth = constraints.maxWidth.toFloat() / slotCount
+                val pillWidth = slotWidth.roundToInt()
+                val placeable = measurable.measure(
+                    constraints.copy(minWidth = pillWidth, maxWidth = pillWidth),
+                )
+                layout(constraints.maxWidth, placeable.height) {
+                    // placeRelative rather than place, so a right-to-left layout mirrors the travel
+                    // along with the row whose order it is tracking.
+                    placeable.placeRelative(x = (slotWidth * slot.value).roundToInt(), y = 0)
+                }
+            }
+            // The same inset the selected destination's own background used, so the pill still sits
+            // inside one destination's slot rather than spanning the bar.
+            .padding(horizontal = NavigationItemHorizontalInset),
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clip(MaterialTheme.shapes.extraLarge)
+                .background(MaterialTheme.colorScheme.secondaryContainer)
+                .testTag(AppNavigationSelectedIndicatorTag),
+        )
     }
 }
 
@@ -157,15 +229,6 @@ private fun RowScope.CompactNavigationDestination(
     onClick: () -> Unit,
     badges: AppNavigationBadges,
 ) {
-    val containerColor by animateColorAsState(
-        targetValue = if (selected) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            Color.Transparent
-        },
-        animationSpec = AppMotion.effectSpec(),
-        label = "compactNavigationContainer",
-    )
     val contentColor by animateColorAsState(
         targetValue = if (selected) {
             MaterialTheme.colorScheme.onSecondaryContainer
@@ -175,7 +238,6 @@ private fun RowScope.CompactNavigationDestination(
         animationSpec = AppMotion.effectSpec(),
         label = "compactNavigationContent",
     )
-    val itemShape = MaterialTheme.shapes.extraLarge
 
     Box(
         modifier = Modifier
@@ -186,8 +248,10 @@ private fun RowScope.CompactNavigationDestination(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(itemShape)
-                .background(containerColor)
+                // The clip stays although the destination no longer paints anything: it is what
+                // keeps the selectable state layer inside the pill's shape, and that state layer is
+                // still the whole of the press feedback here.
+                .clip(MaterialTheme.shapes.extraLarge)
                 .selectable(
                     selected = selected,
                     role = Role.Tab,
@@ -196,13 +260,6 @@ private fun RowScope.CompactNavigationDestination(
                 .testTag(appNavigationBarItemTag(destination)),
             contentAlignment = Alignment.Center,
         ) {
-            if (selected) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .testTag(appNavigationBarSelectedPillTag(destination)),
-                )
-            }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
@@ -211,6 +268,7 @@ private fun RowScope.CompactNavigationDestination(
                     destination = destination,
                     badges = badges,
                     contentColor = contentColor,
+                    selected = selected,
                 )
                 Text(
                     text = stringResource(destination.label),
@@ -229,7 +287,18 @@ private fun CompactDestinationIcon(
     destination: AppTopLevelDestination,
     badges: AppNavigationBadges,
     contentColor: Color,
+    selected: Boolean,
 ) {
+    // A second, quiet cue that the selection landed here, reinforcing a pill whose colour separation
+    // from the bar is slight in the light scheme. Only the glyph scales, never the box around it:
+    // the badge is positioned against that box, so it neither moves nor grows, and the destination's
+    // measured geometry is untouched. Read inside graphicsLayer, so the emphasis is a draw-phase
+    // change and costs no recomposition.
+    val iconScale = animateFloatAsState(
+        targetValue = if (selected) SelectedIconScale else UnselectedIconScale,
+        animationSpec = AppMotion.spatialSpec(),
+        label = "compactNavigationIconScale",
+    )
     Box(
         modifier = Modifier
             .size(NavigationIconSize)
@@ -240,7 +309,13 @@ private fun CompactDestinationIcon(
             imageVector = destination.icon,
             contentDescription = null,
             tint = contentColor,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val scale = iconScale.value
+                    scaleX = scale
+                    scaleY = scale
+                },
         )
         val count = badges[destination] ?: 0
         if (count > 0) {
@@ -429,5 +504,13 @@ private val NavigationContentHorizontalPadding: Dp = 2.dp
 private val NavigationContentVerticalPadding: Dp = 4.dp
 private val NavigationItemHorizontalInset: Dp = 2.dp
 private val NavigationIconSize: Dp = 24.dp
+
+/**
+ * Deliberately small: the 24dp glyph gains 0.6dp per edge. The emphasis has to register on the
+ * transition without the selected destination reading as a different size from its neighbours once
+ * it has settled, and it is a single axis-free scale rather than one of several transforms at once.
+ */
+private const val SelectedIconScale = 1.05f
+private const val UnselectedIconScale = 1f
 private val NavigationBadgeOffsetX: Dp = 6.dp
 private val NavigationBadgeOffsetY: Dp = (-5).dp

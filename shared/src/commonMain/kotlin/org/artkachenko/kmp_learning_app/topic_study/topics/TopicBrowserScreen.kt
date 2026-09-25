@@ -987,14 +987,14 @@ private fun TopicRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(AppSpacing.Comfortable),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TopicVisualMarker(topicId = topic.topicId)
             Column(
                 // Long Topic names wrap rather than push the marker out of the card.
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             ) {
                 Text(
                     text = topic.topicName,
@@ -1191,8 +1191,8 @@ private fun SubtopicResultRow(
         ),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(AppSpacing.Comfortable),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // The parent Topic's marker, resolved from its stable ID rather than its display name,
@@ -1200,7 +1200,7 @@ private fun SubtopicResultRow(
             TopicVisualMarker(topicId = result.parentTopicId)
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             ) {
                 Text(
                     text = result.subtopicName,

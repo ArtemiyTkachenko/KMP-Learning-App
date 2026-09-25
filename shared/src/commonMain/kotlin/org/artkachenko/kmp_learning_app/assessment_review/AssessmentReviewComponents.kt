@@ -342,7 +342,7 @@ internal fun MissingReviewQuestion(
             stringResource(Res.string.assessment_review_missing_question, questionId),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onErrorContainer,
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(AppSpacing.Grouped),
         )
     }
 }

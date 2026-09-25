@@ -214,7 +214,7 @@ internal fun StatusBadge(
     ) {
         Row(
             modifier = Modifier.padding(horizontal = AppSpacing.Grouped, vertical = AppSpacing.Tight),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             icon?.let {

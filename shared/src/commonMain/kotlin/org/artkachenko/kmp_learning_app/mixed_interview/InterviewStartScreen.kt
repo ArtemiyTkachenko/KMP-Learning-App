@@ -173,7 +173,20 @@ private fun LazyListScope.invitationSection(onStartMixedInterview: () -> Unit) {
                 )
                 Button(
                     onClick = onStartMixedInterview,
-                    modifier = Modifier.fillMaxWidth().testTag(InterviewStartButtonTag),
+                    modifier = Modifier
+                        // Full width where the card is the content column, and its own width where
+                        // the card is half a desktop window. This pane is `weight(1f)` of the
+                        // window rather than a column capped at a reading measure, so at an
+                        // expanded width `fillMaxWidth` made the invitation's action a six-hundred
+                        // pixel bar — wider than the sentence above it that explains what it does.
+                        .then(
+                            if (LocalAppWindowSizeClass.current.isExpanded) {
+                                Modifier
+                            } else {
+                                Modifier.fillMaxWidth()
+                            },
+                        )
+                        .testTag(InterviewStartButtonTag),
                 ) {
                     Text(text = stringResource(Res.string.mixed_interview_start))
                 }

@@ -292,7 +292,9 @@ internal fun QuestionSources(
 ) {
     if (sources.isEmpty()) return
     Column(modifier, verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
-        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+        // Flush: consecutive `TextButton`s already carry Material's own vertical padding,
+        // so arrangement spacing here would be added on top of two lots of it.
+        Column(verticalArrangement = Arrangement.Top) {
             sources.forEach { source ->
                 // A link, not a primary action: these used to be filled buttons stacked inside the
                 // card, which competed with the answer content.

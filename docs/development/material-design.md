@@ -207,15 +207,29 @@ short or heterogeneous lists, flat divider rows for the long ones.
 
 ## Components
 
+Grouped by the question each rule answers. The list grew flat and unordered while the screens were
+being worked through one at a time; the rules did not change in the regrouping, but three of them
+were checked against the code and found to be describing something the app no longer does. Those
+are marked where they appear.
+
+### Which component
+
 - **One filled `Button` per screen.** It is the primary action. Never two of equal weight.
-- **`TextButton` is the lower-emphasis action** everywhere in this app. `OutlinedButton`
-  is used once, for a toggle that reflects state.
+- **`TextButton` is the lower-emphasis action** everywhere in this app.
+- **`OutlinedButton` is the secondary *rank* of an action that also has a primary form.** Both call
+  sites — `AssessmentRetakeAction` and the Lesson reader's practice action — switch between
+  `Button` and `OutlinedButton` on which of two actions the screen has decided is the continuation,
+  keeping the same label and the same callback. It is not a toggle: a control whose *state* the
+  learner is reading is a `Switch` or the saved-Question bookmark, below.
 - **No chips.** `AssistChip`, `SuggestionChip`, `ElevatedButton`, and `FilledTonalButton`
   have zero usages here. `FilterChip` is used only for selection inside the Practice
   Builder form. Do not introduce a new component family for an action a `TextButton`
   already expresses.
 - **Empty states**: `ScreenAction` when there is a way forward, `ScreenMessage` when there
   is not — a failure is not an invitation. Both are in `ui/ScreenStatus.kt`.
+
+### What it says
+
 - **Status is stated in words**, with colour and icons as a second channel, never the only
   one. `StatusBadge` is the app's pill; Material's `Badge` is reserved for the navigation
   bar count.
@@ -227,11 +241,48 @@ short or heterogeneous lists, flat divider rows for the long ones.
   `ReviewQuestionCard(statesOutcome = false)` are how a caller says the context already
   states it. A badge that distinguishes a *different* state, such as "Partially correct"
   in the mistake queue, always stays.
+- **A marker is not a heading.** Metadata about *where* content sits — a depth layer, a position,
+  a band label — takes `labelLarge` in `primary` and publishes no `heading()`. `SectionHeading` is
+  for the thing that introduces content, and giving it to a marker makes the metadata outrank the
+  content and hands assistive technology two peer headings where the page drew one inside the other.
 - **Semantic colour marks, it does not flood.** A weak row carries an accent border and a
   tinted figure over the ordinary neutral container rather than filling the whole card
   with `partiallyCorrectContainer`: one saturated card reads as emphasis, six in a column
   read as an alarm wall in which nothing stands out. Never use the error palette for an
   ordinary navigation or continuation action.
+
+### Where it sits
+
+- **An action about one item belongs inside that item.** A per-entry control emitted as a sibling
+  of the card it acts on lands on the page background between entries, where it reads as navigation
+  for the screen rather than as what that entry offers. `ReviewQuestionCard(footer = …)` is the slot
+  for those; the Mistakes queue's scoped-practice and study-lesson shortcuts are its only caller.
+  Several such controls go in a `FlowRow`, because an authored Lesson title has no known length.
+- **A primary action fills a measured column, never a weighted pane.** *(Corrected: this was
+  written as "only when the container is the window", which several screens have always
+  contradicted.)* The distinction is how the container got its width. A column capped at an
+  `AppContentWidth` — a form, a reading measure — was sized for content, so a terminal action
+  filling it stays a button; the taking screen, the Unit overview and the Lesson reader all do this
+  and are right to. A pane taking `weight(1f)` of the window was sized by the window, so the same
+  `fillMaxWidth` produces a five- or six-hundred-pixel bar, wider than the sentence explaining what
+  it does. Those read `LocalAppWindowSizeClass` and size to their label at an expanded width: the
+  Practice Builder's Start, and the Interview invitation's, which this sweep found and fixed.
+- **Chrome pinned outside the content pane still takes the content pane's width.** A bar, meter or
+  counter that describes the column below it has to be capped and centred the same way, or it lines
+  up with the column only until the window passes `AppContentWidth`'s cap. Wrap it and apply the
+  same `maxWidth()` and `LocalAppContentMargin`. The exception is chrome that belongs to the
+  *toolbar* rather than to the column — see the deviations table.
+- **One meter style.** `ProgressMeter` is the product's linear bar: 8dp, rounded, no track gap and
+  no stop indicator, because these are measurements of how much has been covered rather than
+  operations in flight. Do not configure a second `LinearProgressIndicator` by hand; the Lesson
+  reading hairline is the single recorded exception.
+- **A modal's states share a container.** A hand-rolled `Surface` inside a `Dialog` defaults to
+  `surface` at whatever shape it is given, while `AlertDialog` takes `DialogTokens.ContainerColor`
+  (`surfaceContainerHigh`) at `CornerExtraLarge` — so one dialog's busy state and its failure state
+  arrived on different containers. Quote `AlertDialogDefaults.shape` and `.containerColor`.
+
+### How it behaves
+
 - **A settings row is one toggle, not a row containing one.** The appearance row in
   Settings takes `Modifier.toggleable(role = Role.Switch)` and gives its `Switch`
   `onCheckedChange = null`, so the whole two-line row is the target and the accessible node
@@ -240,50 +291,33 @@ short or heterogeneous lists, flat divider rows for the long ones.
   whose fill, shape, and word all change together, and publishes `stateDescription` plus
   `toggleableState` beside its action label, so assistive technology hears both what
   pressing it does and what is true now.
-- **One discrete state, one `Transition`.** Where several properties of a component are
-  decided by the same fact — an answer option's container, border, border width, label
-  colour, and control tints — name that fact as an enum and drive them from a single
-  `updateTransition`, not from one `animate*AsState` per property. Independent animations
-  on the same input drift apart under a fast state change and let a later edit teach one
-  property a rule the others do not know.
+- **A list that is browsed closes its items; a list that is read through opens them.** Both share
+  `QuestionDisclosure`, and the default is the caller's, because it is a statement about the
+  surface rather than about the control.
 - **A row that can be pressed responds to being pressed.** An option the learner is asked
   to choose takes its own `MutableInteractionSource`, hands it to `selectable`/`toggleable`
   so Material still draws the ripple from it, and reads `collectIsPressedAsState` for a
   scale of about 0.98 in a `graphicsLayer`. Draw-layer only, so layout, hit testing, and
   when the click callback runs are all untouched — a press treatment must never be
   something the callback waits for. Never hand-roll a gesture detector for this.
-- **A marker is not a heading.** Metadata about *where* content sits — a depth layer, a position,
-  a band label — takes `labelLarge` in `primary` and publishes no `heading()`. `SectionHeading` is
-  for the thing that introduces content, and giving it to a marker makes the metadata outrank the
-  content and hands assistive technology two peer headings where the page drew one inside the other.
-- **Chrome pinned outside the content pane still takes the content pane's width.** A bar, meter or
-  counter that describes the column below it has to be capped and centred the same way, or it lines
-  up with the column only until the window passes `AppContentWidth`'s cap. Wrap it and apply the
-  same `maxWidth()` and `LocalAppContentMargin`.
-- **One meter style.** `ProgressMeter` is the product's linear bar: 8dp, rounded, no track gap and
-  no stop indicator, because these are measurements of how much has been covered rather than
-  operations in flight. Do not configure a second `LinearProgressIndicator` by hand.
-- **A primary action fills its container only when the container is the window.** A button that
-  takes `fillMaxWidth` inside a pane two fifths of a desktop window is not a larger affordance, it
-  is a bar that happens to be pressable. Read `LocalAppWindowSizeClass` and let it size to its
-  label where the pane is wide.
-- **A modal's states share a container.** A hand-rolled `Surface` inside a `Dialog` defaults to
-  `surface` at whatever shape it is given, while `AlertDialog` takes `DialogTokens.ContainerColor`
-  (`surfaceContainerHigh`) at `CornerExtraLarge` — so one dialog's busy state and its failure state
-  arrived on different containers. Quote `AlertDialogDefaults.shape` and `.containerColor`.
-- **An action about one item belongs inside that item.** A per-entry control emitted as a sibling
-  of the card it acts on lands on the page background between entries, where it reads as navigation
-  for the screen rather than as what that entry offers. `ReviewQuestionCard(footer = …)` is the slot
-  for those; the Mistakes queue's scoped-practice and study-lesson shortcuts are its only caller.
-  Several such controls go in a `FlowRow`, because an authored Lesson title has no known length.
-- **A list that is browsed closes its items; a list that is read through opens them.** Both share
-  `QuestionDisclosure`, and the default is the caller's, because it is a statement about the
-  surface rather than about the control.
+- **One discrete state, one `Transition`.** Where several properties of a component are
+  decided by the same fact — an answer option's container, border, border width, label
+  colour, and control tints — name that fact as an enum and drive them from a single
+  `updateTransition`, not from one `animate*AsState` per property. Independent animations
+  on the same input drift apart under a fast state change and let a later edit teach one
+  property a rule the others do not know.
+
+### How it moves
+
 - **Stagger a reveal in the animation spec, not in a coroutine.** When several pieces of
   one reveal should arrive in order, give one container the layout expansion and give the
   children delayed specs through `AppMotion.revealSpec(delayMillis)` and
   `Modifier.animateEnterExit`. The page then relayouts once, the order is still legible,
   and nothing in the interaction is gated on an animation finishing.
+- **Give the piece that opens the space no delay of its own.** In a staggered reveal, the
+  content that accounts for most of the new height arrives at zero delay and only the
+  supporting pieces trail it. Holding the bulk back even 60ms reads as a container opening
+  an empty space and then filling it.
 - **Expand downwards from the top.** `expandVertically` and `shrinkVertically` default to
   `Alignment.Bottom`, which reveals the *end* of the content first: for the first hundred
   milliseconds the visible sliver of an opening block is its last paragraph. Content that
@@ -297,17 +331,14 @@ short or heterogeneous lists, flat divider rows for the long ones.
   standalone 40dp indicator, which grows the button it sits in). Never put the
   explanation for a button's busy state in a separate line beside it: that is a second
   piece of layout appearing and disappearing, and it leaves the button saying nothing
-  about why it stopped working.
+  about why it stopped working. A standalone indicator that is *not* inside a control —
+  a loading screen, a dialog — keeps Material's own size.
 - **Disabled-because-working is not disabled-because-unavailable.** Material fades a
   disabled button's content to 38% of `onSurface`, which is right for an action the
   learner cannot take and wrong for one that is reporting progress — it dims the spinner
   and its label at the moment they are the only things saying anything. Such a control
   keeps `enabled = false` for its semantics and overrides `disabledContentColor` so the
   state stays readable.
-- **Give the piece that opens the space no delay of its own.** In a staggered reveal, the
-  content that accounts for most of the new height arrives at zero delay and only the
-  supporting pieces trail it. Holding the bulk back even 60ms reads as a container opening
-  an empty space and then filling it.
 
 ## Deliberate deviations
 
@@ -319,6 +350,7 @@ than drifted into.
 | Flat list rows use 16dp vertical padding, not the 10dp `ItemTopSpace`/`ItemBottomSpace` | The token describes a dense one-line item. These rows are three-line content blocks already past the 88dp three-line container height, where 10dp reads as cramped. |
 | `AppShapes` departs from the Material baseline corner scale | Argued in `AppShapes.kt`: `medium` at 12dp made every content surface in the product the most generic shape Material can produce. |
 | `AppMotion` states spring constants literally rather than reading `MotionScheme` | `MotionScheme` is `@Composable`-scoped and several call sites are not. The numbers are Material's own. |
+| The Lesson reading hairline is a hand-configured `LinearProgressIndicator`, not `ProgressMeter` | It belongs to the toolbar rather than to the reading column: 3dp, square caps, no gap, full-bleed, and unanimated because it tracks a finger rather than jumping between figures. `ProgressMeter`'s rounded, inset, animated treatment would read as a loose component that had drifted under the bar. |
 | Compact area navigation uses a translucent floating container, 24dp icons, and a whole-destination selected pill | The standard full-width container reserved viewport space, while `NavigationBarItem` imposed an icon-only indicator and excess internal layout. The custom 68dp surface keeps Material selection semantics and 48dp targets while centring each icon-label pair in one fixed 60dp-high destination. |
 
 ## Empty and early states

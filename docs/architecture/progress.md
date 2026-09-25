@@ -106,27 +106,86 @@ picking one on the learner's behalf would be an unexplained recommendation. Scop
 mistake practice is offered where a scope is actually known, on a queue entry. A
 resolved queue keeps no action, because an empty destination is not worth a tap.
 
-The dashboard presents the snapshot's three signals as three separate surfaces,
-because they answer three different questions and are routinely different
-numbers. All-time accuracy leads as the screen's `AccuracyHeroCard` and is labelled as
-all-time rather than "overall", since an unqualified accuracy figure beside a
-recent one is ambiguous. That card is `surfaceContainerHigh` with a hairline
-`outlineVariant` edge and a small shadow, and states its figure beside the shared
-`AccuracyRing` rather than over a bar: as an ordinary `PrimarySummaryCard` it sat one
-surface step above the two cards qualifying it, which in dark — where separation is
-luminance rather than tone — left the screen's headline with no more weight than its
-footnotes. It is deliberately not the hero gradient, which is reserved for an
-arrival; a lifetime accuracy is a figure a learner checks, not a moment. The figure
-keeps `accuracyColor`, because diagnosis is what this screen is for. Curriculum coverage and recent performance follow it as
-quieter tonal cards: important, but not three competing headlines. Coverage always
-prints its raw attempted/total counts beside the percentage, because coverage and
-accuracy differ substantially for normal learners and the denominator is what
-explains why; its meter uses the exact count ratio rather than the rounded display
-percentage, and a `null` percentage (an empty ACTIVE bank) reports that there is no
-curriculum to cover instead of drawing 0%. Recent performance prints the domain's
-question-weighted window accuracy — never the mean of the plotted attempts — with
-a grammatically singular or plural window label. The new-user Empty state is
-unchanged: a dashboard of zeroes is not a substitute for guidance.
+The dashboard presents the snapshot's three signals with an explicit hierarchy,
+because they answer three different questions, are routinely different numbers,
+and are not equally important to a learner opening the screen.
+
+All-time accuracy leads as `ProgressHero`, the screen's one brand-gradient
+surface. It is labelled as all-time rather than "overall", since an unqualified
+accuracy figure beside a recent one is ambiguous, and it keeps `accuracyColor`,
+because diagnosis is what this screen is for. The gradient is the second and
+last call site of that token — see `AppSemanticColors` — and the argument for it
+is the neighbour count: this page runs six or more containers down its length,
+and the shared `AccuracyHeroCard`'s single surface-ramp step reads against that
+many siblings as "the first card" rather than as the screen's answer. The two
+gradient surfaces stay distinguishable by motion rather than by palette. The
+completion hero counts a score out over the app's one celebratory duration; this
+one settles into place over the ordinary content-reveal duration, because a
+learner opening Progress to check on themselves is not being congratulated. The
+hero has no section heading over it: it sat directly under a `TopAppBar` already
+reading "Progress", introducing a surface that states its own subject in the
+largest type on the screen.
+
+Curriculum coverage sits inside that hero rather than in a card of its own. It
+was one of three similarly sized summaries each leading with a percentage, which
+is how a dashboard ends up with three headlines and therefore none; it is
+context for the accuracy above it, and it now reads as context. Nothing it
+states changed: it always prints its raw attempted/total counts beside the
+percentage, because coverage and accuracy differ substantially for normal
+learners and the denominator is what explains why; its meter uses the exact count
+ratio rather than the rounded display percentage; a `null` percentage (an empty
+ACTIVE bank) reports that there is no curriculum to cover instead of drawing 0%;
+and the meter stays in the primary brand family rather than taking
+`accuracyColor`, because colouring 30% coverage red would read as a bad score
+when it only means most of the bank is still ahead of the learner.
+
+Recent performance keeps its own `SecondarySummaryCard` directly under the hero,
+because it is a different window over different evidence and routinely reads a
+different number. Its figure dropped from near-hero weight to `MetricFigure` and
+moved onto the title's own line, so the card has one thing to read at each level
+rather than four at the same one. It prints the domain's question-weighted window
+accuracy — never the mean of the plotted attempts — with a grammatically singular
+or plural window label, and its counts as one quiet evidence line.
+
+Text on the gradient is either `onPrimaryContainer`, which is the token's
+documented contract, or one of the three `accuracyColor` bands and that colour at
+`0.8` alpha for supporting lines. Those last two are outside the contract —
+`accuracyColor` includes `incorrect`, which the completion hero deliberately
+never renders — so `ProgressHeroThemeTest` asserts every one of them, composited,
+against both endpoints of both sweeps.
+
+The new-user Empty state is unchanged: a dashboard of zeroes is not a substitute
+for guidance.
+
+Below the standing group the hierarchy keeps falling. Weak areas carry the app's
+warning tone once, as a small `partiallyCorrect` accent beside their section
+heading, and the rows underneath keep the accent border and coloured figure they
+already had and still pass no badge: one amber mark introducing a section says
+"these need attention" once, where the same mark repeated down six rows stops
+being a mark at all. The icon is decorative and announces nothing — the heading's
+words are what carry the status, so colour is never the only channel. Topic
+performance is unchanged and recedes because the hero advanced rather than
+because anything was taken from it. Session history is the most tertiary thing
+here and is drawn as a row rather than a `PerformanceCard`: the smaller shape, a
+denser inset, a `titleSmall` name, and the score and completion time folded onto
+one supporting line. It keeps a clipped container, because the row is a tap
+target and an unclipped one draws hover and press as a band whose edges land on
+the text — which is permanent on a pointer host — and it keeps its chevron,
+`Role.Button`, and stable-attempt-ID navigation unchanged.
+
+Motion on this screen belongs to the hero and to the chart, and to nothing else.
+The hero's ring sweep and its accuracy count are one `Animatable` over the
+ordinary content-reveal duration, with the coverage block fading in 100ms behind
+them, so the whole entry lands inside 400ms; the chart's own reveal runs
+independently in its card. Both are claimed by a `rememberSaveable` flag set
+*before* the animation starts, which is what makes them once per visit rather
+than once per composition: the dashboard's state is a `StateFlow` that re-emits
+on every lifecycle resume and on every settled history refresh, and both surfaces
+sit in scrolling lists. Without the flag a learner would watch their lifetime
+accuracy count up again every time either happened, which would be the screen
+claiming something had changed when nothing had. Weak areas, Topic rows, and
+history rows render normally and are not staggered. The flags live in
+presentation; no animation state reaches the ViewModel.
 
 Recent performance carries the app's only trend visualization, a small Compose
 `Canvas` line chart in `RecentTrendChart`; no charting dependency was added for
@@ -146,20 +205,37 @@ included — does not appear until the window is full, and a three-point drawing
 presented as a trajectory is unreachable. The three fixed guides are labelled with
 their percentages, which is what makes the drawing a chart rather than a shape: a
 learner can read that a point sits just under half, and the labels state that the
-axis is the full 0-100 range rather than fitted to the data. The line carries a
-`primary` area fade beneath it and no longer caps its width: five points across an
-expanded pane span a small share of the height, so a bare 2dp polyline read as a
-scratch on the card, and the previous 420dp cap left the right third of a
-desktop-width card visibly empty. The newest attempt wears a halo rather than a
+axis is the full 0-100 range rather than fitted to the data. Two of those three
+are drawn dashed and faint, because a grid is a reading aid rather than content
+and three solid rules across a small card put as much ink on it as the series
+they measure; the 0% guide stays solid, since it is not a guide but the axis the
+area sits on and the line the series rises from. The line carries a `primary`
+area fade beneath it and no longer caps its width: five points across an expanded
+pane span a small share of the height, so a bare polyline read as a scratch on
+the card, and the previous 420dp cap left the right third of a desktop-width card
+visibly empty. It is stroked as one path with round joins rather than as a
+segment per pair, which is what stops round-capped segments beading at every
+shared endpoint, and it is still the polyline through the observed values — no
+curve fitting, because a smoothed line through five discrete session results
+would draw values nobody scored. The newest attempt wears a halo rather than a
 larger dot, so the one point the learner came for is findable without the series
-acquiring two marker sizes. On first appearance the whole series rises from the 0%
+acquiring two marker sizes, and a faint vertical carries it down to the labelled
+scale. A series of one point draws its marker alone: a fill and a stroke across
+zero width would be a sliver of colour claiming to be a quantity. On first appearance the whole series rises from the 0%
 guide to its values together over the app's ordinary content-reveal duration — one
 `Animatable` read in the draw scope, held by a `rememberSaveable` flag so a card
 scrolling back into view does not redraw itself and imply something changed. It plots `attemptSeries` and not `answerSeries` — one visualization is the
 budget — draws no direction colouring or "improving"/"declining" label, since the
 domain deliberately exposes raw observations, and carries a semantic description
 listing every plotted percentage oldest-first so the drawing is never the only
-representation.
+representation. It also states no up-or-down trend in text, for the same reason:
+the domain publishes the raw series and derives no direction, momentum, or
+velocity from it, so turning a comparison of two of those points into "+6%" would
+be presentation reaching a verdict the rest of the app declines to reach. The
+chart lost its own "Recent session trend" caption in the redesign — the card
+above says what window this is and the axis beside it says what the scale is, so
+a third label between them named the drawing without telling the learner anything
+about it.
 
 The drill-down leads with the same `AccuracyHeroCard`, carrying the Topic name as its
 title and the all-time counts as its caption. Its percentage is nullable for the

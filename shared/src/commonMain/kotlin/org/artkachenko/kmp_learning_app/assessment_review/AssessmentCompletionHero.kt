@@ -10,7 +10,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,12 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.text
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
@@ -47,6 +40,7 @@ import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
 import org.artkachenko.kmp_learning_app.ui.AccuracyRing
 import org.artkachenko.kmp_learning_app.ui.AccuracyRingTrackAlpha
 import org.artkachenko.kmp_learning_app.ui.AppIcons
+import org.artkachenko.kmp_learning_app.ui.CountedFigure
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -293,46 +287,6 @@ private fun resultEmphasisColor(percentage: Double): Color {
         ResultEmphasis.STRONG -> semantic.correct
         ResultEmphasis.MIXED -> MaterialTheme.colorScheme.onPrimaryContainer
         ResultEmphasis.LOW -> semantic.partiallyCorrect
-    }
-}
-
-/**
- * The score itself, mid-count and settled at once.
- *
- * [shownText] is what is drawn and changes every frame; [settledText] is what the node *says* it
- * is, from the first frame onward. Without that split a screen reader would be handed a number
- * that is merely passing through — announcing "three of ten" because that is where the tween
- * happened to be — and every test that reads this figure would depend on animation timing. The
- * count is presentation; the value is the fact.
- *
- * The figure also reserves the width of [settledText] for the whole count. A number that grows
- * from one digit to two grows *sideways* as well, and everything beside it is pushed along with it
- * for half a second. Laying the settled text out invisibly underneath costs one extra measure and
- * makes the count a change of digits rather than a change of layout.
- */
-@Composable
-private fun CountedFigure(
-    shownText: String,
-    settledText: String,
-    color: Color,
-) {
-    val style = MaterialTheme.typography.displaySmall
-    Box(contentAlignment = Alignment.CenterStart) {
-        Text(
-            text = settledText,
-            style = style,
-            fontWeight = FontWeight.Bold,
-            // Present for measurement only: drawn at zero alpha and carrying no semantics, so the
-            // figure is announced once rather than twice.
-            modifier = Modifier.alpha(0f).clearAndSetSemantics {},
-        )
-        Text(
-            text = shownText,
-            style = style,
-            fontWeight = FontWeight.Bold,
-            color = color,
-            modifier = Modifier.semantics { text = AnnotatedString(settledText) },
-        )
     }
 }
 

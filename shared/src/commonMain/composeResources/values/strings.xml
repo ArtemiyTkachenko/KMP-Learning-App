@@ -64,7 +64,6 @@
     <string name="learning_context_accuracy">accuracy</string>
     <string name="progress_title">Progress</string>
     <string name="progress_loading">Loading progress</string>
-    <string name="progress_overall">Overall progress</string>
     <string name="progress_accuracy_caption">All-time accuracy</string>
     <string name="progress_completed_attempts_label">Completed sessions</string>
     <string name="progress_questions_answered_label">Questions answered</string>
@@ -76,7 +75,6 @@
     <string name="progress_recent_title">Recent performance</string>
     <string name="progress_recent_window_one">Last completed session</string>
     <string name="progress_recent_window_other">Last %1$d completed sessions</string>
-    <string name="progress_recent_trend_title">Recent session trend</string>
     <string name="progress_recent_trend_insufficient">A trend appears after %1$d completed sessions.</string>
     <string name="progress_recent_trend_description">Recent session accuracy, oldest to newest: %1$s.</string>
     <string name="progress_weak_areas">Weak areas</string>

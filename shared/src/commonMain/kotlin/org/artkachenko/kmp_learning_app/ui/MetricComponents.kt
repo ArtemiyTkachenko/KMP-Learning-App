@@ -22,11 +22,15 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -191,6 +195,52 @@ internal fun MetricFigure(
     )
 }
 
+/**
+ * A figure that is being counted out, stated and announced at once.
+ *
+ * [shownText] is what is drawn and changes every frame; [settledText] is what the node *says* it
+ * is, from the first frame onward. Without that split a screen reader would be handed a number
+ * that is merely passing through — announcing "three of ten" because that is where the tween
+ * happened to be — and every test that reads the figure would depend on animation timing. The
+ * count is presentation; the value is the fact.
+ *
+ * The figure also reserves the width of [settledText] for the whole count. A number that grows
+ * from one digit to two grows *sideways* as well, and everything beside it is pushed along with it
+ * for half a second. Laying the settled text out invisibly underneath costs one extra measure and
+ * makes the count a change of digits rather than a change of layout.
+ *
+ * Shared rather than private to the completion hero because the Progress hero counts its accuracy
+ * the same way, and two copies of this would be two chances to drop the semantics half of it.
+ * [style] is a parameter only so a hero can choose its own display role; everything else about the
+ * component is fixed, because the split above is the whole point of it.
+ */
+@Composable
+internal fun CountedFigure(
+    shownText: String,
+    settledText: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.displaySmall,
+) {
+    Box(modifier, contentAlignment = Alignment.CenterStart) {
+        Text(
+            text = settledText,
+            style = style,
+            fontWeight = FontWeight.Bold,
+            // Present for measurement only: drawn at zero alpha and carrying no semantics, so the
+            // figure is announced once rather than twice.
+            modifier = Modifier.alpha(0f).clearAndSetSemantics {},
+        )
+        Text(
+            text = shownText,
+            style = style,
+            fontWeight = FontWeight.Bold,
+            color = color,
+            modifier = Modifier.semantics { text = AnnotatedString(settledText) },
+        )
+    }
+}
+
 /** Whole number when exact, otherwise one decimal place, with the percent sign attached. */
 internal fun formatAccuracy(percentage: Double): String {
     val rounded = (percentage * 10.0).roundToInt() / 10.0
@@ -241,6 +291,13 @@ internal fun MetricRow(
     value: String,
     modifier: Modifier = Modifier,
     valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    /**
+     * The label's colour, for the same reason [ProgressMeter] takes a track colour: the default
+     * names a role on the *page's* surface ramp, and this row is also used on the Progress hero's
+     * gradient, where `onSurfaceVariant` is a grey borrowed from a surface that is not underneath
+     * it.
+     */
+    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     Row(
         modifier = modifier
@@ -252,7 +309,7 @@ internal fun MetricRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = labelColor,
         )
         Text(
             text = value,

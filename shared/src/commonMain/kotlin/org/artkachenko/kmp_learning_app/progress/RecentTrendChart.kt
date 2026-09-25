@@ -23,7 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.platform.testTag
@@ -114,8 +117,28 @@ private const val LatestMarkerHaloAlpha = 0.28f
  */
 private val PlotInset = LatestMarkerHaloRadius
 
-private val LineWidth = 2.dp
+private val LineWidth = 2.5.dp
 private val GuideWidth = 1.dp
+
+/**
+ * The guides are drawn dashed and faint, except the one at 0%.
+ *
+ * A grid is a reading aid, not content, and three solid full-width rules across a small card put
+ * as much ink on the screen as the series they exist to measure. The 0% guide stays solid because
+ * it is not a guide at all — it is the axis the area sits on, and the line the whole series rises
+ * from when the chart first draws.
+ */
+private const val GuideAlpha = 0.7f
+private val GuideDash = floatArrayOf(4f, 6f)
+
+/**
+ * A faint vertical from the newest point down to the axis.
+ *
+ * The halo says *which* point is newest; this says what it is worth, by carrying the eye from the
+ * marker to the labelled scale instead of leaving the reader to judge a height in mid-air.
+ */
+private const val LatestDropAlpha = 0.35f
+private val LatestDropWidth = 1.dp
 
 /** The area under the line: a tint at the curve, gone by the axis. */
 private const val AreaTopAlpha = 0.24f
@@ -234,11 +257,17 @@ private fun TrendPlot(
 
         GuideFractions.forEach { fraction ->
             val y = inset + plotHeight * fraction
+            val isAxis = fraction == GuideFractions.last()
             drawLine(
-                color = guideColor,
+                color = if (isAxis) guideColor else guideColor.copy(alpha = GuideAlpha),
                 start = Offset(0f, y),
                 end = Offset(size.width, y),
                 strokeWidth = GuideWidth.toPx(),
+                pathEffect = if (isAxis) {
+                    null
+                } else {
+                    PathEffect.dashPathEffect(GuideDash.map { it * density }.toFloatArray())
+                },
             )
         }
 
@@ -253,36 +282,60 @@ private fun TrendPlot(
         if (offsets.isEmpty()) return@Canvas
 
         // The area is what makes a shallow series legible. Five points across a desktop-width pane
-        // span at most a fifth of the height, and a 2dp polyline across that reads as a scratch on
+        // span at most a fifth of the height, and a thin polyline across that reads as a scratch on
         // the card; the same line with the ground under it filled reads as a quantity. It is a tint
         // that fades out before the axis, so it never competes with the guides it crosses.
-        val area = Path().apply {
-            moveTo(offsets.first().x, baselineY)
-            offsets.forEach { lineTo(it.x, it.y) }
-            lineTo(offsets.last().x, baselineY)
-            close()
-        }
-        drawPath(
-            path = area,
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    lineColor.copy(alpha = AreaTopAlpha),
-                    lineColor.copy(alpha = AreaBottomAlpha),
+        //
+        // A single point has no area — a triangle of zero width is a sliver of colour claiming to
+        // be a quantity — so the fill and the stroke below are both skipped and the marker stands
+        // alone. The domain gates this chart well above one point; the guard is here so the
+        // drawing is honest at any input rather than only at the ones it currently receives.
+        if (offsets.size > 1) {
+            val area = Path().apply {
+                moveTo(offsets.first().x, baselineY)
+                offsets.forEach { lineTo(it.x, it.y) }
+                lineTo(offsets.last().x, baselineY)
+                close()
+            }
+            drawPath(
+                path = area,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        lineColor.copy(alpha = AreaTopAlpha),
+                        lineColor.copy(alpha = AreaBottomAlpha),
+                    ),
+                    startY = inset,
+                    endY = baselineY,
                 ),
-                startY = inset,
-                endY = baselineY,
-            ),
-        )
+            )
 
-        offsets.zipWithNext { from, to ->
-            drawLine(
+            // One stroked path rather than a segment per pair. Round-capped segments overlap at
+            // every shared endpoint, which thickens the joins into visible beads on a series that
+            // changes direction; a path with round joins turns the corner once. It is still the
+            // polyline through the observed values — no curve fitting, because a smoothed line
+            // through five discrete session results would draw values nobody scored.
+            val line = Path().apply {
+                moveTo(offsets.first().x, offsets.first().y)
+                offsets.drop(1).forEach { lineTo(it.x, it.y) }
+            }
+            drawPath(
+                path = line,
                 color = lineColor,
-                start = from,
-                end = to,
-                strokeWidth = LineWidth.toPx(),
-                cap = StrokeCap.Round,
+                style = Stroke(
+                    width = LineWidth.toPx(),
+                    cap = StrokeCap.Round,
+                    join = StrokeJoin.Round,
+                ),
             )
         }
+
+        // Anchors the newest value to the labelled scale beside it.
+        drawLine(
+            color = lineColor.copy(alpha = LatestDropAlpha),
+            start = offsets.last(),
+            end = Offset(offsets.last().x, baselineY),
+            strokeWidth = LatestDropWidth.toPx(),
+        )
 
         // The newest attempt is the one the learner came to the card for, so it is the one point
         // that is found without counting along the line. A halo rather than a larger dot, because

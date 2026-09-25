@@ -49,6 +49,11 @@ import androidx.compose.ui.graphics.Color
  * | 0 — page | `background` (= `surface`) | `AppNavigationScaffold`'s container |
  * | 1 — ordinary content | `surfaceContainerLow` | most Cards, `SecondarySummaryCard` |
  * | 2 — raised / interactive | `surfaceContainer` and up | `AccuracyHeroCard` (at `surfaceContainerHigh`), a weak `PerformanceCard`, menus, sheets |
+ * | hero | the brand gradient | `AssessmentCompletionHero`, `ProgressHero` — see [AppSemanticColors] |
+ *
+ * The hero row is outside the ramp rather than the top of it. It is not a neutral and it is not a
+ * step a screen may climb to; it is the two surfaces that are the single most important thing on
+ * their page, and it carries its own on-colour contract because of that.
  *
  * The complaint this answers is that the levels were nearly the same colour. The light ramp used to
  * step about 6/255 per level and the dark one about 4/255, which is below what a display in a lit

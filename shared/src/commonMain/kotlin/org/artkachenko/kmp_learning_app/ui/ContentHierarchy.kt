@@ -47,9 +47,11 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
  *
  * ## What this is not
  *
- * Not the hero gradient. That token is reserved for a surface that is an *arrival* and has one call
- * site for that reason; a standing accuracy is a figure a learner checks, and dressing it as a
- * celebration would cost `AssessmentCompletionHero` the thing that makes it read as one.
+ * Not the hero gradient. Its two call sites are the screens where nothing else competes — a finished
+ * run's score, and the Progress dashboard's standing answer above six or more containers. This card
+ * is what a *scope* leads with: a Topic drill-down and a Topic's practice page, each of which sits
+ * inside a page that has other subjects. Handing the gradient to those as well would leave the
+ * product with no surface that means anything by being one.
  *
  * [percentage] is nullable because a scope can be the subject of its screen without having earned a
  * figure yet — below the domain's evidence minimum there is no honest accuracy to draw, and a ring

@@ -52,7 +52,7 @@ Severity, confidence, and status use the same vocabulary as the
 
 | ID | Severity | Confidence | Area | Finding | Status |
 | -- | -------- | ---------- | ---- | ------- | ------ |
-| `VC-001` | Medium | High | Shared rows | `PerformanceCard` and `AccuracyRow` break their title inside a word at a doubled type size. | Open |
+| `VC-001` | Medium | High | Shared rows | `PerformanceCard` and `AccuracyRow` break their title inside a word at a doubled type size. | Fixed |
 | `VC-002` | Medium | High | Size tokens | One number, twelve declarations: there is no icon-size or stroke-width scale in `ui/theme/`. | Open |
 | `VC-003` | Low | High | Screen state | Nine of eleven stateful screens still replace their state branches in one frame. | Open |
 | `VC-004` | Low | Medium | Screen state | The Topic Browser cuts hard between three bodies *inside* its `Content` state, which a class-keyed transition would not cover. | Open |
@@ -64,7 +64,7 @@ Severity, confidence, and status use the same vocabulary as the
 
 ## VC-001 — The two shared performance rows break their title mid-word at large type
 
-**Severity** Medium · **Confidence** High · **Status** Open
+**Severity** Medium · **Confidence** High · **Status** Fixed
 
 **Files** `ui/PerformanceCard.kt:95` (`PerformanceCard`), `ui/PerformanceCard.kt:238`
 (`AccuracyRow`)
@@ -106,6 +106,25 @@ assertion in the existing harness. The chevron needs a decision of its own: it i
 that does not scale with type, so it can stay beside the text while the figure drops, or travel with
 the figure. Decide it once and state it, because both components have one.
 
+**Resolution** Both header rows now go through `TrailingFigureRow` at `ui/PerformanceCard.kt`,
+following the shape the Subtopic and Topic rows already use: the `TrailingFigureRow` takes
+`Modifier.weight(1f)` inside the existing `Row`, and the chevron stays outside it as a sibling. That
+answers the chevron question in the direction the two existing callers had already chosen — a fixed
+glyph costs the same width at every type scale and never causes the squeeze, and a navigation
+affordance that dropped below the title would stop marking the row as one that travels.
+
+The figure the two components duplicated is now one private `AccuracyFigure`, end-aligned in its own
+column. The alignment is invisible until the row reflows and is the point once it does: measured
+beside the title the column is exactly its content width, measured below it the column spans the
+row, and the alignment keeps the figure in the right-hand column instead of letting it jump to the
+leading edge and read as one more line of the text above it. This was caught by capture during
+implementation — the first version dropped the figure to the leading edge — and is the convention
+`TopicAccuracy` and the Subtopic row already followed.
+
+Protected by `theSharedPerformanceRowsMoveTheirFigureBelowTheTitleAtADoubledTypeSize` in
+`ui/LargeFontScaleTest.kt`, which asserts the decision rather than the appearance. It was confirmed
+to fail against the previous implementation and pass against the current one.
+
 ---
 
 ## VC-002 — One number, twelve declarations: there is no size scale
@@ -136,11 +155,13 @@ minimum touch targets**, so every file that needs one invents a private name for
 | `VerdictIconSize` | `topic_study/practice_builder/PracticeBuilderScreen.kt:1106` |
 | `BulletMarkerWidth` | `topic_study/learning_lesson/LearningLessonBlocks.kt:502` |
 
-Four further call sites write `Modifier.size(20.dp)` inline with no name at all:
-`ui/PerformanceCard.kt:167`, `progress/ProgressScreen.kt:579` and `:596`,
+Five further call sites write `Modifier.size(20.dp)` inline with no name at all:
+`progress/ProgressScreen.kt:579` and `:596`,
 `topic_study/topic_detail/TopicSubtopicsPage.kt:217`, `topic_study/topics/TopicBrowserScreen.kt:899`
-and `:1225`. Note that `NavigationChevronSize` is the *same name for the same value in four
-different files* — the strongest possible signal that it wants to be one declaration.
+and `:1225`. (A sixth, in `ui/PerformanceCard.kt`, was replaced by that file's own
+`NavigationChevronSize` while fixing `VC-001`; the other five stand.) Note that
+`NavigationChevronSize` is the *same name for the same value in four different files* — the
+strongest possible signal that it wants to be one declaration.
 
 The same pattern repeats at three other values:
 
@@ -341,7 +362,7 @@ Recorded so a later session does not re-derive them.
 
 `VC-001` first and alone: it is the only finding where a learner using a supported accessibility
 setting currently cannot read the screen, and it is contained to one file with an existing test
-harness to prove it.
+harness to prove it. **Done** — see its Resolution above.
 
 `VC-002` next, as its own change, because it touches fourteen files and nothing else should be
 moving while it does.

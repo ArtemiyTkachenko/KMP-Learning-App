@@ -441,7 +441,22 @@ believe they are one number.
 `ui/MetricComponents.kt`'s **`TrailingFigureRow`** is the rule, and both rows go through it. So
 does the Saved Questions card header, which is the same shape with a different trailing child: the
 question text beside its saved-state bookmark, where at a doubled type size on a 360dp window the
-bookmark would otherwise leave the question less width than its own longest word. It
+bookmark would otherwise leave the question less width than its own longest word. So, since the
+visual consolidation audit, do `PerformanceCard` and `AccuracyRow` — the two shared rows that carry
+this shape to the Progress dashboard, the per-Topic screen, and a Mixed interview's breakdown, and
+that had the same defect in the same form ("Structured concurren / cy").
+
+Two rules for the trailing slot, learned from those four callers:
+
+- **A fixed glyph does not take part.** The navigation chevron costs the same 20dp at every type
+  scale, so it cannot cause the squeeze and stays outside the `TrailingFigureRow` as a sibling in
+  the enclosing row. A figure that grows with the type scale goes inside. A navigation affordance
+  that dropped below the title would also stop marking the row as one that travels.
+- **The figure aligns itself to the trailing edge**, in its own `Column(horizontalAlignment =
+  Alignment.End)`. Beside the text that column is exactly its content width and the alignment
+  changes nothing; below the text it spans the row, and the alignment is what keeps the figure in
+  the right-hand column instead of jumping to the leading edge and reading as one more line of the
+  text above it. It
 measures rather than choosing a breakpoint: `Measurable.minIntrinsicWidth` on the text is the width
 of its longest unbreakable word, which is exactly the point below which Compose stops wrapping and
 starts breaking inside one. If the space left beside the figure is at least that, nothing changes;

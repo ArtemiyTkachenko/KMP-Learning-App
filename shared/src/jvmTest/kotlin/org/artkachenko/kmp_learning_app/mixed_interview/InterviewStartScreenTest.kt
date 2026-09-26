@@ -2,7 +2,9 @@ package org.artkachenko.kmp_learning_app.mixed_interview
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -24,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Instant
+import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
 @OptIn(ExperimentalTestApi::class)
 internal class InterviewStartScreenTest {
@@ -41,9 +45,16 @@ internal class InterviewStartScreenTest {
 
         onNodeWithText("Mixed Android Interview").assertIsDisplayed()
         onNodeWithText("Mixed Android Interview").assert(isHeading())
-        onNodeWithText("20-question interview").assertIsDisplayed()
-        // The rule that makes an Interview different from Practice, stated before the learner
+        // The figure and its unit are one announced fact rather than the two fragments "20" and
+        // "questions"; the assertion is on the information, not on which component draws it.
+        onNodeWithText("20 questions").assertIsDisplayed()
+        onNodeWithText("Test your knowledge across Android topics.").assertIsDisplayed()
+        // The two rules that make an Interview different from Practice, stated before the learner
         // commits rather than discovered on question one.
+        onNodeWithText(
+            "Questions are drawn across the whole curriculum, so a mixed interview is the " +
+                "closest thing to the real conversation.",
+        ).assertIsDisplayed()
         onNodeWithText(
             "Answers are reviewed when the interview is complete, not question by question.",
         ).assertIsDisplayed()
@@ -157,6 +168,69 @@ internal class InterviewStartScreenTest {
 
         onNodeWithText("Last interview").assertIsDisplayed()
         onNodeWithText("Best").assertDoesNotExist()
+    }
+
+    /**
+     * The hero's one primary action still starts an interview.
+     *
+     * The invitation was rebuilt around a gradient surface with a staggered entrance, so the button
+     * is now a descendant of an `AnimatedVisibility` and carries a delayed `fadeIn`. Neither may
+     * gate the interaction: the control is composed and clickable from the first frame, and the
+     * click is driven here without waiting for the motion to settle.
+     */
+    @Test
+    fun startingTheInterviewInvokesTheCallbackWithoutWaitingForTheEntrance() = runComposeUiTest {
+        var started = 0
+        setContent {
+            MaterialTheme {
+                InterviewStartScreen(
+                    onStartMixedInterview = { started += 1 },
+                    history = InterviewHistoryUiState.Empty,
+                )
+            }
+        }
+
+        onNodeWithTag(InterviewStartButtonTag).performClick()
+
+        assertEquals(1, started)
+    }
+
+    /**
+     * The expanded arrangement is still an invitation beside a record.
+     *
+     * Asserted on the information each pane carries rather than on the panes themselves, because
+     * what has to hold is that neither half disappeared when the invitation became a hero — not
+     * which container draws them.
+     */
+    @Test
+    fun anExpandedWindowKeepsBothTheInvitationAndTheRecord() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                CompositionLocalProvider(
+                    LocalAppWindowSizeClass provides AppWindowSizeClass.Expanded,
+                ) {
+                    Box(Modifier.size(1200.dp, 900.dp)) {
+                        InterviewStartScreen(
+                            onStartMixedInterview = {},
+                            history = historyState(
+                                attemptCount = 4,
+                                latest = InterviewAttemptUiModel("latest", 5, 20, 25.0, CompletedAt),
+                                best = InterviewAttemptUiModel("best", 18, 20, 90.0, CompletedAt),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        onNodeWithTag(InterviewHeroTag).assertIsDisplayed()
+        onNodeWithText("Mixed Android Interview").assert(isHeading())
+        onNodeWithText("20 questions").assertIsDisplayed()
+        onNodeWithTag(InterviewStartButtonTag).assertIsDisplayed()
+
+        onNodeWithTag(InterviewRecordTag).assertIsDisplayed()
+        onNodeWithText("Last interview").assertIsDisplayed()
+        onNodeWithText("18 of 20 correct").assertIsDisplayed()
     }
 
     @Test

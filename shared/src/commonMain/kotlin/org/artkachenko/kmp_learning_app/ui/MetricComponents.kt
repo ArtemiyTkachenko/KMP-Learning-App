@@ -176,7 +176,7 @@ internal const val AccuracyRingTrackAlpha = 0.22f
 /**
  * The figure a card exists to show, one step below [AccuracyHeroCard]'s screen headline.
  *
- * This exists because three cards — coverage, recent performance, and the interview question count
+ * This exists because three cards — coverage, recent performance, and the Practice Builder's summary
  * — each set `FontWeight.Bold` on a headline role at their own call site, while the same roles are
  * used elsewhere as ordinary headings at the scale's SemiBold. That is two intents sharing one
  * role, which is why the weight could not simply move into [AppTypography]: a figure is short,

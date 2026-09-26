@@ -1,0 +1,337 @@
+name: Agentic backlog task
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_key:
+        description: "Canonical backlog key (for example E27-08)"
+        required: true
+        type: string
+      merge_when_clean:
+        description: "Squash-merge after the agent loop and remote CI are clean"
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: agentic-${{ inputs.issue_key }}
+  cancel-in-progress: false
+
+env:
+  AGENT_BRANCH: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+
+jobs:
+  prepare:
+    name: Resolve backlog task
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install backlog parser dependency
+        run: python3 -m pip install --disable-pip-version-check PyYAML==6.0.2
+
+      - name: Resolve canonical backlog entry
+        run: |
+          mkdir -p .agent-work
+          python3 .github/agent/resolve_backlog.py "${{ inputs.issue_key }}" > .agent-work/task.json
+          python3 -m json.tool .agent-work/task.json
+
+      - name: Upload task context
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-task-context
+          path: .agent-work/task.json
+          retention-days: 7
+
+  plan:
+    name: Claude plan
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download task context
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-task-context
+          path: .agent-work
+
+      - name: Compact planner schema
+        id: schema
+        run: echo "value=$(jq -c . .github/agent/schemas/task-spec.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Create implementation contract with Claude
+        id: planner
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Read `.github/agent/prompts/planner.md` and `.agent-work/task.json`.
+            Follow the planner instructions exactly and return only the schema-valid contract.
+          claude_args: >-
+            --max-turns 30
+            --allowedTools "Read,Glob,Grep,WebSearch,WebFetch"
+            --json-schema '${{ steps.schema.outputs.value }}'
+
+      - name: Save implementation contract
+        env:
+          SPEC_JSON: ${{ steps.planner.outputs.structured_output }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          data = json.loads(os.environ["SPEC_JSON"])
+          with open(".agent-work/spec.json", "w", encoding="utf-8") as f:
+              json.dump(data, f, indent=2, ensure_ascii=False)
+              f.write("\n")
+          PY
+          python3 -m json.tool .agent-work/spec.json
+
+      - name: Upload implementation contract
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-spec
+          path: .agent-work/spec.json
+          retention-days: 7
+
+  implement:
+    name: Codex implementation
+    needs: [prepare, plan]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-code-step.yml
+    with:
+      issue_key: ${{ inputs.issue_key }}
+      branch: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+      mode: implement
+      commit_message: "${{ inputs.issue_key }}: agent implementation"
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  review_0:
+    name: Validate and review 0
+    needs: implement
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agentic-review-step.yml
+    with:
+      branch: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+      stage: "0"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  fix_1:
+    name: Codex fix 1
+    needs: [review_0]
+    if: ${{ needs.review_0.outputs.passed != 'true' || needs.review_0.outputs.requires_fix == 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-code-step.yml
+    with:
+      issue_key: ${{ inputs.issue_key }}
+      branch: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+      mode: fix
+      commit_message: "${{ inputs.issue_key }}: agent fixes 1"
+      review_artifact: agent-review-0
+      validation_artifact: agent-validation-0
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  review_1:
+    name: Validate and review 1
+    needs: fix_1
+    if: ${{ always() && needs.fix_1.result == 'success' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agentic-review-step.yml
+    with:
+      branch: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+      stage: "1"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  fix_2:
+    name: Codex fix 2
+    needs: review_1
+    if: ${{ always() && needs.review_1.result == 'success' && (needs.review_1.outputs.passed != 'true' || needs.review_1.outputs.requires_fix == 'true') }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-code-step.yml
+    with:
+      issue_key: ${{ inputs.issue_key }}
+      branch: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+      mode: fix
+      commit_message: "${{ inputs.issue_key }}: agent fixes 2"
+      review_artifact: agent-review-1
+      validation_artifact: agent-validation-1
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  review_2:
+    name: Validate and review 2
+    needs: fix_2
+    if: ${{ always() && needs.fix_2.result == 'success' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agentic-review-step.yml
+    with:
+      branch: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+      stage: "2"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  finalize:
+    name: Create PR and optionally merge
+    needs: [implement, review_0, fix_1, review_1, fix_2, review_2]
+    if: ${{ always() && needs.implement.result == 'success' && needs.review_0.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Select latest completed gate
+        id: gate
+        env:
+          R0_RESULT: ${{ needs.review_0.result }}
+          R0_FIX: ${{ needs.review_0.outputs.requires_fix }}
+          R0_PASS: ${{ needs.review_0.outputs.passed }}
+          R1_RESULT: ${{ needs.review_1.result }}
+          R1_FIX: ${{ needs.review_1.outputs.requires_fix }}
+          R1_PASS: ${{ needs.review_1.outputs.passed }}
+          R2_RESULT: ${{ needs.review_2.result }}
+          R2_FIX: ${{ needs.review_2.outputs.requires_fix }}
+          R2_PASS: ${{ needs.review_2.outputs.passed }}
+        run: |
+          if [ "$R2_RESULT" = "success" ]; then
+            stage=2; passed="$R2_PASS"; requires_fix="$R2_FIX"
+          elif [ "$R1_RESULT" = "success" ]; then
+            stage=1; passed="$R1_PASS"; requires_fix="$R1_FIX"
+          else
+            stage=0; passed="$R0_PASS"; requires_fix="$R0_FIX"
+          fi
+
+          clean=false
+          if [ "$passed" = "true" ] && [ "$requires_fix" = "false" ]; then
+            clean=true
+          fi
+
+          echo "stage=$stage" >> "$GITHUB_OUTPUT"
+          echo "clean=$clean" >> "$GITHUB_OUTPUT"
+          echo "Selected gate $stage: validation=$passed review_requires_fix=$requires_fix clean=$clean"
+
+      - name: Stop after exhausted correction cycles
+        if: ${{ steps.gate.outputs.clean != 'true' }}
+        run: |
+          echo "Agent pipeline is not clean after the available correction cycles." >&2
+          echo "The pushed branch is agent/${{ inputs.issue_key }}-${{ github.run_id }}" >&2
+          exit 1
+
+      - name: Checkout final branch
+        if: ${{ steps.gate.outputs.clean == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Create pull request
+        if: ${{ steps.gate.outputs.clean == 'true' }}
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_KEY: ${{ inputs.issue_key }}
+          BRANCH: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+          GATE_STAGE: ${{ steps.gate.outputs.stage }}
+        run: |
+          cat > .agent-pr-body.md <<EOF
+          ## Agentic implementation
+
+          Canonical backlog item: **$ISSUE_KEY**
+
+          Pipeline result before PR creation:
+          - deterministic validation: passed
+          - independent Claude review: passed
+          - correction cycles used: $GATE_STAGE
+
+          GitHub writes occur only in trusted workflow steps after the agent exits.
+          A fresh remote CI workflow is dispatched before any optional merge.
+          EOF
+
+          pr_url=$(gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "$ISSUE_KEY: agent implementation" \
+            --body-file .agent-pr-body.md)
+          pr_number=$(gh pr view "$pr_url" --json number --jq .number)
+          echo "url=$pr_url" >> "$GITHUB_OUTPUT"
+          echo "number=$pr_number" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch fresh remote CI on final branch
+        if: ${{ steps.gate.outputs.clean == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+        run: gh workflow run main.yml --ref "$BRANCH"
+
+      - name: Wait for remote CI run to appear
+        if: ${{ steps.gate.outputs.clean == 'true' }}
+        id: remote_ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: agent/${{ inputs.issue_key }}-${{ github.run_id }}
+        run: |
+          run_id=""
+          for _ in $(seq 1 30); do
+            run_id=$(gh run list \
+              --workflow main.yml \
+              --branch "$BRANCH" \
+              --event workflow_dispatch \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId // empty')
+            if [ -n "$run_id" ]; then
+              break
+            fi
+            sleep 5
+          done
+          if [ -z "$run_id" ]; then
+            echo "Remote CI workflow run did not appear." >&2
+            exit 1
+          fi
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Require remote CI success
+        if: ${{ steps.gate.outputs.clean == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.remote_ci.outputs.run_id }}
+        run: gh run watch "$RUN_ID" --exit-status
+
+      - name: Attach remote CI evidence to PR
+        if: ${{ steps.gate.outputs.clean == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          RUN_ID: ${{ steps.remote_ci.outputs.run_id }}
+        run: |
+          run_url=$(gh run view "$RUN_ID" --json url --jq .url)
+          gh pr comment "$PR_NUMBER" --body "Agentic pipeline remote CI passed: $run_url"
+
+      - name: Squash-merge clean PR
+        if: ${{ steps.gate.outputs.clean == 'true' && inputs.merge_when_clean }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: gh pr merge "$PR_NUMBER" --squash --delete-branch

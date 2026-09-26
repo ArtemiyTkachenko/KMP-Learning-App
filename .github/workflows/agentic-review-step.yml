@@ -1,0 +1,149 @@
+name: Agentic validation and review step
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+      stage:
+        required: true
+        type: string
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+    outputs:
+      passed:
+        description: Whether deterministic validation passed.
+        value: ${{ jobs.review.outputs.passed }}
+      verdict:
+        description: Claude review verdict.
+        value: ${{ jobs.review.outputs.verdict }}
+      requires_fix:
+        description: Whether the review has blocking/important work.
+        value: ${{ jobs.review.outputs.requires_fix }}
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      passed: ${{ steps.validation_result.outputs.passed }}
+      verdict: ${{ steps.review_gate.outputs.verdict }}
+      requires_fix: ${{ steps.review_gate.outputs.requires_fix }}
+
+    steps:
+      - name: Checkout agent branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download task context
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-task-context
+          path: .agent-work
+
+      - name: Download implementation contract
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-spec
+          path: .agent-work
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run deterministic repository validation
+        run: |
+          set +e
+          (
+            set -euo pipefail
+            python3 -m unittest discover -s tools -p 'test_*.py'
+            python3 tools/learning_question_coverage.py --check
+            ./gradlew --no-daemon \
+              :androidApp:assembleDebug \
+              :desktopApp:assemble \
+              :webApp:assemble \
+              :shared:check
+          ) 2>&1 | tee .agent-work/validation.log
+          status=${PIPESTATUS[0]}
+          printf '%s\n' "$status" > .agent-work/validation-status.txt
+          exit 0
+
+      - name: Record validation result
+        id: validation_result
+        run: |
+          status=$(cat .agent-work/validation-status.txt)
+          if [ "$status" -eq 0 ]; then
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Ensure comparison base is available
+        run: |
+          if ! git rev-parse --verify origin/main >/dev/null 2>&1; then
+            git fetch origin main --no-tags
+          fi
+
+      - name: Compact review schema
+        id: schema
+        run: echo "value=$(jq -c . .github/agent/schemas/review.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Review independently with Claude
+        id: reviewer
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Read `.github/agent/prompts/reviewer.md` and follow it exactly.
+            Review `origin/main...HEAD` using the task, plan, and validation evidence in `.agent-work/`.
+            Return only the schema-valid review object.
+          claude_args: >-
+            --max-turns 40
+            --allowedTools "Read,Glob,Grep,WebSearch,WebFetch,Bash(git diff:*),Bash(git status:*),Bash(git show:*),Bash(git log:*)"
+            --json-schema '${{ steps.schema.outputs.value }}'
+
+      - name: Save review and calculate gate
+        id: review_gate
+        env:
+          REVIEW_JSON: ${{ steps.reviewer.outputs.structured_output }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          data = json.loads(os.environ["REVIEW_JSON"])
+          with open(".agent-work/review.json", "w", encoding="utf-8") as f:
+              json.dump(data, f, indent=2, ensure_ascii=False)
+              f.write("\n")
+          blocking = any(x["severity"] in {"BLOCKER", "IMPORTANT"} for x in data["findings"])
+          requires_fix = data["verdict"] != "PASS" or blocking
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"verdict={data['verdict']}\n")
+              out.write(f"requires_fix={'true' if requires_fix else 'false'}\n")
+          PY
+          python3 -m json.tool .agent-work/review.json
+
+      - name: Upload validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-validation-${{ inputs.stage }}
+          path: |
+            .agent-work/validation.log
+            .agent-work/validation-status.txt
+          retention-days: 7
+
+      - name: Upload review
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-review-${{ inputs.stage }}
+          path: .agent-work/review.json
+          retention-days: 7

@@ -13,6 +13,8 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.filterToOne
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -22,6 +24,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.SkikoComposeUiTest
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -250,6 +253,61 @@ internal class AdaptiveLayoutTest {
     }
 
     /**
+     * The outline says which Section the reader is in, and keeps saying it once the page has moved.
+     *
+     * It did not. `columnTop` was measured *inside* the reading column's own `verticalScroll`, so
+     * the y it reported slid up by exactly the scroll offset that each Section's measurement then
+     * added back — every Section re-recorded itself one scroll further down the Lesson than it is.
+     * The offsets were right while the Lesson sat at the top and wrong from the first drag onwards,
+     * and with every Section then apparently below the reader the outline fell back to its first
+     * entry and stayed on it for the whole document.
+     *
+     * Asserted through the entries' own `selected` semantics, which is both what assistive
+     * technology is told and what the marker beside them is drawn from, rather than through the
+     * marker's pixels.
+     */
+    @Test
+    fun theOutlineFollowsTheSectionTheReaderIsIn() = runSkikoComposeUiTest(WideDisplay) {
+        setContent {
+            AppTheme {
+                CompositionLocalProvider(
+                    LocalAppWindowSizeClass provides AppWindowSizeClass.Expanded,
+                ) {
+                    Box(Modifier.size(1600.dp, 900.dp)) {
+                        LessonScreen(
+                            sections = listOf(
+                                longSection("Core idea"),
+                                longSection("In practice"),
+                                longSection("Pitfalls"),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        // At the top of a Lesson the reader is above every Section, and the outline says so by
+        // marking the first one rather than marking nothing.
+        outlineEntry("Core idea").assertIsSelected()
+        outlineEntry("Pitfalls").assertIsNotSelected()
+
+        outlineEntry("Pitfalls").performClick()
+        waitForIdle()
+
+        outlineEntry("Pitfalls").assertIsSelected()
+        outlineEntry("Core idea").assertIsNotSelected()
+        outlineEntry("In practice").assertIsNotSelected()
+
+        // And back: the reading position is derived from where the page is, not accumulated from
+        // where it has been, so returning to the top returns the outline with it.
+        outlineEntry("Core idea").performClick()
+        waitForIdle()
+
+        outlineEntry("Core idea").assertIsSelected()
+        outlineEntry("Pitfalls").assertIsNotSelected()
+    }
+
+    /**
      * A Lesson whose Sections carry no titles and sit in one depth run has exactly one heading, so
      * an outline of it would be a list of one. The entries are derived from the same two facts the
      * page draws headings from, which is what makes this checkable at all.
@@ -309,6 +367,11 @@ internal class AdaptiveLayoutTest {
 
         assertEquals(listOf(""), queries)
     }
+
+    /** One outline entry, addressed by the heading it names rather than by position. */
+    private fun SkikoComposeUiTest.outlineEntry(label: String) =
+        onNodeWithTag(LearningLessonOutlineTag).onChildren()
+            .filterToOne(hasText(label) and hasClickAction())
 
     @Composable
     private fun LessonScreen(sections: List<LearningSection>) {

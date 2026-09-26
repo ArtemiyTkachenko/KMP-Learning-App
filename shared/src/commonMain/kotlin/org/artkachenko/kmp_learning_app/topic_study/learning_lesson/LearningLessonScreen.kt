@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.topic_study.learning_lesson
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -38,6 +39,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
@@ -94,11 +98,14 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import kotlinx.coroutines.launch
 import kmp_learning_app.shared.generated.resources.learning_lesson_outline_title
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningDepth
@@ -396,9 +403,15 @@ private fun LearningLessonContent(
                     // measure.
                     .weight(1f)
                     .fillMaxHeight()
+                    // Outside `verticalScroll`, so this is the *viewport's* top and not the
+                    // scrolled content's. Inside it, the reported y slid up by the scroll offset
+                    // that the Section measurement below then added back, so every Section
+                    // re-recorded itself one scroll further down the Lesson than it is. The
+                    // offsets were right at rest and wrong from the first drag onwards, which is
+                    // why the outline highlighted the Lesson's first Section for the whole of it.
+                    .onGloballyPositioned { columnTop = it.positionInWindow().y }
                     .verticalScroll(scrollState)
                     .padding(appScreenContentPadding())
-                    .onGloballyPositioned { columnTop = it.positionInWindow().y }
                     .testTag(LearningLessonReadingColumnTag),
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
             ) {
@@ -565,9 +578,30 @@ private fun rememberLessonOutline(sections: List<LearningSection>): List<LessonO
  * the width. It scrolls on its own if the Lesson has more sections than the window is tall.
  *
  * Entries are buttons rather than a list of links: each one moves the page, which is an action.
- * The current one is marked by weight and colour together, never colour alone, and publishes
- * `selected` so assistive technology hears which section the reader is in rather than having to
- * infer it from a tint.
+ * The current one is marked by [LessonOutlineMarkerWidth] of `primary` down its leading edge and by
+ * `onSurface` text, and publishes `selected` so assistive technology hears which section the reader
+ * is in rather than having to infer it from a tint.
+ *
+ * That mark used to be weight and colour: every entry switched its own label between
+ * `FontWeight.Normal` and `SemiBold`. Two things were wrong with it. Weight is a *layout* property
+ * — the bolder label measures wider, so a title sitting near the wrap point gained a second line
+ * the moment the reader scrolled into its section, which moved every entry below it — and the
+ * outline is the one thing on screen that is supposed to hold still while the page moves under it.
+ * And an emphasis each entry owns can only cut from one entry to the next, which describes a set of
+ * independent controls rather than one reading position travelling down a document.
+ *
+ * The rail replaces both. It is the same page-level mark the Topic tabs use, turned on its side:
+ * `primary`, `ActiveIndicatorHeight` thick, no filled container, subordinate to the app's own
+ * navigation. Nothing about it affects layout, so the labels never move. And because it is drawn
+ * once by the column rather than owned by an entry, moving it is movement rather than a crossfade.
+ *
+ * Unlike the Topic tab indicator, this one *is* animated, and the difference is the input. A pager
+ * is dragged, so its indicator has a continuous position to render and any spring on top would only
+ * add lag. Reading position is not continuous: the reader is in section three or in section four,
+ * and being two thirds of the way through section three does not put them two thirds of the way
+ * towards section four. So the position is discrete and the travel between positions is what
+ * [AppMotion.spatialSpec] is for — which also absorbs the hard edge at [OutlineActivationSlack],
+ * where the entry used to change between one frame and the next.
  */
 @Composable
 private fun LessonOutline(
@@ -575,13 +609,51 @@ private fun LessonOutline(
     currentIndex: () -> Int?,
     onEntryClick: (Int) -> Unit,
 ) {
+    // Each entry's band down the column, in the column's own coordinates. Measured rather than
+    // derived: an entry is one line tall or two depending on the font scale and on where a title's
+    // words happen to break, so neither its height nor the next one's top is knowable from the
+    // model. Keyed on the entries so bands from the previous Lesson cannot survive a previous/next.
+    val bands = remember(entries) { mutableStateMapOf<Int, LessonOutlineBand>() }
+    val current = currentIndex()
+    val currentBand = current?.let(bands::get)
+    val markerColor = MaterialTheme.colorScheme.primary
+    // No band yet means nothing has been placed, which happens for one frame when a Lesson opens.
+    // Composing the marker only once there is somewhere to put it is what seeds the animation at
+    // that first band instead of springing down to it from the top of the column — an arrival
+    // animation nobody asked for, on a control whose whole job is to be already correct.
+    val marker = if (currentBand == null) {
+        Modifier
+    } else {
+        val top = animateFloatAsState(currentBand.top, AppMotion.spatialSpec())
+        val height = animateFloatAsState(currentBand.height, AppMotion.spatialSpec())
+        Modifier.drawBehind {
+            // Read inside the lambda rather than in composition, as the reading hairline does: a
+            // frame of the marker's travel then redraws one rail instead of recomposing the
+            // outline and every label in it.
+            val width = LessonOutlineMarkerWidth.toPx()
+            drawRoundRect(
+                color = markerColor,
+                topLeft = Offset(
+                    x = if (layoutDirection == LayoutDirection.Ltr) 0f else size.width - width,
+                    y = top.value,
+                ),
+                size = Size(width = width, height = height.value),
+                // A 3dp bar with a 3dp corner radius is a capsule, which is what the token
+                // resolves to on Material's own tab indicator at the same thickness.
+                cornerRadius = CornerRadius(width / 2f),
+            )
+        }
+    }
     Column(
         modifier = Modifier
             .width(LessonOutlineWidth)
             .fillMaxHeight()
             .verticalScroll(rememberScrollState())
             .padding(vertical = AppSpacing.Comfortable)
-            .testTag(LearningLessonOutlineTag),
+            .testTag(LearningLessonOutlineTag)
+            // Innermost, so the rail is drawn in the same space the entries report their bands in,
+            // and beneath every entry's content and state layer rather than over them.
+            .then(marker),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
     ) {
         Text(
@@ -593,18 +665,30 @@ private fun LessonOutline(
                 .semantics { heading() },
         )
         entries.forEach { entry ->
-            val isCurrent = currentIndex() == entry.sectionIndex
+            val isCurrent = current == entry.sectionIndex
             Text(
                 text = entry.label,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
-                ),
+                style = MaterialTheme.typography.bodyMedium,
                 color = if (isCurrent) {
                     MaterialTheme.colorScheme.onSurface
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
                 modifier = Modifier
+                    // Outermost, so the band is the whole entry — the touch target and its padding,
+                    // not just the text — and so `positionInParent` resolves against the column
+                    // rather than against another modifier in this chain. Guarded because placement
+                    // re-runs whenever the outline itself is scrolled, and the band it reports is
+                    // the same one every time.
+                    .onPlaced { coordinates ->
+                        val band = LessonOutlineBand(
+                            top = coordinates.positionInParent().y,
+                            height = coordinates.size.height.toFloat(),
+                        )
+                        if (bands[entry.sectionIndex] != band) {
+                            bands[entry.sectionIndex] = band
+                        }
+                    }
                     .fillMaxWidth()
                     .clip(MaterialTheme.shapes.small)
                     .selectable(
@@ -621,11 +705,28 @@ private fun LessonOutline(
     }
 }
 
+/** One outline entry's vertical band within the outline column, in that column's own pixels. */
+@Immutable
+private data class LessonOutlineBand(
+    val top: Float,
+    val height: Float,
+)
+
 /**
  * Narrow enough that the reading column keeps the whole measure, wide enough for a Section title
  * to wrap to two lines rather than to five.
  */
 private val LessonOutlineWidth: Dp = 220.dp
+
+/**
+ * Material's `PrimaryNavigationTabTokens.ActiveIndicatorHeight`, the same 3dp the Topic tab row
+ * marks its current page with. The two are one idea at right angles: a page-level "you are here",
+ * in `primary`, with no container behind it.
+ *
+ * It sits in the leading gutter an entry's own `AppSpacing.Related` padding already leaves, so it
+ * costs the labels no width and never has to be spaced away from them.
+ */
+private val LessonOutlineMarkerWidth: Dp = 3.dp
 
 /** Material's minimum touch target, which an outline entry has to clear like any other control. */
 private val OutlineEntryMinHeight: Dp = 48.dp

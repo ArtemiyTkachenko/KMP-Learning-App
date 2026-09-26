@@ -423,6 +423,26 @@ Width, wrapping, and reachability *are* assertable, and there are two harnesses 
 `runSkikoComposeUiTest` defaults to a 1024x768 display — a *medium* window here — so an
 expanded-layout test must pass `size` explicitly.
 
+### Known: the accuracy row crushes its title at a large type scale
+
+`TopicBrowserScreen`'s Topic rows and `TopicSubtopicsPage`'s Subtopic rows share a shape — a
+weighted text column, then an accuracy figure with a `learning_context_accuracy` caption under it,
+then a chevron. A `Row` measures its non-weighted children first, so the trailing block takes its
+intrinsic width and the title column gets whatever is left. At `fontScale = 2f` on a 360dp window
+that leaves roughly 165dp, and a title like "Structured concurrency" breaks mid-word.
+
+The caption is the cause and was confirmed by removing it and re-measuring: the word then fits. It
+is not the fix. That label is a recorded decision on both screens — "Labelled so the figure cannot
+be mistaken for the coverage count beside it" — and the left line on these rows is a coverage
+fraction while the right figure is an accuracy, which is exactly the two-denominators confusion the
+tone section above warns about. Removing it on one screen would also split two surfaces that
+currently agree.
+
+The fix is a reflow rule for that trailing block, applied to both call sites at once: below some
+type scale it sits beside the text, above it, it stacks under it. Nothing leaves the window today
+and `LargeFontScaleTest` passes, so this is legible-but-ugly rather than broken — recorded here so
+the next session measures nothing and starts from the cause.
+
 Assertions do not see a state layer, a margin, or an overlap. When a change is about how
 something *looks*, capture it: a throwaway `runSkikoComposeUiTest` that renders the screen
 under `AppTheme`, drives `performMouseInput { moveTo(center) }` where hover matters, and

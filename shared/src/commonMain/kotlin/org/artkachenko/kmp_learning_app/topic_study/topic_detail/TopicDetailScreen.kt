@@ -98,6 +98,17 @@ internal const val TopicStudyListTag = "topic_study_list"
 internal const val TopicSubtopicsListTag = "topic_subtopics_list"
 
 /**
+ * The hairlines between Subtopic rows, tagged only so a test can assert how many there are.
+ *
+ * That count is the assertion: a rule belongs *between* two rows, and one drawn after the last is a
+ * separator with nothing to separate. A `HorizontalDivider` publishes no semantics of its own, so
+ * counting the tag is the only way to state that. Nothing about where a rule sits or how wide it is
+ * is asserted; those are geometry. The tag adds no role, label or state, so the rules stay absent
+ * from the accessibility tree.
+ */
+internal const val SubtopicRowDividerTag = "subtopic_row_divider"
+
+/**
  * The tabs themselves, so a test can select a page without matching localised label text.
  *
  * Selected state is not tagged: `Tab` already exposes it through standard Material selection

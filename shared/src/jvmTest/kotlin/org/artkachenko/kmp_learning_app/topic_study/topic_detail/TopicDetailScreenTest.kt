@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
@@ -1702,6 +1703,105 @@ internal class TopicDetailScreenTest {
         onAllNodesWithText("Empty Subtopic").assertCountEquals(0)
     }
 
+    /**
+     * A rule belongs between two rows, so there is one fewer of them than there are rows.
+     *
+     * A divider after the last entry is a separator with nothing to separate, and on a list that
+     * ends short of the window it draws a line across empty background that reads as content still
+     * to come. `ContentGroup` states the same rule; this list did not follow it.
+     */
+    @Test
+    fun theSubtopicListDrawsARuleBetweenRowsAndNotAfterTheLast() = runComposeUiTest {
+        val subtopics = listOf(
+            subtopicItem("sub_a", "Alpha", learningContext = learningContext(3, 9, 70.0)),
+            subtopicItem("sub_b", "Beta", learningContext = learningContext(4, 9, 60.0)),
+            subtopicItem("sub_c", "Gamma", learningContext = learningContext(9, 9, 80.0)),
+        )
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(subtopics = subtopics),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicSubtopicsTabTag)
+        onAllNodesWithTag(SubtopicRowDividerTag).assertCountEquals(subtopics.size - 1)
+    }
+
+    /**
+     * A Subtopic's shortcuts line up with the row they act on, and sit closer to it than to the next.
+     *
+     * Both are properties of the same defect: the shortcuts are outside the row's click target,
+     * which is correct, and that left them reading as though they were outside the *row*. A
+     * `TextButton` insets its own label, so a block placed at the content margin put the page's only
+     * other column of text at a second left edge; and the gap above them used to be no smaller than
+     * the gap to the next entry, so two controls sat midway between the thing they act on and
+     * something they have nothing to do with.
+     *
+     * Asserted as relationships rather than as measurements: equal left edges, and nearer above than
+     * below. Neither pins a padding value, so the spacing can be retuned without rewriting this.
+     */
+    @Test
+    fun aSubtopicShortcutAlignsWithItsRowAndSitsNearerToItThanToTheNext() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        subtopics = listOf(
+                            subtopicItem(
+                                id = "sub_weak",
+                                name = "Weak Subtopic",
+                                count = 24,
+                                learningContext = learningContext(9, 24, 44.0, isWeak = true),
+                            ),
+                            subtopicItem(
+                                id = "sub_next",
+                                name = "Next Subtopic",
+                                count = 30,
+                                learningContext = learningContext(30, 30, 88.0),
+                            ),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicSubtopicsTabTag)
+        // The labels, not the buttons: a `TextButton`'s own bounds include the inset being
+        // corrected for, so comparing those would assert nothing about what the learner sees.
+        val title = unmergedBounds("Weak Subtopic")
+        val weakShortcut = unmergedBounds("Practice weak area")
+        val unseenShortcut = unmergedBounds("Practice 15 unseen questions")
+        val badge = unmergedBounds("Weak area")
+        val nextRow = unmergedBounds("Next Subtopic")
+
+        // Only the shortcut that starts a line can align with the row: the block wraps, so on a
+        // wide window the second sits beside the first and on a phone it moves below it.
+        assertEquals(
+            title.left,
+            weakShortcut.left,
+            "The shortcuts do not start where the row they belong to does.",
+        )
+
+        val above = weakShortcut.top - badge.bottom
+        val below = nextRow.top - unseenShortcut.bottom
+        assertTrue(
+            above < below,
+            "The shortcuts sit ${above}px below their own row and ${below}px above the next.",
+        )
+    }
+
     @Test
     fun aTopicWithNoSubtopicsShowsAnEmptySubtopicsPage() = runComposeUiTest {
         setContent {
@@ -1940,6 +2040,11 @@ private suspend fun ComposeUiTest.selectTab(testTag: String) {
     }
     waitForIdle()
 }
+
+/** The label's own bounds, not its button's: a `TextButton` includes its inset in its node. */
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.unmergedBounds(text: String): Rect =
+    onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
 
 private fun topicContent(
     learningContext: LearningContextUiModel? = null,

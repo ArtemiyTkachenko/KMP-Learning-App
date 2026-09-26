@@ -95,7 +95,14 @@
     <string name="progress_topic_empty">No completed answers have been recorded for this topic yet.</string>
     <string name="progress_topic_error">Topic performance could not be loaded.</string>
     <string name="progress_topic_coverage">%1$d of %2$d current questions explored</string>
-    <string name="mistake_review_unresolved_count">%1$d unresolved mistakes to review</string>
+    <plurals name="mistake_review_unresolved_count">
+        <item quantity="one">%1$d unresolved mistake to review</item>
+        <item quantity="other">%1$d unresolved mistakes to review</item>
+    </plurals>
+    <plurals name="mistake_review_unresolved_unit">
+        <item quantity="one">unresolved mistake</item>
+        <item quantity="other">unresolved mistakes</item>
+    </plurals>
     <plurals name="mistake_review_practice_all">
         <item quantity="one">Practice %1$d mistake</item>
         <item quantity="other">Practice %1$d mistakes</item>

@@ -39,6 +39,7 @@ bare rows. None of them changes colour to say where it sits.
 | `AccuracyHeroCard` | `ui/ContentHierarchy.kt` | 2 — Topic drill-down, Topic practice page |
 | `SecondarySummaryCard` | `ui/ContentHierarchy.kt` | 2 — Progress recent performance, Topic practice |
 | the Practice Builder's summary surface | `practice_builder/PracticeBuilderScreen.kt` | 1 — level 2, see below |
+| the Mistakes remediation surface | `mistake_review/MistakeReviewScreen.kt` | 1 — level 2, see below |
 | `ContentGroup` + `AccuracyRow` | `ui/ContentHierarchy.kt`, `ui/PerformanceCard.kt` | 4 groups, 3 rows |
 | `PerformanceCard` | `ui/PerformanceCard.kt` | weak areas, Subtopic rows, Topic drill-down |
 | bare rows | written per feature | Units, Subtopics, Lessons, session history |
@@ -78,9 +79,10 @@ contract and checks its own contrast. `AppColorSchemeTest`, `AssessmentCompletio
 ### The one level-2 surface a screen may have
 
 Level 2 (`surfaceContainer` and up) means "the one surface on a screen that outranks the rest", so a
-screen that puts two things there has said nothing. Three components claim it: `AccuracyHeroCard`
-at `surfaceContainerHigh`, a weak `PerformanceCard`, and the Practice Builder's summary at
-`surfaceContainer` with a hairline `outlineVariant` edge and no shadow.
+screen that puts two things there has said nothing. Four components claim it: `AccuracyHeroCard`
+at `surfaceContainerHigh`, a weak `PerformanceCard`, and — both at `surfaceContainer` with a
+hairline `outlineVariant` edge and no shadow — the Practice Builder's summary and the Mistakes
+remediation block.
 
 The builder's is the clearest worked example of *why* the rank exists. Its configuration is three
 groups of option surfaces, and an option surface is level 1 — so the screen's conclusion, the block
@@ -89,7 +91,19 @@ while it was a `SecondarySummaryCard`. It is the only filled, unbordered, non-se
 the page, which is exactly the claim level 2 makes. It stops one step below `AccuracyHeroCard` and
 takes no shadow, because the builder has no headline figure and should not acquire a hero.
 
-A fourth claim needs the same argument: not "this card should look important", but that nothing else
+The Mistakes block is the same case one screen along, which is why it took the builder's treatment
+rather than inventing one. It was four loose pieces of type on the page background — the rank
+reserved for a record or a sequence — while every review card below it had a container, so the
+screen's own subject line was outranked by each of its entries. It is now the only filled,
+unbordered, non-selectable surface there, and the only one that starts anything.
+
+It is deliberately **not** the brand gradient, and the reason is the rule at the top of this page
+read the other way. The gradient is for the surface that is the whole reason its destination exists,
+and on Mistakes that is the *queue*: a learner opens it to work through the entries, not to read a
+summary of them. Promoting the offer to a hero would have put the loudest surface in the app above a
+list the learner immediately scrolls past it. The offer needed a container, not a crown.
+
+A fifth claim needs the same argument: not "this card should look important", but that nothing else
 on the screen is competing for the rank.
 
 ## Choosing between a card and a group

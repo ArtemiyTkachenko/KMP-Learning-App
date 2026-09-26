@@ -76,6 +76,7 @@ import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.artkachenko.kmp_learning_app.ui.time.timestampText
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 internal const val ProgressLoadingTag = "progress_loading"
@@ -582,7 +583,11 @@ private fun UnresolvedMistakeSummary(
             text = if (resolved) {
                 stringResource(Res.string.mistake_review_none)
             } else {
-                stringResource(Res.string.mistake_review_unresolved_count, unresolvedCount)
+                pluralStringResource(
+                    Res.plurals.mistake_review_unresolved_count,
+                    unresolvedCount,
+                    unresolvedCount,
+                )
             },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

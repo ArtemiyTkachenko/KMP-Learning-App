@@ -115,20 +115,24 @@ colour rule of its own.
 A marked option keeps the answer text in `onSurface` rather than an outcome colour, because the text
 is the authored question and the mark is the label and border around it.
 
-`AppSemanticColors.heroGradientStart`/`heroGradientEnd` has exactly one call site,
-`AssessmentCompletionHero`, and is reserved for a surface that is the single most important thing on
-its screen. It carries no on-colour: both endpoints sit within the scheme's `primaryContainer` tone,
-so `onPrimaryContainer` is the text colour across the sweep. A hero also takes a hairline border in
-its own on-colour at low alpha plus a small `shadowElevation`, because a gradient alone is a colour
-change rather than a lifted object — most noticeably in light, where the sweep is a pale tint over an
-off-white page.
+`AppSemanticColors.heroGradientStart`/`heroGradientEnd` has exactly three call sites —
+`AssessmentCompletionHero`, `ProgressHero`, and the Mixed Interview invitation in
+`InterviewStartScreen` — and is reserved for a surface that is the single most important thing on
+its screen. Which of the three a new surface may argue itself alongside is in
+[surface hierarchy](surface-hierarchy.md). It carries no on-colour: both endpoints sit within the
+scheme's `primaryContainer` tone, so `onPrimaryContainer` is the text colour across the sweep. A
+hero also takes a hairline border in its own on-colour at low alpha plus a small `shadowElevation`,
+because a gradient alone is a colour change rather than a lifted object — most noticeably in light,
+where the sweep is a pale tint over an off-white page.
 
 A screen may have a hero without the gradient, and three do. `AccuracyHeroCard` is
 `surfaceContainerHigh` with a hairline `outlineVariant` edge and a small shadow, and it is what the
 Progress dashboard, the Topic drill-down, and the Topic practice page lead with. The edge is what
 carries the rank in dark, where one container step is nearly invisible and a shadow almost is; the
 shadow is what carries it in light, where the two tones are close in value. Neither alone works in
-both schemes. Reach for the gradient only where the surface is an *arrival*.
+both schemes. Reach for the gradient only where the surface is the whole reason its destination
+exists — an *arrival*, a *standing answer*, or an *invitation* — and never merely to make a card
+look important.
 
 Every hero states its figure beside `AccuracyRing` rather than over a `ProgressMeter`. A bar is the
 picture of "how far through something you are" — which is what a coverage meter on the same card

@@ -49,7 +49,7 @@ import androidx.compose.ui.graphics.Color
  * | 0 — page | `background` (= `surface`) | `AppNavigationScaffold`'s container |
  * | 1 — ordinary content | `surfaceContainerLow` | most Cards, `SecondarySummaryCard`, `ContentGroup` |
  * | 2 — raised / interactive | `surfaceContainer` and up | `AccuracyHeroCard` (at `surfaceContainerHigh`), a weak `PerformanceCard`, menus, sheets |
- * | hero | the brand gradient | `AssessmentCompletionHero`, `ProgressHero` — see [AppSemanticColors] |
+ * | hero | the brand gradient | `AssessmentCompletionHero`, `ProgressHero`, the interview invitation — see [AppSemanticColors] |
  *
  * `ContentGroup` shares level 1 with an ordinary card deliberately: it gathers several rows under
  * one edge instead of one edge each, and gathering is not promotion. A screen's ranks are therefore
@@ -57,7 +57,7 @@ import androidx.compose.ui.graphics.Color
  * there is rather than by four tones, which the ramp does not have room for.
  *
  * The hero row is outside the ramp rather than the top of it. It is not a neutral and it is not a
- * step a screen may climb to; it is the two surfaces that are the single most important thing on
+ * step a screen may climb to; it is the three surfaces that are the single most important thing on
  * their page, and it carries its own on-colour contract because of that.
  *
  * The complaint this answers is that the levels were nearly the same colour. The light ramp used to

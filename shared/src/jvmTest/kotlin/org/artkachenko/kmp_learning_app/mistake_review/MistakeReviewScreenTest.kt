@@ -4,11 +4,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -51,7 +53,7 @@ internal class MistakeReviewScreenTest {
             }
         }
 
-        onNodeWithText("1 unresolved mistakes to review").assertIsDisplayed().assert(isHeading())
+        onNodeWithText("1 unresolved mistake to review").assertIsDisplayed().assert(isHeading())
     }
 
     @Test
@@ -171,7 +173,7 @@ internal class MistakeReviewScreenTest {
             }
         }
 
-        onNodeWithText("1 unresolved mistakes to review").assertIsDisplayed()
+        onNodeWithText("1 unresolved mistake to review").assertIsDisplayed()
         onNodeWithTag(MistakeReviewPracticeAllTag).assertDoesNotExist()
     }
 
@@ -285,7 +287,12 @@ internal class MistakeReviewScreenTest {
         }
 
         onNodeWithText("Question q3").assertIsDisplayed()
-        onNodeWithText("Question q1").performScrollTo().assertIsDisplayed()
+        // Scrolled through the list rather than reached directly: the queue is a `LazyColumn`, so
+        // a second full review card below the fold is not composed at all and `performScrollTo`
+        // has nothing to scroll to. This asserts what the test is named for — that q1 is in the
+        // queue, after q3 — without depending on how much of it happens to fit the viewport.
+        onNodeWithTag(MistakeQueuePaneTag).performScrollToNode(hasText("Question q1"))
+        onNodeWithText("Question q1").assertIsDisplayed()
     }
 
     @Test
@@ -542,6 +549,120 @@ internal class MistakeReviewScreenTest {
         onNodeWithText("Explanation for q1").performScrollTo().assertIsDisplayed()
         onNodeWithTag(mistakePracticeShortcutTag("q1")).performScrollTo().assertIsDisplayed()
         onNodeWithTag(reviewQuestionSaveTag("q1")).assertDoesNotExist()
+    }
+
+    /**
+     * The count and its unit are one announcement, not two fragments.
+     *
+     * The subject line became a figure over a unit, so it is now two `Text` nodes where it was one
+     * sentence. What has to hold is the information and the semantics, not the component: heading
+     * navigation still lands on the whole sentence, and a screen reader does not hear "3" followed
+     * by an unrelated "unresolved mistakes".
+     */
+    @Test
+    fun theOutstandingCountIsAnnouncedAsOneSentenceAndStillAHeading() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(availableMistake("q1"), availableMistake("q2")),
+                    ),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithText("2 unresolved mistakes to review").assertIsDisplayed().assert(isHeading())
+        // The figure's two halves are cleared, so neither is reachable as a node of its own.
+        onNodeWithText("unresolved mistakes").assertDoesNotExist()
+    }
+
+    /**
+     * The block the screen leads with is a surface, and the queue is still below it.
+     *
+     * The remediation offer was four loose pieces of type on the page background, outranked by
+     * every review card beneath it. It is now the screen's one level-2 surface. Asserted on the
+     * handle and on the information either side of it rather than on tone or elevation, which are
+     * not things a semantics assertion can see.
+     */
+    @Test
+    fun theRemediationBlockLeadsTheQueue() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(listOf(availableMistake("q1"))),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithTag(MistakeRemediationSurfaceTag).assertIsDisplayed()
+        onNodeWithText("1 unresolved mistake to review").assertIsDisplayed()
+        onNodeWithText(
+            "Questions stay here until your most recent completed answer is correct.",
+        ).assertIsDisplayed()
+        onNodeWithTag(MistakeReviewPracticeAllTag).assertIsDisplayed()
+        onNodeWithText("Question q1").assertIsDisplayed()
+    }
+
+    /**
+     * The entrance never gates the one control the screen exists to offer.
+     *
+     * The block now arrives through an `AnimatedVisibility`, and a reveal that had to finish before
+     * Practice could be pressed would be a motion defect rather than a motion flourish. The click
+     * is driven here without waiting for the animation to settle.
+     */
+    @Test
+    fun practiceIsClickableWithoutWaitingForTheEntrance() = runComposeUiTest {
+        val started = mutableListOf<AssessmentConfig.Focused>()
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(listOf(availableMistake("q1"))),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                    onStartPractice = { started += it },
+                )
+            }
+        }
+
+        onNodeWithTag(MistakeReviewPracticeAllTag).performClick()
+
+        assertEquals(1, started.size)
+        assertEquals(1, started.single().questionCount)
+    }
+
+    /**
+     * A singular queue reads as one mistake.
+     *
+     * The count string was not a plural, so a learner with one outstanding Question was told they
+     * had "1 unresolved mistakes to review" — on the screen, and on the Progress row that shares
+     * the string.
+     */
+    @Test
+    fun aSingleOutstandingMistakeIsStatedInTheSingular() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(listOf(availableMistake("q1"))),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithText("1 unresolved mistake to review").assertIsDisplayed()
+        onNodeWithText("1 unresolved mistakes to review").assertDoesNotExist()
     }
 }
 

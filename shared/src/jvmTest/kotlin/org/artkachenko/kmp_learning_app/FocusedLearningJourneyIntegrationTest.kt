@@ -218,9 +218,12 @@ internal class FocusedLearningJourneyIntegrationTest {
             // Mistake review: the multiple-choice question was answered incorrectly and the single
             // question correctly, so only the former is unresolved.
             onNode(hasScrollAction()).performScrollToNode(
-                hasText("unresolved mistakes to review", substring = true),
+                hasText("unresolved mistake to review", substring = true),
             )
-            onNodeWithText("1 unresolved mistakes to review").assertIsDisplayed()
+            // Singular, because exactly one is unresolved. The count string is a plural, so this
+            // row and the Mistakes screen that shares it both say "mistake" rather than the
+            // "1 unresolved mistakes" they read before.
+            onNodeWithText("1 unresolved mistake to review").assertIsDisplayed()
             onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.MISTAKES)).performClick()
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Multiple question").fetchSemanticsNodes().isNotEmpty()

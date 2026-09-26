@@ -179,6 +179,16 @@ Drawing both as the same filled pill, which this app did until P2, made a page c
 like a second copy of the app's navigation and made the Topic screen read as though it had
 two rows of destinations.
 
+**One rule, moved, not one rule per destination.** A page-level mark belongs to the row and
+travels between its destinations; it is never a mark each destination owns and crossfades.
+The Topic tab row renders its indicator once and positions it straight from `PagerState`, so
+a half-finished swipe leaves it halfway between two tabs, and the Lesson outline renders the
+same rule turned on its side down the leading edge of the section the reader is in. Where the
+input is continuous — a dragged pager — the mark is positioned from it and carries no spring
+of its own, because a second animation can only arrive after the content it describes. Where
+the input is discrete — which section of a document you are in — the position is discrete and
+the travel between positions is `AppMotion.spatialSpec()`.
+
 ## Lists
 
 **A row that is its own interactive surface must be full-bleed, and carry the margin
@@ -373,6 +383,7 @@ than drifted into.
 | `AppShapes` departs from the Material baseline corner scale | Argued in `AppShapes.kt`: `medium` at 12dp made every content surface in the product the most generic shape Material can produce. |
 | `AppMotion` states spring constants literally rather than reading `MotionScheme` | `MotionScheme` is `@Composable`-scoped and several call sites are not. The numbers are Material's own. |
 | The Lesson reading hairline is a hand-configured `LinearProgressIndicator`, not `ProgressMeter` | It belongs to the toolbar rather than to the reading column: 3dp, square caps, no gap, full-bleed, and unanimated because it tracks a finger rather than jumping between figures. `ProgressMeter`'s rounded, inset, animated treatment would read as a loose component that had drifted under the bar. |
+| The Lesson outline's current-section mark is a hand-drawn 3dp `primary` capsule, not a Material list container | Material's list and rail treatments for "active" are filled containers, which is the weight this app reserves for area navigation. The outline is page-level, so it takes the tab row's `ActiveIndicatorHeight` rule rotated. It is drawn by the column with `drawBehind` rather than composed per entry, so it can move as one mark, adds no node to the semantics tree, and — unlike the `FontWeight` switch it replaced — cannot re-wrap a label and shift the list under the reader. |
 | Compact area navigation uses a translucent floating container, 24dp icons, and a whole-destination selected pill | The standard full-width container reserved viewport space, while `NavigationBarItem` imposed an icon-only indicator and excess internal layout. The custom 68dp surface keeps Material selection semantics and 48dp targets while centring each icon-label pair in one fixed 60dp-high destination. |
 
 ## Empty and early states

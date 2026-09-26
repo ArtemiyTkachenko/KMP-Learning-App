@@ -62,13 +62,15 @@ import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 internal class LargeFontScaleTest {
 
     /**
-     * The builder is the densest form in the app — three sets of chips, each with a leading control
-     * inside the chip — and the one most likely to push its Start button off the bottom. `FlowRow`
-     * is what is being checked here: at this type size the chips cannot fit one line, so a fixed
-     * `Row` would carry the last option off the right-hand edge instead of wrapping it.
+     * The builder is the densest form in the app — three sets of options, two of which wrap and one
+     * of which stacks — and the one most likely to push its Start button off the bottom. The
+     * wrapping is what is being checked: at this type size the count and level tiles cannot fit one
+     * line, so a fixed `Row` would carry the last option off the right-hand edge instead of moving
+     * it to the next line, and a full-width source row has to stay inside the window rather than
+     * growing past it with its label.
      */
     @Test
-    fun thePracticeBuilderWrapsItsChipsAndKeepsStartReachable() =
+    fun thePracticeBuilderWrapsItsOptionsAndKeepsStartReachable() =
         runSkikoComposeUiTest(size = PhoneDisplay, density = DoubledText) {
             setContent {
                 AppTheme {

@@ -78,15 +78,64 @@ so those flows are unchanged — their scope is known from the ID, and the curri
 read only for a display name whose absence has never blocked practice.
 
 The verdict those states produce is the screen's conclusion, so it renders as one:
-availability, its Retry, and Start sit together on a `SecondarySummaryCard` rather than
-loose under the last chip row. The sentence itself is `titleMedium` and carries a tone —
-neutral while checking or when a run is ready, the app's warning amber for every setup that
-cannot run, and `colorScheme.error` for the one state that is a failed read rather than a
-settled answer. It was `bodyMedium onSurfaceVariant` in all six, which made "No questions
-match this setup. Try more levels." — the one sentence explaining why the learner cannot
-proceed — the quietest text on the screen, directly above a disabled button. Start fills the
-card's width on a phone, where the card is the window, and takes its own width at an expanded
-width, where `fillMaxWidth` produced a five-hundred-pixel bar in a two-fifths pane.
+availability, its Retry, and Start sit together on one surface rather than loose under the
+last option row. The sentence carries a tone — neutral while checking, the app's warning
+amber with a warning icon for every setup that cannot run, and `colorScheme.error` for the
+one state that is a failed read rather than a settled answer. It was `bodyMedium
+onSurfaceVariant` in all six, which made "No questions match this setup. Try more levels." —
+the one sentence explaining why the learner cannot proceed — the quietest text on the screen,
+directly above a disabled button. Start fills the card's width on a phone, where the card is
+the window, and takes its own width at an expanded width, where `fillMaxWidth` produced a
+five-hundred-pixel bar in a two-fifths pane.
+
+The available state is the exception to "the verdict is a sentence": it leads with the
+eligible count as a figure over a caption, in `colorScheme.primary`. Being able to practise
+is a precondition rather than an achievement, so it takes the brand and never the `correct`
+green — spending the one colour that means "you got this right" on a setup passing its
+preflight would leave the product without it. The full sentence is still what a screen reader
+hears, published on the block through `clearAndSetSemantics`, so the figure and its caption
+are one statement rather than two fragments.
+
+## How the screen looks like a builder rather than a form
+
+The four decisions were structurally right and still read as three rows of chips under three
+headings, because every choice was a default `FilterChip` whose selected fill is Material's
+`secondaryContainer` — which this palette defines as the primary hue drained of chroma, the
+same tint the neutral surface ramp carries. Choosing an option made it slightly darker rather
+than making it chosen. All three groups now draw the app's own option surface,
+`primaryContainer` behind a 2dp `primary` border, which is the conclusion
+`AssessmentTakingScreen` reached first for an answer option: the surfaces a learner picks from
+look the same whether they are configuring a run or answering inside one. That surface is
+private to this screen — three call sites in one file, not a selection component the rest of
+the app has asked for.
+
+Three treatments follow from what each decision actually is. The **count** is a tile with the
+number over the unit, because the number is the whole content of the choice and it was
+previously set at label size inside "10 questions", so four options read as four sentences to
+be compared word by word; the existing sentence survives as the tile's accessible name. The
+**levels** keep their checkbox, which is the only thing that tells a learner whether choosing
+one option unchooses another, and its tints now travel with the tile on the same transition
+rather than repainting a frame ahead of it. The **sources** are full-width rows rather than
+wrapped tiles, because they carry the longest labels on the screen and a radio button nested
+in a 32dp chip beside "Weak areas" left neither the control nor the words any room. They are
+deliberately not rows inside a `ContentGroup`: a chosen option is singled out by a border,
+`primaryContainer` alone being about 1.1:1 against the light theme's level-1 surface, and a
+border is a property of a container that a grouped row does not have.
+
+Each option is one `updateTransition` over one derived three-value state — resting, selected,
+unavailable — driving container, edge colour, edge width, label and control tints together,
+because five `animate*AsState` calls on one fact drift apart under a fast change. The summary
+is one `AnimatedContent` over the whole `PracticeAvailability`, keyed on the availability
+itself rather than on a tone so an outgoing "12 questions ready" keeps its own figure while it
+leaves, and Start's label is a second one over the label string so an unchanged label does not
+animate. None of it reaches the ViewModel: every appearance is derived from the state the
+screen is already handed, and nothing in the interaction waits on an animation.
+
+The summary's surface is `surfaceContainer` with a hairline edge — level 2, the rank that
+means "the one surface on a screen that outranks the rest". It was a `SecondarySummaryCard`,
+which is the same level 1 the option surfaces above it now occupy, so the screen's conclusion
+was tonally one more option. It stops a step below `AccuracyHeroCard` and takes no shadow: the
+builder has no headline figure and should not acquire a hero.
 
 A Learning Unit's scope is the deduplicated union of `primarySubtopicIds` across its
 ACTIVE Lessons. Four authoring rules are enforced by that one derivation:

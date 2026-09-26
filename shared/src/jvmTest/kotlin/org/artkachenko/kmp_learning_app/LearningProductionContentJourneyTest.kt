@@ -79,6 +79,7 @@ import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitSt
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultPracticeAgainTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.learningLessonRowTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderAvailabilityTag
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderContentTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderStartButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceLevelTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceSourceTag
@@ -465,9 +466,13 @@ internal class LearningProductionContentJourneyTest {
             waitForText(builderLabel)
 
             // Start is disabled until the builder's availability preflight settles, so the tap is
-            // retried rather than assumed to have landed on an enabled control.
+            // retried rather than assumed to have landed on an enabled control. The builder arrives
+            // scrolled to the top and Start is below the fold of this window, so the scroll is
+            // driven from the list rather than from the button: `performScrollTo` needs the node to
+            // already be in the semantics tree, which in a lazy column is the thing being asked for.
             tapUntil(PracticeBuilderStartButtonTag, arrived = { isDisplayingTag(AssessmentProgressMeterTag) }) {
-                onNodeWithTag(PracticeBuilderStartButtonTag).performScrollTo()
+                onNodeWithTag(PracticeBuilderContentTag)
+                    .performScrollToNode(hasTestTag(PracticeBuilderStartButtonTag))
             }
             waitForTag(AssessmentProgressMeterTag)
 

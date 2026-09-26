@@ -27,6 +27,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.AssessmentRetakeWordin
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewSourceUiModel
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.progress.ProgressActionPaneTag
@@ -36,6 +37,13 @@ import org.artkachenko.kmp_learning_app.progress.ProgressScreen
 import org.artkachenko.kmp_learning_app.progress.ProgressStandingPaneTag
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicUiModel
 import org.artkachenko.kmp_learning_app.progress.ProgressUiState
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionAnswerUiModel
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionContentUiModel
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionItem
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsScreen
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsUiState
+import org.artkachenko.kmp_learning_app.saved_questions.savedQuestionRemoveTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeAvailability
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderContentTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderScreen
@@ -298,6 +306,82 @@ internal class LargeFontScaleTest {
             onNodeWithText("80% correct").assertWithin(windowWidth)
             onNodeWithText("Practice 4 mistakes").assertWithin(windowWidth)
             onNodeWithTag(HeroRetakeTag).assertIsDisplayed().assertWithin(windowWidth)
+        }
+    /**
+     * A saved Question's text stays whole at this type size, because its bookmark gets out of the way.
+     *
+     * The card header is the same shape as a Subtopic row — a weighted text column beside a
+     * non-weighted trailing control — and it acquired the same problem when the bare "Remove" text
+     * button became the shared bookmark affordance, which carries an icon and a word and so is
+     * wider. A plain `Row` measures the non-weighted child first, leaving a long question with less
+     * width than its own longest word and breaking it across a line *inside* that word.
+     * `TrailingFigureRow` is the rule this repository already has for that, and the header goes
+     * through it.
+     *
+     * The assertion is the decision rather than the appearance: the bookmark is below the question
+     * text rather than beside it. Nothing moves at an ordinary type size, which is what the other
+     * Saved Questions tests exercise.
+     */
+    @Test
+    fun theSavedQuestionBookmarkMovesBelowALongQuestionAtADoubledTypeSize() =
+        runSkikoComposeUiTest(size = PhoneDisplay, density = DoubledText) {
+            setContent {
+                AppTheme {
+                    Box(Modifier.size(PhoneWidth, PhoneHeight).testTag(TestRootTag)) {
+                        SavedQuestionsScreen(
+                            state = SavedQuestionsUiState.Content(
+                                listOf(
+                                    SavedQuestionItem.Available(
+                                        savedQuestion = SavedQuestion("q1", 100),
+                                        question = SavedQuestionContentUiModel(
+                                            questionId = "q1",
+                                            // The longest word is the whole point: it is what
+                                            // `minIntrinsicWidth` measures and what a squeezed
+                                            // column would break inside.
+                                            text = "What triggers recomposition?",
+                                            answers = listOf(
+                                                SavedQuestionAnswerUiModel(
+                                                    id = "q1_a",
+                                                    text = "State read in composition changes",
+                                                    isCorrectAnswer = true,
+                                                ),
+                                            ),
+                                            explanation = "Authored explanation",
+                                            sources = listOf(
+                                                ReviewSourceUiModel(
+                                                    "Source A",
+                                                    "https://example.com/a",
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ),
+                            onRetry = {},
+                            onBrowseTopics = {},
+                            onRemoveSaved = {},
+                            onSourceClick = {},
+                            modifier = Modifier.size(PhoneWidth, PhoneHeight),
+                        )
+                    }
+                }
+            }
+
+            val windowWidth = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.width
+            val text = onNodeWithText("What triggers recomposition?", useUnmergedTree = true)
+                .assertIsDisplayed()
+                .assertWithin(windowWidth)
+                .fetchSemanticsNode().boundsInRoot
+            val bookmark = onNodeWithTag(savedQuestionRemoveTag("q1"))
+                .assertIsDisplayed()
+                .assertWithin(windowWidth)
+                .fetchSemanticsNode().boundsInRoot
+
+            assertTrue(
+                bookmark.top >= text.bottom,
+                "The bookmark spans ${bookmark.top}..${bookmark.bottom} beside text ending at " +
+                    "${text.bottom}, so it is still squeezing the column the question wraps in.",
+            )
         }
 }
 

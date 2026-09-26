@@ -3,7 +3,6 @@ package org.artkachenko.kmp_learning_app.saved_questions
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,13 +12,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
@@ -32,20 +29,23 @@ import kmp_learning_app.shared.generated.resources.saved_questions_empty_action
 import kmp_learning_app.shared.generated.resources.saved_questions_empty_detail
 import kmp_learning_app.shared.generated.resources.saved_questions_error
 import kmp_learning_app.shared.generated.resources.saved_questions_loading
-import kmp_learning_app.shared.generated.resources.saved_questions_remove
 import kmp_learning_app.shared.generated.resources.saved_questions_title
 import org.artkachenko.kmp_learning_app.assessment_review.MissingReviewQuestion
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionAnswerOption
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionAnswerTag
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionAnswersRevealDelayMillis
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionBookmarkAction
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionDisclosure
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionExplanationBlock
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionExplanationRevealDelayMillis
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionSources
+import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
+import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -58,7 +58,15 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 
 internal const val SavedQuestionsLoadingTag = "saved_questions_loading"
 
-/** Stable per-entry handle for the removal action, whose label repeats on every card. */
+/**
+ * Stable per-entry handle for this screen's saved-state control, whose label repeats on every card.
+ *
+ * The control is the shared `QuestionBookmarkAction`, which the review surfaces reach by
+ * `reviewQuestionSaveTag` instead. One affordance, two handles on purpose: a saved collection entry
+ * and a result transcript's save action are reached by different tests for different reasons, and
+ * one tag across both would make each surface's tests depend on the other's. The id keeps its
+ * original spelling so those tests stay stable.
+ */
 internal fun savedQuestionRemoveTag(questionId: String): String =
     "saved_question_remove_$questionId"
 
@@ -85,33 +93,43 @@ internal fun SavedQuestionsScreen(
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         AppTopBar(stringResource(Res.string.saved_questions_title), onBack, scrollBehavior)
         AppScreenPane(AppContentWidth.Standard) {
-            when (state) {
-                SavedQuestionsUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.saved_questions_loading),
-                    testTag = SavedQuestionsLoadingTag,
-                    modifier = Modifier.weight(1f),
-                )
-                // An empty collection is a normal state with a way forward, not a failure: the learner
-                // has simply not saved anything yet, and the place to do that is a Question.
-                SavedQuestionsUiState.Empty -> ScreenAction(
-                    message = stringResource(Res.string.saved_questions_empty),
-                    actionLabel = stringResource(Res.string.saved_questions_empty_action),
-                    onAction = onBrowseTopics,
-                    modifier = Modifier.weight(1f),
-                    detail = stringResource(Res.string.saved_questions_empty_detail),
-                )
-                SavedQuestionsUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.saved_questions_error),
-                    onRetry = onRetry,
-                    modifier = Modifier.weight(1f),
-                )
-                is SavedQuestionsUiState.Content -> SavedQuestionsContent(
-                    state = state,
-                    onRemoveSaved = onRemoveSaved,
-                    onSourceClick = onSourceClick,
-                    failedSourceUrl = failedSourceUrl,
-                    modifier = Modifier.weight(1f),
-                )
+            // Keyed on the state's class, which is what the default `contentKey` gives: the screen
+            // crossing from Loading into a collection, an empty state, or an error is one thing
+            // becoming another and fades, while unsaving a Question stays inside Content and so is
+            // not a screen transition at all. Keying on the state itself would fade the whole list
+            // out and back in every time a row left it, over the top of the row's own animateItem.
+            ScreenStateTransition(state = state, modifier = Modifier.fillMaxSize()) { current ->
+                when (current) {
+                    SavedQuestionsUiState.Loading -> ScreenLoading(
+                        message = stringResource(Res.string.saved_questions_loading),
+                        testTag = SavedQuestionsLoadingTag,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    // An empty collection is a normal state with a way forward, not a failure: the
+                    // learner has simply not saved anything yet, and the place to do that is a
+                    // Question. The bookmark is the icon because it is the control they are being
+                    // sent to look for — the same ribbon they will press on a Question card.
+                    SavedQuestionsUiState.Empty -> ScreenAction(
+                        message = stringResource(Res.string.saved_questions_empty),
+                        actionLabel = stringResource(Res.string.saved_questions_empty_action),
+                        onAction = onBrowseTopics,
+                        modifier = Modifier.fillMaxSize(),
+                        detail = stringResource(Res.string.saved_questions_empty_detail),
+                        icon = AppIcons.Bookmark,
+                    )
+                    SavedQuestionsUiState.Error -> ScreenError(
+                        message = stringResource(Res.string.saved_questions_error),
+                        onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    is SavedQuestionsUiState.Content -> SavedQuestionsContent(
+                        state = current,
+                        onRemoveSaved = onRemoveSaved,
+                        onSourceClick = onSourceClick,
+                        failedSourceUrl = failedSourceUrl,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }
@@ -207,27 +225,33 @@ private fun SavedQuestionCard(
             Modifier.padding(AppSpacing.Comfortable),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
         ) {
-            Row(
+            // The Question text and its saved state, with the text dominant. Through
+            // `TrailingFigureRow` rather than a plain `Row`, because the bookmark is a
+            // non-weighted trailing child of a weighted text column and a `Row` measures it
+            // first: at an ordinary type size it sits centred against the trailing edge exactly
+            // as before, and where the title would be left with less width than its own longest
+            // word the bookmark drops below it instead of breaking the question mid-word. Centred
+            // rather than top-aligned because the control is a text button with Material's 40dp
+            // minimum height, so against a one-line question a top-aligned row was half again as
+            // tall as its text with all the slack below it.
+            TrailingFigureRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
-                // Centred rather than top-aligned. The control beside the title is a text button
-                // with Material's 40dp minimum height, so against a one-line question the row was
-                // half again as tall as its text with all the slack below it — which was invisible
-                // while every card was permanently open and obvious once they close.
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    question.text,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                RemoveSavedAction(
-                    questionId = question.questionId,
-                    isPending = isRemovalPending,
-                    onRemoveSaved = onRemoveSaved,
-                )
-            }
+                horizontalGap = AppSpacing.Related,
+                figure = {
+                    SavedQuestionBookmark(
+                        questionId = question.questionId,
+                        isPending = isRemovalPending,
+                        onRemoveSaved = onRemoveSaved,
+                    )
+                },
+                text = {
+                    Text(
+                        question.text,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                },
+            )
             QuestionDisclosure(expanded = expanded, onToggle = { expanded = !expanded }) {
                 Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
                     Column(
@@ -305,7 +329,11 @@ private fun MissingSavedQuestion(
         // Question text or answers are invented to fill the card, and the row is not removed for
         // the learner either: the saved identity is still theirs.
         MissingReviewQuestion(questionId = questionId)
-        RemoveSavedAction(
+        // The same saved-state control the resolvable cards carry, and for the same reason: the
+        // Question content is gone but the saved identity is not, and that identity is exactly what
+        // a bookmark represents. Leaving this one entry with an unrelated destructive command would
+        // make the single row on the screen with nothing to read the only one that shouts.
+        SavedQuestionBookmark(
             questionId = questionId,
             isPending = isRemovalPending,
             onRemoveSaved = onRemoveSaved,
@@ -313,18 +341,29 @@ private fun MissingSavedQuestion(
     }
 }
 
-/** Disabled only while this Question's own removal is being persisted. */
+/**
+ * The shared bookmark control, in the one place where it is always in its saved state.
+ *
+ * Every entry on this screen is saved by construction, so [QuestionBookmarkAction] is given
+ * `isSaved = true` and renders the filled ribbon and the word the rest of the app uses for it.
+ * Pressing it is the same intent as pressing it on a result transcript — *this Question is saved;
+ * this toggles that* — and so it invokes the removal the screen already had. It replaced a bare
+ * "Remove" text button, which made the one screen made entirely of saved questions the one screen
+ * where saved state read as a destructive command.
+ *
+ * Disabled only while this Question's own removal is being persisted; the ribbon keeps showing the
+ * stored value throughout, so a pending removal never draws as though it had already happened.
+ */
 @Composable
-private fun RemoveSavedAction(
+private fun SavedQuestionBookmark(
     questionId: String,
     isPending: Boolean,
     onRemoveSaved: (String) -> Unit,
 ) {
-    TextButton(
-        onClick = { onRemoveSaved(questionId) },
-        enabled = !isPending,
+    QuestionBookmarkAction(
+        isSaved = true,
+        isPending = isPending,
+        onToggle = { onRemoveSaved(questionId) },
         modifier = Modifier.testTag(savedQuestionRemoveTag(questionId)),
-    ) {
-        Text(stringResource(Res.string.saved_questions_remove))
-    }
+    )
 }

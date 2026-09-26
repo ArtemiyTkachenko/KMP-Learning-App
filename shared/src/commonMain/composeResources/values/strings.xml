@@ -283,7 +283,6 @@
     <string name="saved_questions_empty_detail">Save a question while reviewing Results or Mistakes and it will appear here.</string>
     <string name="saved_questions_empty_action">Browse topics</string>
     <string name="saved_questions_error">Saved questions could not be loaded.</string>
-    <string name="saved_questions_remove">Remove</string>
     <string name="learning_unit_title">Learning unit</string>
     <string name="learning_unit_loading">Loading learning unit</string>
     <string name="learning_unit_lessons">Lessons</string>

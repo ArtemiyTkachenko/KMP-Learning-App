@@ -3,10 +3,16 @@ package org.artkachenko.kmp_learning_app.saved_questions
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -94,6 +100,7 @@ internal class SavedQuestionsScreenTest {
         onNodeWithText("Authored explanation").assertIsDisplayed()
         onNodeWithText("Source: Source A").assertIsDisplayed()
         onNodeWithTag(savedQuestionRemoveTag("q1")).assertIsDisplayed().assertIsEnabled()
+            .assertReadsAsSaved()
 
         // None of these can be true of a saved Question: it is not tied to an attempt, so no
         // outcome and no selected answer may be shown or invented.
@@ -205,7 +212,11 @@ internal class SavedQuestionsScreenTest {
 
         // Unlike a result screen's placeholder, this identity is already saved, so it must be
         // possible to get rid of it.
-        onNodeWithTag(savedQuestionRemoveTag("q_gone")).assertIsEnabled().performClick()
+        // The content is gone; the saved identity is not, and the bookmark is what represents it.
+        onNodeWithTag(savedQuestionRemoveTag("q_gone"))
+            .assertIsEnabled()
+            .assertReadsAsSaved()
+            .performClick()
 
         assertEquals("q_gone", removed)
     }
@@ -281,6 +292,77 @@ internal class SavedQuestionsScreenTest {
         onNodeWithTag(savedQuestionRemoveTag("q2")).performScrollTo().assertIsEnabled()
     }
 
+    /**
+     * The collection says saved state the way the rest of the app says it.
+     *
+     * Every card here was a plain "Remove" text button, so the one screen made entirely of saved
+     * questions was the one screen where saved state read as a destructive command. It is now the
+     * shared bookmark control the result screens and the Mistakes queue use, in its saved state:
+     * the same label and the same toggleable value, reached by this screen's own handle.
+     */
+    @Test
+    fun anAvailableQuestionCarriesTheSharedSavedBookmarkState() = runComposeUiTest {
+        var removed: String? = null
+        setContent {
+            AppTheme {
+                screen(
+                    SavedQuestionsUiState.Content(listOf(availableItem("q1"))),
+                    onRemoveSaved = { removed = it },
+                )
+            }
+        }
+
+        // The question text is dominant and the bookmark sits beside it, trailing: at an ordinary
+        // type size the header measures exactly as the plain `Row` it replaced did. Where it stops
+        // fitting, the bookmark drops below rather than squeezing the text — see `LargeFontScaleTest`.
+        val text = onNodeWithText("Question q1").fetchSemanticsNode().boundsInRoot
+        val bookmark = onNodeWithTag(savedQuestionRemoveTag("q1"))
+            .assertReadsAsSaved()
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(
+            bookmark.left >= text.right,
+            "The bookmark spans ${bookmark.left}..${bookmark.right} and the text ends at ${text.right}.",
+        )
+
+        onNodeWithTag(savedQuestionRemoveTag("q1")).performClick()
+
+        // Pressing it toggles saved state, which on this screen means leaving the collection.
+        assertEquals("q1", removed)
+    }
+
+    /**
+     * Two controls, two meanings, one card.
+     *
+     * The bookmark is state and the disclosure is content navigation, so neither may stand in for
+     * the other: pressing the bookmark must not open the card, and opening the card must not
+     * unsave it. Nothing here wraps the card itself in a click either.
+     */
+    @Test
+    fun theBookmarkAndTheDisclosureStayIndependentControls() = runComposeUiTest {
+        val removals = mutableListOf<String>()
+        setContent {
+            AppTheme {
+                screen(
+                    SavedQuestionsUiState.Content(listOf(availableItem("q1"))),
+                    onRemoveSaved = { removals += it },
+                )
+            }
+        }
+
+        // Toggling saved state leaves the card closed.
+        onNodeWithTag(savedQuestionRemoveTag("q1")).performClick()
+        assertEquals(listOf("q1"), removals)
+        onNodeWithText("Answer A").assertDoesNotExist()
+
+        // Opening the card changes no saved state.
+        onNodeWithText("Review answer").performClick()
+        onNodeWithText("Answer A").assertIsDisplayed()
+        assertEquals(listOf("q1"), removals)
+
+        // And the control is still there, still reading as saved, with the card open.
+        onNodeWithTag(savedQuestionRemoveTag("q1")).assertReadsAsSaved()
+    }
+
     @Test
     fun questionsAreRenderedInTheOrderTheyWereSupplied() = runComposeUiTest {
         setContent {
@@ -310,6 +392,19 @@ internal class SavedQuestionsScreenTest {
         assertTrue(second < third, "q2 should precede q1")
     }
 }
+
+/**
+ * The three channels the shared bookmark control states saved state in.
+ *
+ * The visible label is the *action* and the current value is published separately, so a screen
+ * reader hears both. Asserting all three here is what keeps this screen's control from drifting from
+ * the review surfaces' — the icon fill is the fourth channel and is deliberately not asserted,
+ * because an assertion cannot see it.
+ */
+private fun SemanticsNodeInteraction.assertReadsAsSaved(): SemanticsNodeInteraction = this
+    .assert(hasText("Saved"))
+    .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.On))
+    .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Saved"))
 
 @androidx.compose.runtime.Composable
 private fun screen(

@@ -438,7 +438,10 @@ decision on both screens, because the line to the *left* of it is a coverage fra
 is an accuracy, and two readings with different denominators on one row is how a learner comes to
 believe they are one number.
 
-`ui/MetricComponents.kt`'s **`TrailingFigureRow`** is the rule, and both rows go through it. It
+`ui/MetricComponents.kt`'s **`TrailingFigureRow`** is the rule, and both rows go through it. So
+does the Saved Questions card header, which is the same shape with a different trailing child: the
+question text beside its saved-state bookmark, where at a doubled type size on a 360dp window the
+bookmark would otherwise leave the question less width than its own longest word. It
 measures rather than choosing a breakpoint: `Measurable.minIntrinsicWidth` on the text is the width
 of its longest unbreakable word, which is exactly the point below which Compose stops wrapping and
 starts breaking inside one. If the space left beside the figure is at least that, nothing changes;

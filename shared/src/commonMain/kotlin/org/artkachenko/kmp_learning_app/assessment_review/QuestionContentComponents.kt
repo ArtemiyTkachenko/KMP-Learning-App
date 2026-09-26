@@ -27,6 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_collapse
@@ -38,8 +42,12 @@ import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
 import kmp_learning_app.shared.generated.resources.assessment_review_incorrectly_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_missed_correct_answer
 import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
+import kmp_learning_app.shared.generated.resources.assessment_review_save_question
+import kmp_learning_app.shared.generated.resources.assessment_review_saved_state
 import kmp_learning_app.shared.generated.resources.assessment_review_source
 import kmp_learning_app.shared.generated.resources.assessment_review_source_open_failed
+import kmp_learning_app.shared.generated.resources.assessment_review_unsave_question
+import kmp_learning_app.shared.generated.resources.assessment_review_unsaved_state
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
@@ -325,6 +333,75 @@ internal fun QuestionSources(
 }
 
 /**
+ * One Question's saved state, as the control that changes it.
+ *
+ * Whether a Question is bookmarked is a fact about the Question, not about the surface showing it,
+ * so this lives beside the other pieces both review and Saved Questions render. It was private to
+ * [ReviewQuestionCard] while the result screens and the Mistakes queue were the only places a
+ * learner could save anything; the Saved Questions collection said the same thing with a bare
+ * "Remove" text button, which turned the one screen made entirely of saved questions into the one
+ * screen where saved state looked like a destructive command.
+ *
+ * It is the conventional bookmark — a filled ribbon when the Question is saved, an outlined one when
+ * it is not — with the word kept beside it, because an icon alone would leave the state readable
+ * only to someone who knows which ribbon means which. Shape, fill, and the word all change
+ * together, so the state is never carried by colour alone or by shape alone.
+ *
+ * The accessible reading is deliberately split across two properties. The visible label is the
+ * *action* ("Save" / "Saved"), which is what Material's button semantics announce, and the current
+ * value is published separately as `stateDescription` and as `toggleableState` — so a screen reader
+ * says what is true now as well as what pressing it will do, which a label alone cannot express.
+ *
+ * Disabled while [isPending], which is this Question's own mutation being persisted; the icon and
+ * label keep showing the stored value throughout, so a pending save never draws as though it had
+ * been written.
+ *
+ * [modifier] is where the caller puts its own test handle. The affordance is one thing, but the
+ * surfaces that own it are not: a result transcript's save action and an entry in the saved
+ * collection are reached by different tests for different reasons, and collapsing them onto one tag
+ * would make each surface's tests depend on the other's. Nothing about the control itself varies.
+ */
+@Composable
+internal fun QuestionBookmarkAction(
+    isSaved: Boolean,
+    isPending: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val stateLabel = stringResource(
+        if (isSaved) {
+            Res.string.assessment_review_saved_state
+        } else {
+            Res.string.assessment_review_unsaved_state
+        },
+    )
+    TextButton(
+        onClick = onToggle,
+        enabled = !isPending,
+        modifier = modifier.semantics {
+            stateDescription = stateLabel
+            toggleableState = ToggleableState(isSaved)
+        },
+    ) {
+        Icon(
+            imageVector = if (isSaved) AppIcons.Bookmark else AppIcons.BookmarkBorder,
+            contentDescription = null,
+            modifier = Modifier.size(QuestionActionIconSize),
+        )
+        Text(
+            text = stringResource(
+                if (isSaved) {
+                    Res.string.assessment_review_unsave_question
+                } else {
+                    Res.string.assessment_review_save_question
+                },
+            ),
+            modifier = Modifier.padding(start = AppSpacing.Tight),
+        )
+    }
+}
+
+/**
  * A Question's detail, behind the one disclosure the product uses for it.
  *
  * Three surfaces show the same authored content — a result transcript, the Mistakes queue, and
@@ -393,7 +470,7 @@ private fun QuestionDisclosureAction(expanded: Boolean, onClick: () -> Unit) {
             imageVector = AppIcons.ExpandMore,
             contentDescription = null,
             modifier = Modifier
-                .size(DisclosureIconSize)
+                .size(QuestionActionIconSize)
                 .graphicsLayer { rotationZ = rotation },
         )
         Text(
@@ -412,8 +489,11 @@ private fun QuestionDisclosureAction(expanded: Boolean, onClick: () -> Unit) {
 /** Half a turn, so the chevron ends pointing up rather than having spun all the way round. */
 private const val ExpandedChevronRotation = 180f
 
-/** Matches the leading-icon size Material gives a text button, as the save action does. */
-private val DisclosureIconSize = 18.dp
+/**
+ * The leading-icon size Material gives a text button, shared by the two controls a Question card
+ * carries so the bookmark and the disclosure read as one pair rather than as two sizes of glyph.
+ */
+private val QuestionActionIconSize = 18.dp
 
 /**
  * How far an opened card's contents trail the expansion that makes room for them.

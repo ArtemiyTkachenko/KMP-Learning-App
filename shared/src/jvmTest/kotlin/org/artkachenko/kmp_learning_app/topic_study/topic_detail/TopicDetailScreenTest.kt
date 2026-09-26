@@ -125,6 +125,47 @@ internal class TopicDetailScreenTest {
     }
 
     /**
+     * Three tabs, one indicator.
+     *
+     * Every tab used to own an underline of its own and selection crossfaded between them, so the
+     * row described three independent controls rather than the one continuous pager underneath it.
+     * The rule is now rendered once by the row and positioned from the pager, and the count is what
+     * guards that: it holds on every page and cannot be satisfied by the arrangement it replaced.
+     *
+     * Nothing about where the rule sits or how wide it is is asserted. That is geometry read off an
+     * animation, it would break on any honest change to the row, and it would say nothing about the
+     * coupling this test exists to protect.
+     */
+    @Test
+    fun theTabRowCarriesExactlyOneIndicatorOnEveryPage() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        subtopics = listOf(subtopicItem("subtopic_a", "Subtopic A")),
+                        learningUnits = TopicLearningUnitsUiState.Available(
+                            listOf(learningUnitItem("unit_a", "Thinking in Compose", lessons = 3)),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onAllNodesWithTag(TopicTabIndicatorTag).assertCountEquals(1)
+
+        selectTab(TopicPracticeTabTag)
+        onAllNodesWithTag(TopicTabIndicatorTag).assertCountEquals(1)
+
+        selectTab(TopicSubtopicsTabTag)
+        onAllNodesWithTag(TopicTabIndicatorTag).assertCountEquals(1)
+    }
+
+    /**
      * The tabs describe one loaded Topic's capabilities. A Topic that failed to load has none to
      * describe, so the terminal states stay whole-screen and never appear inside a page.
      */
@@ -147,6 +188,8 @@ internal class TopicDetailScreenTest {
         onNodeWithTag(TopicStudyTabTag).assertDoesNotExist()
         onNodeWithTag(TopicPracticeTabTag).assertDoesNotExist()
         onNodeWithTag(TopicSubtopicsTabTag).assertDoesNotExist()
+        // The indicator belongs to the row, so it goes with it rather than lingering on its own.
+        onNodeWithTag(TopicTabIndicatorTag).assertDoesNotExist()
     }
 
     @Test

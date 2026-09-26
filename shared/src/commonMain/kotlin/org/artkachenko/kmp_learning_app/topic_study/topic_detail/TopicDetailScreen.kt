@@ -1,24 +1,27 @@
 package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerSnapDistance
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabIndicatorScope
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -40,15 +43,12 @@ import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
-import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import kotlin.math.roundToInt
 
 internal const val TopicDetailLoadingTag = "topic_detail_loading"
 internal const val TopicPracticeButtonTag = "topic_practice_button"
@@ -99,6 +99,17 @@ internal const val TopicPracticeTabTag = "topic_tab_practice"
 internal const val TopicSubtopicsTabTag = "topic_tab_subtopics"
 
 /**
+ * The single moving indicator, tagged only so a test can assert that there is exactly one of it.
+ *
+ * That is the whole point of the tag: the row used to own three separate rules that crossfaded past
+ * each other, and one shared rule is what replaced them. Where it sits and how wide it is are not
+ * asserted — those are geometry, and a test that pinned them would break on any honest change to
+ * the row. A bare test tag adds no role, no label, and no state, so the indicator stays absent from
+ * the accessibility tree; selection is still announced by the tabs alone.
+ */
+internal const val TopicTabIndicatorTag = "topic_tab_indicator"
+
+/**
  * A Topic's three capabilities, in the order they are taught.
  *
  * Study first because reading the material precedes being asked about it, Practice second because
@@ -131,7 +142,7 @@ private val TabHeight = 48.dp
 private val TabIndicatorHeight = 3.dp
 
 /**
- * One tab, marked as selected by a rule beneath it.
+ * One tab: a label that changes colour with selection, and nothing else.
  *
  * These tabs used to carry the same filled `secondaryContainer` pill the navigation bar gives the
  * current area, on the reasoning that "this is the thing you are looking at" should look the same
@@ -142,22 +153,20 @@ private val TabIndicatorHeight = 3.dp
  * page control look like a second copy of the app's navigation, and made the Topic screen read as
  * though it had two rows of destinations.
  *
- * So the distinction is now the indicator itself: the app's navigation keeps the filled pill, and
- * page-level tabs take Material's own tab affordance — a rule under the selected tab, with the
- * label in `primary` rather than on a container. That is a step down in weight without being
- * quiet: the rule is `primary` at full strength and the label changes colour with it, so the
- * selected capability is still unmistakable at a glance.
+ * So the distinction is the indicator: the app's navigation keeps the filled pill, and page-level
+ * tabs take Material's own tab affordance — a rule under the selected tab, with the label in
+ * `primary` rather than on a container. That is a step down in weight without being quiet.
  *
- * The rule is drawn by the tab rather than through `PrimaryTabRow`'s indicator slot, which is
- * measured and placed after the tabs and so would sit on top of the label it is marking. It is
- * drawn behind the tab's own content, so the state layer stays above it.
+ * The rule itself is no longer drawn here. Each tab used to own and crossfade its own underline,
+ * which made three independent controls out of what is really one continuous pager; the row now
+ * renders [TopicTabIndicator] once and moves it. What is left in this composable is the label, its
+ * colours, and the tab's own Material behaviour: with no pill there is nothing for a hard-edged
+ * state layer to disagree with, so the tab keeps Material's full-cell hover, focus, and press,
+ * which is what makes the whole cell visibly the target on a pointer host.
  *
- * With no pill there is nothing for a hard-edged state layer to disagree with, so the tab keeps
- * Material's full-cell hover, focus, and press — which is what it is meant to look like, and what
- * makes the whole cell visibly the target on a pointer host.
- *
- * Colour animates rather than position, and it animates from the same colour at zero alpha rather
- * than from transparent black, which would drag every intermediate frame through grey.
+ * The label still switches on `selected`, crossfaded by Material's own `Tab` transition. Mid-drag
+ * that crossover lands at the halfway point — the same place the indicator is — so the two agree
+ * without the label needing any pager-derived state of its own.
  */
 @Composable
 private fun TopicDetailTab(
@@ -165,26 +174,13 @@ private fun TopicDetailTab(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val activeColor = MaterialTheme.colorScheme.primary
-    val indicator by animateColorAsState(
-        targetValue = if (selected) activeColor else activeColor.copy(alpha = 0f),
-        animationSpec = AppMotion.effectSpec(),
-    )
     Tab(
         selected = selected,
         onClick = onClick,
         modifier = Modifier
             .height(TabHeight)
-            .drawBehind {
-                val height = TabIndicatorHeight.toPx()
-                drawRect(
-                    color = indicator,
-                    topLeft = Offset(x = 0f, y = size.height - height),
-                    size = Size(width = size.width, height = height),
-                )
-            }
             .testTag(tab.testTag),
-        selectedContentColor = activeColor,
+        selectedContentColor = MaterialTheme.colorScheme.primary,
         unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
     ) {
         Text(
@@ -196,6 +192,55 @@ private fun TopicDetailTab(
             ),
         )
     }
+}
+
+/**
+ * The one rule under the tab row, positioned from [pagerState] rather than from a selected index.
+ *
+ * This is the whole point of the change. A drag is a continuous thing and the pages already move
+ * continuously with the finger, so the mark that says which page you are on should move with them.
+ * Deriving it from an animated selected index cannot do that: it only learns that something
+ * happened once `currentPage` flips, and then plays a second animation of its own, arriving after
+ * the page it is describing. There is no animation here and no `AppMotion` spec, deliberately —
+ * the pager *is* the animation, for a drag and equally for the `animateScrollToPage` a tab tap
+ * runs, and anything layered on top would only add lag.
+ *
+ * `currentPage + currentPageOffsetFraction` is that continuous position in whole-tab units. It
+ * stays continuous across the midpoint where `currentPage` flips and the fraction changes sign, it
+ * rewinds by itself when a drag is abandoned below the snap threshold, and it is exactly integral
+ * whenever the pager is idle — so a settled indicator lands on the tab, not a fraction of a pixel
+ * away from it. The coercion only guards an overscroll pull at either end, which is a stretch of
+ * the pager and not a navigation.
+ *
+ * Placement goes through [TabIndicatorScope.tabIndicatorLayout] because that is where the tab
+ * geometry is. `PrimaryTabRow` measures this slot at exactly one tab cell wide, on the same integer
+ * pitch it places the tabs on, so `constraints.maxWidth` is the cell width and `position * width`
+ * is the offset — no Dp round trip, and nothing to drift. Reading the pager inside `measure` also
+ * means a drag re-measures this one node instead of recomposing the row.
+ *
+ * Using the indicator slot at all is a reversal: it was left empty because it is placed after the
+ * tabs, and the filled pill that lived here then would have covered the label it was marking. A
+ * rule at the bottom edge never reaches the label, and drawing it last is what stock Material does.
+ * It has no pointer input of its own, so it cannot take a tap from the tab underneath it.
+ */
+@Composable
+private fun TabIndicatorScope.TopicTabIndicator(pagerState: PagerState) {
+    Box(
+        Modifier
+            .tabIndicatorLayout { measurable, constraints, _ ->
+                val tabWidth = constraints.maxWidth
+                val position = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
+                    .coerceIn(0f, (pagerState.pageCount - 1).toFloat())
+                val placeable = measurable.measure(constraints)
+                layout(placeable.width, placeable.height) {
+                    placeable.place(x = (position * tabWidth).roundToInt(), y = 0)
+                }
+            }
+            .fillMaxWidth()
+            .height(TabIndicatorHeight)
+            .background(MaterialTheme.colorScheme.primary)
+            .testTag(TopicTabIndicatorTag),
+    )
 }
 
 /**
@@ -277,6 +322,9 @@ internal fun TopicDetailScreen(
  * is `rememberSaveable`-backed by construction, which is what makes the selection survive ordinary
  * recreation without anything being serialised into the back stack.
  *
+ * The same pager state also positions the row's one indicator — see [TopicTabIndicator] — which is
+ * why a half-finished swipe leaves the rule halfway between two tabs rather than parked on one.
+ *
  * Each page's scroll state is remembered *here* rather than inside the page lambda. A pager keeps
  * only its neighbouring pages composed, so hoisting is what lets a learner scroll deep into the
  * Subtopics, look at Practice, and come back to where they were.
@@ -338,11 +386,10 @@ private fun ColumnScope.TopicDetailTabs(
         Unit
     }
     PrimaryTabRow(
+        // Only the row's own defaults read this; the indicator below is positioned from the pager
+        // itself, so the two cannot disagree about which tab is current.
         selectedTabIndex = pagerState.currentPage,
-        // No underline. The indicator slot is measured and placed *after* the tabs, so anything
-        // filled drawn here would sit on top of the label it is meant to be highlighting; the
-        // selected tab carries its own pill instead, below.
-        indicator = {},
+        indicator = { TopicTabIndicator(pagerState) },
     ) {
         tabs.forEach { tab ->
             TopicDetailTab(

@@ -171,6 +171,10 @@
         <item quantity="one">%1$d question</item>
         <item quantity="other">%1$d questions</item>
     </plurals>
+    <plurals name="practice_builder_question_count_unit">
+        <item quantity="one">question</item>
+        <item quantity="other">questions</item>
+    </plurals>
     <string name="practice_builder_levels">Levels</string>
     <string name="practice_builder_select_any">Select any that apply</string>
     <string name="practice_builder_level_foundation">Foundation</string>
@@ -185,6 +189,10 @@
     <string name="practice_builder_source_unavailable">Dimmed sources are not available yet.</string>
     <string name="practice_builder_checking">Checking available questions</string>
     <string name="practice_builder_available_questions">%1$d questions ready</string>
+    <plurals name="practice_builder_available_unit">
+        <item quantity="one">question ready</item>
+        <item quantity="other">questions ready</item>
+    </plurals>
     <string name="practice_builder_no_questions">No questions match this setup. Try more levels.</string>
     <string name="practice_builder_error">Available questions could not be checked.</string>
     <string name="practice_builder_target_unavailable">This learning unit is no longer available for practice.</string>

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
@@ -1298,6 +1299,134 @@ internal class TopicDetailScreenTest {
     }
 
     /**
+     * The premise is stated before the action it justifies.
+     *
+     * The reason used to be emitted *under* the button, so a learner met the decision and then its
+     * justification. This asserts the reading order rather than a style: the sentence's bounds sit
+     * above the control's, which is what a screen reader traverses and what the eye reads first.
+     */
+    @Test
+    fun theRecommendationReasonIsStatedBeforeTheActionItJustifies() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningContext = learningContext(10, 10, 41.0, isWeak = true),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        val reason = onNodeWithText("Recommended: this is currently one of your weak areas.")
+            .assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+        val action = onNodeWithTag(TopicPracticeButtonTag)
+            .assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+
+        assertTrue(
+            reason.bottom <= action.top,
+            "The reason ends at ${reason.bottom} but the action it explains starts at ${action.top}.",
+        )
+    }
+
+    /**
+     * A Topic nobody has attempted is not shown a gauge at a value it never produced.
+     *
+     * The counts line stays, because "0 of 28 questions explored" is a true statement and is already
+     * the thing that says nothing has been attempted. The bar is not: an empty meter is a reading,
+     * and there is no reading here. Its presence once something *has* been explored is asserted
+     * beside it, so this cannot be satisfied by dropping the meter altogether.
+     */
+    @Test
+    fun theCoverageMeterIsDrawnOnlyOnceSomethingHasBeenExplored() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(learningContext = learningContext(0, 28)),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithText("0 of 28 questions explored").assertIsDisplayed()
+        onNodeWithTag(TopicCoverageMeterTag).assertDoesNotExist()
+    }
+
+    @Test
+    fun theCoverageMeterIsDrawnOnceTheTopicHasBeenPartlyExplored() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(learningContext = learningContext(7, 28)),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithText("7 of 28 questions explored").assertIsDisplayed()
+        onNodeWithTag(TopicCoverageMeterTag).assertIsDisplayed()
+    }
+
+    /**
+     * The action is part of the surface that justifies it, in every one of the page's three states.
+     *
+     * Asserted through containment rather than through a container type: whichever card a state
+     * produces, the promoted action's bounds must sit inside the bounds of the summary that states
+     * the evidence for it. Emitted as a sibling — which is what it used to be — the action lands on
+     * the page background below that surface and this fails.
+     */
+    @Test
+    fun theActionSitsInsideTheSummaryThatJustifiesIt() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningContext = learningContext(7, 28, 64.0),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        val coverage = onNodeWithText("Curriculum coverage")
+            .assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+        val action = onNodeWithTag(TopicPracticeButtonTag)
+            .assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+
+        // The card insets its content, so an action inside it starts no further left than the
+        // evidence above it. A sibling on the page background starts at the page margin, which is
+        // outside the card's own inset.
+        assertTrue(
+            action.left >= coverage.left,
+            "The action starts at ${action.left}, outside the summary's ${coverage.left} inset.",
+        )
+    }
+
+    /**
      * A weak Topic promotes weak-area practice onto its primary action, and ordinary practice is
      * still reachable — one tap lower, through Custom practice, still carrying no source of its own.
      */
@@ -1574,6 +1703,105 @@ internal class TopicDetailScreenTest {
         onAllNodesWithText("Empty Subtopic").assertCountEquals(0)
     }
 
+    /**
+     * A rule belongs between two rows, so there is one fewer of them than there are rows.
+     *
+     * A divider after the last entry is a separator with nothing to separate, and on a list that
+     * ends short of the window it draws a line across empty background that reads as content still
+     * to come. `ContentGroup` states the same rule; this list did not follow it.
+     */
+    @Test
+    fun theSubtopicListDrawsARuleBetweenRowsAndNotAfterTheLast() = runComposeUiTest {
+        val subtopics = listOf(
+            subtopicItem("sub_a", "Alpha", learningContext = learningContext(3, 9, 70.0)),
+            subtopicItem("sub_b", "Beta", learningContext = learningContext(4, 9, 60.0)),
+            subtopicItem("sub_c", "Gamma", learningContext = learningContext(9, 9, 80.0)),
+        )
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(subtopics = subtopics),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicSubtopicsTabTag)
+        onAllNodesWithTag(SubtopicRowDividerTag).assertCountEquals(subtopics.size - 1)
+    }
+
+    /**
+     * A Subtopic's shortcuts line up with the row they act on, and sit closer to it than to the next.
+     *
+     * Both are properties of the same defect: the shortcuts are outside the row's click target,
+     * which is correct, and that left them reading as though they were outside the *row*. A
+     * `TextButton` insets its own label, so a block placed at the content margin put the page's only
+     * other column of text at a second left edge; and the gap above them used to be no smaller than
+     * the gap to the next entry, so two controls sat midway between the thing they act on and
+     * something they have nothing to do with.
+     *
+     * Asserted as relationships rather than as measurements: equal left edges, and nearer above than
+     * below. Neither pins a padding value, so the spacing can be retuned without rewriting this.
+     */
+    @Test
+    fun aSubtopicShortcutAlignsWithItsRowAndSitsNearerToItThanToTheNext() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        subtopics = listOf(
+                            subtopicItem(
+                                id = "sub_weak",
+                                name = "Weak Subtopic",
+                                count = 24,
+                                learningContext = learningContext(9, 24, 44.0, isWeak = true),
+                            ),
+                            subtopicItem(
+                                id = "sub_next",
+                                name = "Next Subtopic",
+                                count = 30,
+                                learningContext = learningContext(30, 30, 88.0),
+                            ),
+                        ),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicSubtopicsTabTag)
+        // The labels, not the buttons: a `TextButton`'s own bounds include the inset being
+        // corrected for, so comparing those would assert nothing about what the learner sees.
+        val title = unmergedBounds("Weak Subtopic")
+        val weakShortcut = unmergedBounds("Practice weak area")
+        val unseenShortcut = unmergedBounds("Practice 15 unseen questions")
+        val badge = unmergedBounds("Weak area")
+        val nextRow = unmergedBounds("Next Subtopic")
+
+        // Only the shortcut that starts a line can align with the row: the block wraps, so on a
+        // wide window the second sits beside the first and on a phone it moves below it.
+        assertEquals(
+            title.left,
+            weakShortcut.left,
+            "The shortcuts do not start where the row they belong to does.",
+        )
+
+        val above = weakShortcut.top - badge.bottom
+        val below = nextRow.top - unseenShortcut.bottom
+        assertTrue(
+            above < below,
+            "The shortcuts sit ${above}px below their own row and ${below}px above the next.",
+        )
+    }
+
     @Test
     fun aTopicWithNoSubtopicsShowsAnEmptySubtopicsPage() = runComposeUiTest {
         setContent {
@@ -1812,6 +2040,11 @@ private suspend fun ComposeUiTest.selectTab(testTag: String) {
     }
     waitForIdle()
 }
+
+/** The label's own bounds, not its button's: a `TextButton` includes its inset in its node. */
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.unmergedBounds(text: String): Rect =
+    onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
 
 private fun topicContent(
     learningContext: LearningContextUiModel? = null,

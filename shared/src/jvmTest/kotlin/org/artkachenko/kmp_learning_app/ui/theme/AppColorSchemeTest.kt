@@ -202,9 +202,10 @@ internal class AppColorSchemeTest {
      *
      * The levels asserted are the ones the role is actually drawn on, listed so a new call site on a
      * deeper surface is a decision rather than a discovery: `background` (the `NavigationRailItem`
-     * indicator, and the practice-builder `FilterChip`s), `surfaceContainerLow` (the Topic row's
-     * learning-units badge, inside an ordinary card), and `surfaceContainer` (the compact navigation
-     * pill).
+     * indicator), `surfaceContainerLow` (the Topic row's learning-units badge, inside an ordinary
+     * card), and `surfaceContainer` (the compact navigation pill). The Practice Builder's options
+     * were a `background` call site until they moved to the primary family with the rest of the
+     * app's selection surfaces; the rail indicator is what keeps that level asserted.
      */
     @Test
     fun theSelectionFillIsVisibleOnEverySurfaceItIsDrawnOn() {

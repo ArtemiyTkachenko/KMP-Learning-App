@@ -18,11 +18,20 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * The targeted practice accelerators, shared by the Practice page and every Subtopic row.
+ * The targeted practice accelerators a Subtopic row offers.
  *
- * They are one implementation because the two surfaces must offer the same two intents under the
- * same two conditions; only the scope they carry and their test tags differ. Both live in this file
- * rather than in either page so neither page owns the other's shortcut rules.
+ * They were shared with the Topic Practice page, which is why the scope and the test tags are the
+ * caller's rather than derived here. That page no longer calls them: its two intents were ranked
+ * into one promoted action, and a Topic that recommends nothing offers no shortcuts either — see
+ * `topicPracticeRecommendation`. The generality is kept rather than inlined because the conditions
+ * below are a statement about when a targeted shortcut is worth offering *for a scope*, and the
+ * Subtopic rows are a list of scopes; folding them into the row would put that rule inside a
+ * layout.
+ *
+ * Subtopic rows are deliberately not ranked. The learner chose to look across this Topic's parts,
+ * nothing orders them against each other, and both intents are offered together wherever both are
+ * true — choosing one for the learner is what the Topic-level recommendation does, on a surface
+ * where there is a single thing to act on.
  */
 
 /**

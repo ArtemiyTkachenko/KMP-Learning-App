@@ -98,6 +98,7 @@ import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
+import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.TopicVisualMarker
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
@@ -989,26 +990,32 @@ private fun TopicRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TopicVisualMarker(topicId = topic.topicId)
-            Column(
-                // Long Topic names wrap rather than push the marker out of the card.
+            // Long Topic names wrap rather than push the marker out of the card — and, once the
+            // marker and the accuracy figure have both taken their width, there is a type scale at
+            // which wrapping is no longer enough and the name breaks inside a word. See
+            // [TrailingFigureRow]: past that point the figure drops below the name instead.
+            TrailingFigureRow(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+                // Absent for an unseen Topic rather than showing 0%: never answered is not the
+                // same statement as answered and got none right.
+                figure = {
+                    topic.learningContext?.accuracyPercentage?.let { accuracy ->
+                        TopicAccuracy(accuracy)
+                    }
+                },
             ) {
-                Text(
-                    text = topic.topicName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                // Above the learner's own figures, and only when there is something to read: what
-                // the Topic contains is a fact about the content, so it is stated before anything
-                // about the person reading it.
-                TopicLearningAvailability(topic.learningUnitCount)
-                topic.learningContext?.let { TopicLearningContext(it) }
-            }
-            // Absent for an unseen Topic rather than showing 0%: never answered is not the same
-            // statement as answered and got none right.
-            topic.learningContext?.accuracyPercentage?.let { accuracy ->
-                TopicAccuracy(accuracy)
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
+                    Text(
+                        text = topic.topicName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    // Above the learner's own figures, and only when there is something to read:
+                    // what the Topic contains is a fact about the content, so it is stated before
+                    // anything about the person reading it.
+                    TopicLearningAvailability(topic.learningUnitCount)
+                    topic.learningContext?.let { TopicLearningContext(it) }
+                }
             }
         }
     }

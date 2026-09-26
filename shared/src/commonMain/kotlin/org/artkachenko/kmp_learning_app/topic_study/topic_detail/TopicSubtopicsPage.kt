@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -36,6 +39,7 @@ import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
+import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -81,18 +85,26 @@ internal fun TopicSubtopicsPage(
         modifier = modifier.fillMaxSize().testTag(TopicSubtopicsListTag),
         contentPadding = appListContentPadding(top = AppSpacing.Related),
     ) {
-        items(items = subtopics, key = { it.subtopic.id }) { item ->
+        itemsIndexed(items = subtopics, key = { _, item -> item.subtopic.id }) { index, item ->
             SubtopicRow(
                 item = item,
                 onStartSubtopicPractice = onStartSubtopicPractice,
                 onPracticePreset = onPracticePreset,
             )
-            HorizontalDivider(
-                // Inset to the same margin as the row content, so the rule stays aligned with the
-                // text rather than running the full width of the pane behind it.
-                modifier = Modifier.padding(horizontal = margin),
-                color = MaterialTheme.colorScheme.outlineVariant,
-            )
+            // Between rows only. A rule under the last one is a separator with nothing to separate,
+            // and on a list that ends short of the window it draws a line across empty background
+            // that reads as content still to come. `ContentGroup` states the same rule for the same
+            // reason: exactly one hairline between each adjacent pair.
+            if (index < subtopics.lastIndex) {
+                HorizontalDivider(
+                    // Inset to the same margin as the row content, so the rule stays aligned with
+                    // the text rather than running the full width of the pane behind it.
+                    modifier = Modifier
+                        .padding(horizontal = margin)
+                        .testTag(SubtopicRowDividerTag),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+            }
         }
     }
 }
@@ -104,6 +116,22 @@ internal fun TopicSubtopicsPage(
  * button here — one would duplicate the row's own click target and compete with the Topic-level
  * primary action on the Practice tab. The targeted shortcuts sit below the click target and are
  * labelled, so tapping the row and tapping a shortcut cannot be confused for one another.
+ *
+ * ## Making the shortcuts belong to the row
+ *
+ * They are outside the click target, which is correct, and that left them looking like they were
+ * outside the *row*: the gap above them was wider than the gap to the rule beneath, so on a list of
+ * a dozen Subtopics two text buttons sat midway between the entry they act on and the next one. The
+ * row's content therefore gives up its bottom padding when it has shortcuts and the shortcut block
+ * takes the larger gap instead, which puts the controls with their evidence and the space before
+ * the separator. Whether there are any is [hasTargetedPractice], asked once here and once by the
+ * controls themselves, so the spacing and the controls cannot disagree.
+ *
+ * Their labels also line up with the row's title now. A `TextButton` insets its own label by
+ * `ButtonDefaults.TextButtonContentPadding`, so a block placed at the content margin put the only
+ * other column of text on the page at a second, slightly different left edge. The offset is taken
+ * from the token rather than written as a literal, and through `calculateStartPadding` so it stays
+ * on the correct side in a right-to-left layout.
  */
 @Composable
 private fun SubtopicRow(
@@ -113,6 +141,9 @@ private fun SubtopicRow(
 ) {
     val context = item.learningContext
     val margin = LocalAppContentMargin.current
+    val hasShortcuts = context.hasTargetedPractice
+    val labelInset = ButtonDefaults.TextButtonContentPadding
+        .calculateStartPadding(LocalLayoutDirection.current)
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -123,49 +154,60 @@ private fun SubtopicRow(
                 }
                 // Inside the clickable, so the state layer spans the pane and the content is inset
                 // within it rather than the whole row being inset and the band hugging the text.
-                .padding(horizontal = margin, vertical = AppSpacing.Comfortable),
+                .padding(
+                    start = margin,
+                    end = margin,
+                    top = AppSpacing.Comfortable,
+                    // The shortcuts below are part of this row, so when there are any they supply
+                    // the separation from what follows and this stops paying for it twice.
+                    bottom = if (hasShortcuts) AppSpacing.Tight else AppSpacing.Comfortable,
+                ),
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(
+            TrailingFigureRow(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+                // Absent rather than 0% for a Subtopic with no recorded answer, and the row then
+                // has no reflow question to ask.
+                figure = {
+                    context?.accuracyPercentage?.let { accuracy ->
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = formatAccuracy(accuracy),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = accuracyColor(accuracy),
+                            )
+                            Text(
+                                text = stringResource(Res.string.learning_context_accuracy),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
             ) {
-                Text(
-                    text = item.subtopic.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                if (context == null) {
-                    // No analytics to show, so the row keeps the authored count it has always had
-                    // rather than claiming the Subtopic is unstudied.
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
                     Text(
-                        text = stringResource(
-                            Res.string.topic_detail_available_questions,
-                            item.questionCount,
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    // Coverage already carries the Subtopic's current total, so the authored count
-                    // is not repeated beside it.
-                    SubtopicLearningContext(context)
-                }
-            }
-            // Absent rather than 0% for a Subtopic with no recorded answer.
-            context?.accuracyPercentage?.let { accuracy ->
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = formatAccuracy(accuracy),
+                        text = item.subtopic.name,
                         style = MaterialTheme.typography.titleMedium,
-                        color = accuracyColor(accuracy),
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Text(
-                        text = stringResource(Res.string.learning_context_accuracy),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (context == null) {
+                        // No analytics to show, so the row keeps the authored count it has always
+                        // had rather than claiming the Subtopic is unstudied.
+                        Text(
+                            text = stringResource(
+                                Res.string.topic_detail_available_questions,
+                                item.questionCount,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        // Coverage already carries the Subtopic's current total, so the authored
+                        // count is not repeated beside it.
+                        SubtopicLearningContext(context)
+                    }
                 }
             }
             Icon(
@@ -197,8 +239,13 @@ private fun SubtopicRow(
             },
             weakTestTag = subtopicWeakPracticeTag(item.subtopic.id),
             unseenTestTag = subtopicUnseenPracticeTag(item.subtopic.id),
-            // Outside the row's click target, so it carries the margin itself.
-            modifier = Modifier.padding(start = margin, end = margin, bottom = AppSpacing.Related),
+            // Outside the row's click target, so it carries the margin itself — less the inset the
+            // buttons apply to their own labels, so those labels start where the title does.
+            modifier = Modifier.padding(
+                start = (margin - labelInset).coerceAtLeast(0.dp),
+                end = margin,
+                bottom = AppSpacing.Grouped,
+            ),
         )
     }
 }

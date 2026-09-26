@@ -96,12 +96,19 @@ tag text, not on the 200dp block. Six review cards should read as six results, n
 theme, and a test asserts it. A product whose failed answer and failed operation are different reds
 has two error languages and teaches neither.
 
-An answer option has exactly three states and they are drawn in that order of strength: at rest it
-is a level-1 surface with a hairline `outlineVariant` border; chosen, it takes `primaryContainer`
-with a 2dp `primary` border; marked, it takes its `AnswerOutcome` colours. The chosen state used to
-fill with `secondaryContainer`, which is the primary hue drained of chroma and therefore one more
-step on the neutral ramp rather than a different kind of thing; `AssessmentTakingScreen` records
-why it is now the brand at container strength, agreeing with the border it already carried.
+An option the learner picks — an answer in a run, and every choice in the Practice Builder — has
+three states and they are drawn in that order of strength: at rest it is a level-1 surface with a
+hairline `outlineVariant` border; chosen, it takes `primaryContainer` with a 2dp `primary` border;
+unavailable, it keeps its container and drops content and edge to Material's 38%/12% disabled
+opacities, because fading the whole surface reads as a rendering fault rather than as a state. An
+answer adds a fourth: marked, it takes its `AnswerOutcome` colours. The chosen state used to fill
+with `secondaryContainer`, which is the primary hue drained of chroma and therefore one more step on
+the neutral ramp rather than a different kind of thing; `AssessmentTakingScreen` records why it is
+now the brand at container strength, agreeing with the border it already carried, and
+`PracticeBuilderScreen` follows it so a learner meets one selection language whether they are
+configuring a run or answering inside one. The border is not optional decoration on it: in the light
+theme `primaryContainer` is only about 1.1:1 against `surfaceContainerLow`, so the edge is what
+carries the state — which is also why such an option cannot live inside a `ContentGroup`.
 Practice and review share that vocabulary — `AnswerOutcome`, `QuestionOutcome`, and their
 colours live in `assessment_review/QuestionContentComponents.kt` and neither screen keeps a
 colour rule of its own.
@@ -244,10 +251,12 @@ are marked where they appear.
   `Button` and `OutlinedButton` on which of two actions the screen has decided is the continuation,
   keeping the same label and the same callback. It is not a toggle: a control whose *state* the
   learner is reading is a `Switch` or the saved-Question bookmark, below.
-- **No chips.** `AssistChip`, `SuggestionChip`, `ElevatedButton`, and `FilledTonalButton`
-  have zero usages here. `FilterChip` is used only for selection inside the Practice
-  Builder form. Do not introduce a new component family for an action a `TextButton`
-  already expresses.
+- **No chips.** `AssistChip`, `SuggestionChip`, `FilterChip`, `ElevatedButton`, and
+  `FilledTonalButton` all have zero usages here. `FilterChip` was the Practice Builder's
+  selection control until that screen adopted the app's own option surface (below); a chip's
+  32dp container could not hold the leading checkbox or radio those groups need, and its
+  selected fill was `secondaryContainer`. Do not introduce a new component family for an
+  action a `TextButton` already expresses, or for a selection an option surface expresses.
 - **Empty states**: `ScreenAction` when there is a way forward, `ScreenMessage` when there
   is not — a failure is not an invitation. Both are in `ui/ScreenStatus.kt`.
 
@@ -413,6 +422,35 @@ Width, wrapping, and reachability *are* assertable, and there are two harnesses 
 `ui/LargeFontScaleTest.kt` for a doubled type size on a 360dp window. Note that
 `runSkikoComposeUiTest` defaults to a 1024x768 display — a *medium* window here — so an
 expanded-layout test must pass `size` explicitly.
+
+### A trailing figure gets out of the way rather than squeezing the text
+
+`TopicBrowserScreen`'s Topic rows and `TopicSubtopicsPage`'s Subtopic rows share a shape: a weighted
+text column, then an accuracy figure with a `learning_context_accuracy` caption under it. A `Row`
+measures its non-weighted children first, so the figure took its intrinsic width and the text column
+got the remainder. At `fontScale = 2f` on a 360dp window that left the Subtopic name about 165dp and
+broke "Structured concurrency" across a line **inside the word**; the Topic row, which also carries a
+leading marker, was worse — "Kotlin langua / ge", with the learning-units badge broken mid-word too
+and its pill stretched out of shape.
+
+The caption is what makes the figure wide, and it is not the thing to remove: it is a recorded
+decision on both screens, because the line to the *left* of it is a coverage fraction and the figure
+is an accuracy, and two readings with different denominators on one row is how a learner comes to
+believe they are one number.
+
+`ui/MetricComponents.kt`'s **`TrailingFigureRow`** is the rule, and both rows go through it. It
+measures rather than choosing a breakpoint: `Measurable.minIntrinsicWidth` on the text is the width
+of its longest unbreakable word, which is exactly the point below which Compose stops wrapping and
+starts breaking inside one. If the space left beside the figure is at least that, nothing changes;
+if it is not, the figure drops below the text and keeps the full width, so a right-aligned figure
+stays in its column instead of jumping to the leading edge.
+
+Two consequences worth stating. **Nothing moves at an ordinary type scale** — the beside branch
+places the figure hard against the trailing edge with the same gap an `Arrangement.spacedBy` row
+already used. And the decision is not "is the type large": it depends on the window, the leading
+content, and the locale's longest word, so a row on a wide window at 2× may correctly not reflow at
+all while a narrow one at 1.5× does. Reach for this wherever a figure sits beside text that has to
+stay readable; do not reintroduce a font-scale threshold.
 
 Assertions do not see a state layer, a margin, or an overlap. When a change is about how
 something *looks*, capture it: a throwaway `runSkikoComposeUiTest` that renders the screen

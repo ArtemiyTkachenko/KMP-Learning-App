@@ -12,7 +12,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.isHeading
@@ -22,6 +22,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -40,6 +41,19 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
+/**
+ * The builder's behaviour and semantics, asserted through roles and states rather than through the
+ * components that publish them.
+ *
+ * Nothing here names a component type, a colour, a dimension, or an animation. The screen's options
+ * were `FilterChip`s and are now selection surfaces of the screen's own; every assertion below held
+ * before that change and holds after it, which is the point — what a learner and a screen reader can
+ * do with the form is the contract, and the treatment is not.
+ *
+ * The configuration is one lazy column, so an option below the fold is not merely off-screen, it is
+ * out of composition. [scrollToTag] and [scrollToText] are what the assertions go through for that
+ * reason; a bare `onNodeWithTag` would be asserting that the window happens to be tall enough.
+ */
 @OptIn(ExperimentalTestApi::class)
 internal class PracticeBuilderScreenTest {
     @Test
@@ -50,10 +64,10 @@ internal class PracticeBuilderScreenTest {
         onNodeWithTag(practiceQuestionCountTag(10)).assertIsSelected()
         onNodeWithTag(practiceQuestionCountTag(5)).assertIsNotSelected()
         QuestionLevel.entries.forEach { level ->
-            onNodeWithTag(practiceLevelTag(level)).assertIsSelected()
+            scrollToTag(practiceLevelTag(level)).assertIsSelected()
         }
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsSelected()
-        onNodeWithTag(PracticeBuilderStartButtonTag).assertIsEnabled()
+        scrollToTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsSelected()
+        scrollToTag(PracticeBuilderStartButtonTag).assertIsEnabled()
     }
 
     @Test
@@ -63,12 +77,42 @@ internal class PracticeBuilderScreenTest {
         onNodeWithTag(practiceQuestionCountTag(10)).assert(
             SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton),
         )
-        onNodeWithTag(practiceLevelTag(QuestionLevel.FOUNDATION)).assert(
+        scrollToTag(practiceLevelTag(QuestionLevel.FOUNDATION)).assert(
             SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox),
         )
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.ALL)).assert(
+        scrollToTag(practiceSourceTag(PracticeQuestionSource.ALL)).assert(
             SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton),
         )
+    }
+
+    /**
+     * Each count is one node, announced by the sentence rather than by its two visible fragments.
+     *
+     * The tile draws the figure and the unit on separate lines, and without the name the block
+     * publishes for itself a screen reader would read "10" and "questions" as two unrelated pieces
+     * of a control whose whole content is the number.
+     */
+    @Test
+    fun aQuestionCountIsAnnouncedAsOnePhrase() = runComposeUiTest {
+        setContentWith(state())
+
+        onNodeWithTag(practiceQuestionCountTag(10)).assert(
+            SemanticsMatcher.expectValue(
+                SemanticsProperties.ContentDescription,
+                listOf("10 questions"),
+            ),
+        )
+    }
+
+    @Test
+    fun choosingALengthReportsItToTheStateHolder() = runComposeUiTest {
+        val chosen = mutableListOf<Int>()
+        setContentWith(state(), onQuestionCountClick = { chosen += it })
+
+        onNodeWithTag(practiceQuestionCountTag(20)).performClick()
+        onNodeWithTag(practiceQuestionCountTag(5)).performClick()
+
+        assertEquals(listOf(20, 5), chosen)
     }
 
     @Test
@@ -76,24 +120,24 @@ internal class PracticeBuilderScreenTest {
         val toggled = mutableListOf<QuestionLevel>()
         setContentWith(state(), onLevelClick = { toggled += it })
 
-        onNodeWithTag(practiceLevelTag(QuestionLevel.APPLIED)).performClick()
-        onNodeWithTag(practiceLevelTag(QuestionLevel.ADVANCED)).performClick()
+        scrollToTag(practiceLevelTag(QuestionLevel.APPLIED)).performClick()
+        scrollToTag(practiceLevelTag(QuestionLevel.ADVANCED)).performClick()
 
         assertEquals(listOf(QuestionLevel.APPLIED, QuestionLevel.ADVANCED), toggled)
     }
 
     /**
      * The screen renders the protected selection rather than enforcing it: the ViewModel answered
-     * the final-level tap by keeping the level, and that is what has to reach the chip.
+     * the final-level tap by keeping the level, and that is what has to reach the control.
      */
     @Test
     fun theProtectedFinalLevelStaysSelectedInTheUi() = runComposeUiTest {
         setContentWith(state(levels = setOf(QuestionLevel.ADVANCED)))
 
-        onNodeWithTag(practiceLevelTag(QuestionLevel.ADVANCED)).assertIsSelected()
-        onNodeWithTag(practiceLevelTag(QuestionLevel.FOUNDATION)).assertIsNotSelected()
-        onNodeWithTag(practiceLevelTag(QuestionLevel.APPLIED)).assertIsNotSelected()
-        onNodeWithTag(PracticeBuilderStartButtonTag).assertIsEnabled()
+        scrollToTag(practiceLevelTag(QuestionLevel.ADVANCED)).assertIsSelected()
+        scrollToTag(practiceLevelTag(QuestionLevel.FOUNDATION)).assertIsNotSelected()
+        scrollToTag(practiceLevelTag(QuestionLevel.APPLIED)).assertIsNotSelected()
+        scrollToTag(PracticeBuilderStartButtonTag).assertIsEnabled()
     }
 
     @Test
@@ -102,12 +146,12 @@ internal class PracticeBuilderScreenTest {
         setContentWith(state(), onSourceClick = { chosen += it })
 
         PracticeQuestionSource.entries.forEach { source ->
-            onNodeWithTag(practiceSourceTag(source)).assertIsEnabled()
+            scrollToTag(practiceSourceTag(source)).assertIsEnabled()
         }
-        onNodeWithText("Mistakes").assertIsDisplayed()
+        scrollToText("Mistakes").assertIsDisplayed()
         onNodeWithText("Dimmed sources are not available yet.").assertDoesNotExist()
 
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNRESOLVED_MISTAKES)).performClick()
+        scrollToTag(practiceSourceTag(PracticeQuestionSource.UNRESOLVED_MISTAKES)).performClick()
 
         assertEquals(listOf(PracticeQuestionSource.UNRESOLVED_MISTAKES), chosen)
     }
@@ -117,20 +161,43 @@ internal class PracticeBuilderScreenTest {
         val chosen = mutableListOf<PracticeQuestionSource>()
         setContentWith(state(), onSourceClick = { chosen += it })
 
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsEnabled()
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsEnabled()
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).assertIsEnabled()
-        onNodeWithText("Unseen").assertIsDisplayed()
-        onNodeWithText("Weak areas").assertIsDisplayed()
+        scrollToTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsEnabled()
+        scrollToTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsEnabled()
+        scrollToTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).assertIsEnabled()
+        scrollToText("Unseen").assertIsDisplayed()
+        scrollToText("Weak areas").assertIsDisplayed()
 
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).performClick()
+        scrollToTag(practiceSourceTag(PracticeQuestionSource.WEAK_AREAS)).performClick()
 
         assertEquals(listOf(PracticeQuestionSource.WEAK_AREAS), chosen)
     }
 
     /**
+     * A source whose policy does not exist stays visible, stays announced, and reports nothing when
+     * pressed. Hiding it would leave the learner unable to see that the option exists at all, and
+     * the disabled semantics are what stop a screen reader offering it as a choice.
+     */
+    @Test
+    fun anUnavailableSourceStaysVisibleAndInert() = runComposeUiTest {
+        val chosen = mutableListOf<PracticeQuestionSource>()
+        setContentWith(
+            state(unavailableSources = setOf(PracticeQuestionSource.UNRESOLVED_MISTAKES)),
+            onSourceClick = { chosen += it },
+        )
+
+        val unavailable = scrollToTag(practiceSourceTag(PracticeQuestionSource.UNRESOLVED_MISTAKES))
+        unavailable.assertIsDisplayed().assertIsNotEnabled()
+        scrollToText("Mistakes").assertIsDisplayed()
+        scrollToText("Dimmed sources are not available yet.").assertIsDisplayed()
+
+        unavailable.performClick()
+
+        assertEquals(emptyList(), chosen)
+    }
+
+    /**
      * A selected source with nothing left to ask stays selected and selectable; only Start
-     * responds. Reverting the chip would hide that the learner has finished the unseen pool.
+     * responds. Reverting the selection would hide that the learner has finished the unseen pool.
      */
     @Test
     fun aChosenUnseenSourceRendersSelectedEvenWithNothingLeftToAsk() = runComposeUiTest {
@@ -141,27 +208,77 @@ internal class PracticeBuilderScreenTest {
             ),
         )
 
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsSelected()
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsEnabled()
-        onNodeWithTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsNotSelected()
-        onNodeWithTag(PracticeBuilderStartButtonTag).assertIsNotEnabled()
-        onNodeWithText("No questions match this setup. Try more levels.").assertIsDisplayed()
+        scrollToTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsSelected()
+        scrollToTag(practiceSourceTag(PracticeQuestionSource.UNSEEN)).assertIsEnabled()
+        scrollToTag(practiceSourceTag(PracticeQuestionSource.ALL)).assertIsNotSelected()
+        scrollToTag(PracticeBuilderStartButtonTag).assertIsNotEnabled()
+        scrollToText("No questions match this setup. Try more levels.").assertIsDisplayed()
     }
 
     @Test
     fun startIsDisabledWithFeedbackWhileNothingIsEligible() = runComposeUiTest {
         setContentWith(state(availability = PracticeAvailability.NoEligibleQuestions))
 
-        onNodeWithTag(PracticeBuilderStartButtonTag).assertIsNotEnabled()
-        onNodeWithText("No questions match this setup. Try more levels.").assertIsDisplayed()
+        scrollToTag(PracticeBuilderStartButtonTag).assertIsNotEnabled()
+        scrollToText("No questions match this setup. Try more levels.").assertIsDisplayed()
     }
 
     @Test
     fun startIsWithheldWhileEligibilityIsStillBeingChecked() = runComposeUiTest {
         setContentWith(state(availability = PracticeAvailability.Checking))
 
-        onNodeWithTag(PracticeBuilderStartButtonTag).assertIsNotEnabled()
-        onNodeWithTag(PracticeBuilderAvailabilityTag).assertIsDisplayed()
+        scrollToTag(PracticeBuilderStartButtonTag).assertIsNotEnabled()
+        scrollToTag(PracticeBuilderAvailabilityTag).assertIsDisplayed()
+    }
+
+    /**
+     * The available verdict states its count and announces the whole sentence.
+     *
+     * The figure and its caption are drawn on two lines and published as one phrase, so the run the
+     * configuration produces is one statement to a screen reader rather than a number followed by
+     * a fragment.
+     */
+    @Test
+    fun theAvailableVerdictStatesTheEligibleCount() = runComposeUiTest {
+        setContentWith(state(availability = PracticeAvailability.Available(12)))
+
+        scrollToText("12 questions ready").assertIsDisplayed()
+        scrollToTag(PracticeBuilderStartButtonTag).assertIsEnabled()
+    }
+
+    /**
+     * Retry belongs to the one availability state the learner cannot resolve by reconfiguring.
+     *
+     * A failed read is an operation that can be repeated; a setup that matches nothing and a target
+     * that is no longer practiceable are settled answers, and offering to repeat them would promise
+     * a different outcome from the same question.
+     */
+    @Test
+    fun onlyAFailedCheckOffersRetry() = runComposeUiTest {
+        var retries = 0
+        setContentWith(state(availability = PracticeAvailability.Error), onRetry = { retries++ })
+
+        scrollToText("Available questions could not be checked.").assertIsDisplayed()
+        scrollToTag(PracticeBuilderRetryTag).assertIsDisplayed().performClick()
+        scrollToTag(PracticeBuilderStartButtonTag).assertIsNotEnabled()
+
+        assertEquals(1, retries)
+    }
+
+    @Test
+    fun noRetryIsOfferedForAConfigurationTheLearnerCanChange() = runComposeUiTest {
+        setContentWith(state(availability = PracticeAvailability.NoEligibleQuestions))
+
+        onNodeWithTag(PracticeBuilderRetryTag).assertDoesNotExist()
+    }
+
+    @Test
+    fun anUnpracticeableTargetDisablesStartWithoutOfferingRetry() = runComposeUiTest {
+        setContentWith(state(availability = PracticeAvailability.TargetUnavailable))
+
+        scrollToText("This learning unit is no longer available for practice.").assertIsDisplayed()
+        scrollToTag(PracticeBuilderStartButtonTag).assertIsNotEnabled()
+        onNodeWithTag(PracticeBuilderRetryTag).assertDoesNotExist()
     }
 
     @Test
@@ -169,14 +286,15 @@ internal class PracticeBuilderScreenTest {
         var starts = 0
         setContentWith(state(), onStartClick = { starts++ })
 
-        onNodeWithTag(PracticeBuilderStartButtonTag).performClick()
+        scrollToTag(PracticeBuilderStartButtonTag).performClick()
 
         assertEquals(1, starts)
     }
 
     /**
-     * A narrow window is the layout's real constraint: four count chips, three levels, and four
-     * sources have to wrap and remain reachable rather than being clipped off the right edge.
+     * A narrow window is the layout's real constraint: four count tiles, three levels, and four
+     * sources have to wrap or stack and remain reachable rather than being clipped off the right
+     * edge.
      */
     @Test
     fun everyControlStaysReachableAtACompactWidth() = runComposeUiTest {
@@ -197,8 +315,11 @@ internal class PracticeBuilderScreenTest {
         }
 
         onNodeWithTag(practiceQuestionCountTag(20)).performScrollTo().assertIsDisplayed()
+        onNode(hasScrollAction()).performScrollToNode(
+            hasTestTag(practiceSourceTag(PracticeQuestionSource.UNRESOLVED_MISTAKES)),
+        )
         onNodeWithTag(practiceSourceTag(PracticeQuestionSource.UNRESOLVED_MISTAKES))
-            .performScrollTo().assertIsDisplayed()
+            .assertIsDisplayed()
         onNode(hasScrollAction()).performScrollToNode(hasTestTag(PracticeBuilderStartButtonTag))
         onNodeWithTag(PracticeBuilderStartButtonTag).assertIsDisplayed()
     }
@@ -239,6 +360,9 @@ internal class PracticeBuilderScreenTest {
             onNodeWithTag(PracticeBuilderFormPaneTag).assertIsDisplayed()
             onNodeWithTag(PracticeBuilderSummaryPaneTag).assertIsDisplayed()
             onNodeWithTag(practiceQuestionCountTag(20)).assertIsDisplayed()
+            // The conclusion is what the second pane is for, and it is short enough to sit at the
+            // top of its own scroller while the configuration beside it scrolls independently.
+            onNodeWithTag(PracticeBuilderAvailabilityTag).assertIsDisplayed()
 
             val paneWidth = onNodeWithTag(PracticeBuilderSummaryPaneTag)
                 .fetchSemanticsNode().boundsInRoot.width
@@ -252,27 +376,6 @@ internal class PracticeBuilderScreenTest {
             )
         }
 
-    private fun ComposeUiTest.setContentWith(
-        state: PracticeBuilderUiState,
-        onLevelClick: (QuestionLevel) -> Unit = {},
-        onSourceClick: (PracticeQuestionSource) -> Unit = {},
-        onStartClick: () -> Unit = {},
-    ) {
-        setContent {
-            MaterialTheme {
-                PracticeBuilderScreen(
-                    state = state,
-                    onBack = {},
-                    onQuestionCountClick = {},
-                    onLevelClick = onLevelClick,
-                    onSourceClick = onSourceClick,
-                    onStartClick = onStartClick,
-                    onRetryAvailability = {},
-                )
-            }
-        }
-    }
-
     /**
      * The thing being configured is announced as a heading, like every other screen's subject line.
      *
@@ -282,27 +385,50 @@ internal class PracticeBuilderScreenTest {
      */
     @Test
     fun theScopeBeingConfiguredIsAHeading() = runComposeUiTest {
+        setContentWith(state())
+
+        onNodeWithText("Topic: Coroutines").assertIsDisplayed().assert(isHeading())
+    }
+
+    /** Brings a lazily composed option into view before asserting anything about it. */
+    private fun ComposeUiTest.scrollToTag(tag: String): SemanticsNodeInteraction {
+        onNodeWithTag(PracticeBuilderContentTag).performScrollToNode(hasTestTag(tag))
+        return onNodeWithTag(tag)
+    }
+
+    private fun ComposeUiTest.scrollToText(text: String): SemanticsNodeInteraction {
+        onNodeWithTag(PracticeBuilderContentTag).performScrollToNode(hasText(text))
+        return onNodeWithText(text)
+    }
+
+    private fun ComposeUiTest.setContentWith(
+        state: PracticeBuilderUiState,
+        onQuestionCountClick: (Int) -> Unit = {},
+        onLevelClick: (QuestionLevel) -> Unit = {},
+        onSourceClick: (PracticeQuestionSource) -> Unit = {},
+        onStartClick: () -> Unit = {},
+        onRetry: () -> Unit = {},
+    ) {
         setContent {
             MaterialTheme {
                 PracticeBuilderScreen(
-                    state = state(),
+                    state = state,
                     onBack = {},
-                    onQuestionCountClick = {},
-                    onLevelClick = {},
-                    onSourceClick = {},
-                    onStartClick = {},
-                    onRetryAvailability = {},
+                    onQuestionCountClick = onQuestionCountClick,
+                    onLevelClick = onLevelClick,
+                    onSourceClick = onSourceClick,
+                    onStartClick = onStartClick,
+                    onRetryAvailability = onRetry,
                 )
             }
         }
-
-        onNodeWithText("Topic: Coroutines").assertIsDisplayed().assert(isHeading())
     }
 
     private fun state(
         levels: Set<QuestionLevel> = AllQuestionLevels,
         source: PracticeQuestionSource = PracticeQuestionSource.ALL,
         availability: PracticeAvailability = PracticeAvailability.Available(12),
+        unavailableSources: Set<PracticeQuestionSource> = emptySet(),
     ): PracticeBuilderUiState =
         PracticeBuilderUiState(
             scope = PracticeScopeUiModel(PracticeScopeKind.TOPIC, "Coroutines"),
@@ -311,7 +437,7 @@ internal class PracticeBuilderScreenTest {
             levels = levels,
             source = source,
             sourceOptions = PracticeQuestionSource.entries.map { option ->
-                PracticeSourceOption(source = option, isAvailable = true)
+                PracticeSourceOption(source = option, isAvailable = option !in unavailableSources)
             },
             availability = availability,
         )

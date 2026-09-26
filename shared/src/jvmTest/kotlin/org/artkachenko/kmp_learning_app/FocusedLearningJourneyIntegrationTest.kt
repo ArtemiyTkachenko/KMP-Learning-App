@@ -63,6 +63,7 @@ import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResult
 import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
+import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderContentTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderStartButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.practiceLevelTag
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserContinueStudyingTag
@@ -183,8 +184,12 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithText("1 / 2").assertIsDisplayed()
 
             // Result, then the builder it was configured in, then the Topic: backing out of a run
-            // returns to the setup rather than skipping past it.
+            // returns to the setup rather than skipping past it. The builder is restored at the
+            // offset it was left scrolled to — Start is below the fold of this window — so the
+            // subject line it is identified by has to be scrolled back to rather than assumed.
             onNodeWithContentDescription("Back").performClick()
+            onNodeWithTag(PracticeBuilderContentTag)
+                .performScrollToNode(hasText("Topic: Android"))
             onNodeWithText("Topic: Android").assertIsDisplayed()
             onNodeWithContentDescription("Back").performClick()
             onNodeWithContentDescription("Back").performClick()

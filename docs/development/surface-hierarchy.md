@@ -37,7 +37,8 @@ bare rows. None of them changes colour to say where it sits.
 | --- | --- | --- |
 | `ProgressHero`, `AssessmentCompletionHero` | their own features | 2 — the only gradient surfaces |
 | `AccuracyHeroCard` | `ui/ContentHierarchy.kt` | 2 — Topic drill-down, Topic practice page |
-| `SecondarySummaryCard` | `ui/ContentHierarchy.kt` | 3 — Progress recent performance, Topic practice, Practice Builder |
+| `SecondarySummaryCard` | `ui/ContentHierarchy.kt` | 2 — Progress recent performance, Topic practice |
+| the Practice Builder's summary surface | `practice_builder/PracticeBuilderScreen.kt` | 1 — level 2, see below |
 | `ContentGroup` + `AccuracyRow` | `ui/ContentHierarchy.kt`, `ui/PerformanceCard.kt` | 4 groups, 3 rows |
 | `PerformanceCard` | `ui/PerformanceCard.kt` | weak areas, Subtopic rows, Topic drill-down |
 | bare rows | written per feature | Units, Subtopics, Lessons, session history |
@@ -58,6 +59,23 @@ The gradient carries no on-colour of its own. `onPrimaryContainer` is its docume
 anything else put on it — an `accuracyColor` band, a reduced-alpha supporting line — is outside that
 contract and checks its own contrast. `AppColorSchemeTest`, `AssessmentCompletionHeroTest`, and
 `ProgressHeroThemeTest` hold those three answers.
+
+### The one level-2 surface a screen may have
+
+Level 2 (`surfaceContainer` and up) means "the one surface on a screen that outranks the rest", so a
+screen that puts two things there has said nothing. Three components claim it: `AccuracyHeroCard`
+at `surfaceContainerHigh`, a weak `PerformanceCard`, and the Practice Builder's summary at
+`surfaceContainer` with a hairline `outlineVariant` edge and no shadow.
+
+The builder's is the clearest worked example of *why* the rank exists. Its configuration is three
+groups of option surfaces, and an option surface is level 1 — so the screen's conclusion, the block
+that states what the current setup will run and holds the Start button, was tonally one more option
+while it was a `SecondarySummaryCard`. It is the only filled, unbordered, non-selectable surface on
+the page, which is exactly the claim level 2 makes. It stops one step below `AccuracyHeroCard` and
+takes no shadow, because the builder has no headline figure and should not acquire a hero.
+
+A fourth claim needs the same argument: not "this card should look important", but that nothing else
+on the screen is competing for the rank.
 
 ## Choosing between a card and a group
 
@@ -84,6 +102,14 @@ A weak-area row carries an accent border, and a border is a property of a contai
 there is no container to put it on, and the group's own edge would have to change colour because one
 member did. Weak areas stay cards — and the contrast between those bordered cards and the quiet
 grouped table beneath them is now what separates "these need attention" from "here is everything".
+
+A *selectable* row is the same case and the reason the Practice Builder's four question sources are
+not a group, which is otherwise what a bounded set of related rows would be. A chosen option is
+`primaryContainer` behind a 2dp `primary` border, and in the light theme the fill alone is about
+1.1:1 against `surfaceContainerLow` — so the border is not decoration, it is the state. With no
+container of its own to carry one, a grouped row would have to say "chosen" in a pale tint and a
+radio button. They stay full-width option surfaces instead, in the same language as an answer
+option.
 
 ## `PerformanceCard` and `AccuracyRow`
 

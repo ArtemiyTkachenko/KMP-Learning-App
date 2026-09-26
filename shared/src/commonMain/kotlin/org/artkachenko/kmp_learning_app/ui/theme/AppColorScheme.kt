@@ -90,9 +90,11 @@ internal val AppLightColorScheme = lightColorScheme(
     // invisible in this scheme, and moving it between destinations did not make it visible. This
     // value is on the same hue line, between the old fill and `secondaryFixedDim`, and clears the
     // ramp's own visibility floor against every level it is drawn on: 1.34 against `background`
-    // (the rail indicator and the practice-builder chips), 1.25 against `surfaceContainerLow` (the
-    // Topic row badge), and 1.16 against `surfaceContainer` (the navigation pill) — better than the
-    // 1.09 Material's own baseline puts between these two roles.
+    // (the rail indicator), 1.25 against `surfaceContainerLow` (the Topic row badge), and 1.16
+    // against `surfaceContainer` (the navigation pill) — better than the 1.09 Material's own
+    // baseline puts between these two roles. The Practice Builder's options used to be a fourth
+    // call site, as `FilterChip`s on the page; they now take `primaryContainer` for the reason
+    // `PracticeBuilderScreen` records, which is the same reason an answer option does.
     secondaryContainer = Color(0xFFD3D6EF),
     onSecondaryContainer = Color(0xFF141A33),
     tertiary = Color(0xFF6F4BA0),

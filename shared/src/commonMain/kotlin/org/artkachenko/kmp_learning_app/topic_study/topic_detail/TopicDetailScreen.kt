@@ -79,6 +79,15 @@ internal const val TopicStudyUnavailableTag = "topic_study_unavailable"
 internal const val TopicStudyProgressTag = "topic_study_progress"
 
 /**
+ * The Practice page's curriculum-coverage bar.
+ *
+ * Tagged because its *absence* is the assertion worth protecting: the counts beside it are a true
+ * statement at zero, and the bar is not — a Topic nobody has attempted must not be shown a gauge at
+ * a value the learner never produced.
+ */
+internal const val TopicCoverageMeterTag = "topic_coverage_meter"
+
+/**
  * The two lazy lists themselves, so a test can drive one to a node it wants.
  *
  * A lazy list composes only what is on screen, so a Unit or Subtopic further down does not exist in
@@ -87,6 +96,17 @@ internal const val TopicStudyProgressTag = "topic_study_progress"
  */
 internal const val TopicStudyListTag = "topic_study_list"
 internal const val TopicSubtopicsListTag = "topic_subtopics_list"
+
+/**
+ * The hairlines between Subtopic rows, tagged only so a test can assert how many there are.
+ *
+ * That count is the assertion: a rule belongs *between* two rows, and one drawn after the last is a
+ * separator with nothing to separate. A `HorizontalDivider` publishes no semantics of its own, so
+ * counting the tag is the only way to state that. Nothing about where a rule sits or how wide it is
+ * is asserted; those are geometry. The tag adds no role, label or state, so the rules stay absent
+ * from the accessibility tree.
+ */
+internal const val SubtopicRowDividerTag = "subtopic_row_divider"
 
 /**
  * The tabs themselves, so a test can select a page without matching localised label text.

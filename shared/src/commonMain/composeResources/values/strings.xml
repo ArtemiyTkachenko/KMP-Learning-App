@@ -13,7 +13,6 @@
     <string name="destination_progress">Progress</string>
     <string name="destination_mistakes">Mistakes</string>
     <string name="topic_browser_subtitle">Pick a topic to study or practise.</string>
-    <string name="mixed_interview_how_it_works">Questions are drawn across every topic, so a mixed interview is the closest thing to the real conversation.</string>
     <string name="topic_browser_title">Learn</string>
     <string name="topic_browser_loading">Loading topics</string>
     <string name="topic_browser_empty">No topics available</string>
@@ -120,7 +119,11 @@
     <string name="mistake_review_study_lesson">Review lesson: %1$s</string>
     <string name="mixed_interview_title">Mixed Android Interview</string>
     <string name="mixed_interview_description">Test your knowledge across Android topics.</string>
-    <string name="mixed_interview_question_count">%1$d-question interview</string>
+    <string name="mixed_interview_question_count">%1$d questions</string>
+    <string name="mixed_interview_question_count_unit">questions</string>
+    <string name="mixed_interview_mix_rule_title">Every topic in one run</string>
+    <string name="mixed_interview_how_it_works">Questions are drawn across the whole curriculum, so a mixed interview is the closest thing to the real conversation.</string>
+    <string name="mixed_interview_review_rule_title">Review at the end</string>
     <string name="mixed_interview_review_note">Answers are reviewed when the interview is complete, not question by question.</string>
     <string name="mixed_interview_start">Start Mixed Interview</string>
     <string name="mixed_result_title">Interview results</string>

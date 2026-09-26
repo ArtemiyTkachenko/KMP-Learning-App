@@ -35,7 +35,7 @@ bare rows. None of them changes colour to say where it sits.
 
 | Component | Where it lives | Call sites today |
 | --- | --- | --- |
-| `ProgressHero`, `AssessmentCompletionHero` | their own features | 2 — the only gradient surfaces |
+| `ProgressHero`, `AssessmentCompletionHero`, the interview hero | their own features | 3 — the only gradient surfaces |
 | `AccuracyHeroCard` | `ui/ContentHierarchy.kt` | 2 — Topic drill-down, Topic practice page |
 | `SecondarySummaryCard` | `ui/ContentHierarchy.kt` | 2 — Progress recent performance, Topic practice |
 | the Practice Builder's summary surface | `practice_builder/PracticeBuilderScreen.kt` | 1 — level 2, see below |
@@ -45,15 +45,30 @@ bare rows. None of them changes colour to say where it sits.
 
 ### The gradient is not a rank a screen may climb to
 
-`AppSemanticColors.heroGradientStart`/`End` has exactly two call sites and a third needs the same
-argument the second one made: that nothing else on the page competes, and that the surface is
+`AppSemanticColors.heroGradientStart`/`End` has exactly three call sites and a fourth needs the same
+argument each of those made: that nothing else on the page competes, and that the surface is
 genuinely the answer the learner came for — not that a card should look important.
 
-The two stay distinguishable by **motion**, not by palette. `AssessmentCompletionHero` is an
+The three stay distinguishable by **motion**, not by palette. `AssessmentCompletionHero` is an
 *arrival* and counts its score out over the app's one celebratory duration
-(`AppMotion.ScoreRevealDurationMillis`). `ProgressHero` is a *standing answer* and settles over the
-ordinary `ContentRevealDurationMillis`, because a learner opening Progress to check on themselves is
-not being congratulated.
+(`AppMotion.ScoreRevealDurationMillis`). `ProgressHero` is a *standing answer* and settles a measured
+figure over the ordinary `ContentRevealDurationMillis`, because a learner opening Progress to check
+on themselves is not being congratulated. The Mixed Interview hero in
+`mixed_interview/InterviewStartScreen.kt` is an *invitation*: its destination's only other object is
+the interview record, a bounded set in one `ContentGroup`, and a learner who chose **Interview** in
+the navigation bar came for exactly the surface that starts one. It animates **no figure**, because
+twenty questions is a configuration fact that was true before the learner arrived and counting a
+constant would dress it as a result; what staggers instead is the two interview rules and then the
+Start button, at 60ms and 100ms of `AppMotion.revealSpec`. It is also the only hero that holds its
+screen's primary action, which is the structural reason it does not share an information
+architecture with the other two — an invitation is not a score card.
+
+That last point is why there is no `AppHero`. Three gradient surfaces is not three instances of one
+component: completion states a result, Progress states a standing, the interview issues an
+invitation. What they share is a *contract* — the sweep, the hairline edge in the hero's own
+on-colour, the small shadow, `onPrimaryContainer` as the text colour, and the 0.8 supporting alpha —
+and the low-level primitives (`AccuracyRing`, `CountedFigure`) that two of them happen to need. The
+contract is written down here; the layouts stay separate.
 
 The gradient carries no on-colour of its own. `onPrimaryContainer` is its documented contract, and
 anything else put on it — an `accuracyColor` band, a reduced-alpha supporting line — is outside that

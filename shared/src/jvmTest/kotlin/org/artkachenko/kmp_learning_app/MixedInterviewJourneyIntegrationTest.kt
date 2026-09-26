@@ -104,7 +104,7 @@ internal class MixedInterviewJourneyIntegrationTest {
                         .performClick()
                     waitForText("Start Mixed Interview")
                     onNodeWithText("Mixed Android Interview").assertIsDisplayed()
-                    onNodeWithText("20-question interview").assertIsDisplayed()
+                    onNodeWithText("20 questions").assertIsDisplayed()
                     assertEquals(20, MixedInterviewDefaults.QuestionCount)
                     onNodeWithTag(InterviewStartButtonTag).performClick()
 

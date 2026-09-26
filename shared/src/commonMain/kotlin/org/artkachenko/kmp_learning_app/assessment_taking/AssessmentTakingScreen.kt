@@ -87,6 +87,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.tagLabel
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ProgressMeter
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
 import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
@@ -142,54 +143,66 @@ internal fun AssessmentTakingScreen(
             )
         }
         AppScreenPane(AppContentWidth.Standard) {
-            when (state) {
-                AssessmentTakingUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.assessment_taking_loading),
-                    testTag = AssessmentTakingLoadingTag,
-                    modifier = Modifier.weight(1f),
-                )
-
-                AssessmentTakingUiState.NoQuestions -> ScreenMessage(
-                    message = stringResource(Res.string.assessment_taking_no_questions),
-                    modifier = Modifier.weight(1f),
-                )
-
-                AssessmentTakingUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.assessment_taking_start_error),
-                    onRetry = onRetry,
-                    modifier = Modifier.weight(1f),
-                )
-
-                is AssessmentTakingUiState.Content -> key(state.question.id) {
-                    QuestionContent(
-                        state = state,
-                        onAnswerClick = onAnswerClick,
-                        onSubmit = onSubmit,
-                        onNext = onNext,
-                        modifier = Modifier.weight(1f),
+            // Keyed on the state's class, which is what makes this safe on the one screen where
+            // the interaction *is* the product: moving from one question to the next stays inside
+            // `Content`, keeps the same key, and so runs no transition at all — the per-question
+            // swap is still `key(question.id)` below and the answer reveal is untouched. What does
+            // cross-fade is the screen becoming a different kind of thing: the questions arriving,
+            // the last answer giving way to the finish prompt, the finish handing over to results.
+            // The progress meter stays outside, pinned under the bar with the bar's own chrome.
+            ScreenStateTransition(state = state, modifier = Modifier.fillMaxSize()) { current ->
+                when (current) {
+                    AssessmentTakingUiState.Loading -> ScreenLoading(
+                        message = stringResource(Res.string.assessment_taking_loading),
+                        testTag = AssessmentTakingLoadingTag,
+                        modifier = Modifier.fillMaxSize(),
                     )
-                }
 
-                is AssessmentTakingUiState.ReadyToComplete -> ScreenStatus(Modifier.weight(1f)) {
-                    Text(text = stringResource(Res.string.assessment_taking_ready))
-                    if (state.completionFailed) {
-                        Text(
-                            text = stringResource(Res.string.assessment_taking_completion_save_error),
-                            color = MaterialTheme.colorScheme.error,
+                    AssessmentTakingUiState.NoQuestions -> ScreenMessage(
+                        message = stringResource(Res.string.assessment_taking_no_questions),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    AssessmentTakingUiState.Error -> ScreenError(
+                        message = stringResource(Res.string.assessment_taking_start_error),
+                        onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    is AssessmentTakingUiState.Content -> key(current.question.id) {
+                        QuestionContent(
+                            state = current,
+                            onAnswerClick = onAnswerClick,
+                            onSubmit = onSubmit,
+                            onNext = onNext,
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
-                    // `ScreenStatus` already spaces what it holds; the two extra top paddings here
-                    // were adding a second gap on top of that one.
-                    FinishAction(
-                        isCompleting = state.isCompleting,
-                        onComplete = onComplete,
+
+                    is AssessmentTakingUiState.ReadyToComplete ->
+                        ScreenStatus(Modifier.fillMaxSize()) {
+                            Text(text = stringResource(Res.string.assessment_taking_ready))
+                            if (current.completionFailed) {
+                                Text(
+                                    text = stringResource(
+                                        Res.string.assessment_taking_completion_save_error,
+                                    ),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                            // `ScreenStatus` already spaces what it holds; the two extra top
+                            // paddings here were adding a second gap on top of that one.
+                            FinishAction(
+                                isCompleting = current.isCompleting,
+                                onComplete = onComplete,
+                            )
+                        }
+
+                    is AssessmentTakingUiState.CompletionSucceeded -> ScreenMessage(
+                        message = stringResource(Res.string.assessment_taking_results_opening),
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
-
-                is AssessmentTakingUiState.CompletionSucceeded -> ScreenMessage(
-                    message = stringResource(Res.string.assessment_taking_results_opening),
-                    modifier = Modifier.weight(1f),
-                )
             }
         }
     }

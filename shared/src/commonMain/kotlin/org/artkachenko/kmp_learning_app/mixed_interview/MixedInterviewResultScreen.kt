@@ -36,6 +36,7 @@ import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentResultLayout
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.AccuracyRow
 import org.artkachenko.kmp_learning_app.ui.ContentGroup
@@ -79,36 +80,42 @@ internal fun MixedInterviewResultScreen(
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         AppTopBar(stringResource(Res.string.mixed_result_title), onBack, scrollBehavior)
         AppScreenPane(AppContentWidth.Paned) {
-            when (state) {
-                MixedInterviewResultUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.mixed_result_loading),
-                    testTag = MixedResultLoadingTag,
-                    modifier = Modifier.weight(1f),
-                )
-                MixedInterviewResultUiState.AttemptNotFound -> ScreenMessage(
-                    message = stringResource(Res.string.mixed_result_attempt_not_found),
-                    modifier = Modifier.weight(1f),
-                )
-                MixedInterviewResultUiState.NotCompleted -> ScreenMessage(
-                    message = stringResource(Res.string.mixed_result_not_completed),
-                    modifier = Modifier.weight(1f),
-                )
-                MixedInterviewResultUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.mixed_result_error),
-                    onRetry = onRetry,
-                    modifier = Modifier.weight(1f),
-                )
-                is MixedInterviewResultUiState.Content -> MixedResultContent(
-                    state = state,
-                    onSourceClick = onSourceClick,
-                    onRepeatInterview = onRepeatInterview,
-                    retakeState = retakeState,
-                    onPracticeMistakes = onPracticeMistakes,
-                    savedQuestions = savedQuestions,
-                    onToggleSaved = onToggleSaved,
-                    failedSourceUrl = failedSourceUrl,
-                    modifier = Modifier.weight(1f),
-                )
+            // Keyed on the state's class, which is what the default `contentKey` gives: crossing
+            // from Loading into content, a message, or an error is one thing becoming another and
+            // fades, while a change *within* content keeps the same key and does not. Keying on the
+            // state itself would fade the whole screen out and back in on every data change.
+            ScreenStateTransition(state = state, modifier = Modifier.fillMaxSize()) { current ->
+                when (current) {
+                    MixedInterviewResultUiState.Loading -> ScreenLoading(
+                        message = stringResource(Res.string.mixed_result_loading),
+                        testTag = MixedResultLoadingTag,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    MixedInterviewResultUiState.AttemptNotFound -> ScreenMessage(
+                        message = stringResource(Res.string.mixed_result_attempt_not_found),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    MixedInterviewResultUiState.NotCompleted -> ScreenMessage(
+                        message = stringResource(Res.string.mixed_result_not_completed),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    MixedInterviewResultUiState.Error -> ScreenError(
+                        message = stringResource(Res.string.mixed_result_error),
+                        onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    is MixedInterviewResultUiState.Content -> MixedResultContent(
+                        state = current,
+                        onSourceClick = onSourceClick,
+                        onRepeatInterview = onRepeatInterview,
+                        retakeState = retakeState,
+                        onPracticeMistakes = onPracticeMistakes,
+                        savedQuestions = savedQuestions,
+                        onToggleSaved = onToggleSaved,
+                        failedSourceUrl = failedSourceUrl,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }

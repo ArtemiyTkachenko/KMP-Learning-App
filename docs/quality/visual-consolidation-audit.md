@@ -54,9 +54,9 @@ Severity, confidence, and status use the same vocabulary as the
 | -- | -------- | ---------- | ---- | ------- | ------ |
 | `VC-001` | Medium | High | Shared rows | `PerformanceCard` and `AccuracyRow` break their title inside a word at a doubled type size. | Fixed |
 | `VC-002` | Medium | High | Size tokens | One number, twelve declarations: there is no icon-size or stroke-width scale in `ui/theme/`. | Fixed |
-| `VC-003` | Low | High | Screen state | Nine of eleven stateful screens still replace their state branches in one frame. | Open |
+| `VC-003` | Low | High | Screen state | Nine of eleven stateful screens still replace their state branches in one frame. | Fixed |
 | `VC-004` | Low | Medium | Screen state | The Topic Browser cuts hard between three bodies *inside* its `Content` state, which a class-keyed transition would not cover. | Open |
-| `VC-005` | Low | High | Motion | The app's enter/exit state-change pair is written out longhand in two places rather than named on `AppMotion`. | Open |
+| `VC-005` | Low | High | Motion | The app's enter/exit state-change pair is written out longhand in two places rather than named on `AppMotion`. | Fixed |
 | `VC-006` | Observation | Medium | Empty states | Four of six `ScreenAction` call sites pass an icon; the split looks deliberate but is written down nowhere. | Open |
 | `VC-007` | Observation | High | Documentation | Architecture prose describing UI drifts silently when a component is redesigned. | Open |
 | `VC-008` | Low | High | Size tokens | `HeroElevation` and the busy-control stroke are each declared in several files; both were left out of `VC-002` because elevation needs a Material question answered first. | Open |
@@ -217,6 +217,11 @@ the touch target — `BulletMarkerWidth` is a prose column rather than an icon, 
 into a global hairline would have made illegible. `StudiedIconSize` also stayed: its 18dp is
 justified by matching a badge on its own page, not by the button token.
 
+One entry the recommendation named was deliberately not added: the empty-state status icon. It is
+40dp at exactly one call site, inside `ScreenStatus.ScreenAction`, which every screen already reaches
+through that one component — so it is already a single declaration, and the defect this finding
+describes is many declarations of one value. A scale step with one caller is not a scale.
+
 Verified as a pure refactor rather than argued to be one: the affected surfaces were captured
 before and after, and the PNGs are byte-identical by SHA-256. Every replacement maps a private
 `val` to a scale entry holding the same number, so nothing was expected to move, and nothing did.
@@ -225,7 +230,7 @@ before and after, and the PNGs are byte-identical by SHA-256. Every replacement 
 
 ## VC-003 — Nine of eleven stateful screens still cut hard between states
 
-**Severity** Low · **Confidence** High · **Status** Open
+**Severity** Low · **Confidence** High · **Status** Fixed
 
 `ui/ScreenStatus.kt`'s `ScreenStateTransition` exists because *"each branch simply replaced the
 last, so content appeared the instant a read finished — a spinner one frame and a full list the
@@ -275,6 +280,41 @@ loading/empty/error/content assertions as the protection. Treat the Lesson and t
 separate decisions. Do not add custom transition machinery anywhere: if the shared primitive does
 not fit a screen, leave that screen switching as it is and record why.
 
+**Resolution** Eight screens adopted it, taking the count from two of eleven to ten. No custom
+machinery was added anywhere and no screen grew a second way of switching.
+
+The six mechanical ones went through unchanged in shape: the `when` moved inside
+`ScreenStateTransition(state, Modifier.fillMaxSize())` and each branch's `Modifier.weight(1f)`
+became `Modifier.fillMaxSize()`, since inside `AnimatedContent` the scope is a box rather than a
+column. `TopicDetailScreen` was the one exception among them and keeps a `Column(Modifier
+.fillMaxSize())` inside the transition, because `TopicDetailTabs` is a `ColumnScope` extension — its
+pager takes the height the tab row leaves — and that scope had to be restored for the tabs to lay
+out as before.
+
+The two judgement cases were both adopted, and answering them produced a rule worth stating:
+**the transition covers the screen's body, and chrome pinned under the top bar stays outside it.**
+`LearningLessonScreen`'s reading meter and `AssessmentTakingScreen`'s progress meter are both
+hairlines under the bar that exist only under `Content`, and both now sit outside the transition for
+the same reason the top bar's own title does — the bar is not cross-faded when a screen's state
+changes, and a meter pinned to it is part of that bar, not part of the body.
+
+`AssessmentTakingScreen` is the screen the finding said to verify rather than assume, and the
+verification is the keying: moving from one question to the next stays inside `Content`, keeps the
+same key, and therefore runs no transition at all, so the per-question `key(question.id)` swap and
+the answer reveal are untouched. What does now cross-fade is the screen becoming a different kind of
+thing — questions arriving, the last answer giving way to the finish prompt, the finish handing over
+to results.
+
+`TopicBrowserScreen` was deliberately not converted; it is `VC-004` and still open.
+
+**Protection** `ui/ScreenStateTransitionTest.kt` asserts the contract on the shared primitive rather
+than through any one screen, which is the level that covers all ten callers: crossing state classes
+leaves the outgoing branch composed one frame later (a transition is running), and a data change
+within one class replaces the content outright (no transition). It asserts the decision, never a
+duration or an alpha. Confirmed to be real protection by flipping the default `contentKey` from
+`{ it::class }` to `{ it }`, which fails the second test and leaves the first passing — exactly the
+regression the finding warns about.
+
 ---
 
 ## VC-004 — The Topic Browser cuts hard inside one state class
@@ -304,7 +344,7 @@ omission. If a transition is wanted, it needs a key that distinguishes the three
 
 ## VC-005 — The enter/exit state-change pair is written longhand twice
 
-**Severity** Low · **Confidence** High · **Status** Open
+**Severity** Low · **Confidence** High · **Status** Fixed
 
 **Files** `ui/ScreenStatus.kt:61`, `AppNavigationBar.kt:460`
 
@@ -321,6 +361,17 @@ agree today. `VC-003` proposes adding callers to one of them.
 **Recommendation** Name the pair on `AppMotion` when `VC-003` is implemented, so the screens
 adopting the transition inherit one definition rather than a third copy. Not worth a change of its
 own.
+
+**Resolution** `AppMotion.arriveSpec()` and `AppMotion.departSpec()` now name the pair, and both
+call sites use them. One correction to the finding's reasoning: adopting `ScreenStateTransition` on
+eight more screens could never have produced a third copy, because those screens inherit the pair
+*through* the component rather than restating it — the duplication was only ever the two sites, and
+naming it was worth doing on its own terms rather than as a side effect.
+
+`departSpec` takes an optional duration because the navigation bar's exit genuinely needs two: its
+fade uses the default half-duration while its slide takes the full one, since a departure that moves
+has its own travel to clear and reads as still moving if cut short. That was already true in the
+code and is now stated rather than implied.
 
 ---
 
@@ -433,7 +484,8 @@ harness to prove it. **Done** — see its Resolution above.
 `VC-002` next, as its own change, because it touches fourteen files and nothing else should be
 moving while it does. **Done** — see its Resolution above; it touched fifteen.
 
-`VC-003` and `VC-005` together, since the second exists to serve the first.
+`VC-003` and `VC-005` together, since the second exists to serve the first. **Done** — see their
+Resolutions above.
 
 `VC-004`, `VC-006` and `VC-008` are decisions to record more than code to write, and can ride along
 with any change that touches their surface.

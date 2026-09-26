@@ -25,6 +25,7 @@ import kmp_learning_app.shared.generated.resources.progress_not_enough_data
 import kmp_learning_app.shared.generated.resources.progress_score
 import kmp_learning_app.shared.generated.resources.progress_weak_label
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.PaddingValues
 import org.artkachenko.kmp_learning_app.ui.AccuracyHeroCard
@@ -56,25 +57,31 @@ internal fun ProgressTopicScreen(
         // than repeating it.
         AppTopBar(stringResource(Res.string.progress_topic_detail_title), onBack, scrollBehavior)
         AppScreenPane(AppContentWidth.Standard) {
-            when (state) {
-                ProgressTopicUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.progress_topic_loading),
-                    testTag = ProgressTopicLoadingTag,
-                    modifier = Modifier.weight(1f),
-                )
-                ProgressTopicUiState.Empty -> ScreenMessage(
-                    message = stringResource(Res.string.progress_topic_empty),
-                    modifier = Modifier.weight(1f),
-                )
-                ProgressTopicUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.progress_topic_error),
-                    onRetry = onRetry,
-                    modifier = Modifier.weight(1f),
-                )
-                is ProgressTopicUiState.Content -> ProgressTopicContent(
-                    state = state,
-                    modifier = Modifier.weight(1f),
-                )
+            // Keyed on the state's class, which is what the default `contentKey` gives: crossing
+            // from Loading into content, a message, or an error is one thing becoming another and
+            // fades, while a change *within* content keeps the same key and does not. Keying on the
+            // state itself would fade the whole screen out and back in on every data change.
+            ScreenStateTransition(state = state, modifier = Modifier.fillMaxSize()) { current ->
+                when (current) {
+                    ProgressTopicUiState.Loading -> ScreenLoading(
+                        message = stringResource(Res.string.progress_topic_loading),
+                        testTag = ProgressTopicLoadingTag,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    ProgressTopicUiState.Empty -> ScreenMessage(
+                        message = stringResource(Res.string.progress_topic_empty),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    ProgressTopicUiState.Error -> ScreenError(
+                        message = stringResource(Res.string.progress_topic_error),
+                        onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    is ProgressTopicUiState.Content -> ProgressTopicContent(
+                        state = current,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }

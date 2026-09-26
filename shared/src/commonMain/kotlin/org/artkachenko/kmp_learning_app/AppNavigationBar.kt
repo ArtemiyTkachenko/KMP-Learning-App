@@ -457,29 +457,15 @@ private fun CompactNavigationOverlay(
         visible = visible,
         modifier = modifier,
         enter = slideInVertically(
-            animationSpec = tween(
-                durationMillis = AppMotion.StateChangeDurationMillis,
-                easing = AppMotion.EmphasizedDecelerateEasing,
-            ),
+            animationSpec = AppMotion.arriveSpec(),
             initialOffsetY = { it },
-        ) + fadeIn(
-            tween(
-                durationMillis = AppMotion.StateChangeDurationMillis,
-                easing = AppMotion.EmphasizedDecelerateEasing,
-            ),
-        ),
+        ) + fadeIn(AppMotion.arriveSpec()),
+        // The slide takes the full duration rather than the fade's half: it has its own travel to
+        // clear, and cut short it leaves the bar visibly still moving as it disappears.
         exit = slideOutVertically(
-            animationSpec = tween(
-                durationMillis = AppMotion.StateChangeDurationMillis,
-                easing = AppMotion.EmphasizedAccelerateEasing,
-            ),
+            animationSpec = AppMotion.departSpec(AppMotion.StateChangeDurationMillis),
             targetOffsetY = { it },
-        ) + fadeOut(
-            tween(
-                durationMillis = AppMotion.StateChangeDurationMillis / 2,
-                easing = AppMotion.EmphasizedAccelerateEasing,
-            ),
-        ),
+        ) + fadeOut(AppMotion.departSpec()),
     ) {
         Box(
             Modifier

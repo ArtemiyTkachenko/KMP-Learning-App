@@ -75,6 +75,7 @@ import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
@@ -240,32 +241,37 @@ internal fun LearningLessonScreen(
         if (state is LearningLessonUiState.Content) {
             LessonReadingProgress(scrollState)
         }
-        when (state) {
-            LearningLessonUiState.Loading -> ScreenLoading(
-                message = stringResource(Res.string.learning_lesson_loading),
-                testTag = LearningLessonLoadingTag,
-                modifier = Modifier.weight(1f),
-            )
-            LearningLessonUiState.NotFound -> ScreenMessage(
-                message = stringResource(Res.string.learning_lesson_not_found),
-                modifier = Modifier.weight(1f),
-            )
-            LearningLessonUiState.Error -> ScreenError(
-                message = stringResource(Res.string.learning_lesson_error),
-                onRetry = onRetry,
-                modifier = Modifier.weight(1f),
-            )
-            is LearningLessonUiState.Content -> LearningLessonContent(
-                state = state,
-                scrollState = scrollState,
-                onNavigateLesson = onNavigateLesson,
-                onPracticeUnit = onPracticeUnit,
-                onOpenSource = onOpenSource,
-                onToggleStudied = onToggleStudied,
-                failedSourceUrl = failedSourceUrl,
-                showsScrollToEnd = showsScrollToEnd,
-                modifier = Modifier.weight(1f),
-            )
+        // The transition takes the weight the branches used to, and covers the body only: the bar
+        // above it and the reading meter under the bar are chrome, and chrome is not cross-faded
+        // any more than the top bar's own title is.
+        ScreenStateTransition(state = state, modifier = Modifier.weight(1f)) { current ->
+            when (current) {
+                LearningLessonUiState.Loading -> ScreenLoading(
+                    message = stringResource(Res.string.learning_lesson_loading),
+                    testTag = LearningLessonLoadingTag,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                LearningLessonUiState.NotFound -> ScreenMessage(
+                    message = stringResource(Res.string.learning_lesson_not_found),
+                    modifier = Modifier.fillMaxSize(),
+                )
+                LearningLessonUiState.Error -> ScreenError(
+                    message = stringResource(Res.string.learning_lesson_error),
+                    onRetry = onRetry,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                is LearningLessonUiState.Content -> LearningLessonContent(
+                    state = current,
+                    scrollState = scrollState,
+                    onNavigateLesson = onNavigateLesson,
+                    onPracticeUnit = onPracticeUnit,
+                    onOpenSource = onOpenSource,
+                    onToggleStudied = onToggleStudied,
+                    failedSourceUrl = failedSourceUrl,
+                    showsScrollToEnd = showsScrollToEnd,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
 }

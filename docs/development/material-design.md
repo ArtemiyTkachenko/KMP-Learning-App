@@ -368,6 +368,19 @@ are marked where they appear.
 
 ### How it moves
 
+- **One state becomes another through `ScreenStateTransition`, keyed on the state class.**
+  Every screen with loading, empty, error, and content branches switches them through that one
+  component, so the change reads as one thing becoming another rather than as a spinner one frame
+  and a full list the next. The default `contentKey` is the state's *class*, and that is the part
+  that matters: a data change inside `Content` keeps the same key and must not fade, because the
+  row that changed already owns its own `animateItem`. The transition covers the screen's **body**
+  — a bar, and anything pinned under it such as a reading or progress meter, is chrome and stays
+  outside, exactly as the top bar's own title does.
+- **Arriving and departing are a pair, and the pair is named.** `AppMotion.arriveSpec()`
+  decelerates over the full state-change duration; `AppMotion.departSpec()` accelerates over half
+  it, so the outgoing state is gone before the incoming one has finished arriving and the change
+  reads as a replacement rather than a dissolve. A departure that *moves* rather than fades passes
+  the full duration, because it has its own travel to clear.
 - **Stagger a reveal in the animation spec, not in a coroutine.** When several pieces of
   one reveal should arrive in order, give one container the layout expansion and give the
   children delayed specs through `AppMotion.revealSpec(delayMillis)` and

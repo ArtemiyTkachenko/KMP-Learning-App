@@ -31,6 +31,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.reviewSaveAction
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.jetbrains.compose.resources.stringResource
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentResultLayout
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
@@ -67,36 +68,42 @@ internal fun FocusedResultScreen(
     Column(modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         AppTopBar(stringResource(Res.string.focused_result_title), onBack, scrollBehavior)
         AppScreenPane(AppContentWidth.Paned) {
-            when (state) {
-                FocusedResultUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.focused_result_loading),
-                    testTag = FocusedResultLoadingTag,
-                    modifier = Modifier.weight(1f),
-                )
-                FocusedResultUiState.AttemptNotFound -> ScreenMessage(
-                    message = stringResource(Res.string.focused_result_attempt_not_found),
-                    modifier = Modifier.weight(1f),
-                )
-                FocusedResultUiState.NotCompleted -> ScreenMessage(
-                    message = stringResource(Res.string.focused_result_not_completed),
-                    modifier = Modifier.weight(1f),
-                )
-                FocusedResultUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.focused_result_error),
-                    onRetry = onRetry,
-                    modifier = Modifier.weight(1f),
-                )
-                is FocusedResultUiState.Content -> ResultContent(
-                    state = state,
-                    onSourceClick = onSourceClick,
-                    onRepeatPractice = onRepeatPractice,
-                    retakeState = retakeState,
-                    onPracticeMistakes = onPracticeMistakes,
-                    savedQuestions = savedQuestions,
-                    onToggleSaved = onToggleSaved,
-                    failedSourceUrl = failedSourceUrl,
-                    modifier = Modifier.weight(1f),
-                )
+            // Keyed on the state's class, which is what the default `contentKey` gives: crossing
+            // from Loading into content, a message, or an error is one thing becoming another and
+            // fades, while a change *within* content keeps the same key and does not. Keying on the
+            // state itself would fade the whole screen out and back in on every data change.
+            ScreenStateTransition(state = state, modifier = Modifier.fillMaxSize()) { current ->
+                when (current) {
+                    FocusedResultUiState.Loading -> ScreenLoading(
+                        message = stringResource(Res.string.focused_result_loading),
+                        testTag = FocusedResultLoadingTag,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    FocusedResultUiState.AttemptNotFound -> ScreenMessage(
+                        message = stringResource(Res.string.focused_result_attempt_not_found),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    FocusedResultUiState.NotCompleted -> ScreenMessage(
+                        message = stringResource(Res.string.focused_result_not_completed),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    FocusedResultUiState.Error -> ScreenError(
+                        message = stringResource(Res.string.focused_result_error),
+                        onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    is FocusedResultUiState.Content -> ResultContent(
+                        state = current,
+                        onSourceClick = onSourceClick,
+                        onRepeatPractice = onRepeatPractice,
+                        retakeState = retakeState,
+                        onPracticeMistakes = onPracticeMistakes,
+                        savedQuestions = savedQuestions,
+                        onToggleSaved = onToggleSaved,
+                        failedSourceUrl = failedSourceUrl,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }

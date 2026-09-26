@@ -102,6 +102,8 @@ import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.TopicVisualMarker
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
+import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppListBottomPadding
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
@@ -657,7 +659,7 @@ private fun SavedQuestionsEntry(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(NavigationChevronSize),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -795,7 +797,7 @@ private fun GuidanceRow(
         modifier = modifier
             .fillMaxWidth()
             .then(if (onClick == null) Modifier else Modifier.clickable(role = Role.Button, onClick = onClick))
-            .heightIn(min = MinimumTouchTargetSize)
+            .heightIn(min = AppMinimumTouchTarget)
             .padding(GroupRowPadding),
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
         verticalAlignment = Alignment.CenterVertically,
@@ -831,7 +833,7 @@ private fun GuidanceRow(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(NavigationChevronSize),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -896,7 +898,7 @@ private fun RecommendedNextCard(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -1222,7 +1224,7 @@ private fun SubtopicResultRow(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -1283,9 +1285,3 @@ private fun TopicBrowserScreenPreview() {
         )
     }
 }
-
-/** Material's minimum touch target, stated here because a group row is not a Material component. */
-private val MinimumTouchTargetSize = 48.dp
-
-/** The trailing navigation affordance, at the size every other row in the app draws it. */
-private val NavigationChevronSize = 20.dp

@@ -78,7 +78,9 @@ import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
+import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
@@ -695,7 +697,7 @@ private fun LessonOutline(
                         selected = isCurrent,
                         onClick = { onEntryClick(entry.sectionIndex) },
                     )
-                    .heightIn(min = OutlineEntryMinHeight)
+                    .heightIn(min = AppMinimumTouchTarget)
                     .padding(
                         horizontal = AppSpacing.Related,
                         vertical = AppSpacing.Related,
@@ -727,9 +729,6 @@ private val LessonOutlineWidth: Dp = 220.dp
  * costs the labels no width and never has to be spaced away from them.
  */
 private val LessonOutlineMarkerWidth: Dp = 3.dp
-
-/** Material's minimum touch target, which an outline entry has to clear like any other control. */
-private val OutlineEntryMinHeight: Dp = 48.dp
 
 /** Below this an outline is a decoration rather than a way of getting anywhere. */
 private const val MinimumOutlineEntries = 2
@@ -977,7 +976,7 @@ private fun LessonSources(
             Icon(
                 imageVector = AppIcons.OpenInNew,
                 contentDescription = null,
-                modifier = Modifier.size(SourceIconSize),
+                modifier = Modifier.size(AppIconSize.Inline),
             )
             Text(
                 text = source.title,
@@ -1065,15 +1064,11 @@ private fun AdjacentLessonCard(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = contentColor,
-                modifier = Modifier.size(ChevronSize),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
 }
-
-private val SourceIconSize = 16.dp
-
-private val ChevronSize = 20.dp
 
 /** Matches the badge the same fact is drawn as at the top of the page. */
 private val StudiedIconSize = 18.dp

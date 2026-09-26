@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.learning_study_progress_unavailable
 import kmp_learning_app.shared.generated.resources.learning_unit_lessons_studied
@@ -37,6 +36,7 @@ import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.ProgressMeter
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.artkachenko.kmp_learning_app.ui.theme.appListContentPadding
@@ -324,7 +324,7 @@ private fun LearningUnitRowContent(
                         imageVector = AppIcons.CheckCircle,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(RowIconSize),
+                        modifier = Modifier.size(AppIconSize.Row),
                     )
                 }
             }
@@ -370,7 +370,7 @@ private fun LearningUnitRowContent(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(RowIconSize),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -378,6 +378,3 @@ private fun LearningUnitRowContent(
 
 /** Enough of the Unit's description to tell two Units apart, and no more. */
 private const val SummaryMaxLines = 2
-
-/** The completion mark and the navigation chevron, at the size every other row draws them. */
-private val RowIconSize = 20.dp

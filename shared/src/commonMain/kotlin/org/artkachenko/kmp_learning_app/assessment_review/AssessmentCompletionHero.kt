@@ -42,8 +42,10 @@ import org.artkachenko.kmp_learning_app.ui.AccuracyRingTrackAlpha
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.CountedFigure
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
 
@@ -154,7 +156,7 @@ internal fun AssessmentCompletionHero(
         // over the dark sweep, a faint dark one over the pale sweep — where a fixed grey would be
         // invisible in one of them. The shadow does the same job for light, where the gradient is
         // closest in value to the background it sits on.
-        border = BorderStroke(HeroBorderWidth, onHero.copy(alpha = HeroBorderAlpha)),
+        border = BorderStroke(AppStroke.Hairline, onHero.copy(alpha = HeroBorderAlpha)),
         shadowElevation = HeroElevation,
     ) {
         AnimatedVisibility(
@@ -185,7 +187,7 @@ internal fun AssessmentCompletionHero(
                             contentDescription = null,
                             tint = onHero,
                             modifier = Modifier
-                                .size(CompletionIconSize)
+                                .size(AppIconSize.Row)
                                 .animateEnterExit(
                                     enter = scaleIn(
                                         animationSpec = AppMotion.revealSpec(IconRevealDelayMillis),
@@ -305,7 +307,4 @@ private const val IconInitialScale = 0.6f
 
 /** An edge, not an outline: visible where the gradient meets the page and nowhere else. */
 private const val HeroBorderAlpha = 0.14f
-private val HeroBorderWidth = 1.dp
 private val HeroElevation = 2.dp
-
-private val CompletionIconSize = 20.dp

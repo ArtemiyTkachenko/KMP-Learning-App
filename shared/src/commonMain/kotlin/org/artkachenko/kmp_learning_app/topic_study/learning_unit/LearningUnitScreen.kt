@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.learning_lesson_not_studied
 import kmp_learning_app.shared.generated.resources.learning_lesson_studied
@@ -47,6 +46,7 @@ import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.artkachenko.kmp_learning_app.ui.theme.appListContentPadding
@@ -350,7 +350,7 @@ private fun LearningLessonRow(
                         // it while scanning, and repeating it here would announce it twice.
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(StudiedMarkSize),
+                        modifier = Modifier.size(AppIconSize.Row),
                     )
                 }
             }
@@ -382,11 +382,7 @@ private fun LearningLessonRow(
             imageVector = AppIcons.ChevronRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(NavigationChevronSize),
+            modifier = Modifier.size(AppIconSize.Row),
         )
     }
 }
-
-/** The completion mark and the navigation chevron, at the size every other row draws them. */
-private val StudiedMarkSize = 20.dp
-private val NavigationChevronSize = 20.dp

@@ -53,12 +53,13 @@ Severity, confidence, and status use the same vocabulary as the
 | ID | Severity | Confidence | Area | Finding | Status |
 | -- | -------- | ---------- | ---- | ------- | ------ |
 | `VC-001` | Medium | High | Shared rows | `PerformanceCard` and `AccuracyRow` break their title inside a word at a doubled type size. | Fixed |
-| `VC-002` | Medium | High | Size tokens | One number, twelve declarations: there is no icon-size or stroke-width scale in `ui/theme/`. | Open |
+| `VC-002` | Medium | High | Size tokens | One number, twelve declarations: there is no icon-size or stroke-width scale in `ui/theme/`. | Fixed |
 | `VC-003` | Low | High | Screen state | Nine of eleven stateful screens still replace their state branches in one frame. | Open |
 | `VC-004` | Low | Medium | Screen state | The Topic Browser cuts hard between three bodies *inside* its `Content` state, which a class-keyed transition would not cover. | Open |
 | `VC-005` | Low | High | Motion | The app's enter/exit state-change pair is written out longhand in two places rather than named on `AppMotion`. | Open |
 | `VC-006` | Observation | Medium | Empty states | Four of six `ScreenAction` call sites pass an icon; the split looks deliberate but is written down nowhere. | Open |
 | `VC-007` | Observation | High | Documentation | Architecture prose describing UI drifts silently when a component is redesigned. | Open |
+| `VC-008` | Low | High | Size tokens | `HeroElevation` and the busy-control stroke are each declared in several files; both were left out of `VC-002` because elevation needs a Material question answered first. | Open |
 
 ---
 
@@ -129,7 +130,7 @@ to fail against the previous implementation and pass against the current one.
 
 ## VC-002 — One number, twelve declarations: there is no size scale
 
-**Severity** Medium · **Confidence** High · **Status** Open
+**Severity** Medium · **Confidence** High · **Status** Fixed
 
 **Files** `ui/theme/AppSpacing.kt` and fourteen feature files
 
@@ -185,6 +186,40 @@ glyph, the text-button leading icon, the status icon, the hairline border, the m
 copies. Values that are genuinely about one surface (`AccuracyRingSize`, `LessonOutlineWidth`,
 `ComparisonColumnWidth`, the chart's marker geometry) should stay local: the scale is for values the
 whole product shares, not for every number.
+
+**Resolution** `ui/theme/AppSizing.kt` now holds three objects, named by where a value is used
+rather than by its number, as `AppSpacing` is:
+
+| Entry | Value | What it is |
+| --- | --- | --- |
+| `AppIconSize.Inline` | 16dp | A glyph set inside a line of body text — a source link's mark. |
+| `AppIconSize.Action` | `ButtonDefaults.IconSize` (18dp) | A text button's leading icon, and anything sized to match one. |
+| `AppIconSize.Row` | 20dp | A glyph beside a row's text: chevron, completion mark, leading accent. |
+| `AppStroke.Hairline` | 1dp | A surface's own edge. |
+| `AppStroke.Emphasis` | 2dp | The selected state of a choice. |
+| `AppMinimumTouchTarget` | 48dp | For bare `Row`s that get no Material minimum of their own. |
+
+`AppIconSize.Action` is Material's own `ButtonDefaults.IconSize`, quoted rather than restated so it
+cannot drift from the buttons it sits in — verified against the pinned sources at
+`material3-desktop-1.11.0-alpha07-sources.jar`, `Button.kt:1112`. The touch target stays a plain
+`Dp` because Material's current API is the composition local
+`LocalMinimumInteractiveComponentSize`, and these call sites apply the value as a `heightIn`
+minimum while building a row rather than reading it from composition; the value is the same 48dp.
+
+Fifteen files lost twenty-two private declarations. Five stayed local for the reason the
+recommendation gives, and each is a value whose justification is a relationship to something on its
+own surface rather than to the product: `TopicMarkerIconSize` is proportional to the 40dp marker
+around it, `NavigationIconSize` is a navigation-bar token, `TabHeight` is
+`PrimaryNavigationTabTokens.ContainerHeight` and says so — a different token that happens to equal
+the touch target — `BulletMarkerWidth` is a prose column rather than an icon, and
+`RecentTrendChart`'s `GuideWidth` and `LatestDropWidth` are part of a set of chart proportions
+(`LineWidth` is 2.5dp precisely so the data line outweighs the 1dp guide), which folding half of
+into a global hairline would have made illegible. `StudiedIconSize` also stayed: its 18dp is
+justified by matching a badge on its own page, not by the button token.
+
+Verified as a pure refactor rather than argued to be one: the affected surfaces were captured
+before and after, and the PNGs are byte-identical by SHA-256. Every replacement maps a private
+`val` to a scale entry holding the same number, so nothing was expected to move, and nothing did.
 
 ---
 
@@ -330,6 +365,37 @@ audit is the evidence that it is not automatic.
 
 ---
 
+## VC-008 — Elevation and indicator stroke are still per-file
+
+**Severity** Low · **Confidence** High · **Status** Open
+
+**Files** `ui/ContentHierarchy.kt:138`, `progress/ProgressHero.kt:325`,
+`assessment_review/AssessmentCompletionHero.kt:310`, `assessment_review/AssessmentRetakeAction.kt:209`,
+`assessment_taking/AssessmentTakingScreen.kt:291`
+
+Found while implementing `VC-002` and deliberately left out of it, because neither belongs to the
+scale that finding described and one of them asks a question that change could not answer.
+
+`HeroElevation = 2.dp` is declared three times, once in each of the app's three heroes, for one
+concept — `ui/ContentHierarchy.kt` states it as *"the lift that makes a hero outrank the cards under
+it"*. That is the same defect as `VC-002` in a different axis. It was not folded in because 2dp is
+**not** a Material elevation level: M3 puts a resting card at Level1 (1dp) and a raised one at
+Level2 (3dp), so this value is already a deviation from the token set, and consolidating three
+copies of an undocumented deviation would settle it by accident. The question — is the hero lift a
+deliberate deviation worth recording in the deviations table, or should it move onto a Material
+level — has to be answered before the value gets a shared name.
+
+`ProgressStrokeWidth` and `FinishProgressStroke`, both 2.dp, are the stroke of a busy control's
+spinner, sized so that a ring rather than a disc appears inside an `AppIconSize.Action` circle. They
+are two statements of one relationship, and now that the circle they relate to is a shared scale
+entry the stroke can reasonably follow it. This is small enough to ride along with the elevation
+decision rather than justify a change of its own.
+
+**Recommendation** Answer the elevation question first, in the deviations table of
+[Material Design 3](../development/material-design.md), then give both values a home.
+
+---
+
 ## Areas With No Material Issue Found
 
 Recorded so a later session does not re-derive them.
@@ -365,12 +431,12 @@ setting currently cannot read the screen, and it is contained to one file with a
 harness to prove it. **Done** — see its Resolution above.
 
 `VC-002` next, as its own change, because it touches fourteen files and nothing else should be
-moving while it does.
+moving while it does. **Done** — see its Resolution above; it touched fifteen.
 
 `VC-003` and `VC-005` together, since the second exists to serve the first.
 
-`VC-004` and `VC-006` are decisions to record more than code to write, and can ride along with any
-change that touches their surface.
+`VC-004`, `VC-006` and `VC-008` are decisions to record more than code to write, and can ride along
+with any change that touches their surface.
 
 `VC-007` is a habit, not a task.
 

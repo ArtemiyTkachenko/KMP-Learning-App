@@ -20,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
+import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 
 /**
@@ -89,7 +91,7 @@ internal fun PerformanceCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
-        border = if (isWeak) BorderStroke(WeakBorderWidth, semantic.partiallyCorrect) else null,
+        border = if (isWeak) BorderStroke(AppStroke.Hairline, semantic.partiallyCorrect) else null,
     ) {
         val meter = percentage.takeIf { comparesWithSiblings }
         Row(
@@ -165,7 +167,7 @@ internal fun PerformanceCard(
                     imageVector = AppIcons.ChevronRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(NavigationChevronSize),
+                    modifier = Modifier.size(AppIconSize.Row),
                 )
             }
         }
@@ -246,7 +248,7 @@ internal fun AccuracyRow(
                     Modifier.clickable(role = Role.Button, onClick = onClick)
                 },
             )
-            .heightIn(min = MinimumTouchTargetSize)
+            .heightIn(min = AppMinimumTouchTarget)
             .padding(GroupRowPadding)
             .semantics(mergeDescendants = true) {},
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
@@ -283,7 +285,7 @@ internal fun AccuracyRow(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(NavigationChevronSize),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -313,12 +315,3 @@ private fun AccuracyFigure(percentage: Double?) {
         )
     }
 }
-
-/** Material's minimum touch target, stated here because a bare row is not a Material component. */
-private val MinimumTouchTargetSize = 48.dp
-
-/** The trailing navigation affordance, at the size every other row in the app draws it. */
-private val NavigationChevronSize = 20.dp
-
-/** Thick enough to read as a deliberate accent at a glance, thin enough not to become a frame. */
-private val WeakBorderWidth = 1.dp

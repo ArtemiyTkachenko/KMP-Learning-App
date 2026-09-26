@@ -87,6 +87,9 @@ import org.artkachenko.kmp_learning_app.assessment_review.tagLabel
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ProgressMeter
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
+import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.ScreenError
@@ -270,7 +273,7 @@ private fun FinishAction(isCompleting: Boolean, onComplete: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (completing) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(FinishProgressSize),
+                        modifier = Modifier.size(AppIconSize.Action),
                         strokeWidth = FinishProgressStroke,
                     )
                     Text(
@@ -285,8 +288,7 @@ private fun FinishAction(isCompleting: Boolean, onComplete: () -> Unit) {
     }
 }
 
-/** The leading-icon size Material gives a text button, as every other busy control here uses. */
-private val FinishProgressSize = 18.dp
+/** Scaled to the [AppIconSize.Action] circle it draws in, as every other busy control here is. */
 private val FinishProgressStroke = 2.dp
 
 @Composable
@@ -526,7 +528,7 @@ private fun AnswerRow(
     val borderWidth by transition.animateDp(
         transitionSpec = { AppMotion.spatialSpec() },
         label = "answerBorderWidth",
-    ) { if (it == AnswerVisualState.Resting) UnselectedBorderWidth else SelectedBorderWidth }
+    ) { if (it == AnswerVisualState.Resting) AppStroke.Hairline else AppStroke.Emphasis }
     // A marked row states its outcome in words and colour of its own, so the answer text returns to
     // the ordinary reading colour once the row is a result rather than a choice.
     val textColor by transition.animateColor(
@@ -576,7 +578,7 @@ private fun AnswerRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = AnswerRowMinHeight)
+                .heightIn(min = AppMinimumTouchTarget)
                 .padding(AppSpacing.Grouped),
             verticalAlignment = Alignment.Top,
         ) {
@@ -740,11 +742,6 @@ private const val PressedScale = 0.98f
 
 /** The badge settles in from just under its size; a larger start would read as a pop. */
 private const val VerdictInitialScale = 0.94f
-
-private val SelectedBorderWidth = 2.dp
-private val UnselectedBorderWidth = 1.dp
-
-private val AnswerRowMinHeight = 48.dp
 
 /** Matches the line height of [MaterialTheme.typography] bodyLarge so the control aligns to the
  *  first line of a wrapping answer rather than to the middle of the block. */

@@ -18,6 +18,7 @@ import kmp_learning_app.shared.generated.resources.progress_score
 import kmp_learning_app.shared.generated.resources.progress_weak_label
 import org.artkachenko.kmp_learning_app.ui.PerformanceCard
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.jetbrains.compose.resources.stringResource
 
@@ -104,12 +105,9 @@ internal fun ProgressSectionTitle(
             imageVector = icon,
             contentDescription = null,
             tint = iconTint,
-            modifier = Modifier.size(SectionAccentSize),
+            modifier = Modifier.size(AppIconSize.Row),
         )
         // The margin is already applied to the row, so the heading itself adds none.
         SectionHeading(text, topPadding = 0.dp)
     }
 }
-
-/** Beside `titleLarge`: large enough to register as an accent, small enough not to be a badge. */
-private val SectionAccentSize = 20.dp

@@ -47,6 +47,7 @@ import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
 
@@ -141,7 +142,7 @@ internal fun ProgressHero(
         // The edge carries the separation in dark, where one tonal step is not enough and a shadow
         // is almost invisible; the shadow carries it in light, where the pale sweep sits close in
         // value to the page. Neither alone works in both schemes.
-        border = BorderStroke(HeroBorderWidth, onHero.copy(alpha = HeroBorderAlpha)),
+        border = BorderStroke(AppStroke.Hairline, onHero.copy(alpha = HeroBorderAlpha)),
         shadowElevation = HeroElevation,
     ) {
         AnimatedVisibility(
@@ -321,7 +322,6 @@ private const val HeroBorderAlpha = 0.14f
 /** The unfilled part of the coverage meter, in the hero's own on-colour. */
 private const val CoverageTrackAlpha = 0.2f
 
-private val HeroBorderWidth = 1.dp
 private val HeroElevation = 2.dp
 
 /**

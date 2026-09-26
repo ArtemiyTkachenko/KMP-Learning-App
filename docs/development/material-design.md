@@ -49,10 +49,28 @@ Every scale already exists. Change the scale, never the call site.
 | Type scale | `ui/theme/AppTypography.kt` |
 | Durations and easing | `ui/theme/AppMotion.kt` |
 | Colour scheme and semantic colours | `ui/theme/AppColorScheme.kt`, `AppSemanticColors.kt` |
+| Icon sizes, stroke weights, minimum touch target | `ui/theme/AppSizing.kt` |
 
 No literal `.dp` spacing in a screen when a scale step says the same thing. A pill is the
 exception `AppShapes` documents: `RoundedCornerShape(percent = 50)` locally, because a pill
 is a function of the element's own height.
+
+`AppSizing` covers the values that used to be a private `val` in every file that needed one —
+`20.dp` alone had reached twelve declarations under nine names. `AppIconSize` has three steps
+named by where the glyph sits: `Inline` (16dp, inside a line of body text), `Action`
+(`ButtonDefaults.IconSize`, 18dp, a text button's leading icon and anything matching one), and
+`Row` (20dp, beside a row's text — a chevron, a completion mark, a leading accent). `AppStroke`
+has `Hairline` (1dp, a surface's own edge) and `Emphasis` (2dp, a selected choice).
+`AppMinimumTouchTarget` is 48dp, for the bare `Row`s that must state it because they are not
+Material components and get no minimum of their own.
+
+A size that is genuinely about one surface still belongs to that surface, and several
+deliberately stayed local: the Topic marker's glyph is proportional to the marker around it, the
+navigation bar's icon is a navigation-bar token, the tab strip's height is
+`PrimaryNavigationTabTokens.ContainerHeight` rather than the touch target it happens to equal, a
+lesson bullet's column is a prose measure rather than an icon, and the trend chart's line, guide
+and marker sizes are a set of proportions that only mean anything relative to each other. The
+scale is for what the product shares.
 
 ## Surfaces are three levels, not a spectrum
 

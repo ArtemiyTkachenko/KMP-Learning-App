@@ -50,8 +50,10 @@ import kmp_learning_app.shared.generated.resources.assessment_review_unsave_ques
 import kmp_learning_app.shared.generated.resources.assessment_review_unsaved_state
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.stringResource
 
@@ -220,7 +222,7 @@ internal fun QuestionAnswerOption(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.small,
         color = containerColor,
-        border = BorderStroke(1.dp, borderColor),
+        border = BorderStroke(AppStroke.Hairline, borderColor),
     ) {
         Column(
             Modifier.padding(AppSpacing.Grouped),
@@ -313,7 +315,7 @@ internal fun QuestionSources(
                     Icon(
                         imageVector = AppIcons.OpenInNew,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier.size(AppIconSize.Inline),
                     )
                     Text(
                         stringResource(Res.string.assessment_review_source, source.title),
@@ -386,7 +388,7 @@ internal fun QuestionBookmarkAction(
         Icon(
             imageVector = if (isSaved) AppIcons.Bookmark else AppIcons.BookmarkBorder,
             contentDescription = null,
-            modifier = Modifier.size(QuestionActionIconSize),
+            modifier = Modifier.size(AppIconSize.Action),
         )
         Text(
             text = stringResource(
@@ -470,7 +472,7 @@ private fun QuestionDisclosureAction(expanded: Boolean, onClick: () -> Unit) {
             imageVector = AppIcons.ExpandMore,
             contentDescription = null,
             modifier = Modifier
-                .size(QuestionActionIconSize)
+                .size(AppIconSize.Action)
                 .graphicsLayer { rotationZ = rotation },
         )
         Text(
@@ -488,12 +490,6 @@ private fun QuestionDisclosureAction(expanded: Boolean, onClick: () -> Unit) {
 
 /** Half a turn, so the chevron ends pointing up rather than having spun all the way round. */
 private const val ExpandedChevronRotation = 180f
-
-/**
- * The leading-icon size Material gives a text button, shared by the two controls a Question card
- * carries so the bookmark and the disclosure read as one pair rather than as two sizes of glyph.
- */
-private val QuestionActionIconSize = 18.dp
 
 /**
  * How far an opened card's contents trail the expansion that makes room for them.

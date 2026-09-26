@@ -26,12 +26,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
@@ -280,6 +282,117 @@ internal fun StatusBadge(
                 style = MaterialTheme.typography.labelMedium,
                 color = contentColor,
             )
+        }
+    }
+}
+
+/**
+ * A block of text with a figure beside it, which drops below the text when it no longer fits there.
+ *
+ * ## The defect this exists for
+ *
+ * The Topics catalogue and a Topic's Subtopics draw the same shape: a weighted text column, then an
+ * accuracy figure with its `learning_context_accuracy` caption under it. A `Row` measures its
+ * non-weighted children first, so the figure takes its intrinsic width and the text column gets
+ * whatever is left. At `fontScale = 2f` on a 360dp window that left the Subtopic title about 165dp
+ * and broke "Structured concurrency" across a line **inside the word**; the Topic row, which also
+ * carries a leading marker, was worse — "Kotlin langua / ge", with the learning-units badge broken
+ * mid-word too and its pill stretched out of shape.
+ *
+ * The caption is what makes the figure wide, and removing it is not the fix: it is a recorded
+ * decision on both screens, because the line to the *left* of it is a coverage fraction and the
+ * figure is an accuracy, and two readings with different denominators on one row is how a learner
+ * comes to believe they are one number.
+ *
+ * ## Why this measures rather than picking a breakpoint
+ *
+ * The question is not "is the type large" — it is "is there still room for the text beside the
+ * figure", and that depends on the type scale, the window, the locale's longest word, and whatever
+ * leads the row. So the layout asks exactly that: [Measurable.minIntrinsicWidth] on the text is the
+ * width of its longest unbreakable word, which is the point below which Compose starts breaking
+ * inside one. If the space left beside the figure is at least that, nothing changes; if it is not,
+ * the figure moves below.
+ *
+ * That also means **nothing moves at ordinary type**. The beside branch places the figure hard
+ * against the trailing edge with [horizontalGap] before it, which is what an `Arrangement.spacedBy`
+ * row already did, so the existing layouts are unchanged where they were never broken.
+ *
+ * Stacked, the figure keeps the full width and its own internal alignment, so a right-aligned
+ * figure stays in its column instead of jumping to the leading edge — it drops a line, it does not
+ * change what kind of thing it is.
+ *
+ * [figure] may compose nothing, which is the ordinary case for a scope with no recorded answer.
+ * There is then no reflow question to ask and the text takes the row.
+ */
+@Composable
+internal fun TrailingFigureRow(
+    modifier: Modifier = Modifier,
+    horizontalGap: Dp = AppSpacing.Grouped,
+    verticalGap: Dp = AppSpacing.Tight,
+    figure: @Composable () -> Unit,
+    text: @Composable () -> Unit,
+) {
+    Layout(contents = listOf(text, figure), modifier = modifier) { measurables, constraints ->
+        val (textMeasurables, figureMeasurables) = measurables
+        val textMeasurable = textMeasurables.first()
+        val figureMeasurable = figureMeasurables.firstOrNull()
+        val loose = constraints.copy(minWidth = 0)
+
+        // Nothing to place beside, so there is no decision to make.
+        if (figureMeasurable == null) {
+            val placeable = textMeasurable.measure(constraints)
+            return@Layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+        }
+
+        val horizontal = horizontalGap.roundToPx()
+        val figureWidth = figureMeasurable.maxIntrinsicWidth(constraints.maxHeight)
+
+        // An unbounded width has no "beside" to run out of: everything fits, so nothing reflows.
+        // A row in a list or a card never arrives this way, but a measurement pass elsewhere can.
+        val fitsBeside = !constraints.hasBoundedWidth ||
+            textMeasurable.minIntrinsicWidth(constraints.maxHeight) <=
+            constraints.maxWidth - figureWidth - horizontal
+
+        if (fitsBeside) {
+            val figurePlaceable = figureMeasurable.measure(loose.copy(maxWidth = figureWidth))
+            val textPlaceable = textMeasurable.measure(
+                loose.copy(
+                    maxWidth = if (constraints.hasBoundedWidth) {
+                        (constraints.maxWidth - figurePlaceable.width - horizontal)
+                            .coerceAtLeast(0)
+                    } else {
+                        constraints.maxWidth
+                    },
+                ),
+            )
+            val width = if (constraints.hasBoundedWidth) {
+                constraints.maxWidth
+            } else {
+                textPlaceable.width + horizontal + figurePlaceable.width
+            }
+            val height = maxOf(textPlaceable.height, figurePlaceable.height)
+            return@Layout layout(width, height) {
+                textPlaceable.place(
+                    x = 0,
+                    y = Alignment.CenterVertically.align(textPlaceable.height, height),
+                )
+                figurePlaceable.place(
+                    x = width - figurePlaceable.width,
+                    y = Alignment.CenterVertically.align(figurePlaceable.height, height),
+                )
+            }
+        }
+
+        val width = constraints.maxWidth
+        val textPlaceable = textMeasurable.measure(loose)
+        // Given the whole width rather than its content width, so a figure that aligns itself to
+        // the trailing edge stays where the eye already expects it.
+        val figurePlaceable = figureMeasurable.measure(constraints.copy(minWidth = width))
+        val vertical = verticalGap.roundToPx()
+        val height = textPlaceable.height + vertical + figurePlaceable.height
+        layout(width, height) {
+            textPlaceable.place(0, 0)
+            figurePlaceable.place(0, textPlaceable.height + vertical)
         }
     }
 }

@@ -39,6 +39,7 @@ import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
+import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -164,45 +165,49 @@ private fun SubtopicRow(
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(
+            TrailingFigureRow(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+                // Absent rather than 0% for a Subtopic with no recorded answer, and the row then
+                // has no reflow question to ask.
+                figure = {
+                    context?.accuracyPercentage?.let { accuracy ->
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = formatAccuracy(accuracy),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = accuracyColor(accuracy),
+                            )
+                            Text(
+                                text = stringResource(Res.string.learning_context_accuracy),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
             ) {
-                Text(
-                    text = item.subtopic.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                if (context == null) {
-                    // No analytics to show, so the row keeps the authored count it has always had
-                    // rather than claiming the Subtopic is unstudied.
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
                     Text(
-                        text = stringResource(
-                            Res.string.topic_detail_available_questions,
-                            item.questionCount,
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    // Coverage already carries the Subtopic's current total, so the authored count
-                    // is not repeated beside it.
-                    SubtopicLearningContext(context)
-                }
-            }
-            // Absent rather than 0% for a Subtopic with no recorded answer.
-            context?.accuracyPercentage?.let { accuracy ->
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = formatAccuracy(accuracy),
+                        text = item.subtopic.name,
                         style = MaterialTheme.typography.titleMedium,
-                        color = accuracyColor(accuracy),
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Text(
-                        text = stringResource(Res.string.learning_context_accuracy),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    if (context == null) {
+                        // No analytics to show, so the row keeps the authored count it has always
+                        // had rather than claiming the Subtopic is unstudied.
+                        Text(
+                            text = stringResource(
+                                Res.string.topic_detail_available_questions,
+                                item.questionCount,
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        // Coverage already carries the Subtopic's current total, so the authored
+                        // count is not repeated beside it.
+                        SubtopicLearningContext(context)
+                    }
                 }
             }
             Icon(

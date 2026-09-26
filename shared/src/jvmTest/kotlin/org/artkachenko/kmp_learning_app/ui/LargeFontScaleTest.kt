@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
@@ -27,6 +28,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
+import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.progress.ProgressActionPaneTag
 import org.artkachenko.kmp_learning_app.progress.ProgressContentTag
 import org.artkachenko.kmp_learning_app.progress.ProgressCoverageUiModel
@@ -42,6 +44,8 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBui
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeScopeKind
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeScopeUiModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeSourceOption
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.SubtopicPracticeItem
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsPage
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
@@ -99,6 +103,71 @@ internal class LargeFontScaleTest {
             onNodeWithTag(PracticeBuilderStartButtonTag)
                 .assertIsDisplayed()
                 .assertWithin(windowWidth)
+        }
+
+    /**
+     * A Subtopic name stays whole at this type size, because its accuracy figure gets out of the way.
+     *
+     * The row is a weighted text column beside a non-weighted accuracy block, and a `Row` measures
+     * the non-weighted child first — so the name used to be left with less width than its own
+     * longest word and was broken across a line *inside* the word. `TrailingFigureRow` drops the
+     * figure below the name when that would happen.
+     *
+     * The assertion is the decision rather than the appearance: the figure is below the name rather
+     * than beside it. A test that tried to assert "the name is not hyphenated" would be asserting
+     * the host's font metrics.
+     */
+    @Test
+    fun theSubtopicRowMovesItsFigureBelowTheNameAtADoubledTypeSize() =
+        runSkikoComposeUiTest(size = PhoneDisplay, density = DoubledText) {
+            setContent {
+                AppTheme {
+                    Box(Modifier.size(PhoneWidth, PhoneHeight).testTag(TestRootTag)) {
+                        TopicSubtopicsPage(
+                            subtopics = listOf(
+                                SubtopicPracticeItem(
+                                    subtopic = Subtopic(
+                                        id = "subtopic_a",
+                                        topicId = "topic_a",
+                                        name = "Structured concurrency",
+                                    ),
+                                    questionCount = 30,
+                                    learningContext = LearningContextUiModel(
+                                        attemptedQuestionCount = 12,
+                                        totalQuestionCount = 30,
+                                        coveragePercentage = 40.0,
+                                        accuracyPercentage = 88.0,
+                                        isWeak = false,
+                                    ),
+                                ),
+                            ),
+                            onStartSubtopicPractice = {},
+                            onPracticePreset = {},
+                            onBrowsePractice = {},
+                            listState = rememberLazyListState(),
+                            modifier = Modifier.size(PhoneWidth, PhoneHeight),
+                        )
+                    }
+                }
+            }
+
+            val windowWidth = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.width
+            // The row merges its descendants, so the merged tree answers with the whole row for
+            // either of these. The labels themselves are what have to be compared.
+            val name = onNodeWithText("Structured concurrency", useUnmergedTree = true)
+                .assertIsDisplayed()
+                .assertWithin(windowWidth)
+                .fetchSemanticsNode().boundsInRoot
+            val figure = onNodeWithText("accuracy", useUnmergedTree = true)
+                .assertIsDisplayed()
+                .assertWithin(windowWidth)
+                .fetchSemanticsNode().boundsInRoot
+
+            assertTrue(
+                figure.top >= name.bottom,
+                "The figure spans ${figure.top}..${figure.bottom} beside a name ending at " +
+                    "${name.bottom}, so it is still squeezing the column the name wraps in.",
+            )
         }
 
     /**

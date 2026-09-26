@@ -423,25 +423,34 @@ Width, wrapping, and reachability *are* assertable, and there are two harnesses 
 `runSkikoComposeUiTest` defaults to a 1024x768 display — a *medium* window here — so an
 expanded-layout test must pass `size` explicitly.
 
-### Known: the accuracy row crushes its title at a large type scale
+### A trailing figure gets out of the way rather than squeezing the text
 
-`TopicBrowserScreen`'s Topic rows and `TopicSubtopicsPage`'s Subtopic rows share a shape — a
-weighted text column, then an accuracy figure with a `learning_context_accuracy` caption under it,
-then a chevron. A `Row` measures its non-weighted children first, so the trailing block takes its
-intrinsic width and the title column gets whatever is left. At `fontScale = 2f` on a 360dp window
-that leaves roughly 165dp, and a title like "Structured concurrency" breaks mid-word.
+`TopicBrowserScreen`'s Topic rows and `TopicSubtopicsPage`'s Subtopic rows share a shape: a weighted
+text column, then an accuracy figure with a `learning_context_accuracy` caption under it. A `Row`
+measures its non-weighted children first, so the figure took its intrinsic width and the text column
+got the remainder. At `fontScale = 2f` on a 360dp window that left the Subtopic name about 165dp and
+broke "Structured concurrency" across a line **inside the word**; the Topic row, which also carries a
+leading marker, was worse — "Kotlin langua / ge", with the learning-units badge broken mid-word too
+and its pill stretched out of shape.
 
-The caption is the cause and was confirmed by removing it and re-measuring: the word then fits. It
-is not the fix. That label is a recorded decision on both screens — "Labelled so the figure cannot
-be mistaken for the coverage count beside it" — and the left line on these rows is a coverage
-fraction while the right figure is an accuracy, which is exactly the two-denominators confusion the
-tone section above warns about. Removing it on one screen would also split two surfaces that
-currently agree.
+The caption is what makes the figure wide, and it is not the thing to remove: it is a recorded
+decision on both screens, because the line to the *left* of it is a coverage fraction and the figure
+is an accuracy, and two readings with different denominators on one row is how a learner comes to
+believe they are one number.
 
-The fix is a reflow rule for that trailing block, applied to both call sites at once: below some
-type scale it sits beside the text, above it, it stacks under it. Nothing leaves the window today
-and `LargeFontScaleTest` passes, so this is legible-but-ugly rather than broken — recorded here so
-the next session measures nothing and starts from the cause.
+`ui/MetricComponents.kt`'s **`TrailingFigureRow`** is the rule, and both rows go through it. It
+measures rather than choosing a breakpoint: `Measurable.minIntrinsicWidth` on the text is the width
+of its longest unbreakable word, which is exactly the point below which Compose stops wrapping and
+starts breaking inside one. If the space left beside the figure is at least that, nothing changes;
+if it is not, the figure drops below the text and keeps the full width, so a right-aligned figure
+stays in its column instead of jumping to the leading edge.
+
+Two consequences worth stating. **Nothing moves at an ordinary type scale** — the beside branch
+places the figure hard against the trailing edge with the same gap an `Arrangement.spacedBy` row
+already used. And the decision is not "is the type large": it depends on the window, the leading
+content, and the locale's longest word, so a row on a wide window at 2× may correctly not reflow at
+all while a narrow one at 1.5× does. Reach for this wherever a figure sits beside text that has to
+stay readable; do not reintroduce a font-scale threshold.
 
 Assertions do not see a state layer, a margin, or an overlap. When a change is about how
 something *looks*, capture it: a throwaway `runSkikoComposeUiTest` that renders the screen

@@ -1298,6 +1298,134 @@ internal class TopicDetailScreenTest {
     }
 
     /**
+     * The premise is stated before the action it justifies.
+     *
+     * The reason used to be emitted *under* the button, so a learner met the decision and then its
+     * justification. This asserts the reading order rather than a style: the sentence's bounds sit
+     * above the control's, which is what a screen reader traverses and what the eye reads first.
+     */
+    @Test
+    fun theRecommendationReasonIsStatedBeforeTheActionItJustifies() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningContext = learningContext(10, 10, 41.0, isWeak = true),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        val reason = onNodeWithText("Recommended: this is currently one of your weak areas.")
+            .assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+        val action = onNodeWithTag(TopicPracticeButtonTag)
+            .assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+
+        assertTrue(
+            reason.bottom <= action.top,
+            "The reason ends at ${reason.bottom} but the action it explains starts at ${action.top}.",
+        )
+    }
+
+    /**
+     * A Topic nobody has attempted is not shown a gauge at a value it never produced.
+     *
+     * The counts line stays, because "0 of 28 questions explored" is a true statement and is already
+     * the thing that says nothing has been attempted. The bar is not: an empty meter is a reading,
+     * and there is no reading here. Its presence once something *has* been explored is asserted
+     * beside it, so this cannot be satisfied by dropping the meter altogether.
+     */
+    @Test
+    fun theCoverageMeterIsDrawnOnlyOnceSomethingHasBeenExplored() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(learningContext = learningContext(0, 28)),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithText("0 of 28 questions explored").assertIsDisplayed()
+        onNodeWithTag(TopicCoverageMeterTag).assertDoesNotExist()
+    }
+
+    @Test
+    fun theCoverageMeterIsDrawnOnceTheTopicHasBeenPartlyExplored() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(learningContext = learningContext(7, 28)),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithText("7 of 28 questions explored").assertIsDisplayed()
+        onNodeWithTag(TopicCoverageMeterTag).assertIsDisplayed()
+    }
+
+    /**
+     * The action is part of the surface that justifies it, in every one of the page's three states.
+     *
+     * Asserted through containment rather than through a container type: whichever card a state
+     * produces, the promoted action's bounds must sit inside the bounds of the summary that states
+     * the evidence for it. Emitted as a sibling — which is what it used to be — the action lands on
+     * the page background below that surface and this fails.
+     */
+    @Test
+    fun theActionSitsInsideTheSummaryThatJustifiesIt() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = topicContent(
+                        learningContext = learningContext(7, 28, 64.0),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        val coverage = onNodeWithText("Curriculum coverage")
+            .assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+        val action = onNodeWithTag(TopicPracticeButtonTag)
+            .assertIsDisplayed()
+            .fetchSemanticsNode().boundsInRoot
+
+        // The card insets its content, so an action inside it starts no further left than the
+        // evidence above it. A sibling on the page background starts at the page margin, which is
+        // outside the card's own inset.
+        assertTrue(
+            action.left >= coverage.left,
+            "The action starts at ${action.left}, outside the summary's ${coverage.left} inset.",
+        )
+    }
+
+    /**
      * A weak Topic promotes weak-area practice onto its primary action, and ordinary practice is
      * still reachable — one tap lower, through Custom practice, still carrying no source of its own.
      */

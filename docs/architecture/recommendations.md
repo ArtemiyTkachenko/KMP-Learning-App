@@ -220,12 +220,33 @@ read of its own.
 | 3 | Unseen questions, once something has been attempted | Coverage rather than performance — the weakest claim, because nothing has gone wrong yet |
 | 4 | Nothing | No evidence, so no recommendation is invented and `ALL` practice leads |
 
-The promoted action takes the filled button and prints the reason underneath it, in the
-same terms the summary above already used; `Custom practice…` is a `TextButton` reaching
-the same builder with every dimension editable, so promoting one intent takes nothing
-away. When there is no recommendation there is no second control either — a "Custom
-practice" button beside an unfiltered "Start practice" button would be two labels for one
-thing.
+The promoted action is the **footer of the summary that justifies it**, not a block beneath
+it. Every input to the ranking — the weak badge, the coverage counts, the accuracy — is
+printed on that surface, and an action emitted as its sibling landed on the page background
+where a control reads as navigation for the screen rather than as what this Topic offers.
+It also left `Custom practice…` with nothing to align to, a `TextButton` carrying its own
+inset on an otherwise empty background. All three states of the page therefore end the same
+way: a rule, the reason, the filled action, and the way past it, inside the one card.
+
+The reason is stated **before** the action rather than underneath it, in the same terms the
+evidence above already used. Printed after the button it was a footnote to the control it
+exists to explain; printed first the block is an argument. `Custom practice…` reaches the
+same builder with every dimension editable, centred under the full-width action, so
+promoting one intent takes nothing away. When there is no recommendation there is no second
+control either — a "Custom practice" button beside an unfiltered "Start practice" button
+would be two labels for one thing.
+
+The footer is one `AnimatedContent` over the recommendation, because it is the only block on
+the page that changes while it is composed: returning from a run refreshes the coverage
+counts and the mistake queue, and a Topic that is no longer weak becomes an unseen or a
+mistakes run — label, reason and the presence of the secondary control all at once. The
+outgoing button starts the run its own label names, not the one replacing it. Nothing waits
+on the animation and no state was added for it.
+
+The page draws no coverage meter until something has been attempted. The counts line stays
+at zero, because `0 of 28 questions explored` is true and is already what says nothing has
+happened; an empty bar beside it is a reading the learner never produced, which is what
+[Material Design 3](../development/material-design.md) rules out for an empty state.
 
 The mistake count is `TopicDetailViewModel`'s intersection of `UnresolvedMistakeDerivation`
 over the history cache with the ACTIVE Question IDs the curriculum read already produced,

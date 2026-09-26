@@ -1,8 +1,14 @@
 package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import kmp_learning_app.shared.generated.resources.Res
@@ -40,6 +47,7 @@ import org.artkachenko.kmp_learning_app.ui.ProgressMeter
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.SecondarySummaryCard
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
@@ -97,81 +105,118 @@ internal fun TopicPracticePage(
             .padding(appScreenContentPadding(top = AppSpacing.Comfortable)),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
-        if (learningContext == null) {
-            // Analytics are unavailable, so the page falls back to the authored count and says
-            // nothing about the learner. The recommendation degrades with it: with no context and
-            // no history the policy returns Everything, so the primary action is ordinary practice
-            // and the secondary control disappears rather than duplicating it.
-            Text(
-                text = stringResource(
-                    Res.string.topic_detail_available_questions,
-                    topicQuestionCount,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        TopicPracticeSummary(
+            context = learningContext,
+            topicQuestionCount = topicQuestionCount,
+        ) {
+            TopicPracticeActions(
+                topicId = topicId,
+                recommendation = recommendation,
+                onStartTopicPractice = onStartTopicPractice,
+                onPracticePreset = onPracticePreset,
             )
-        } else {
-            TopicLearningSummary(context = learningContext)
         }
-        TopicPracticeActions(
-            topicId = topicId,
-            recommendation = recommendation,
-            onStartTopicPractice = onStartTopicPractice,
-            onPracticePreset = onPracticePreset,
-        )
     }
 }
 
 /**
- * The promoted action, and the way past it.
+ * The promoted action, and the way past it — as the footer of the evidence it was derived from.
  *
- * One filled button, always. When there is evidence it is the recommended run and a supporting line
- * underneath says why in the same terms the summary above already used; when there is none it is
- * ordinary practice, exactly as before, and there is no second control at all — a "Custom practice"
- * button beside an unfiltered "Start practice" button would be two labels for one thing.
+ * One filled button, always. When there is evidence it is the recommended run; when there is none it
+ * is ordinary practice, exactly as before, and there is no second control at all — a "Custom
+ * practice" button beside an unfiltered "Start practice" button would be two labels for one thing.
+ *
+ * ## The reason comes first
+ *
+ * It used to sit *under* the button, which meant a learner read the decision and then its
+ * justification: "Recommended: this is currently one of your weak areas." arrived as a footnote to
+ * the control it exists to explain. Stating the premise first is what makes the block an argument
+ * rather than a control with a caption, and it is the same order the surface above it already
+ * uses — the figure, then what it means.
+ *
+ * ## Why this is inside the card
+ *
+ * Every input to the recommendation is printed on the surface this is the footer of: the weak badge,
+ * the coverage counts, the accuracy. Emitted as a sibling it landed on the page background between
+ * two surfaces, which is where a control reads as navigation for the screen rather than as what this
+ * Topic offers — the defect `docs/development/material-design.md` records for a per-entry action,
+ * and the reason `ReviewQuestionCard` grew a footer slot. It also left "Custom practice…" with
+ * nothing to align to: a bare `TextButton` carries its own internal inset, so its label started a
+ * few pixels right of every other line on the page.
+ *
+ * ## Why it is animated
+ *
+ * This is the one block on the page that changes while it is composed. Returning from a run
+ * refreshes the coverage counts and the mistake queue, and the recommendation can legitimately move
+ * — a weak Topic that is no longer weak becomes an unseen or a mistakes run, and the label, the
+ * reason, and whether there is a secondary control at all all change together. One `AnimatedContent`
+ * over the recommendation is what makes that read as the page reconsidering rather than as three
+ * independent swaps in a single frame. Nothing waits on it, and the callbacks are untouched.
  */
 @Composable
-private fun TopicPracticeActions(
+private fun ColumnScope.TopicPracticeActions(
     topicId: String,
     recommendation: TopicPracticeRecommendation,
     onStartTopicPractice: () -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
 ) {
-    val isRecommendation = recommendation != TopicPracticeRecommendation.Everything
-    Column(
+    AnimatedContent(
+        targetState = recommendation,
+        transitionSpec = {
+            val enter = fadeIn(AppMotion.revealSpec())
+            val exit = fadeOut(AppMotion.effectSpec(AppMotion.StateChangeDurationMillis / 2))
+            // The block's height changes with the recommendation — a reason line and a secondary
+            // control appear and disappear — so the resize travels with the crossfade instead of
+            // snapping under it.
+            enter togetherWith exit using SizeTransform(clip = false)
+        },
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
-    ) {
-        Button(
-            onClick = {
-                if (isRecommendation) {
-                    onPracticePreset(
-                        PracticePreset(
-                            scope = AssessmentScope.Topic(topicId),
-                            source = recommendation.source,
-                        ),
-                    )
-                } else {
-                    onStartTopicPractice()
-                }
-            },
-            modifier = Modifier.fillMaxWidth().testTag(TopicPracticeButtonTag),
+        label = "topicPracticeRecommendation",
+    ) { current ->
+        val isRecommendation = current != TopicPracticeRecommendation.Everything
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
         ) {
-            Text(text = recommendation.actionLabel())
-        }
-        recommendation.reasonLabel()?.let { reason ->
-            Text(
-                text = reason,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (isRecommendation) {
-            TextButton(
-                onClick = onStartTopicPractice,
-                modifier = Modifier.testTag(TopicCustomPracticeTag),
+            current.reasonLabel()?.let { reason ->
+                Text(
+                    text = reason,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Button(
+                // `current` rather than the outer recommendation on purpose: during a crossfade the
+                // outgoing button is still on screen, and it must start the run its own label
+                // names rather than the one replacing it.
+                onClick = {
+                    if (isRecommendation) {
+                        onPracticePreset(
+                            PracticePreset(
+                                scope = AssessmentScope.Topic(topicId),
+                                source = current.source,
+                            ),
+                        )
+                    } else {
+                        onStartTopicPractice()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().testTag(TopicPracticeButtonTag),
             ) {
-                Text(text = stringResource(Res.string.topic_detail_custom_practice))
+                Text(text = current.actionLabel())
+            }
+            if (isRecommendation) {
+                TextButton(
+                    onClick = onStartTopicPractice,
+                    // Centred under a full-width primary action. Leading-aligned it was the one
+                    // line on the page that started at neither the card's inset nor the button's
+                    // edge, because a `TextButton` insets its own label.
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .testTag(TopicCustomPracticeTag),
+                ) {
+                    Text(text = stringResource(Res.string.topic_detail_custom_practice))
+                }
             }
         }
     }
@@ -226,36 +271,36 @@ private fun TopicPracticeRecommendation.reasonLabel(): String? =
     }
 
 /**
- * The Topic's learning summary: one coherent surface rather than two competing cards.
+ * The whole Practice page as one surface: what is known about this Topic, then what to do about it.
  *
  * All-time accuracy leads when there is any, because it is the figure the learner came for: the
- * page's [AccuracyHeroCard], with current coverage under a divider as the second, differently-scoped
+ * page's [AccuracyHeroCard], with current coverage under a rule as the second, differently-scoped
  * question. The two are deliberately drawn with different controls — a ring for the rate, a meter
  * for how much of the bank is behind the learner — because the only reason they share a card is
  * that they are not the same reading.
  *
  * With no accuracy to lead on, the whole thing steps down to a quieter card rather than passing a
  * null figure to the hero: an unstudied Topic should not open with a display-size surface at all,
- * and it must never open with a fabricated 0%.
+ * and it must never open with a fabricated 0%. The third branch is analytics being absent
+ * altogether, which used to be a lone `bodyMedium onSurfaceVariant` line on the page background
+ * above the only button — the quietest text the scale has, acting as a caption for nothing. It
+ * takes the same quiet card and states the authored count at the weight the other two states state
+ * their subject.
  *
- * It now carries no shortcuts of its own. The two text buttons that used to end this card were the
- * only evidence-driven practice on the page and they sat above the one filled button, which inverted
- * the emphasis; the promoted action below the card is built from exactly these figures, so the card
- * is left to state the evidence and the action to act on it.
+ * [action] is the footer every branch ends with, under a rule of its own. The card carries the
+ * action rather than sitting above it because the action is *derived from this card* — see
+ * [TopicPracticeActions]. Two rules therefore appear in the accuracy branch, which is correct: it
+ * has three things to say — the rate, the coverage, and the run they call for — and each is a
+ * different kind of statement.
  */
 @Composable
-private fun TopicLearningSummary(context: LearningContextUiModel) {
-    val accuracy = context.accuracyPercentage
-    if (accuracy == null) {
-        SecondarySummaryCard {
-            Text(
-                text = stringResource(Res.string.learning_context_not_studied),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            TopicCoverage(context)
-        }
-    } else {
+private fun TopicPracticeSummary(
+    context: LearningContextUiModel?,
+    topicQuestionCount: Int,
+    action: @Composable ColumnScope.() -> Unit,
+) {
+    val accuracy = context?.accuracyPercentage
+    if (context != null && accuracy != null) {
         AccuracyHeroCard(
             percentage = accuracy,
             caption = stringResource(Res.string.topic_detail_accuracy_caption),
@@ -268,10 +313,38 @@ private fun TopicLearningSummary(context: LearningContextUiModel) {
                     icon = AppIcons.Warning,
                 )
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            SummaryRule()
             TopicCoverage(context)
+            SummaryRule()
+            action()
         }
+        return
     }
+    SecondarySummaryCard {
+        Text(
+            // A context that has never been answered says so; no context at all cannot say anything
+            // about the learner, so it falls back to what the curriculum authored. The
+            // recommendation degrades with it: with no context and no history the policy returns
+            // Everything, so the action below is ordinary practice and the secondary control
+            // disappears rather than duplicating it.
+            text = if (context != null) {
+                stringResource(Res.string.learning_context_not_studied)
+            } else {
+                stringResource(Res.string.topic_detail_available_questions, topicQuestionCount)
+            },
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        context?.let { TopicCoverage(it) }
+        SummaryRule()
+        action()
+    }
+}
+
+/** The hairline between two kinds of statement on one summary surface. */
+@Composable
+private fun SummaryRule() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 /**
@@ -280,6 +353,12 @@ private fun TopicLearningSummary(context: LearningContextUiModel) {
  * Coverage is not scored: low coverage means material is still ahead of the learner, not that they
  * did badly, so it never borrows the correct/incorrect palette that accuracy uses. The meter is
  * driven by the exact counts rather than by the rounded percentage above it.
+ *
+ * The meter needs something to measure as well as a bank to measure against. A Topic nobody has
+ * opened was drawing an empty bar under "0 of 42 questions explored" — a gauge at a value the
+ * learner never produced, which is the reading `docs/development/material-design.md` rules out for
+ * an empty state. The counts line stays, because it is a true statement and it is already the thing
+ * that says nothing has been attempted.
  */
 @Composable
 private fun TopicCoverage(context: LearningContextUiModel) {
@@ -298,10 +377,11 @@ private fun TopicCoverage(context: LearningContextUiModel) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (context.hasCoverageScope) {
+        if (context.hasCoverageScope && context.attemptedQuestionCount > 0) {
             ProgressMeter(
                 fraction = context.attemptedQuestionCount.toFloat() / context.totalQuestionCount,
                 color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.testTag(TopicCoverageMeterTag),
             )
         }
     }

@@ -32,6 +32,7 @@ on:
 jobs:
   claude:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
 
@@ -102,15 +103,19 @@ jobs:
           prompt: |
             Read `.agent-work/claude-prompt.md` and follow it exactly.
             Return only the schema-valid structured response after making any repository edits.
+          # Temporary workaround for anthropics/claude-code-action#1795:
+          # the action's post-run guard compares tool-result count to the API-round limit.
+          # Keep a generous CLI limit while the job timeout remains the hard wall-clock guard.
           claude_args: >-
-            --max-turns 60
-            --allowedTools "Read,Glob,Grep,Edit,Write,WebSearch,WebFetch,Bash(git diff:*),Bash(git status:*),Bash(git show:*),Bash(git log:*),Bash(./gradlew:*)"
+            --max-turns 180
+            --allowedTools "Read,Glob,Grep,Edit,Write,WebSearch,WebFetch,Bash(git diff:*),Bash(git status:*),Bash(git show:*),Bash(git log:*),Bash(python3:*),Bash(./gradlew:*)"
             --json-schema '${{ steps.schema.outputs.value }}'
 
       - name: Diagnose Claude execution failure
         if: ${{ steps.claude.outcome == 'failure' }}
         env:
           CLAUDE_EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          CLAUDE_CONFIGURED_MAX_TURNS: "180"
         run: python3 .github/agentic/diagnose-claude-execution.py
 
       - name: Save Claude position

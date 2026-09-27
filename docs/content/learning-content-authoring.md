@@ -21,6 +21,12 @@ Those are directions to authors for deciding what goes where. They are not templ
 sentences a learner reads; [Rule 12](#rule-12--lessons-are-written-for-learners-not-the-curriculum-graph)
 covers how those decisions become ordinary teaching prose.
 
+The editorial rules for **learner-facing text** — chiefly Rules 7, 11 and 12 — apply to
+everything the learner reads, not only to paragraphs: Unit titles and summaries, Lesson
+titles and summaries, paragraphs, bullet items, callouts, comparison headers and cells, and
+the comments inside code examples. A code comment in a teaching example is prose. The
+identifiers in that code are not; they are governed by the semantic test in Rule 12.
+
 **Runtime AI-generated learning content is explicitly out of scope.** Every lesson that
 ships is authored, reviewed, and grounded in authoritative sources before it reaches the
 bundled curriculum. AI assistance during drafting is allowed and expected; unreviewed
@@ -340,6 +346,13 @@ tone, a content-design document describing itself, or a lecturer correcting the 
 Natural prose is mostly simpler prose. Do not make it deliberately casual — no jokes,
 filler, stock rhetorical questions, or fake conversational asides.
 
+Talk about the subject, not about the person reading. "The learner should understand
+that…" and "the reader can now see why…" narrate the reader in the third person and delay
+the fact; state it instead — "`StateFlow` always exposes a current value", "this makes the
+lifetime difference explicit". The words *learner* and *reader* are not banned — they are
+fine where a sentence genuinely concerns the person reading — but they should not be
+routine scaffolding.
+
 ### Precise vocabulary over habitual vocabulary
 
 Broad nouns are easy to reach for and often hide what the author means. The recurring
@@ -549,31 +562,62 @@ suspending reads, verified across every interface" reports a fact about the repo
 Lesson happens to ship inside, and a reader who has not read that repository cannot check
 it, learn from it, or carry it anywhere else.
 
-So a Lesson may name types, packages and versions freely, as long as it names them as
-parts of an example rather than as parts of this product:
+### Worked examples use invented identities
+
+Worked examples normally use neutral or invented names — a `QuestionRepository`, an
+`OrderViewModel`, a `networkModule` — chosen to demonstrate the design, not borrowed from
+the code that ships alongside the curriculum. Borrowing real names is how a Lesson drifts
+from teaching a design into reporting on an implementation: once the example *is* this
+repository, the next sentence cites its file count, its KDoc or its current module list as
+proof.
+
+A Lesson therefore does not use this repository's actual classes, repositories, modules,
+package structure, file counts, KDoc, dependency setup, object graph, DI modules or
+source-tree state as evidence for the technical claim it teaches. The claim rests on the
+reasoning, the example and the Sources of Rule 9.
+
+| Report about this codebase (avoid) | Worked example (prefer) |
+| --- | --- |
+| The data module currently contains nine repositories, and none of them exposes a `Flow`. | Consider a data layer whose repositories expose only one-shot suspending reads. |
+| This project currently declares no custom scopes; its Koin modules use `single` and `factory` only. | Take a graph with no custom scopes, where every binding is `single` or `factory`. |
+| As the KDoc on the real repository says, "…" | *(state the point in the Lesson's own voice)* |
+
+This is not a ban on named types. An invented `QuestionRepository` with one implementation
+is concrete and teachable; the problem is coupling the Lesson to the real one.
+
+### No statements about the present state of a codebase
+
+Temporal phrasing — "currently declares…", "at the moment…", "this repository uses…",
+"there are currently N…", "the app presently…" — describes a snapshot of some codebase.
+It is wrong in conceptual material: the learner cannot check it, and it goes stale on the
+next commit. The exception is a versioned external API contract, where the version is
+part of the fact: "in lifecycle-runtime-compose 2.11.0-beta01, …".
+
+### Practical consequences
 
 - Do not write "this project", "this repository", "this app", "this application", "in the
   current implementation", or any phrasing that makes the learning app itself the subject.
 - Frame worked examples as examples: "consider an application where…", "here is a worked
-  instance of…", "take a `LessonStudyRepository` with one implementation…".
-- Attribute a measurement to what actually determines it — the target and the resolved
-  versions — rather than to this build. "Measured on a JVM target" and "checked against
-  kotlinx-coroutines-core 1.11.0" are reproducible; "measured on this project's JVM
-  target" is not.
-- Do not quote this codebase's own KDoc as though it were a cited source. State the point
-  in the Lesson's own voice; reserve quotation marks for the authoritative sources of
-  Rule 9.
+  instance of…", "take a `QuestionRepository` with one implementation…".
+- Attribute a version-specific result to what actually determines it — the target and the
+  library version — and state it as a result, not as a record of this build: "on the JVM,
+  with kotlinx-coroutines-core 1.11.0, …" is reproducible; "measured on this project's JVM
+  target" is not. Rule 12 covers narrating how a result was obtained.
+- Do not quote this codebase's own KDoc as though it were a cited source. Reserve quotation
+  marks for the authoritative sources of Rule 9.
 - Keep the caveats. A worked example that is poor evidence for something should still say
   so — just as a property of the example, not as a confession about this repository.
 
 None of this is a reason to weaken an explanation. Replacing a specific claim with vague
 wording loses the teaching point, which is a worse outcome than the coupling it removed.
+Examples stay concrete; only their identity changes.
 
 ## Rule 12 — Lessons Are Written for Learners, Not the Curriculum Graph
 
 Rule 11 keeps this application out of the Lesson. This rule keeps the curriculum's own
-machinery out of it. A learner should experience the subject, not the architecture of the
-course that teaches it.
+machinery — its structure, its authoring decisions and how it was produced — out of it.
+A learner should experience the subject, not the architecture of the course that teaches
+it.
 
 ### Internal identity stays internal
 
@@ -626,6 +670,20 @@ numbers and relative positions ("the next Unit", "the earlier Lesson"): authored
 change and a reader who arrived from search has no position, while a title stays
 meaningful. Do not add a reference just because `relatedLessonIds` contains one.
 
+A reference must resolve to a Unit or Lesson that exists in the shipped curriculum, under
+the title it ships with. Planned, future or imagined material — "the testing curriculum",
+"the performance unit", "a later architecture unit" — is not a destination the learner can
+reach. When a concept has no shipped home, state the fact the argument needs locally and
+omit the reference. By the same reasoning the word *curriculum* does not belong in Lesson
+prose by default; name the technical subject instead ("Flow sharing", not "the Flow
+curriculum").
+
+Because titles now serve as references, a Lesson title must be distinctive enough to
+identify its target when cited elsewhere. Two titles that differ by a single word —
+**What Delivery Guarantee Does This Occurrence Need?** and **What Guarantee Does This
+Occurrence Need?** — cannot be told apart in a sentence that cites one of them. Check a new
+or changed title against the existing ones before shipping it.
+
 ### Authoring decisions become teaching, not narration
 
 The decisions this contract asks authors to make — what a Lesson owns, which concepts are
@@ -644,6 +702,34 @@ The learner does not need to know why the material was divided that way. Scope c
 be stated when it helps the learner reason — "this Lesson assumes a single-module app" is
 a fact about the example — but the default is to teach within the scope rather than
 describe it.
+
+The same holds for how the material was produced and maintained. State the technical
+result, the API contract and any version qualification; do not narrate the verification
+("we checked this against…", "this was verified against…", "the resolved source shows…")
+or address future maintainers ("a future dependency update should re-check…",
+"maintainers should revisit…", "this table should be updated when…"). Freshness is the
+author's job under Rule 9, not the learner's reading.
+
+| Author-process narration | Result |
+| --- | --- |
+| This was checked against lifecycle-runtime-compose 2.11.0-beta01, and future updates should re-read the implementation. | In lifecycle-runtime-compose 2.11.0-beta01, the conversion uses `produceState` and `repeatOnLifecycle`. The API may change before the stable release. |
+
+The version caveat stays; the maintenance instruction goes.
+
+### Summaries state the idea
+
+A Unit or Lesson summary states the engineering idea itself, concisely, in learner-facing
+language. It does not describe what the Lesson is going to do, tell the learner what they
+will learn, instruct them, recap earlier Units, preview later ones, enumerate the sequence,
+or explain where the material sits in the course.
+
+| Plan or objective | The idea |
+| --- | --- |
+| In this Lesson, you will learn how `LaunchedEffect` works and when to use it. | `LaunchedEffect` owns coroutine work whose lifetime is tied to a composable call site and whose restart policy is expressed through keys. |
+| This Unit builds on the previous Unit and introduces screen-level ownership. | Screen state ownership depends on the lifetime that must preserve the state. |
+
+Learning objectives belong in the blueprint (Rule 1), where they guide authoring; the
+summary a learner reads is the idea those objectives aim at.
 
 ## Authoring Checklist
 
@@ -670,16 +756,29 @@ Before a Lesson is considered ready to ship:
       enough locally for the current argument, before any reference elsewhere.
 - [ ] Cross-references supplement rather than replace explanation, name the target by its
       human-facing title, and appear only where they help the learner continue.
+- [ ] Every cross-reference resolves to a shipped Unit or Lesson — nothing planned or
+      imagined — and its title cannot be confused with another; the Lesson's own title is
+      distinct enough to be cited the same way.
+- [ ] The Unit and Lesson summaries state the idea, not the Lesson plan, an objective, a
+      recap or a preview.
 - [ ] Sources are authoritative and support the specific claims made.
 - [ ] The questions for its primary Subtopics are answerable by a reader who understood
       it — verified by reading them, not by mapping them.
 - [ ] The Lesson teaches the concept rather than the phrasing of any question.
-- [ ] Nothing in the Lesson requires the reader to know how this application is built;
-      worked examples are framed as examples and measurements name their toolchain.
-- [ ] No Unit, Lesson, Topic, Subtopic or Question ID appears in learner prose; any
-      snake_case shown to the learner is a real technical identifier.
+- [ ] Worked examples use neutral or invented identities; nothing cites this repository's
+      classes, modules, counts, KDoc or current state as evidence, nothing says what a
+      codebase "currently" does, and version-specific results name their version.
+- [ ] No author-process or maintenance narration: results are stated, not how they were
+      checked or who should re-check them.
+- [ ] No Unit, Lesson, Topic, Subtopic or Question ID, backlog key or status value appears
+      in learner-facing text; any snake_case shown to the learner is a real technical
+      identifier.
 - [ ] The Lesson is understandable without Unit numbers, the curriculum graph, or
-      curriculum-ownership narration; "boundary" refers to engineering, not to the course.
+      curriculum-ownership narration — checked in titles, summaries, callouts, table
+      headers and cells, and code comments, not only paragraphs; "boundary" refers to
+      engineering, not to the course, and "curriculum" does not appear.
+- [ ] "The learner" and "the reader" are not used as routine framing; sentences state the
+      technical fact.
 - [ ] "Shape" and similarly broad words are used only where they are more accurate than a
       specific term, and repeated rhetorical framing has been edited into direct statements.
 - [ ] Strong prescriptive language rests on a real invariant or contract; preferences and

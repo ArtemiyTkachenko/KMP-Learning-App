@@ -107,8 +107,7 @@ does not cover: [CI](docs/workflows/ci.md).
 **Workflows**:
 [backlog and issues](docs/workflows/backlog.md) ·
 [code review](docs/workflows/code-review.md) ·
-[CI](docs/workflows/ci.md) ·
-[agentic development](docs/workflows/agentic-development.md)
+[CI](docs/workflows/ci.md)
 
 **Quality**:
 [code quality audit](docs/quality/code-quality-audit.md) ·

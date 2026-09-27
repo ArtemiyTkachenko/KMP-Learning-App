@@ -59,9 +59,16 @@ jobs:
           name: ${{ inputs.review_artifact }}
           path: .agent-work/review
 
-      - name: Normalize Codex review
+      - name: Normalize review input
         if: ${{ inputs.review_artifact != '' }}
-        run: cp .agent-work/review/*.json .agent-work/codex-review.json
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ "$MODE" = "SELF_REVIEW_FIX" ]; then
+            cp .agent-work/review/*.json .agent-work/claude-self-review.json
+          else
+            cp .agent-work/review/*.json .agent-work/codex-review.json
+          fi
 
       - name: Build Claude prompt
         env:
@@ -70,6 +77,8 @@ jobs:
         run: |
           if [ "$MODE" = "IMPLEMENTATION" ]; then
             cp .github/agentic/prompts/claude-implementer.md .agent-work/claude-prompt.md
+          elif [ "$MODE" = "SELF_REVIEW_FIX" ]; then
+            cp .github/agentic/prompts/claude-self-fixer.md .agent-work/claude-prompt.md
           else
             cp .github/agentic/prompts/claude-responder.md .agent-work/claude-prompt.md
           fi
@@ -88,6 +97,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
           prompt: |
             Read `.agent-work/claude-prompt.md` and follow it exactly.
             Return only the schema-valid structured response after making any repository edits.

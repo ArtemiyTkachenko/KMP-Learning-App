@@ -20,22 +20,49 @@ Codex never edits the implementation in this workflow.
 
 ### Claude
 
-Claude owns implementation and rebuttal:
+Claude owns implementation, an internal quality barrier, and rebuttal:
 
 1. **Initial implementation.** It implements the Codex-authored task using repository
    guidance and existing patterns.
-2. **Challenge / correction.** For each material Codex finding, Claude explicitly accepts,
-   partially accepts, or rejects it. Accepted findings are fixed. Rejected findings must be
-   challenged with concrete repository, behavioral, test, documentation, or language/
-   framework evidence.
+2. **Self-review barrier.** A fresh read-only Claude context independently reviews the
+   implementation, a separate Claude fixer context addresses its material findings, and
+   this review → fix cycle runs exactly twice before Codex review begins. Each self-review
+   is posted to the draft PR by a trusted non-agent job.
+3. **Challenge / correction.** For each later material Codex finding, Claude explicitly
+   accepts, partially accepts, or rejects it. Accepted findings are fixed. Rejected findings
+   must be challenged with concrete repository, behavioral, test, documentation, or
+   language/framework evidence.
 
-Claude is not required to implement a review suggestion merely because Codex proposed it.
+The self-reviewer cannot edit code, and the fixer does not inherit the reviewer's session
+state. Claude is not required to implement a review suggestion merely because Codex
+proposed it; a self-review finding may be rejected only with concrete evidence.
+
+## Claude Quality Barrier
+
+The draft PR is opened immediately after Claude's initial implementation. Before Codex
+reviews the branch, Claude runs two independent quality cycles:
+
+```text
+Claude implementation
+    ↓
+Claude self-review 1 (fresh, read-only context)
+    ↓
+Claude fix 1 (fresh implementation context)
+    ↓
+Claude self-review 2 (fresh, read-only context)
+    ↓
+Claude fix 2
+    ↓
+Codex review begins
+```
+
+Both review results are posted to the draft PR. The second fix is the version Codex sees.
+There is intentionally no third Claude self-review: the requested barrier is exactly two
+review → fix cycles.
 
 ## Negotiation Loop
 
-The draft PR is opened immediately after Claude's initial implementation.
-
-One negotiation iteration is:
+After the Claude barrier, one Codex negotiation iteration is:
 
 ```text
 Codex review
@@ -96,8 +123,9 @@ arrives.
 ## Trust Boundaries
 
 - Codex task/review jobs use read-only repository permissions.
-- Claude's model job uses read-only repository permissions and a checkout without persisted
-  credentials. It can edit only its local workspace.
+- Claude reviewer model jobs use read-only repository permissions and no editing tools.
+- Claude implementer/fixer model jobs use read-only GitHub permissions and a checkout
+  without persisted credentials. They can edit only their local workspace.
 - Claude emits a binary-safe patch artifact.
 - A separate non-agent job gets `contents: write`, applies the patch, commits, and pushes.
 - PR creation, CI dispatch, comments, readiness changes, and merge happen in ordinary

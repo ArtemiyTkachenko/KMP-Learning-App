@@ -4,7 +4,7 @@
   "additionalProperties": false,
   "properties": {
     "negotiationIteration": {"type": "integer", "minimum": 0, "maximum": 5},
-    "mode": {"type": "string", "enum": ["IMPLEMENTATION", "RESPONSE"]},
+    "mode": {"type": "string", "enum": ["IMPLEMENTATION", "RESPONSE", "SELF_REVIEW_FIX"]},
     "summary": {"type": "string"},
     "positionBrief": {"type": "string"},
     "findingResponses": {

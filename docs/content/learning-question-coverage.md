@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `5b00c12dc6b397cc99e760d9bc7541be47b286aea76a3c17e54b3512a4ac78e0` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `a137e5ac33a69dc896795ef6fcae749792606095daabf50e5e34e758c387ff83` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `55e2b92287ad5c30fd3c70afc5fb8dc6dd7fb63c44e4506a47e5f53317b4a022` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -593,7 +593,7 @@ Supporting context — not primary coverage:
 | `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `compose_stability` — Stability and skippability | 4 | `android_ui` — UI — Views & Jetpack Compose |
 
-#### The Screen-Level Owner as a Bounded Bridge (`lesson_screen_state_owner_boundary`)
+#### Moving State Outside the Composition: Owner vs Lifetime (`lesson_screen_state_owner_boundary`)
 
 Primary concepts:
 

@@ -3703,12 +3703,12 @@
       "id": "unit_production_screen_state_and_udf",
       "topicId": "android_ui",
       "title": "Production Screen State and Unidirectional Data Flow",
-      "summary": "A production screen contains several kinds of state at once, and correctness depends on giving each one the owner whose readers, writers and lifetime require it. This unit applies the earlier state-hoisting and state-down/events-up foundations to one complete question-library screen: local element state, state coordinated inside a Compose subtree, one immutable screen value from an outside owner, a stateless rendering boundary, intent callbacks, and the precise lifetime that an outside owner does and does not provide.",
+      "summary": "A production screen contains several kinds of state at once, and correctness depends on giving each one the owner whose readers, writers and lifetime require it. On one complete question-library screen, local element state, state coordinated inside a Compose subtree and one immutable screen value from an outside owner sit side by side. A stateless content composable renders that value and reports intent through callbacks, and the outside owner provides a specific lifetime rather than persistence.",
       "lessons": [
         {
           "id": "lesson_classes_of_screen_state",
           "title": "Three Classes of State on One Screen",
-          "summary": "A realistic question-library screen needs local menu state, a filter shared by sibling composables, and question data supplied by a screen-level owner at the same time. Place each value by applying the reader, writer and lifetime tests, then make the costs of putting it one level too low or several levels too high concrete.",
+          "summary": "A realistic question-library screen needs local menu state, a filter shared by sibling composables, and question data supplied by a screen-level owner at the same time. Who reads each value, who writes it and how long it must live decide its owner; a value placed one level too low cannot be coordinated, and one placed several levels too high inflates the owner's contract and lifetime.",
           "primarySubtopicIds": [
             "compose_state_hoisting"
           ],
@@ -3723,11 +3723,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The earlier state-hoisting lesson asks where one value should live. A production screen asks a larger question: what happens when several values with different responsibilities share the same screen? Treating the whole screen as one ownership problem is how teams end up with either a child that cannot coordinate with its siblings or a screen-level owner that contains every open menu and visual toggle. The right result usually has more than one owner."
+                  "text": "Deciding where one value should live is a familiar hoisting question. A production screen asks a larger one: what happens when several values with different responsibilities share the same screen? Treating the whole screen as one ownership problem is how teams end up with either a child that cannot coordinate with its siblings or a screen-level owner that contains every open menu and visual toggle. The right result usually has more than one owner."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Use the three tests you already know: who reads this value, who writes it, and how long must it live? They are applied here, not derived again; `lesson_state_hoisting` contains the full ownership argument. Consider a question-library screen with a difficulty menu, a result count, a list of interview questions, saved-question markers, and retry when loading fails. Three pieces of state on that one screen have three different answers."
+                  "text": "Three questions decide each value's owner: who reads it, who writes it, and how long must it live? The right owner, whether a composable or an object outside the Composition, is the lowest one that covers every reader and writer for the required lifetime; for the full argument, see **State Hoisting and the Lowest Sensible Owner**. Consider a question-library screen with a difficulty menu, a result count, a list of interview questions, saved-question markers, and retry when loading fails. Three pieces of state on that one screen have three different answers."
                 },
                 {
                   "type": "comparison",
@@ -3825,7 +3825,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Given several values on one screen, classify each independently. State what breaks if it stays below a required reader, what becomes coupled if it rises above every required reader and writer, and which lifetime the chosen owner actually provides. A strong answer should leave at least one meaningful production value local when its requirements say local."
+                  "text": "Given several values on one screen, classify each independently. State what breaks if it stays below a required reader, what becomes coupled if it rises above every required reader and writer, and which lifetime the chosen owner actually provides. On a real screen that reasoning usually leaves at least one meaningful value local, because its readers, writers and lifetime never leave one element."
                 }
               ]
             }
@@ -3849,7 +3849,7 @@
         {
           "id": "lesson_stateless_screen_content",
           "title": "The Stateless Content Boundary",
-          "summary": "Separate a production screen's owner and state wiring from the composable that renders ordinary values and reports intent. The split is useful because content can then be rendered with arbitrary states, reused with another owner, and reasoned about without constructing the real application boundary.",
+          "summary": "A production screen composable wires owners and state together, while a separate content composable renders ordinary values and reports intent. The split is useful because content can then be rendered with arbitrary states, reused with another owner, and reasoned about without constructing the real application boundary.",
           "primarySubtopicIds": [
             "compose_udf"
           ],
@@ -3864,11 +3864,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Once a screen has several owners, it needs one place where their values and events meet. That place is the screen composable. Its job is wiring: obtain the current screen-level value, keep any Compose-owned coordination state at the level chosen in the previous lesson, and connect UI events to the owner that handles each one. The content composable has a different job: render the supplied value and report what the user asks to do."
+                  "text": "Once a screen has several owners, it needs one place where their values and events meet. That place is the screen composable. Its job is wiring: obtain the current screen-level value, keep any Compose-owned coordination state such as the selected filter, and connect UI events to the owner that handles each one. The content composable has a different job: render the supplied value and report what the user asks to do."
                 },
                 {
                   "type": "code",
-                  "code": "@Composable\nfun QuestionLibraryScreen(\n    owner: QuestionLibraryOwner,\n) {\n    // Adapt the owner's current value at this boundary.\n    // Observable-state conversion is the next unit's subject.\n    val ownerState = currentOwnerState(owner)\n    var selectedLevel by remember { mutableStateOf(QuestionLevel.All) }\n\n    QuestionLibraryContent(\n        state = QuestionLibraryScreenState(\n            questions = ownerState.questions,\n            savedIds = ownerState.savedIds,\n            loadFailed = ownerState.loadFailed,\n            selectedLevel = selectedLevel,\n        ),\n        onLevelSelected = { selectedLevel = it },\n        onRetry = owner::retry,\n        onToggleSaved = owner::toggleSaved,\n    )\n}\n\n@Composable\nfun QuestionLibraryContent(\n    state: QuestionLibraryScreenState,\n    onLevelSelected: (QuestionLevel) -> Unit,\n    onRetry: () -> Unit,\n    onToggleSaved: (QuestionId) -> Unit,\n) {\n    // Render state and report UI intent.\n}",
+                  "code": "@Composable\nfun QuestionLibraryScreen(\n    owner: QuestionLibraryOwner,\n) {\n    // Convert the owner's observable state into a current value here.\n    val ownerState = currentOwnerState(owner)\n    var selectedLevel by remember { mutableStateOf(QuestionLevel.All) }\n\n    QuestionLibraryContent(\n        state = QuestionLibraryScreenState(\n            questions = ownerState.questions,\n            savedIds = ownerState.savedIds,\n            loadFailed = ownerState.loadFailed,\n            selectedLevel = selectedLevel,\n        ),\n        onLevelSelected = { selectedLevel = it },\n        onRetry = owner::retry,\n        onToggleSaved = owner::toggleSaved,\n    )\n}\n\n@Composable\nfun QuestionLibraryContent(\n    state: QuestionLibraryScreenState,\n    onLevelSelected: (QuestionLevel) -> Unit,\n    onRetry: () -> Unit,\n    onToggleSaved: (QuestionId) -> Unit,\n) {\n    // Render state and report UI intent.\n}",
                   "language": "kotlin"
                 },
                 {
@@ -3877,12 +3877,12 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This is a screen boundary, not the stateful/stateless overload pair from the earlier hoisting lesson. There is no promise that both functions are interchangeable convenience overloads. The screen function is the application-facing wiring point; the content function is the rendering surface. Their different responsibilities are the reason for two names."
+                  "text": "This split differs from a stateful/stateless overload pair, where a component such as a text field ships a stateless function that takes the value and a change callback alongside a stateful convenience overload that remembers the value internally, so a caller can use either one for the same job. Here the two functions are not interchangeable. The screen function is the application-facing wiring point; the content function is the rendering surface. Their different responsibilities are the reason for two names."
                 },
                 {
                   "type": "callout",
                   "kind": "KEY_TAKEAWAY",
-                  "text": "Screen composable means wiring boundary. Content composable means rendering plus reporting intent. Keeping that distinction visible gives the screen one obvious place where owners, current values and event handlers are connected."
+                  "text": "The screen composable wires owners to content; the content composable renders values and reports intent. Keeping that distinction visible gives the screen one obvious place where owners, current values and event handlers are connected."
                 }
               ]
             },
@@ -3891,7 +3891,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The benefits are easiest to see as consequences of the signature rather than as adjectives. A preview can call `QuestionLibraryContent` with an empty state, a long list, an error state or an unusual saved selection. It does not need to construct the production owner, start dependency injection, or wait for data. Preview tooling is not the subject here; the important fact is that ordinary parameters make arbitrary states directly renderable."
+                  "text": "The benefits are easiest to see as consequences of the signature rather than as adjectives. A preview can call `QuestionLibraryContent` with an empty state, a long list, an error state or an unusual saved selection. It does not need to construct the production owner, start dependency injection, or wait for data. Ordinary parameters make arbitrary states directly renderable."
                 },
                 {
                   "type": "code",
@@ -3900,7 +3900,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The same property enables isolated UI tests: the caller supplies a state and records which callback an interaction invokes. That explains testability without teaching a testing framework. It also enables reuse. A demo host, another platform shell, or a future owner can render the same content because none must pretend to be the original owner type."
+                  "text": "The same property enables isolated UI tests: the caller supplies a state and records which callback an interaction invokes, with no owner or data source to set up. It also enables reuse. A demo host, another platform shell, or a future owner can render the same content because none must pretend to be the original owner type."
                 },
                 {
                   "type": "paragraph",
@@ -3955,7 +3955,7 @@
         {
           "id": "lesson_screen_state_and_ui_events",
           "title": "One Screen State Value, Events Back Up",
-          "summary": "Make the content boundary a value-based contract: one immutable current screen value travels down, while callbacks describing retry, selection and save intent travel up. Passing writable state or an owner reference downward creates extra write paths, hides ownership and couples rendering to a particular mechanism.",
+          "summary": "A value-based content contract sends one immutable current screen value down, while callbacks describing retry, selection and save intent travel up. Passing writable state or an owner reference downward creates extra write paths, hides ownership and couples rendering to a particular mechanism.",
           "primarySubtopicIds": [
             "compose_udf"
           ],
@@ -3971,7 +3971,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The content boundary becomes easiest to understand when it receives one answer to one question: what does the screen render now? For the question library, a small immutable data class can carry the current questions, saved markers, load result and selected filter together. The type is an example that makes the contract visible, not a prescription for modelling every application's loading and error states. Detailed state modelling belongs to later architecture curriculum."
+                  "text": "The content boundary becomes easiest to understand when it receives one answer to one question: what does the screen render now? For the question library, a small immutable data class can carry the current questions, saved markers, load result and selected filter together. A single `loadFailed` flag keeps the example small; a real screen may model loading and error states more precisely (see **Modelling the Current UI State**)."
                 },
                 {
                   "type": "code",
@@ -3980,11 +3980,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "One screen state value does not outlaw local UI-element state. The difficulty menu can still own whether its popup is expanded. The claim is bounded to the screen contract: the values crossing from screen wiring into content form one immutable current snapshot rather than a collection of writable channels. The wiring layer may assemble that snapshot from an outside owner's state and Compose-owned coordination state."
+                  "text": "One screen state value does not outlaw local UI-element state. The difficulty menu can still own whether its popup is expanded. The single value describes the screen contract: the values crossing from screen wiring into content form one immutable current snapshot rather than a collection of writable channels. The wiring layer may assemble that snapshot from an outside owner's state and Compose-owned coordination state."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The callbacks describe user intent, not storage operations. `onLevelSelected(level)` says what the user selected; `onRetry()` says they asked to retry; `onToggleSaved(id)` says which question they acted on. The caller decides whether each event changes Compose-owned state, asks the screen owner to do work, or is ignored because the current state no longer permits it. This is state down and events up applied to the complete screen contract, not a new definition of UDF."
+                  "text": "The callbacks describe user intent, not storage operations. `onLevelSelected(level)` says what the user selected; `onRetry()` says they asked to retry; `onToggleSaved(id)` says which question they acted on. The caller decides whether each event changes Compose-owned state, asks the screen owner to do work, or is ignored because the current state no longer permits it. This is state down and events up applied to the complete screen contract."
                 },
                 {
                   "type": "callout",
@@ -4035,11 +4035,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This connects to `lesson_stability_and_skipping` without re-teaching stability. Equality-based reasoning only helps when the value's contract and implementation agree: an immutable snapshot can be compared as a value, while a mutable object whose contents change behind the same reference defeats that reasoning. This lesson needs no `@Stable` or `@Immutable` annotation to make the point."
+                  "text": "Equality-based reasoning only helps when the value's contract and implementation agree: an immutable snapshot can be compared as a value, while a mutable object whose contents change behind the same reference defeats that reasoning. The argument holds without any `@Stable` or `@Immutable` annotation; for how Compose uses equality to skip work, see **Stability and Skipping**."
                 },
                 {
                   "type": "paragraph",
-                  "text": "UDF is the architecture-side name for the direction, but this unit stops at the Compose boundary. It does not require reducers, action types, state machines or MVI. One current value and constrained callbacks are enough to make ownership inspectable; how an application produces that value is a later design problem."
+                  "text": "Unidirectional data flow (UDF) is the architecture-side name for the direction. At the Compose boundary it does not require reducers, action types, state machines or MVI. One current value and constrained callbacks are enough to make ownership inspectable; how an application produces that value is a separate design decision."
                 },
                 {
                   "type": "callout",
@@ -4074,8 +4074,8 @@
         },
         {
           "id": "lesson_screen_state_owner_boundary",
-          "title": "The Screen-Level Owner as a Bounded Bridge",
-          "summary": "Moving screen state outside the Composition changes who owns it; it does not itself make the state persistent. Determine what survives from the new owner's actual lifetime, using entry-scoped ViewModels as one concrete multiplatform Navigation 3 example, and stop before application architecture begins.",
+          "title": "Moving State Outside the Composition: Owner vs Lifetime",
+          "summary": "Moving screen state outside the Composition changes who owns it; it does not itself make the state persistent. What survives depends on the new owner's actual lifetime, shown here with entry-scoped ViewModels in a multiplatform Navigation 3 example, and persistence after that owner is gone needs a separate mechanism.",
           "primarySubtopicIds": [
             "compose_state_hoisting"
           ],
@@ -4091,7 +4091,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The question-library data in this unit belongs to a screen-level owner outside the Composition. That sentence tells you who no longer owns it: a composable call site does not. It does not tell you how long the new owner lives. Moving a value across the boundary changes its owner; it grants no persistence by itself."
+                  "text": "Suppose a question-library screen's loaded questions, saved markers and load failure belong to a screen-level owner outside the Composition. That sentence tells you who no longer owns it: a composable call site does not. It does not tell you how long the new owner lives. Moving a value across the boundary changes its owner; it grants no persistence by itself."
                 },
                 {
                   "type": "paragraph",
@@ -4121,7 +4121,7 @@
                       "Android retains the relevant `ViewModelStore`, not the fact that the value was moved from a composable"
                     ],
                     [
-                      "The learner navigates forward and this destination remains on its back stack",
+                      "The user navigates forward and this destination remains on its back stack",
                       "Yes",
                       "The Navigation 3 entry remains, so its entry-scoped `ViewModelStore` remains"
                     ],
@@ -4134,7 +4134,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Process recreation is a separate rung. A ViewModel does not survive process death on its own, and an outside owner is not durable storage. Small restorable keys and durable application data use other mechanisms, introduced in their owning curricula. The earlier `lesson_remember_saveable` provides the lifetime ladder; this lesson applies its central question to a screen-level owner."
+                  "text": "Process recreation is a separate rung. A ViewModel does not survive process death on its own, and an outside owner is not durable storage. Small restorable keys need saved state, and durable application data needs storage that outlives the process (see **`rememberSaveable` and State That Must Survive**). The question is the same one asked of any remembered value: which event must this state survive, and does its owner survive that event?"
                 },
                 {
                   "type": "callout",
@@ -4148,7 +4148,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Take a concrete example in shared Compose code. A `NavDisplay` installs a saveable-state entry decorator followed by the lifecycle ViewModel entry decorator. Each relevant Navigation 3 back-stack entry therefore receives its own `ViewModelStore`. Screen ViewModels are resolved at that destination boundary, remain while their entry remains on the area's back stack, and are cleared when the entry is removed."
+                  "text": "Consider a Compose Multiplatform application whose shared `NavDisplay` installs a saveable-state entry decorator followed by the lifecycle ViewModel entry decorator. Each relevant Navigation 3 back-stack entry therefore receives its own `ViewModelStore`. Screen ViewModels are obtained at that destination, remain while their entry remains on the back stack, and are cleared when the entry is removed."
                 },
                 {
                   "type": "code",
@@ -4157,7 +4157,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The snippet is evidence about ownership, not a Navigation lesson. The important chain is entry exists, therefore its store exists, therefore the ViewModel and its in-memory state exist. Pop the entry and the chain ends. Navigating forward without removing it is different from popping it even if both actions make the question-library content leave the visible Composition."
+                  "text": "The ownership chain is: the entry exists, therefore its store exists, therefore the ViewModel and its in-memory state exist. Pop the entry and the chain ends. Navigating forward without removing it is different from popping it even if both actions make the question-library content leave the visible Composition."
                 },
                 {
                   "type": "paragraph",
@@ -4165,7 +4165,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The screen/content contract does not change when the owner changes. `QuestionLibraryContent` still receives an immutable current value and sends retry, selection and save intent upward. Only `QuestionLibraryScreen` knows how the owner is reached and how its current value enters Compose. Converting an outside observable value into Compose state is the next unit's subject, so no collection mechanism belongs here."
+                  "text": "The screen/content contract does not change when the owner changes. `QuestionLibraryContent` still receives an immutable current value and sends retry, selection and save intent upward. Only `QuestionLibraryScreen` knows how the owner is reached and how its current value enters Compose, so changing the owner's lifetime or the way its observable state is collected leaves the rendering tree untouched."
                 },
                 {
                   "type": "callout",
@@ -4179,7 +4179,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "An outside owner is justified when coordination or lifetime crosses the Composition boundary, not when a screen merely looks production-sized. The selected filter in this unit still belongs to a Compose parent because its readers, writers and lifetime stop there. A remembered plain state holder could encapsulate more complicated filter UI logic without moving that state outside the Composition."
+                  "text": "An outside owner is justified when coordination or lifetime crosses the Composition boundary, not when a screen merely looks production-sized. The question library's selected filter still belongs to a Compose parent because its readers, writers and lifetime stop there. A remembered plain state holder could encapsulate more complicated filter UI logic without moving that state outside the Composition."
                 },
                 {
                   "type": "paragraph",
@@ -4187,7 +4187,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This is where the Compose curriculum deliberately stops. How to construct the owner, divide responsibilities among repositories and use cases, model complete UI states, select MVVM or MVI, inject dependencies, or launch owner-scoped work are application-architecture and dependency-injection decisions. The bounded bridge here is only the contract at the Composition edge."
+                  "text": "Keeping the three apart makes each design question answerable. Choosing an entry-scoped ViewModel settles ownership and lifetime, but it says nothing about process death; adding saved state or storage settles persistence without changing who may write the value. How the owner is constructed, which repositories it uses and how it models complete UI states are separate decisions again, and none of them changes the value-and-callback contract at the Composition edge."
                 },
                 {
                   "type": "callout",
@@ -4230,12 +4230,12 @@
       "id": "unit_observable_state_collection",
       "topicId": "android_ui",
       "title": "Observable State Collection and Lifecycle",
-      "summary": "A screen-level owner can expose a perfectly useful Flow or StateFlow and still not give Compose anything it can observe directly. This unit follows that outside value across the boundary: collection converts it into Compose State, the returned state drives ordinary recomposition, the collection has a composition-owned lifetime and real cost, and lifecycle-aware collection adds a second gate whose meaning is supplied by each Android, desktop, iOS or web host.",
+      "summary": "A screen-level owner can expose a perfectly useful Flow or StateFlow and still not give Compose anything it can observe directly. Collection converts that stream into Compose State; what matters in production is how to convert it, what the collection costs while it runs, and when it should pause as each Android, desktop, iOS or web host changes activity.",
       "lessons": [
         {
           "id": "lesson_external_state_in_compose",
           "title": "What a Composable Can and Cannot Observe",
-          "summary": "Reading a StateFlow's current value gives a composable data, but it does not connect later stream updates to Compose invalidation. Trace the two separate observation systems and see why collection into Compose State is a real bridge rather than ceremonial syntax.",
+          "summary": "Reading a StateFlow's current value gives a composable data, but it does not connect later stream updates to Compose invalidation. StateFlow and Compose use two separate observation systems, and collection into Compose State is the conversion that connects them rather than ceremonial syntax.",
           "primarySubtopicIds": [
             "compose_state"
           ],
@@ -4250,7 +4250,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Unit 7 ended with a screen-level owner outside the Composition. Suppose that owner exposes `val state: StateFlow<QuestionScreenState>`. The value is observable, but observable to whom? `StateFlow` notifies collectors. Compose invalidates a composition when state from its own snapshot-aware state system that the composition read changes. Those are two observation systems with no automatic connection between them."
+                  "text": "Suppose a screen-level owner outside the Composition exposes `val state: StateFlow<QuestionScreenState>`. The value is observable, but observable to whom? `StateFlow` notifies collectors. Compose invalidates a composition when state from its own snapshot-aware state system that the composition read changes. Those are two observation systems with no automatic connection between them."
                 },
                 {
                   "type": "code",
@@ -4264,11 +4264,11 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Do not overstate the defect as \"the UI can never show a newer value\". If some unrelated observed state change causes `QuestionScreen` to recompose, the body can execute again and read the newer `StateFlow.value`. The precise defect is that the stream update itself is not connected to Compose invalidation, so rendering depends accidentally on some other cause of recomposition."
+                  "text": "The defect is narrower than \"the UI can never show a newer value\". If some unrelated observed state change causes `QuestionScreen` to recompose, the body can execute again and read the newer `StateFlow.value`. The precise defect is that the stream update itself is not connected to Compose invalidation, so rendering depends accidentally on some other cause of recomposition."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The missing operation is a bridge: collect the external stream, write each collected value into Compose `State<T>`, then read that state while rendering. The path is external observable stream -> collection -> Compose State -> snapshot-observed read -> rendering. Once the value crosses that boundary, the snapshot observation model from `lesson_snapshot_observation` applies normally."
+                  "text": "The missing operation is a bridge: collect the external stream, write each collected value into Compose `State<T>`, then read that state while rendering. The path is external observable stream -> collection -> Compose State -> snapshot-observed read -> rendering. A snapshot-observed read is a read of Compose state while a composition is executing: Compose records that the composition depends on that state object, and a later write to it invalidates the parts of the composition that read it. Once the value is in Compose State, that ordinary mechanism does the rest (see **How Compose Observes State**)."
                 },
                 {
                   "type": "callout",
@@ -4282,7 +4282,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "This is the same question-library boundary as Unit 7, one step later. The owner still owns loaded questions, saved markers and load failure. The content still receives one immutable current screen value and callbacks. Nothing about ownership is being reconsidered. Only the wiring composable gains the responsibility to adapt the owner's observable state into the kind of state its rendering system observes."
+                  "text": "Collection does not change ownership. The owner still owns loaded questions, saved markers and load failure, and the content composable still receives one immutable current screen value and callbacks. Only the wiring composable gains the responsibility to adapt the owner's observable state into the kind of state its rendering system observes."
                 },
                 {
                   "type": "comparison",
@@ -4311,11 +4311,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "StateFlow's retained current value still matters: it gives the conversion a synchronous value to expose immediately. That contract belongs to `lesson_state_flow`; this lesson does not re-teach hot streams, replay or conflation. Likewise, `snapshotFlow` travels in the opposite direction - Compose snapshot State into a Flow - and remains the subject of `lesson_snapshot_flow`."
+                  "text": "StateFlow's retained current value still matters: it gives the conversion a synchronous value to expose immediately (see **`StateFlow`: One Current Value**). `snapshotFlow` travels in the opposite direction - Compose snapshot State into a Flow - and is covered in **`snapshotFlow` and Crossing Into Flow**."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The conversion belongs at the stateful screen wiring boundary. `QuestionContent` should not know about Flow or the owner. It continues to accept the current `QuestionScreenState`, which preserves the previewable, reusable contract Unit 7 established. The next lesson names the purpose-built conversion API."
+                  "text": "The conversion belongs at the stateful screen wiring boundary. `QuestionContent` should not know about Flow or the owner. It continues to accept the current `QuestionScreenState`, so it stays previewable and reusable with any caller that can supply a value."
                 },
                 {
                   "type": "callout",
@@ -4349,7 +4349,7 @@
         {
           "id": "lesson_collect_as_state",
           "title": "`collectAsState`: Converting a Stream into Compose State",
-          "summary": "Use collectAsState as the purpose-built bridge from Flow to renderable Compose State. Compare the StateFlow and plain Flow overloads, distinguish a supplied initial value from upstream retention, trace the recomposition path, and treat stream identity as part of collection lifetime.",
+          "summary": "collectAsState is the purpose-built conversion from Flow to renderable Compose State. Its StateFlow and plain Flow overloads differ in where the initial value comes from, a supplied initial value is not upstream retention, each emission reaches the screen through ordinary recomposition, and the identity of the supplied stream is part of the collection's lifetime.",
           "primarySubtopicIds": [
             "compose_state"
           ],
@@ -4364,7 +4364,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "When the requirement is \"turn this observable stream into the current state this composition renders\", Compose provides `collectAsState`. It starts collection for the conversion, returns `State<T>`, and updates that state as values arrive. Reading the returned state's `value` - directly or through `by` delegation - establishes the Compose-observed dependency the previous lesson was missing."
+                  "text": "When the requirement is \"turn this observable stream into the current state this composition renders\", Compose provides `collectAsState`. It starts collection for the conversion, returns `State<T>`, and updates that state as values arrive. Reading the returned state's `value` - directly or through `by` delegation - establishes the Compose-observed dependency that a plain `StateFlow.value` read never creates."
                 },
                 {
                   "type": "code",
@@ -4373,7 +4373,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "For `StateFlow<T>`, the resolved Compose runtime's overload is `StateFlow<T>.collectAsState(context)`. It uses `StateFlow.value` as the returned Compose State's initial value. The screen therefore has the owner's real current state on first composition; the caller does not invent a loading placeholder merely to start collection. Why StateFlow can supply that value is already taught in `lesson_state_flow`."
+                  "text": "For `StateFlow<T>`, Compose runtime 1.11.2 provides the overload `StateFlow<T>.collectAsState(context)`. It uses `StateFlow.value` as the returned Compose State's initial value, which is possible because a `StateFlow` always holds a current value. The screen therefore has the owner's real current state on first composition; the caller does not invent a loading placeholder merely to start collection."
                 },
                 {
                   "type": "paragraph",
@@ -4386,7 +4386,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The complete path is now visible: Flow emission -> the collector writes the returned State -> Compose observes that State change -> the composition that read it is invalidated -> recomposition reads the new value. This is ordinary state-driven recomposition, not a special rendering mode for Flow. `lesson_composition_and_recomposition` owns the deeper recomposition model."
+                  "text": "The complete path is now visible: Flow emission -> the collector writes the returned State -> Compose observes that State change -> the composition that read it is invalidated -> recomposition reads the new value. This is ordinary state-driven recomposition, not a special rendering mode for Flow."
                 },
                 {
                   "type": "callout",
@@ -4400,7 +4400,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "A common near-miss is to build the stream inline. In this example, `observeQuestions()` may return a stable stream, but `map` creates a new Flow object whenever `QuestionScreen` executes. The resolved runtime keys its state producer on the initial value, Flow instance and context. When the supplied Flow instance changes, the previous conversion is replaced and a new collection starts."
+                  "text": "A common near-miss is to build the stream inline. In this example, `observeQuestions()` may return a stable stream, but `map` creates a new Flow object whenever `QuestionScreen` executes. In Compose runtime 1.11.2, `collectAsState` keys its state producer on the initial value, Flow instance and context. When the supplied Flow instance changes, the previous conversion is replaced and a new collection starts."
                 },
                 {
                   "type": "code",
@@ -4409,16 +4409,16 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Do not turn that into \"Flow operators in composables are always slow\". The issue is identity and intended lifetime: changing the stream supplied to the conversion means replacing the collection. That is correct when an input such as a question id deliberately selects a different stream. It is wasteful or behaviourally surprising when recomposition accidentally constructs an equivalent stream and restarts cold upstream work. Give the stream a stable owner or memoize the derived stream against the inputs that should actually replace it. Operator semantics remain E24's subject."
+                  "text": "The problem is not that Flow operators in composables are slow. It is identity and intended lifetime: changing the stream supplied to the conversion means replacing the collection. That is correct when an input such as a question id deliberately selects a different stream. It is wasteful or behaviourally surprising when recomposition accidentally constructs an equivalent stream and restarts cold upstream work. Give the stream a stable owner or memoize the derived stream against the inputs that should actually replace it."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The optional `context` parameter controls the coroutine context used for collection. With the default empty context, collection uses the state producer's existing context; with a supplied context, the resolved implementation collects inside that context. This is not a general dispatcher lesson and it does not replace `flowOn`: the Flow curriculum owns context preservation and dispatcher placement."
+                  "text": "The optional `context` parameter controls the coroutine context used for collection. With the default empty context, collection uses the state producer's existing context; with a supplied context, collection runs inside that context. It does not replace `flowOn`, the Flow operator that changes the context of upstream work while leaving the collector's context alone."
                 },
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Do not make a remembered `MutableState`, launch an effect, collect the Flow by hand and assign every value merely to render ongoing state. Such code can be made to work, but it hides the requirement behind a general effect mechanism. `collectAsState` states the job directly. Manual collection belongs where receiving values performs an effect rather than exposes current renderable state; later units make that distinction precise."
+                  "text": "Creating a remembered `MutableState`, launching an effect, collecting the Flow by hand and assigning every value merely to render ongoing state can be made to work, but it hides the requirement behind a general effect mechanism. `collectAsState` states the job directly. Manual collection belongs where receiving a value performs an effect, such as showing a message or navigating, rather than exposing current renderable state."
                 }
               ]
             },
@@ -4427,7 +4427,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The verified Compose runtime 1.11.2 source implements the Flow overload through `produceState(initial, this, context)`. That source relationship proves why stream identity and context participate in replacement and why equal assignments are conflated by the returned State. It is evidence for the public contract, not the mental model learners should lead with: Unit 11 teaches `produceState` as its own mechanism."
+                  "text": "Internally, Compose runtime 1.11.2 implements the Flow overload through `produceState(initial, this, context)`. That is why stream identity and context participate in replacement, and why equal assignments are conflated by the returned State. The public contract is still the better starting point for reasoning; for the producer itself, see **`produceState`: a Composition-Scoped Producer**."
                 },
                 {
                   "type": "paragraph",
@@ -4436,7 +4436,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "A strong explanation names both overloads, then follows one emission all the way to invalidation. It also treats the Flow object supplied to the composable as a lifetime input: a deliberately changed stream should replace collection; an accidentally fresh equivalent stream should not."
+                  "text": "Name both overloads and where each gets its initial value, then follow one emission all the way to invalidation. Treat the Flow object supplied to the composable as a lifetime input: a deliberately changed stream should replace collection; an accidentally fresh equivalent stream should not."
                 }
               ]
             }
@@ -4466,7 +4466,7 @@
         {
           "id": "lesson_collection_lifetime_and_cost",
           "title": "Collection Has a Lifetime and a Cost",
-          "summary": "Ordinary collectAsState keeps a collector active while its state producer remains in Composition. Make that lifetime concrete through database observation and transformation work, then keep UI collector cancellation separate from ownership of a cold or shared upstream producer.",
+          "summary": "Ordinary collectAsState keeps a collector active while its state producer remains in Composition. That lifetime has concrete costs in database observation and transformation work, and cancelling the UI collector is a separate question from who owns a cold or shared upstream producer.",
           "primarySubtopicIds": [
             "compose_state"
           ],
@@ -4511,7 +4511,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Cancellation is ordinary cooperative coroutine cancellation. Compose does not \"kill the Flow\", and cancellation cannot instantly interrupt arbitrary blocking or CPU-bound work. `lesson_flow_collection_lifetime` and `lesson_cooperative_cancellation` own those mechanics; here they explain what ending the composition-owned collector requests."
+                  "text": "Cancellation is ordinary cooperative coroutine cancellation. Compose does not \"kill the Flow\", and cancellation cannot instantly interrupt arbitrary blocking or CPU-bound work. Ending the composition-owned collector requests cancellation of its coroutine; upstream code stops only when it next reaches a cancellable suspension point or checks for cancellation (see **Cancellation Is Cooperative**)."
                 },
                 {
                   "type": "callout",
@@ -4544,7 +4544,7 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Do not use \"navigated away\" as proof that collection stopped. First establish that this destination's content actually left Composition. If it did, this composition-owned collector ends. If the content remains composed, ordinary `collectAsState` has no host-visibility gate and continues."
+                  "text": "\"Navigated away\" is not proof that collection stopped. First establish that this destination's content actually left Composition. If it did, this composition-owned collector ends. If the content remains composed, ordinary `collectAsState` has no host-visibility gate and continues."
                 }
               ]
             },
@@ -4557,7 +4557,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That is the whole sharing bridge this unit needs. `lesson_sharing_cold_flows` teaches `stateIn`, `shareIn`, `SharingStarted` and their timers. At the Compose boundary, keep the responsibility split visible: collection policy decides whether this UI subscribes; sharing policy decides what the shared producer does as subscribers appear and disappear. Changing one does not silently rewrite the other."
+                  "text": "At the Compose boundary, keep the responsibility split visible: collection policy decides whether this UI subscribes; sharing policy, such as the `SharingStarted` strategy passed to `stateIn` or `shareIn`, decides what the shared producer does as subscribers appear and disappear. Changing one does not silently rewrite the other. For the sharing operators and their timers, see **Sharing Cold Flows with `stateIn` and `shareIn`**."
                 },
                 {
                   "type": "paragraph",
@@ -4595,7 +4595,7 @@
         {
           "id": "lesson_lifecycle_aware_collection",
           "title": "Lifecycle-Aware Collection and the Lifecycle a Screen Actually Has",
-          "summary": "A composable can remain in Composition while its host is not active enough to justify upstream collection. Add lifecycle as an independent gate with collectAsStateWithLifecycle, then predict default STARTED behavior from the actual Android, desktop, iOS and web host mappings used by this KMP project.",
+          "summary": "A composable can remain in Composition while its host is not active enough to justify upstream collection. collectAsStateWithLifecycle adds lifecycle as an independent gate, and its default STARTED behavior depends on how each Android, desktop, iOS and web host maps window, scene or page activity onto lifecycle states.",
           "primarySubtopicIds": [
             "compose_state"
           ],
@@ -4689,16 +4689,16 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The portable model is not to memorize four event tables. `STARTED` expresses one common threshold, but each platform decides how window, scene or page activity maps onto lifecycle states. Therefore common API availability does not imply identical user-action behavior. Given a bug report such as \"collection continues when the desktop window loses focus\", inspect the host mapping before assuming the API failed: an unfocused visible desktop window is still STARTED in the configured Compose Multiplatform 1.11.1 host."
+                  "text": "The portable model is not to memorize four event tables. `STARTED` expresses one common threshold, but each platform decides how window, scene or page activity maps onto lifecycle states. Therefore common API availability does not imply identical user-action behavior. Given a bug report such as \"collection continues when the desktop window loses focus\", inspect the host mapping before assuming the API failed: an unfocused visible desktop window is still STARTED in the Compose Multiplatform 1.11.1 desktop host."
                 },
                 {
                   "type": "paragraph",
-                  "text": "For desktop, JetBrains also notes that lifecycle coroutine scopes rely on `Dispatchers.Main.immediate`, which needs a Main dispatcher implementation. A desktop application that declares `kotlinx-coroutines-swing` supplies one; that configuration supports the host contract. It is a platform setup note, not a reason to teach dispatcher selection again."
+                  "text": "For desktop, JetBrains also notes that lifecycle coroutine scopes rely on `Dispatchers.Main.immediate`, which needs a Main dispatcher implementation. A desktop application that declares `kotlinx-coroutines-swing` supplies one. Without it, those lifecycle coroutine scopes have no Main dispatcher to run on."
                 },
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Do not reduce the decision to \"always use `collectAsStateWithLifecycle` because it is safer\". Continuous collection can be the requirement, and some sources are cheap. Choose lifecycle-aware conversion when upstream should pause below a host-activity threshold; choose plain conversion when composition lifetime is the intended policy."
+                  "text": "\"Always use `collectAsStateWithLifecycle` because it is safer\" skips the actual decision. Continuous collection can be the requirement, and some sources are cheap. Choose lifecycle-aware conversion when upstream should pause below a host-activity threshold; choose plain conversion when composition lifetime is the intended policy."
                 }
               ]
             },
@@ -4707,15 +4707,15 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The resolved source builds lifecycle-aware conversion from `produceState` and `repeatOnLifecycle`. That implementation evidence explains the two gates: Compose owns the returned State and cancels its producer when the call leaves Composition; the lifecycle block starts and stops upstream collection around the active threshold. This lesson uses that relationship to verify behavior, while Unit 11 remains responsible for teaching `produceState` itself and lifecycle curriculum remains responsible for `repeatOnLifecycle` in View hosts."
+                  "text": "In lifecycle-runtime-compose 2.11.0-beta01, lifecycle-aware conversion is built from `produceState` and `repeatOnLifecycle`. That implementation explains the two gates: Compose owns the returned State and cancels its producer when the call leaves Composition; the `repeatOnLifecycle` block starts upstream collection when the lifecycle reaches the active threshold and cancels it when the lifecycle falls below."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Pausing the lifecycle-aware collector still does not settle the upstream producer's lifetime. When the lifecycle falls below STARTED, this subscriber is removed and later re-established. A cold source tied only to it normally stops and starts with that collection. A shared source follows the owner scope and sharing policy taught in `lesson_sharing_cold_flows`. Lifecycle policy and sharing policy must be reviewed together when resource use matters."
+                  "text": "Pausing the lifecycle-aware collector still does not settle the upstream producer's lifetime. When the lifecycle falls below STARTED, this subscriber is removed and later re-established. A cold source tied only to it normally stops and starts with that collection. A shared source follows its owner scope and `SharingStarted` policy (see **Sharing Cold Flows with `stateIn` and `shareIn`**). Lifecycle policy and sharing policy must be reviewed together when resource use matters."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Version precision matters here because the lifecycle artifact described is beta. These overloads, defaults and mappings were checked against the 2.11.0-beta01 lifecycle sources and the Compose Multiplatform 1.11.1 host sources, with the Compose runtime at 1.11.2. A later dependency update should re-read those contracts rather than preserve this table by assumption."
+                  "text": "The overloads, defaults and host mappings described here are those of lifecycle-runtime-compose 2.11.0-beta01 and the Compose Multiplatform 1.11.1 hosts, with Compose runtime 1.11.2. The lifecycle artifact is beta, so its API and the host mappings may change in later releases; when a version changes, check the host's current mapping before relying on this table."
                 },
                 {
                   "type": "callout",

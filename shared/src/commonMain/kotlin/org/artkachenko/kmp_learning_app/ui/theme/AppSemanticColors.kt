@@ -38,15 +38,22 @@ import androidx.compose.ui.graphics.Color
  * short indigo-to-violet sweep across the two hues the accent range already spans, for the rare
  * surface that is the single most important thing on its screen.
  *
- * It has two call sites, and the second was the deliberate decision this comment used to ask for.
+ * It has three call sites, each of which had to make the argument rather than inherit it, and all
+ * three stay distinguishable by **motion** rather than by a palette of their own.
+ *
  * `AssessmentCompletionHero` is an *arrival*: a run has just finished and the score is counted out
  * over the app's one celebratory duration. `ProgressHero` is a *standing* answer, and it is here
  * because the Progress dashboard runs six or more containers down the page — against that many
  * neighbours, one surface-ramp step reads as "the first card" rather than as the screen's headline.
- * It settles into place over the ordinary content-reveal duration instead, so the two remain
- * distinguishable by their motion rather than needing two palettes. A third screen adopting this
- * still has to make the same argument: that nothing else on it competes, and that the surface is
- * genuinely the answer the learner came for — not that a card should look important.
+ * It settles a measured figure into place over the ordinary content-reveal duration instead.
+ * `InterviewStartScreen`'s hero is an *invitation*, on a destination whose only other object is a
+ * bounded record in one `ContentGroup`; it animates no figure at all, because twenty questions is
+ * configuration rather than a measurement, and it is the only one of the three that holds its
+ * screen's primary action.
+ *
+ * A fourth screen adopting this still has to make the same argument: that nothing else on it
+ * competes, and that the surface is genuinely the answer the learner came for — not that a card
+ * should look important.
  *
  * It carries no on-colour of its own. Both endpoints are chosen to sit within the `primaryContainer`
  * tone of their scheme, so `colorScheme.onPrimaryContainer` is legible across the whole sweep;

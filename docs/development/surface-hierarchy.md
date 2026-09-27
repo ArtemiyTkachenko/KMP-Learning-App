@@ -35,25 +35,41 @@ bare rows. None of them changes colour to say where it sits.
 
 | Component | Where it lives | Call sites today |
 | --- | --- | --- |
-| `ProgressHero`, `AssessmentCompletionHero` | their own features | 2 — the only gradient surfaces |
+| `ProgressHero`, `AssessmentCompletionHero`, the interview hero | their own features | 3 — the only gradient surfaces |
 | `AccuracyHeroCard` | `ui/ContentHierarchy.kt` | 2 — Topic drill-down, Topic practice page |
 | `SecondarySummaryCard` | `ui/ContentHierarchy.kt` | 2 — Progress recent performance, Topic practice |
 | the Practice Builder's summary surface | `practice_builder/PracticeBuilderScreen.kt` | 1 — level 2, see below |
+| the Mistakes remediation surface | `mistake_review/MistakeReviewScreen.kt` | 1 — level 2, see below |
 | `ContentGroup` + `AccuracyRow` | `ui/ContentHierarchy.kt`, `ui/PerformanceCard.kt` | 4 groups, 3 rows |
 | `PerformanceCard` | `ui/PerformanceCard.kt` | weak areas, Subtopic rows, Topic drill-down |
 | bare rows | written per feature | Units, Subtopics, Lessons, session history |
 
 ### The gradient is not a rank a screen may climb to
 
-`AppSemanticColors.heroGradientStart`/`End` has exactly two call sites and a third needs the same
-argument the second one made: that nothing else on the page competes, and that the surface is
+`AppSemanticColors.heroGradientStart`/`End` has exactly three call sites and a fourth needs the same
+argument each of those made: that nothing else on the page competes, and that the surface is
 genuinely the answer the learner came for — not that a card should look important.
 
-The two stay distinguishable by **motion**, not by palette. `AssessmentCompletionHero` is an
+The three stay distinguishable by **motion**, not by palette. `AssessmentCompletionHero` is an
 *arrival* and counts its score out over the app's one celebratory duration
-(`AppMotion.ScoreRevealDurationMillis`). `ProgressHero` is a *standing answer* and settles over the
-ordinary `ContentRevealDurationMillis`, because a learner opening Progress to check on themselves is
-not being congratulated.
+(`AppMotion.ScoreRevealDurationMillis`). `ProgressHero` is a *standing answer* and settles a measured
+figure over the ordinary `ContentRevealDurationMillis`, because a learner opening Progress to check
+on themselves is not being congratulated. The Mixed Interview hero in
+`mixed_interview/InterviewStartScreen.kt` is an *invitation*: its destination's only other object is
+the interview record, a bounded set in one `ContentGroup`, and a learner who chose **Interview** in
+the navigation bar came for exactly the surface that starts one. It animates **no figure**, because
+twenty questions is a configuration fact that was true before the learner arrived and counting a
+constant would dress it as a result; what staggers instead is the two interview rules and then the
+Start button, at 60ms and 100ms of `AppMotion.revealSpec`. It is also the only hero that holds its
+screen's primary action, which is the structural reason it does not share an information
+architecture with the other two — an invitation is not a score card.
+
+That last point is why there is no `AppHero`. Three gradient surfaces is not three instances of one
+component: completion states a result, Progress states a standing, the interview issues an
+invitation. What they share is a *contract* — the sweep, the hairline edge in the hero's own
+on-colour, the small shadow, `onPrimaryContainer` as the text colour, and the 0.8 supporting alpha —
+and the low-level primitives (`AccuracyRing`, `CountedFigure`) that two of them happen to need. The
+contract is written down here; the layouts stay separate.
 
 The gradient carries no on-colour of its own. `onPrimaryContainer` is its documented contract, and
 anything else put on it — an `accuracyColor` band, a reduced-alpha supporting line — is outside that
@@ -63,9 +79,10 @@ contract and checks its own contrast. `AppColorSchemeTest`, `AssessmentCompletio
 ### The one level-2 surface a screen may have
 
 Level 2 (`surfaceContainer` and up) means "the one surface on a screen that outranks the rest", so a
-screen that puts two things there has said nothing. Three components claim it: `AccuracyHeroCard`
-at `surfaceContainerHigh`, a weak `PerformanceCard`, and the Practice Builder's summary at
-`surfaceContainer` with a hairline `outlineVariant` edge and no shadow.
+screen that puts two things there has said nothing. Four components claim it: `AccuracyHeroCard`
+at `surfaceContainerHigh`, a weak `PerformanceCard`, and — both at `surfaceContainer` with a
+hairline `outlineVariant` edge and no shadow — the Practice Builder's summary and the Mistakes
+remediation block.
 
 The builder's is the clearest worked example of *why* the rank exists. Its configuration is three
 groups of option surfaces, and an option surface is level 1 — so the screen's conclusion, the block
@@ -74,7 +91,19 @@ while it was a `SecondarySummaryCard`. It is the only filled, unbordered, non-se
 the page, which is exactly the claim level 2 makes. It stops one step below `AccuracyHeroCard` and
 takes no shadow, because the builder has no headline figure and should not acquire a hero.
 
-A fourth claim needs the same argument: not "this card should look important", but that nothing else
+The Mistakes block is the same case one screen along, which is why it took the builder's treatment
+rather than inventing one. It was four loose pieces of type on the page background — the rank
+reserved for a record or a sequence — while every review card below it had a container, so the
+screen's own subject line was outranked by each of its entries. It is now the only filled,
+unbordered, non-selectable surface there, and the only one that starts anything.
+
+It is deliberately **not** the brand gradient, and the reason is the rule at the top of this page
+read the other way. The gradient is for the surface that is the whole reason its destination exists,
+and on Mistakes that is the *queue*: a learner opens it to work through the entries, not to read a
+summary of them. Promoting the offer to a hero would have put the loudest surface in the app above a
+list the learner immediately scrolls past it. The offer needed a container, not a crown.
+
+A fifth claim needs the same argument: not "this card should look important", but that nothing else
 on the screen is competing for the rank.
 
 ## Choosing between a card and a group

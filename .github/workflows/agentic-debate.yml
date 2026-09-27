@@ -88,8 +88,9 @@ jobs:
           lines.extend([
               "", "### Agent roles", "",
               "- Codex: task author and independent reviewer.",
-              "- Claude: implementation owner and challenger of Codex findings.",
-              "- Maximum negotiation: five Codex review → Claude response iterations.",
+              "- Claude: implementation owner, two-pass independent self-review/fix barrier, and challenger of Codex findings.",
+              "- Claude barrier: review → fix, repeated twice before Codex review begins.",
+              "- Maximum Codex negotiation: five Codex review → Claude response iterations.",
               "- If consensus is still absent after Claude's fifth response and Codex's final check, this PR remains draft and receives a human decision packet.",
               "", "The workflow never treats an AI opinion as a substitute for repository CI."
           ])
@@ -112,16 +113,78 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "number=$number" >> "$GITHUB_OUTPUT"
 
+  claude_review_1:
+    name: "Claude barrier 1 · review"
+    needs: open_pr
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/agentic-claude-review.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      review_round: 1
+      review_artifact_name: claude-self-review-1
+      pr_number: ${{ needs.open_pr.outputs.number }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  claude_fix_1:
+    name: "Claude barrier 1 · fix"
+    needs: claude_review_1
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-claude-step.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      mode: SELF_REVIEW_FIX
+      iteration: 1
+      position_artifact_name: claude-self-fix-1
+      review_artifact: claude-self-review-1
+      commit_message: "Claude barrier: self-review fixes 1"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  claude_review_2:
+    name: "Claude barrier 2 · review"
+    needs: [claude_fix_1, open_pr]
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/agentic-claude-review.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      review_round: 2
+      review_artifact_name: claude-self-review-2
+      pr_number: ${{ needs.open_pr.outputs.number }}
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  claude_fix_2:
+    name: "Claude barrier 2 · fix"
+    needs: claude_review_2
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-claude-step.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      mode: SELF_REVIEW_FIX
+      iteration: 2
+      position_artifact_name: claude-self-fix-2
+      review_artifact: claude-self-review-2
+      commit_message: "Claude barrier: self-review fixes 2"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
   review_1:
     name: "Iteration 1 · Codex review"
-    needs: [open_pr, implement]
+    needs: [open_pr, claude_fix_2]
     permissions:
       contents: read
     uses: ./.github/workflows/agentic-codex-review.yml
     with:
       branch: agent/debate-${{ github.run_id }}
       iteration: 1
-      claude_position_artifact: claude-position-0
+      claude_position_artifact: claude-self-fix-2
       review_artifact_name: codex-review-1
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

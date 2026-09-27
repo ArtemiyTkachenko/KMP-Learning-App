@@ -2960,7 +2960,7 @@ internal class BundledLearningCurriculumTest {
     }
 
     @Test
-    fun koinUnitProtectsModernCapabilitiesAndRepositoryEvidence() = runTest {
+    fun koinUnitProtectsModernCapabilitiesAndProjectAgnosticExamples() = runTest {
         val unit = unit("unit_koin_and_dependency_injection_in_kmp")
 
         fun textOf(lessonId: String): String = unit.lessons
@@ -2990,37 +2990,47 @@ internal class BundledLearningCurriculumTest {
         assertTrue(container.contains("Koin itself is not the composition root"))
         assertTrue(container.contains("classic Kotlin DSL"))
         assertTrue(container.contains("annotations and a Compiler Plugin DSL"))
-        assertTrue(container.contains("not configured"))
+        assertTrue(container.contains("the example above does not enable them"))
 
         val definitions = textOf("lesson_koin_definitions_and_reuse")
         assertTrue(definitions.contains("There is no Kotlin `object`"))
         assertTrue(definitions.contains("does **not** require a class called"))
-        assertTrue(definitions.contains("service-locator shape"))
+        assertTrue(definitions.contains("business code acting as a service locator"))
 
         val scopes = textOf("lesson_koin_scopes_and_their_owners")
         assertTrue(scopes.contains("owner that creates and closes the scope"))
-        assertTrue(scopes.contains("no custom Koin scopes"))
 
         val viewModels = textOf("lesson_resolving_viewmodels_at_the_boundary")
         assertTrue(viewModels.contains("ViewModelStoreOwner"))
         assertTrue(viewModels.contains("parameters.get(0)"))
-        assertTrue(viewModels.contains("20 `koinViewModel()` resolutions"))
+        assertTrue(viewModels.contains("LocalViewModelStoreOwner.current"))
 
         val multiplatform = textOf("lesson_one_graph_across_platforms")
         listOf(
-            "startAndroidLocalDataGraph",
-            "startIosLocalDataGraph",
-            "startDesktopLocalDataGraph",
-            "startWebLocalDataGraph",
-            "AndroidAppPreferenceStorage",
-            "IosAppPreferenceStorage",
-            "JvmAppPreferenceStorage",
-            "WebAppPreferenceStorage",
+            "androidPlatformModule",
+            "iosPlatformModule",
+            "desktopPlatformModule",
+            "webPlatformModule",
+            "interface SettingsStorage",
+            "expect val platformModule",
         ).forEach { claim -> assertTrue(multiplatform.contains(claim), claim) }
 
         val allText = unit.lessons.joinToString(" ") { textOf(it.id) }
         listOf("build.gradle", "plugins {", "koin-ksp-compiler", "@Singleton", "@KoinViewModel")
             .forEach { token -> assertFalse(allText.contains(token), token) }
+
+        // Worked examples are invented (authoring contract Rule 11): none of this
+        // application's own Koin startup, modules or types may stand in as evidence.
+        listOf(
+            "LocalDataGraph",
+            "curriculumDataModule",
+            "AppPreferenceStorage",
+            "AppearanceStateHolder",
+            "StudyProgressStateHolder",
+            "CurriculumDatabase",
+            "koinViewModel()` resolutions",
+            "case study",
+        ).forEach { token -> assertFalse(allText.contains(token), token) }
     }
 
     @Test

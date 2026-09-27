@@ -10,18 +10,24 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -69,7 +75,10 @@ import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailScre
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailUiState
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicLearningUnitsUiState
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsPage
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeTabTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTabTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsTabTag
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicTabIndicatorTag
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
@@ -485,11 +494,9 @@ internal class LargeFontScaleTest {
      *
      * `TabHeight` is 48dp for two reasons at once — it is
      * `PrimaryNavigationTabTokens.ContainerHeight` and it is the Material touch target — and it was
-     * applied as a fixed `height`. At this type size that left the cell with no vertical room for
-     * the label to wrap into, so "Practice" and "Subtopics" were cut mid-word with no ellipsis, and
-     * no room for the line box either, so the selected label's descender was sliced flat by the
-     * bottom of the cell. It is now a minimum, and `PrimaryTabRow` sizes itself from its tallest
-     * tab.
+     * applied as a fixed `height`. At this type size that left the cell no room for the label's line
+     * box, so the selected label's descender was sliced flat by the bottom of the cell. It is now a
+     * minimum, and the tab row sizes itself from its tallest tab.
      *
      * The assertion is that decision rather than the appearance, in both directions: at an ordinary
      * type scale the cell is still exactly the Material height, and at a doubled one it is taller.
@@ -533,6 +540,97 @@ internal class LargeFontScaleTest {
             )
         }
     }
+
+    /**
+     * Every Topic detail tab label stays one whole word at a doubled type size, and every tab can
+     * still be reached, selected, and underlined. This is `VQA-009` in the final visual QA.
+     *
+     * The row used to divide the window into three equal cells, and at this type size "Subtopics"
+     * is wider than a third of a phone: a single word wider than its line has nowhere to break but
+     * inside itself, so it rendered as "Subtopi / cs". The row is now content-sized and scrolls when
+     * the labels need more than the window.
+     *
+     * "Broken inside the word" is asserted as the label's line count, read from its own text
+     * layout. Each label is one word, so more than one line can only mean a break inside it — a
+     * property of the layout rather than of any font's metrics, which is why no width is pinned
+     * here. A label that overflowed its tab instead of wrapping would still be one line, so the
+     * label is also held inside its tab.
+     *
+     * Reachability is asserted through selection rather than by scrolling the row by hand: selecting
+     * a tab is what a learner does, and Material scrolls the selected tab into view. The indicator
+     * is held to each selected tab's edges, and — because the cells now differ — to a different
+     * width under a different tab.
+     */
+    @Test
+    fun theTopicTabLabelsStayWholeWordsAndEveryTabStaysReachable() =
+        runSkikoComposeUiTest(size = PhoneDisplay, density = DoubledText) {
+            setContent {
+                AppTheme {
+                    Box(Modifier.size(PhoneWidth, PhoneHeight).testTag(TestRootTag)) {
+                        TopicDetailScreen(tabState(), null, {}, {}, {}, {}, {})
+                    }
+                }
+            }
+            val windowWidth = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.width
+
+            val labels = listOf(
+                TopicStudyTabTag to "Study",
+                TopicPracticeTabTag to "Practice",
+                TopicSubtopicsTabTag to "Subtopics",
+            )
+            for ((tabTag, label) in labels) {
+                val labelNode = onNode(
+                    hasText(label) and hasAnyAncestor(hasTestTag(tabTag)),
+                    useUnmergedTree = true,
+                ).fetchSemanticsNode()
+                val layouts = mutableListOf<TextLayoutResult>()
+                labelNode.config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+                val lineCount = layouts.single().lineCount
+                assertEquals(
+                    1,
+                    lineCount,
+                    "\"$label\" is laid out on $lineCount lines at a doubled type size; one word " +
+                        "on more than one line has been broken inside itself.",
+                )
+
+                val tab = onNodeWithTag(tabTag).fetchSemanticsNode().boundsInRoot
+                assertTrue(
+                    labelNode.boundsInRoot.width <= tab.width,
+                    "\"$label\" is ${labelNode.boundsInRoot.width}px wide in a ${tab.width}px tab.",
+                )
+                assertTrue(
+                    tab.height >= MaterialTabHeight.value,
+                    "The $label tab is ${tab.height}px tall, under the Material tab height.",
+                )
+            }
+
+            val indicatorWidths = mutableMapOf<String, Float>()
+            for (tabTag in listOf(TopicSubtopicsTabTag, TopicPracticeTabTag, TopicStudyTabTag)) {
+                onNodeWithTag(tabTag).performSemanticsAction(SemanticsActions.OnClick)
+                waitUntil { runCatching { onNodeWithTag(tabTag).assertIsSelected() }.isSuccess }
+                waitForIdle()
+
+                val tab = onNodeWithTag(tabTag).fetchSemanticsNode().boundsInRoot
+                assertTrue(
+                    tab.left >= -1f && tab.right <= windowWidth + 1f,
+                    "The selected tab spans ${tab.left}..${tab.right} in a ${windowWidth}px " +
+                        "window, so selecting it did not bring it into view.",
+                )
+                val indicator = onNodeWithTag(TopicTabIndicatorTag).fetchSemanticsNode().boundsInRoot
+                assertTrue(
+                    abs(indicator.left - tab.left) <= 1f && abs(indicator.right - tab.right) <= 1f,
+                    "The indicator spans ${indicator.left}..${indicator.right} under a tab at " +
+                        "${tab.left}..${tab.right}.",
+                )
+                indicatorWidths[tabTag] = indicator.width
+            }
+            assertTrue(
+                indicatorWidths.getValue(TopicSubtopicsTabTag) >
+                    indicatorWidths.getValue(TopicStudyTabTag),
+                "The indicator is the same width under Study and Subtopics ($indicatorWidths), so it " +
+                    "is not following the content-sized cells.",
+            )
+        }
 
     /**
      * The two shared performance rows keep their title whole, because the accuracy figure drops.

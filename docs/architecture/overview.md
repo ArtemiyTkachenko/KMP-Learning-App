@@ -292,7 +292,7 @@ rendered outside the shell, where the cards are informational content.
 ### Topic Detail's three pages
 
 Topic Detail presents those capabilities as three tabs — Study, Practice,
-Subtopics — behind a Material 3 `PrimaryTabRow` and a `HorizontalPager`, directly
+Subtopics — behind a Material 3 `PrimaryScrollableTabRow` and a `HorizontalPager`, directly
 under the top bar. It was previously one `LazyColumn` holding all three sections
 in order, which meant a learner had to scroll to discover that a Topic even had
 Subtopics, and which forced a fixed `SubtopicItemOffset`: everything above the
@@ -307,12 +307,20 @@ The selected tab is marked by a `primary` rule of Material's own
 carried that pill until P2, on the reasoning that "this is what you are
 looking at" should read the same everywhere; the reasoning was right about
 the fact and wrong about the level, and `TopicDetailScreen` records why area
-navigation and a page control are not peers. The tab draws the rule itself
-rather than through `PrimaryTabRow`'s indicator slot, which is measured and
-placed after the tabs and so would sit on top of the label it marks; with no
-pill, the tab keeps Material's full-cell hover, focus, and press layer, which
-is what makes the whole cell visibly the target on the pointer hosts where
-hover is a resting state rather than a flash. The pager's fling is pinned to
+navigation and a page control are not peers. The rule is drawn once, in the
+row's indicator slot, and positioned in layout straight from the pager's
+continuous position, interpolating its start and end edges between the tabs'
+own positions — so a half-finished swipe leaves it between two tabs and
+changing width between them. With no pill, each tab keeps Material's full-cell
+hover, focus, and press layer, which is what makes the whole cell visibly the
+target on the pointer hosts where hover is a resting state rather than a flash.
+
+The row is content-sized so that a label keeps its own width at a large type
+size rather than breaking inside a word to fit a third of a phone. Its tabs
+share one minimum, the largest that does not make the row wider than the
+window, so at an ordinary type size they are still three equal cells; the row
+scrolls only when the labels together are wider than the window, and Material
+scrolls the selected tab into view. The pager's fling is pinned to
 `PagerSnapDistance.atMost(1)` with a positional threshold below Compose's 0.5
 default, so a swipe commits to the neighbouring capability rather than depending
 on how hard it was thrown.

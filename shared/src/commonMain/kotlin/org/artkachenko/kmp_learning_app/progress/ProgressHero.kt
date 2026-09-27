@@ -42,6 +42,7 @@ import org.artkachenko.kmp_learning_app.ui.AccuracyRingTrackAlpha
 import org.artkachenko.kmp_learning_app.ui.CountedFigure
 import org.artkachenko.kmp_learning_app.ui.MetricRow
 import org.artkachenko.kmp_learning_app.ui.ProgressMeter
+import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppElevation
@@ -259,24 +260,33 @@ private fun HeroCoverage(
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
     ) {
         val percentage = coverage.percentage
-        Row(
+        // `TrailingFigureRow` rather than a `SpaceBetween` row, for the reason `MetricRow` above
+        // it now uses one: the title took the whole line at a doubled type size and left the
+        // percentage measuring against nothing, so "29.2%" was drawn one character per line. The
+        // `figure` slot composes nothing when there is no percentage, which is the case that slot
+        // already answers — the title then takes the row exactly as it did.
+        TrailingFigureRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(Res.string.progress_coverage_title),
-                style = MaterialTheme.typography.labelLarge,
-                color = onHeroMuted,
-            )
-            percentage?.let {
+            figure = {
+                percentage?.let {
+                    // End-aligned so the figure keeps the right-hand column when it drops.
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = formatAccuracy(it),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = onHero,
+                        )
+                    }
+                }
+            },
+            text = {
                 Text(
-                    text = formatAccuracy(it),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = onHero,
+                    text = stringResource(Res.string.progress_coverage_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = onHeroMuted,
                 )
-            }
-        }
+            },
+        )
         if (percentage == null) {
             // 0/0 is "nothing to cover", not 0% covered, so say that rather than draw an empty bar.
             Text(

@@ -489,7 +489,17 @@ visual consolidation audit, do `PerformanceCard` and `AccuracyRow` — the two s
 this shape to the Progress dashboard, the per-Topic screen, and a Mixed interview's breakdown, and
 that had the same defect in the same form ("Structured concurren / cy").
 
-Two rules for the trailing slot, learned from those four callers:
+Since the final visual QA pass, so do the three that had it in its other form. A label-beside-value
+row written as `Arrangement.SpaceBetween` with two unweighted children is the same shape and fails
+the same way from the other end: the *label* takes the whole line and the **figure** is the thing
+broken inside itself. `MetricRow` drew "140" as three stacked digits and the Progress hero's
+coverage title drew "29.2%" as a vertical column; the Mixed Interview record's heading drew
+"4 completed" one character per line. So a reading of the form "label, then figure" takes
+`TrailingFigureRow` rather than `SpaceBetween` — the rendered position is the same, because
+`SpaceBetween` with two children also pins the second to the trailing edge, and the difference is
+only that one of them measures first.
+
+Two rules for the trailing slot, learned from those callers:
 
 - **A fixed glyph does not take part.** The navigation chevron costs the same 20dp at every type
   scale, so it cannot cause the squeeze and stays outside the `TrailingFigureRow` as a sibling in

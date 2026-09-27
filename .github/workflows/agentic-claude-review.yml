@@ -168,4 +168,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ inputs.pr_number }}
-        run: gh pr comment "$PR_NUMBER" --body-file .agent-work/review-comment.md
+        run: gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body-file .agent-work/review-comment.md

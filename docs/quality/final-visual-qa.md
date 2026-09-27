@@ -140,7 +140,17 @@ Protected by `theProgressHeroKeepsItsFiguresOnOneLineAtADoubledTypeSize` in
 property it asserts is a shape rather than a measurement against a font: a figure broken one
 character per line is far taller than it is wide, and an intact one is not. Confirmed
 against the previous implementation, where it fails with *"the hero's coverage percentage is
-3.0x39.0px, taller than it is wide"*.
+3.0x240.0px, taller than it is wide"*.
+
+That test was corrected once after it was first written, and the correction is worth
+recording because it is a trap this harness invites. It originally rendered in the file's
+360x640dp window, where at a doubled type size the coverage percentage sits *just* below the
+fold — so `assertIsDisplayed` inside the assertion depended on the host's font metrics, and
+the test passed on macOS and failed on CI with *"'29.2%' is not displayed"*. The defect is
+horizontal, so the narrow 360dp measure is the part that matters and is unchanged; the
+height was never part of the subject. It now renders in a window tall enough to hold the
+whole hero, which also makes its failure against the defect the honest one — the full
+3x240px stacked column rather than a visibility accident.
 
 ---
 

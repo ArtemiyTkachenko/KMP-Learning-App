@@ -430,13 +430,22 @@ internal class LargeFontScaleTest {
      * The assertion is that each figure still reads as a line of text rather than as a stack of
      * characters, which is a property of the layout and not of the host's font metrics: a figure
      * broken one character per line is far taller than it is wide, and an intact one is not.
+     *
+     * The window is [PhoneWidth] wide and [TallPhoneHeight] tall rather than the [PhoneHeight] the
+     * rest of this file uses. The defect is horizontal — a figure squeezed below its own width —
+     * so the narrow measure is the part that matters and is unchanged; the height only decides how
+     * much of the hero is on screen. At this type size the hero is about two phone screens tall, so
+     * on a 640dp window the coverage percentage sits just below the fold, and whether it lands
+     * inside or outside depends on the host's font metrics. This test first passed on one platform
+     * and failed on another for exactly that reason, which was the test measuring the window rather
+     * than the layout.
      */
     @Test
     fun theProgressHeroKeepsItsFiguresOnOneLineAtADoubledTypeSize() =
-        runSkikoComposeUiTest(size = PhoneDisplay, density = DoubledText) {
+        runSkikoComposeUiTest(size = TallPhoneDisplay, density = DoubledText) {
             setContent {
                 AppTheme {
-                    Box(Modifier.size(PhoneWidth, PhoneHeight).testTag(TestRootTag)) {
+                    Box(Modifier.size(PhoneWidth, TallPhoneHeight).testTag(TestRootTag)) {
                         ProgressScreen(heroFigureState(), {}, {}, {}, {}, { _, _ -> }, {}, {})
                     }
                 }
@@ -680,6 +689,15 @@ private fun dashboardState() = ProgressUiState.Content(
     topics = listOf(ProgressTopicUiModel("a", "Kotlin", 20, 14, 70.0)),
     history = emptyList(),
 )
+
+/**
+ * The same narrow phone, tall enough to hold a whole surface at a doubled type size.
+ *
+ * For a test whose subject is how wide something is measured, not how much of it is on screen. The
+ * width is deliberately still [PhoneWidth]: that is the constraint under test.
+ */
+private val TallPhoneHeight = 1600.dp
+private val TallPhoneDisplay = Size(PhoneWidth.value, TallPhoneHeight.value)
 
 /** Density 1 and the ordinary type scale, so the two halves of the tab test differ in one thing. */
 private val OrdinaryText = Density(density = 1f, fontScale = 1f)

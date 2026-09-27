@@ -127,12 +127,22 @@ one whose fix best describes the rewrite.
 | `LC-TONE` | Unnecessarily preachy or prescriptive wording, or an absolute not justified by the technical contract. |
 | `LC-CLARITY` | Technically correct but cryptic, underspecified, or unnecessarily hard to follow — including brevity that depends on omitted reasoning. |
 | `LC-VERBOSE` | Redundant or meta prose that can be shortened without losing technical substance. |
+| `LC-PROJECT` | Learner-facing content that depends on, or reports facts about, this repository's or product's implementation (Rule 11): its real classes, modules, package structure, file counts, KDoc, dependency setup, object graph or current source-tree state used as evidence, statements about what the codebase "currently" does, and results attributed to this build rather than to a named version. *Added after the audit; used for findings filed from then on.* |
+
+`LC-PROJECT` and `LC-META` split on what the prose exposes. `LC-PROJECT` is about the
+**software** the curriculum ships inside — a sentence a learner could only verify by
+reading this repository. `LC-META` is about the **curriculum itself** — how the course is
+divided, ordered, owned, authored or maintained. A sentence reporting this app's Koin
+modules is `LC-PROJECT`; a sentence saying another Unit owns Koin scopes is `LC-META`; a
+sentence exposing a curriculum ID or backlog key remains `LC-LEAK`.
 
 Two application notes. **Rule 11 problems** — Lessons that use this learning application's
-own types, module names, counts or KDoc as evidence — have no category of their own; they
-are filed as `LC-META` (authoring material exposed to the learner), except where they
-materially obstruct understanding, when they are filed as `LC-CLARITY`. A dedicated category
-is proposed under [Authoring-contract follow-ups](#authoring-contract-follow-ups).
+own types, module names, counts or KDoc as evidence — had no category of their own during
+this audit; they were filed as `LC-META` (authoring material exposed to the learner),
+except where they materially obstruct understanding, when they were filed as `LC-CLARITY`.
+Those historical findings keep their original category and number; `LC-PROJECT` applies to
+findings filed after it was added (see
+[Authoring-contract follow-ups](#authoring-contract-follow-ups)).
 **Leaks** get one finding per Lesson; every leaked identifier is listed individually in the
 [inventory](#internal-identifier-inventory).
 
@@ -2415,6 +2425,24 @@ verbatim. It is **not sufficient** in six places, and a targeted revision is rec
 A smaller audit-framework follow-up: add a category for Rule 11 problems (for example
 `LC-PROJECT`), which this pass had to file under `LC-META`, and note in the voice section
 that the reader should not be referred to in the third person ("the learner", "the reader").
+
+**Status (2026-09-27): incorporated.** All six follow-ups and the third-person voice note
+are now in [`docs/content/learning-content-authoring.md`](../content/learning-content-authoring.md),
+integrated into the existing rules rather than appended:
+
+| Follow-up | Where it now lives |
+| --- | --- |
+| 1. Example vs report | Rule 11 — invented example identities, no repository facts as evidence, no "currently" statements about this repository's implementation outside versioned API contracts |
+| 2. Summaries | Rule 12 — *Summaries state the idea* |
+| 3. Nonexistent material | Rule 12 — cross-references resolve to shipped Units and Lessons; "curriculum" kept out of Lesson prose |
+| 4. Author-process narration | Rule 12 — results stated, verification and maintenance instructions omitted |
+| 5. Comments and table cells | Purpose and Scope — learner-facing text defined to include titles, summaries, callouts, table headers and cells, and code comments |
+| 6. Titles as references | Rule 12 and the Lesson checklist — titles distinct enough to cite unambiguously |
+| Third-person voice | Rule 7 — *Voice* |
+
+`LC-PROJECT` was added to [Categories](#categories) for future findings; existing findings
+keep their category and number. No production curriculum content changed, and the
+rewrite batching order above is unchanged. This satisfies the prerequisite for Batch 3.
 
 ## Rewrite Workflow
 

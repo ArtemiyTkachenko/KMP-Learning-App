@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Print bounded diagnostics from a failed Claude Code execution file."""
+"""Print bounded diagnostics from a failed Claude Code Action step."""
 
 import json
 import os
@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 
 path = os.environ.get("CLAUDE_EXECUTION_FILE", "").strip()
+configured_max_turns = os.environ.get("CLAUDE_CONFIGURED_MAX_TURNS", "").strip()
+
 if not path:
     print("Claude action failed without exposing an execution_file output.", file=sys.stderr)
     sys.exit(1)
@@ -32,11 +34,13 @@ if not results:
     sys.exit(1)
 
 result = results[-1]
-print("Claude provider diagnostic:")
+print("Claude execution diagnostic:")
 for key in (
     "subtype",
     "is_error",
     "api_error_status",
+    "terminal_reason",
+    "stop_reason",
     "num_turns",
     "total_cost_usd",
     "permission_denials_count",
@@ -59,9 +63,40 @@ message = result.get("result")
 if isinstance(message, str) and message.strip():
     print("  untrusted_result_excerpt:", redact(message.strip()))
 
-print(
-    "Claude failed before returning the required structured output. "
-    "Use api_error_status and the excerpt above to diagnose the provider/account failure.",
-    file=sys.stderr,
-)
+is_error = bool(result.get("is_error"))
+api_status = result.get("api_error_status")
+num_turns = result.get("num_turns")
+
+if is_error:
+    if api_status is not None:
+        print(
+            "Claude itself reported an API/provider failure. "
+            "Use api_error_status and the error details above to diagnose it.",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            "Claude itself reported an execution failure. "
+            "Use the subtype, terminal reason, and errors above to diagnose it.",
+            file=sys.stderr,
+        )
+else:
+    print(
+        "Claude itself reported success. The GitHub Action wrapper failed after model "
+        "completion; inspect the action error immediately above this diagnostic.",
+        file=sys.stderr,
+    )
+    if configured_max_turns and isinstance(num_turns, int):
+        try:
+            maximum = int(configured_max_turns)
+        except ValueError:
+            maximum = None
+        if maximum is not None and num_turns > maximum:
+            print(
+                "This matches anthropics/claude-code-action#1795: the action currently "
+                "compares result.num_turns (inflated by tool-result messages) with "
+                "--max-turns (agentic API rounds), which can falsely reject a successful run.",
+                file=sys.stderr,
+            )
+
 sys.exit(1)

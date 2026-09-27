@@ -87,6 +87,10 @@ import org.artkachenko.kmp_learning_app.assessment_review.tagLabel
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ProgressMeter
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
+import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.ScreenError
@@ -139,54 +143,66 @@ internal fun AssessmentTakingScreen(
             )
         }
         AppScreenPane(AppContentWidth.Standard) {
-            when (state) {
-                AssessmentTakingUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.assessment_taking_loading),
-                    testTag = AssessmentTakingLoadingTag,
-                    modifier = Modifier.weight(1f),
-                )
-
-                AssessmentTakingUiState.NoQuestions -> ScreenMessage(
-                    message = stringResource(Res.string.assessment_taking_no_questions),
-                    modifier = Modifier.weight(1f),
-                )
-
-                AssessmentTakingUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.assessment_taking_start_error),
-                    onRetry = onRetry,
-                    modifier = Modifier.weight(1f),
-                )
-
-                is AssessmentTakingUiState.Content -> key(state.question.id) {
-                    QuestionContent(
-                        state = state,
-                        onAnswerClick = onAnswerClick,
-                        onSubmit = onSubmit,
-                        onNext = onNext,
-                        modifier = Modifier.weight(1f),
+            // Keyed on the state's class, which is what makes this safe on the one screen where
+            // the interaction *is* the product: moving from one question to the next stays inside
+            // `Content`, keeps the same key, and so runs no transition at all — the per-question
+            // swap is still `key(question.id)` below and the answer reveal is untouched. What does
+            // cross-fade is the screen becoming a different kind of thing: the questions arriving,
+            // the last answer giving way to the finish prompt, the finish handing over to results.
+            // The progress meter stays outside, pinned under the bar with the bar's own chrome.
+            ScreenStateTransition(state = state, modifier = Modifier.fillMaxSize()) { current ->
+                when (current) {
+                    AssessmentTakingUiState.Loading -> ScreenLoading(
+                        message = stringResource(Res.string.assessment_taking_loading),
+                        testTag = AssessmentTakingLoadingTag,
+                        modifier = Modifier.fillMaxSize(),
                     )
-                }
 
-                is AssessmentTakingUiState.ReadyToComplete -> ScreenStatus(Modifier.weight(1f)) {
-                    Text(text = stringResource(Res.string.assessment_taking_ready))
-                    if (state.completionFailed) {
-                        Text(
-                            text = stringResource(Res.string.assessment_taking_completion_save_error),
-                            color = MaterialTheme.colorScheme.error,
+                    AssessmentTakingUiState.NoQuestions -> ScreenMessage(
+                        message = stringResource(Res.string.assessment_taking_no_questions),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    AssessmentTakingUiState.Error -> ScreenError(
+                        message = stringResource(Res.string.assessment_taking_start_error),
+                        onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    is AssessmentTakingUiState.Content -> key(current.question.id) {
+                        QuestionContent(
+                            state = current,
+                            onAnswerClick = onAnswerClick,
+                            onSubmit = onSubmit,
+                            onNext = onNext,
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
-                    // `ScreenStatus` already spaces what it holds; the two extra top paddings here
-                    // were adding a second gap on top of that one.
-                    FinishAction(
-                        isCompleting = state.isCompleting,
-                        onComplete = onComplete,
+
+                    is AssessmentTakingUiState.ReadyToComplete ->
+                        ScreenStatus(Modifier.fillMaxSize()) {
+                            Text(text = stringResource(Res.string.assessment_taking_ready))
+                            if (current.completionFailed) {
+                                Text(
+                                    text = stringResource(
+                                        Res.string.assessment_taking_completion_save_error,
+                                    ),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
+                            // `ScreenStatus` already spaces what it holds; the two extra top
+                            // paddings here were adding a second gap on top of that one.
+                            FinishAction(
+                                isCompleting = current.isCompleting,
+                                onComplete = onComplete,
+                            )
+                        }
+
+                    is AssessmentTakingUiState.CompletionSucceeded -> ScreenMessage(
+                        message = stringResource(Res.string.assessment_taking_results_opening),
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
-
-                is AssessmentTakingUiState.CompletionSucceeded -> ScreenMessage(
-                    message = stringResource(Res.string.assessment_taking_results_opening),
-                    modifier = Modifier.weight(1f),
-                )
             }
         }
     }
@@ -270,8 +286,8 @@ private fun FinishAction(isCompleting: Boolean, onComplete: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (completing) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(FinishProgressSize),
-                        strokeWidth = FinishProgressStroke,
+                        modifier = Modifier.size(AppIconSize.Action),
+                        strokeWidth = AppStroke.Indicator,
                     )
                     Text(
                         text = stringResource(Res.string.assessment_taking_finishing),
@@ -285,9 +301,6 @@ private fun FinishAction(isCompleting: Boolean, onComplete: () -> Unit) {
     }
 }
 
-/** The leading-icon size Material gives a text button, as every other busy control here uses. */
-private val FinishProgressSize = 18.dp
-private val FinishProgressStroke = 2.dp
 
 @Composable
 private fun QuestionContent(
@@ -526,7 +539,7 @@ private fun AnswerRow(
     val borderWidth by transition.animateDp(
         transitionSpec = { AppMotion.spatialSpec() },
         label = "answerBorderWidth",
-    ) { if (it == AnswerVisualState.Resting) UnselectedBorderWidth else SelectedBorderWidth }
+    ) { if (it == AnswerVisualState.Resting) AppStroke.Hairline else AppStroke.Emphasis }
     // A marked row states its outcome in words and colour of its own, so the answer text returns to
     // the ordinary reading colour once the row is a result rather than a choice.
     val textColor by transition.animateColor(
@@ -576,7 +589,7 @@ private fun AnswerRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = AnswerRowMinHeight)
+                .heightIn(min = AppMinimumTouchTarget)
                 .padding(AppSpacing.Grouped),
             verticalAlignment = Alignment.Top,
         ) {
@@ -740,11 +753,6 @@ private const val PressedScale = 0.98f
 
 /** The badge settles in from just under its size; a larger start would read as a pop. */
 private const val VerdictInitialScale = 0.94f
-
-private val SelectedBorderWidth = 2.dp
-private val UnselectedBorderWidth = 1.dp
-
-private val AnswerRowMinHeight = 48.dp
 
 /** Matches the line height of [MaterialTheme.typography] bodyLarge so the control aligns to the
  *  first line of a wrapping answer rather than to the middle of the block. */

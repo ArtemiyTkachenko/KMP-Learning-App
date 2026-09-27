@@ -2,7 +2,6 @@ package org.artkachenko.kmp_learning_app.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentScope
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -57,19 +56,7 @@ internal fun <S : Any> ScreenStateTransition(
         targetState = state,
         modifier = modifier,
         contentKey = contentKey,
-        transitionSpec = {
-            fadeIn(
-                tween(
-                    durationMillis = AppMotion.StateChangeDurationMillis,
-                    easing = AppMotion.EmphasizedDecelerateEasing,
-                ),
-            ) togetherWith fadeOut(
-                tween(
-                    durationMillis = AppMotion.StateChangeDurationMillis / 2,
-                    easing = AppMotion.EmphasizedAccelerateEasing,
-                ),
-            )
-        },
+        transitionSpec = { fadeIn(AppMotion.arriveSpec()) togetherWith fadeOut(AppMotion.departSpec()) },
         label = "screenState",
         content = content,
     )

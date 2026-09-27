@@ -75,8 +75,10 @@ import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
 import org.artkachenko.kmp_learning_app.ui.ContentGroup
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentPane
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.AppElevation
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
@@ -248,8 +250,8 @@ private fun InterviewHero(onStartMixedInterview: () -> Unit) {
         // The edge carries the separation in dark, where one tonal step is not enough and a shadow
         // is almost invisible; the shadow carries it in light, where the pale sweep sits close in
         // value to the page. Neither alone works in both schemes.
-        border = BorderStroke(HeroBorderWidth, onHero.copy(alpha = HeroBorderAlpha)),
-        shadowElevation = HeroElevation,
+        border = BorderStroke(AppStroke.Hairline, onHero.copy(alpha = HeroBorderAlpha)),
+        shadowElevation = AppElevation.Hero,
     ) {
         AnimatedVisibility(
             visibleState = entrance,
@@ -634,8 +636,6 @@ private const val SupportingTextAlpha = 0.8f
 /** An edge, not an outline: visible where the gradient meets the page and nowhere else. */
 private const val HeroBorderAlpha = 0.14f
 
-private val HeroBorderWidth = 1.dp
-private val HeroElevation = 2.dp
 
 /**
  * The hero rises by a fraction of its own height, so the distance suits the surface rather than

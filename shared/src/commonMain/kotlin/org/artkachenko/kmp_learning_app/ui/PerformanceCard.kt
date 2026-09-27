@@ -20,8 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
+import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 
 /**
@@ -89,7 +91,7 @@ internal fun PerformanceCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         ),
-        border = if (isWeak) BorderStroke(WeakBorderWidth, semantic.partiallyCorrect) else null,
+        border = if (isWeak) BorderStroke(AppStroke.Hairline, semantic.partiallyCorrect) else null,
     ) {
         val meter = percentage.takeIf { comparesWithSiblings }
         Row(
@@ -112,59 +114,60 @@ internal fun PerformanceCard(
             horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(
+            // The figure is measured against the title rather than taking its width first. See
+            // [TrailingFigureRow]: past the type scale at which wrapping is no longer enough, the
+            // figure drops below the title instead of breaking it inside a word.
+            TrailingFigureRow(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+                figure = { AccuracyFigure(percentage) },
             ) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                subtitle?.let {
+                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
                     Text(
-                        it,
+                        title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    subtitle?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        detail,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-                Text(
-                    detail,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                caption?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                // Only where the badge adds something the container does not already say. A list
-                // whose heading is "Weak areas" passes null: repeating the heading on every card in
-                // it is noise, not a second signal.
-                if (isWeak && weakLabel != null) {
-                    StatusBadge(
-                        text = weakLabel,
-                        contentColor = semantic.onPartiallyCorrectContainer,
-                        containerColor = semantic.partiallyCorrectContainer,
-                        icon = AppIcons.Warning,
-                    )
+                    caption?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    // Only where the badge adds something the container does not already say. A
+                    // list whose heading is "Weak areas" passes null: repeating the heading on
+                    // every card in it is noise, not a second signal.
+                    if (isWeak && weakLabel != null) {
+                        StatusBadge(
+                            text = weakLabel,
+                            contentColor = semantic.onPartiallyCorrectContainer,
+                            containerColor = semantic.partiallyCorrectContainer,
+                            icon = AppIcons.Warning,
+                        )
+                    }
                 }
             }
-            percentage?.let {
-                Text(
-                    text = formatAccuracy(it),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = accuracyColor(it),
-                )
-            }
+            // Outside the reflow, because it is not a figure and does not grow with the type scale:
+            // a fixed glyph costs the same 20dp at every setting, and a navigation affordance that
+            // dropped below the title would stop marking the row as one that travels.
             if (onClick != null) {
                 Icon(
                     imageVector = AppIcons.ChevronRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(AppIconSize.Row),
                 )
             }
         }
@@ -245,57 +248,70 @@ internal fun AccuracyRow(
                     Modifier.clickable(role = Role.Button, onClick = onClick)
                 },
             )
-            .heightIn(min = MinimumTouchTargetSize)
+            .heightIn(min = AppMinimumTouchTarget)
             .padding(GroupRowPadding)
             .semantics(mergeDescendants = true) {},
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
+        // The same reflow the card above uses, for the same reason and with the same division of
+        // labour: the figure is measured against the title, the chevron is not.
+        TrailingFigureRow(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
+            figure = { AccuracyFigure(percentage) },
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = detail,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            caption?.let {
+            Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
                 Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                caption?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-        }
-        percentage?.let {
-            Text(
-                text = formatAccuracy(it),
-                style = MaterialTheme.typography.titleLarge,
-                color = accuracyColor(it),
-            )
         }
         if (onClick != null) {
             Icon(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(NavigationChevronSize),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
 }
 
-/** Material's minimum touch target, stated here because a bare row is not a Material component. */
-private val MinimumTouchTargetSize = 48.dp
-
-/** The trailing navigation affordance, at the size every other row in the app draws it. */
-private val NavigationChevronSize = 20.dp
-
-/** Thick enough to read as a deliberate accent at a glance, thin enough not to become a frame. */
-private val WeakBorderWidth = 1.dp
+/**
+ * The accuracy figure both rows put at their trailing edge.
+ *
+ * Emits nothing at `null`, which is a scope with no recorded answer rather than one that scored
+ * zero — and which also means [TrailingFigureRow] has no reflow question to ask on such a row.
+ *
+ * End-aligned inside its own column, which is invisible until the row reflows and is the whole
+ * point once it does. Measured beside the title the column is exactly its content width, so the
+ * alignment changes nothing; measured below it the column spans the row, and the alignment is what
+ * keeps the figure in the right-hand column it was already in rather than letting it jump to the
+ * leading edge and read as one more line of the text above it. This is the convention the Topic
+ * rows already follow.
+ */
+@Composable
+private fun AccuracyFigure(percentage: Double?) {
+    if (percentage == null) return
+    Column(horizontalAlignment = Alignment.End) {
+        Text(
+            text = formatAccuracy(percentage),
+            style = MaterialTheme.typography.titleLarge,
+            color = accuracyColor(percentage),
+        )
+    }
+}

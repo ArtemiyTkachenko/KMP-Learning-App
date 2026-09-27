@@ -21,7 +21,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.theme.AppElevation
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 
 /**
  * The one surface on a screen whose subject is an accuracy.
@@ -76,8 +78,8 @@ internal fun AccuracyHeroCard(
         modifier = modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        border = BorderStroke(HeroBorderWidth, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = HeroElevation,
+        border = BorderStroke(AppStroke.Hairline, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = AppElevation.Hero,
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(AppSpacing.Generous),
@@ -134,9 +136,6 @@ internal fun AccuracyHeroCard(
     }
 }
 
-/** The edge and the lift that make a hero outrank the cards under it; see [AccuracyHeroCard]. */
-private val HeroBorderWidth = 1.dp
-private val HeroElevation = 2.dp
 
 /**
  * Supporting summary content: the same shape language as [AccuracyHeroCard], two tonal steps

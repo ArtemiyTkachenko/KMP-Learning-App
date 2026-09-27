@@ -93,6 +93,7 @@ import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.ContentGroup
 import org.artkachenko.kmp_learning_app.ui.GroupRowPadding
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
@@ -102,6 +103,8 @@ import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.TopicVisualMarker
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
+import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppListBottomPadding
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
@@ -213,64 +216,77 @@ internal fun TopicBrowserScreen(
                 .padding(horizontal = LocalAppContentMargin.current)
                 .testTag(TopicBrowserViewportTag),
         ) {
-            when (state) {
-                TopicBrowserUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.topic_browser_loading),
-                    testTag = TopicBrowserLoadingTag,
-                )
-                is TopicBrowserUiState.Content -> when {
-                    state.query.isBlank() -> TopicList(
-                        topics = state.topics,
-                        onTopicClick = onTopicClick,
-                        // Absent unless the state carries them, which it never does while a query
-                        // is active: both cards belong to browsing, not to search results.
-                        recommendedNext = state.recommendedNext,
-                        onRecommendedNextClick = onRecommendedNextClick,
-                        continueStudying = state.continueStudying,
-                        onContinueStudyingClick = onContinueStudyingClick,
-                        continueLearning = state.continueLearning,
-                        onContinueLearningClick = onContinueLearningClick,
-                        onSavedQuestionsClick = onSavedQuestionsClick,
-                        listState = browseListState,
+            // Keyed on which *body* the viewport holds, not on the state class. This screen is the
+            // one place where the class is the wrong grain: `Content` covers three unrelated
+            // bodies, and a learner typing into the field crosses between them. Browsing becoming
+            // searching is one thing becoming another and fades; everything that happens *while*
+            // searching — a result set narrowing, matches running out, matches coming back — snaps,
+            // because those track the keystroke and a body that faded on every character would lag
+            // behind the typing rather than follow it.
+            ScreenStateTransition(
+                state = state,
+                modifier = Modifier.fillMaxSize(),
+                contentKey = TopicBrowserUiState::viewportBody,
+            ) { current ->
+                when (current) {
+                    TopicBrowserUiState.Loading -> ScreenLoading(
+                        message = stringResource(Res.string.topic_browser_loading),
+                        testTag = TopicBrowserLoadingTag,
                     )
-                    // The query stays in the field and is quoted back in the message, so the
-                    // learner can see exactly what was searched for and correct a typo without
-                    // retyping. The button clears it rather than suggesting something else to
-                    // look at: this screen searches the catalogue it is showing, and an empty
-                    // result means that catalogue does not hold the word — not that the app
-                    // should start guessing what was meant.
-                    state.topicMatches.isEmpty() && state.subtopicMatches.isEmpty() -> {
-                        ScreenAction(
-                            message = stringResource(
-                                Res.string.topic_browser_search_no_results,
-                                state.query.trim(),
-                            ),
-                            detail = stringResource(
-                                Res.string.topic_browser_search_no_results_detail,
-                            ),
-                            actionLabel = stringResource(
-                                Res.string.topic_browser_search_clear,
-                            ),
-                            onAction = { onSearchQueryChange("") },
-                            icon = AppIcons.Search,
-                            modifier = Modifier.testTag(TopicBrowserNoResultsTag),
+                    is TopicBrowserUiState.Content -> when {
+                        current.query.isBlank() -> TopicList(
+                            topics = current.topics,
+                            onTopicClick = onTopicClick,
+                            // Absent unless the state carries them, which it never does while a
+                            // query is active: both cards belong to browsing, not to search results.
+                            recommendedNext = current.recommendedNext,
+                            onRecommendedNextClick = onRecommendedNextClick,
+                            continueStudying = current.continueStudying,
+                            onContinueStudyingClick = onContinueStudyingClick,
+                            continueLearning = current.continueLearning,
+                            onContinueLearningClick = onContinueLearningClick,
+                            onSavedQuestionsClick = onSavedQuestionsClick,
+                            listState = browseListState,
+                        )
+                        // The query stays in the field and is quoted back in the message, so the
+                        // learner can see exactly what was searched for and correct a typo without
+                        // retyping. The button clears it rather than suggesting something else to
+                        // look at: this screen searches the catalogue it is showing, and an empty
+                        // result means that catalogue does not hold the word — not that the app
+                        // should start guessing what was meant.
+                        current.topicMatches.isEmpty() && current.subtopicMatches.isEmpty() -> {
+                            ScreenAction(
+                                message = stringResource(
+                                    Res.string.topic_browser_search_no_results,
+                                    current.query.trim(),
+                                ),
+                                detail = stringResource(
+                                    Res.string.topic_browser_search_no_results_detail,
+                                ),
+                                actionLabel = stringResource(
+                                    Res.string.topic_browser_search_clear,
+                                ),
+                                onAction = { onSearchQueryChange("") },
+                                icon = AppIcons.Search,
+                                modifier = Modifier.testTag(TopicBrowserNoResultsTag),
+                            )
+                        }
+                        else -> TopicSearchResults(
+                            topicMatches = current.topicMatches,
+                            subtopicMatches = current.subtopicMatches,
+                            onTopicClick = onTopicClick,
+                            onSubtopicClick = onSubtopicClick,
+                            listState = resultsListState,
                         )
                     }
-                    else -> TopicSearchResults(
-                        topicMatches = state.topicMatches,
-                        subtopicMatches = state.subtopicMatches,
-                        onTopicClick = onTopicClick,
-                        onSubtopicClick = onSubtopicClick,
-                        listState = resultsListState,
+                    TopicBrowserUiState.Empty -> ScreenMessage(
+                        message = stringResource(Res.string.topic_browser_empty),
+                    )
+                    TopicBrowserUiState.Error -> ScreenError(
+                        message = stringResource(Res.string.topic_browser_error),
+                        onRetry = onRetry,
                     )
                 }
-                TopicBrowserUiState.Empty -> ScreenMessage(
-                    message = stringResource(Res.string.topic_browser_empty),
-                )
-                TopicBrowserUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.topic_browser_error),
-                    onRetry = onRetry,
-                )
             }
         }
     }
@@ -512,6 +528,26 @@ private fun hasDerivedGuidance(
     continueLearning: ContinueLearningUiModel?,
 ): Boolean = recommendedNext != null || continueStudying != null || continueLearning != null
 
+/**
+ * What the viewport is showing, which is what a transition between bodies has to be keyed on.
+ *
+ * Every other screen keys its state transition on the state's class, because there a class *is* a
+ * body. Here `TopicBrowserUiState.Content` holds three: the browse list with its guided-learning
+ * cards, the no-match message, and the search results. Naming the five bodies keeps the key from
+ * being an inscrutable boolean and makes the grouping reviewable — `Searching` deliberately covers
+ * both the results list and the no-match message, so running out of matches and finding them again
+ * is one body changing its contents rather than one body becoming another.
+ */
+private enum class TopicBrowserBody { Loading, Browsing, Searching, Empty, Error }
+
+private fun TopicBrowserUiState.viewportBody(): TopicBrowserBody = when (this) {
+    TopicBrowserUiState.Loading -> TopicBrowserBody.Loading
+    TopicBrowserUiState.Empty -> TopicBrowserBody.Empty
+    TopicBrowserUiState.Error -> TopicBrowserBody.Error
+    is TopicBrowserUiState.Content ->
+        if (query.isBlank()) TopicBrowserBody.Browsing else TopicBrowserBody.Searching
+}
+
 /** The same question asked of the whole state, for the pane width the screen chooses up front. */
 private fun TopicBrowserUiState.usesGuidancePane(): Boolean {
     val content = this as? TopicBrowserUiState.Content ?: return false
@@ -657,7 +693,7 @@ private fun SavedQuestionsEntry(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(NavigationChevronSize),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -795,7 +831,7 @@ private fun GuidanceRow(
         modifier = modifier
             .fillMaxWidth()
             .then(if (onClick == null) Modifier else Modifier.clickable(role = Role.Button, onClick = onClick))
-            .heightIn(min = MinimumTouchTargetSize)
+            .heightIn(min = AppMinimumTouchTarget)
             .padding(GroupRowPadding),
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
         verticalAlignment = Alignment.CenterVertically,
@@ -831,7 +867,7 @@ private fun GuidanceRow(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(NavigationChevronSize),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -896,7 +932,7 @@ private fun RecommendedNextCard(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -1222,7 +1258,7 @@ private fun SubtopicResultRow(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -1283,9 +1319,3 @@ private fun TopicBrowserScreenPreview() {
         )
     }
 }
-
-/** Material's minimum touch target, stated here because a group row is not a Material component. */
-private val MinimumTouchTargetSize = 48.dp
-
-/** The trailing navigation affordance, at the size every other row in the app draws it. */
-private val NavigationChevronSize = 20.dp

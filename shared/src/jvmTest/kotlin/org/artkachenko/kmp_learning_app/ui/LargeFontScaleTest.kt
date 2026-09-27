@@ -1,6 +1,9 @@
 package org.artkachenko.kmp_learning_app.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.CompositionLocalProvider
@@ -27,6 +30,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.AssessmentRetakeWordin
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewAnswerUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
+import org.artkachenko.kmp_learning_app.assessment_review.ReviewSourceUiModel
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.progress.ProgressActionPaneTag
@@ -36,6 +40,13 @@ import org.artkachenko.kmp_learning_app.progress.ProgressScreen
 import org.artkachenko.kmp_learning_app.progress.ProgressStandingPaneTag
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicUiModel
 import org.artkachenko.kmp_learning_app.progress.ProgressUiState
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionAnswerUiModel
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionContentUiModel
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionItem
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsScreen
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsUiState
+import org.artkachenko.kmp_learning_app.saved_questions.savedQuestionRemoveTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeAvailability
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderContentTag
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderScreen
@@ -46,6 +57,7 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeSco
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeSourceOption
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.SubtopicPracticeItem
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsPage
+import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
@@ -299,6 +311,170 @@ internal class LargeFontScaleTest {
             onNodeWithText("Practice 4 mistakes").assertWithin(windowWidth)
             onNodeWithTag(HeroRetakeTag).assertIsDisplayed().assertWithin(windowWidth)
         }
+    /**
+     * A saved Question's text stays whole at this type size, because its bookmark gets out of the way.
+     *
+     * The card header is the same shape as a Subtopic row — a weighted text column beside a
+     * non-weighted trailing control — and it acquired the same problem when the bare "Remove" text
+     * button became the shared bookmark affordance, which carries an icon and a word and so is
+     * wider. A plain `Row` measures the non-weighted child first, leaving a long question with less
+     * width than its own longest word and breaking it across a line *inside* that word.
+     * `TrailingFigureRow` is the rule this repository already has for that, and the header goes
+     * through it.
+     *
+     * The assertion is the decision rather than the appearance: the bookmark is below the question
+     * text rather than beside it. Nothing moves at an ordinary type size, which is what the other
+     * Saved Questions tests exercise.
+     */
+    @Test
+    fun theSavedQuestionBookmarkMovesBelowALongQuestionAtADoubledTypeSize() =
+        runSkikoComposeUiTest(size = PhoneDisplay, density = DoubledText) {
+            setContent {
+                AppTheme {
+                    Box(Modifier.size(PhoneWidth, PhoneHeight).testTag(TestRootTag)) {
+                        SavedQuestionsScreen(
+                            state = SavedQuestionsUiState.Content(
+                                listOf(
+                                    SavedQuestionItem.Available(
+                                        savedQuestion = SavedQuestion("q1", 100),
+                                        question = SavedQuestionContentUiModel(
+                                            questionId = "q1",
+                                            // The longest word is the whole point: it is what
+                                            // `minIntrinsicWidth` measures and what a squeezed
+                                            // column would break inside.
+                                            text = "What triggers recomposition?",
+                                            answers = listOf(
+                                                SavedQuestionAnswerUiModel(
+                                                    id = "q1_a",
+                                                    text = "State read in composition changes",
+                                                    isCorrectAnswer = true,
+                                                ),
+                                            ),
+                                            explanation = "Authored explanation",
+                                            sources = listOf(
+                                                ReviewSourceUiModel(
+                                                    "Source A",
+                                                    "https://example.com/a",
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ),
+                            onRetry = {},
+                            onBrowseTopics = {},
+                            onRemoveSaved = {},
+                            onSourceClick = {},
+                            modifier = Modifier.size(PhoneWidth, PhoneHeight),
+                        )
+                    }
+                }
+            }
+
+            val windowWidth = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.width
+            val text = onNodeWithText("What triggers recomposition?", useUnmergedTree = true)
+                .assertIsDisplayed()
+                .assertWithin(windowWidth)
+                .fetchSemanticsNode().boundsInRoot
+            val bookmark = onNodeWithTag(savedQuestionRemoveTag("q1"))
+                .assertIsDisplayed()
+                .assertWithin(windowWidth)
+                .fetchSemanticsNode().boundsInRoot
+
+            assertTrue(
+                bookmark.top >= text.bottom,
+                "The bookmark spans ${bookmark.top}..${bookmark.bottom} beside text ending at " +
+                    "${text.bottom}, so it is still squeezing the column the question wraps in.",
+            )
+        }
+
+    /**
+     * The two shared performance rows keep their title whole, because the accuracy figure drops.
+     *
+     * [PerformanceCard] and [AccuracyRow] are the same shape as a Subtopic row — a weighted text
+     * column beside a non-weighted figure — and carry it to the Progress dashboard, the per-Topic
+     * screen, and a Mixed interview's breakdown. Both measured the figure first, so at this type
+     * size the title was left with less width than its own longest word and broke across a line
+     * *inside* it: "Structured concurren / cy" on the card, "Structur / ed concu / rrency" on the
+     * row. Nothing overflowed, which is why `theDashboardKeepsItsFiguresInsideTheWindow` passed
+     * throughout — the text was being shredded inside the window rather than escaping it.
+     *
+     * Both now go through `TrailingFigureRow`, which drops the figure below the title exactly when
+     * that would happen. The chevron deliberately does not take part: it is a fixed glyph that
+     * costs the same width at every type scale, and a navigation affordance that moved below the
+     * title would stop marking the row as one that travels.
+     *
+     * The assertion is the decision rather than the appearance, as on the Subtopic row: the figure
+     * is below the title rather than beside it. Asserting that a title is not hyphenated would be
+     * asserting the host's font metrics. The components are rendered directly because the defect
+     * was theirs and they have several callers; nothing here is specific to one screen.
+     */
+    @Test
+    fun theSharedPerformanceRowsMoveTheirFigureBelowTheTitleAtADoubledTypeSize() =
+        runSkikoComposeUiTest(size = PhoneDisplay, density = DoubledText) {
+            setContent {
+                AppTheme {
+                    Box(Modifier.size(PhoneWidth, PhoneHeight).testTag(TestRootTag)) {
+                        Column(
+                            Modifier.size(PhoneWidth, PhoneHeight).padding(AppSpacing.Comfortable),
+                            verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+                        ) {
+                            PerformanceCard(
+                                // The longest word is the point: it is what `minIntrinsicWidth`
+                                // measures and what a squeezed column would break inside.
+                                title = "Structured concurrency",
+                                detail = "12 of 30 answered",
+                                percentage = 88.0,
+                                caption = "accuracy",
+                            )
+                            AccuracyRow(
+                                title = "Kotlin language fundamentals",
+                                detail = "40 of 120 answered",
+                                percentage = 72.0,
+                                onClick = {},
+                            )
+                        }
+                    }
+                }
+            }
+
+            val windowWidth = onNodeWithTag(TestRootTag).fetchSemanticsNode().boundsInRoot.width
+            // Both rows merge their descendants, so the labels themselves are what have to be
+            // compared rather than the merged node that answers for the whole row.
+            assertFigureBelowTitle(
+                title = onNodeWithText("Structured concurrency", useUnmergedTree = true)
+                    .assertIsDisplayed()
+                    .assertWithin(windowWidth),
+                figure = onNodeWithText("88%", useUnmergedTree = true)
+                    .assertIsDisplayed()
+                    .assertWithin(windowWidth),
+                subject = "The card's figure",
+            )
+            assertFigureBelowTitle(
+                title = onNodeWithText("Kotlin language fundamentals", useUnmergedTree = true)
+                    .assertIsDisplayed()
+                    .assertWithin(windowWidth),
+                figure = onNodeWithText("72%", useUnmergedTree = true)
+                    .assertIsDisplayed()
+                    .assertWithin(windowWidth),
+                subject = "The row's figure",
+            )
+        }
+}
+
+/** The one reflow decision both shared performance rows make, asserted the same way for each. */
+private fun assertFigureBelowTitle(
+    title: SemanticsNodeInteraction,
+    figure: SemanticsNodeInteraction,
+    subject: String,
+) {
+    val titleBounds = title.fetchSemanticsNode().boundsInRoot
+    val figureBounds = figure.fetchSemanticsNode().boundsInRoot
+    assertTrue(
+        figureBounds.top >= titleBounds.bottom,
+        "$subject spans ${figureBounds.top}..${figureBounds.bottom} beside a title ending at " +
+            "${titleBounds.bottom}, so it is still squeezing the column the title wraps in.",
+    )
 }
 
 private fun SemanticsNodeInteraction.assertWithin(windowWidth: Float): SemanticsNodeInteraction {

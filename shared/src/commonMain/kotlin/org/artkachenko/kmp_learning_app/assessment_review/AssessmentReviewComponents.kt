@@ -8,14 +8,11 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,11 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.semantics.toggleableState
-import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_collapse
 import kmp_learning_app.shared.generated.resources.assessment_review_expand
@@ -36,13 +28,8 @@ import kmp_learning_app.shared.generated.resources.assessment_review_missing_que
 import kmp_learning_app.shared.generated.resources.assessment_review_interview_complete
 import kmp_learning_app.shared.generated.resources.assessment_review_practice_complete
 import kmp_learning_app.shared.generated.resources.assessment_review_mistakes_retained
-import kmp_learning_app.shared.generated.resources.assessment_review_save_question
-import kmp_learning_app.shared.generated.resources.assessment_review_saved_state
-import kmp_learning_app.shared.generated.resources.assessment_review_unsaved_state
 import kmp_learning_app.shared.generated.resources.assessment_review_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_questions
-import kmp_learning_app.shared.generated.resources.assessment_review_unsave_question
-import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
@@ -182,7 +169,12 @@ internal fun ReviewQuestionCard(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 if (saveAction != null) {
-                    SaveQuestionAction(questionId = question.questionId, action = saveAction)
+                    QuestionBookmarkAction(
+                        isSaved = saveAction.isSaved,
+                        isPending = saveAction.isPending,
+                        onToggle = saveAction.onToggle,
+                        modifier = Modifier.testTag(reviewQuestionSaveTag(question.questionId)),
+                    )
                 }
             }
             QuestionOutcomeLabel(outcome = question.outcome(), statesOutcome = statesOutcome)
@@ -226,67 +218,6 @@ internal fun ReviewQuestionCard(
         }
     }
 }
-
-/**
- * The bookmark control: one affordance whose two states are distinguishable three ways over.
- *
- * It was a bare "Save"/"Unsave" text button, which is unambiguous but looks like a command rather
- * than a state and reads as a different control each time it is pressed. It is now the conventional
- * bookmark — a filled ribbon when the Question is saved, an outlined one when it is not — with the
- * word kept beside it, because an icon alone would leave the state readable only to someone who
- * knows which ribbon means which. Shape, fill, and the word all change together, so the state is
- * never carried by colour alone or by shape alone.
- *
- * The accessible reading is deliberately split across two properties. The visible label is the
- * *action* ("Save" / "Saved"), which is what Material's button semantics announce, and the current
- * value is published separately as `stateDescription` and as `toggleableState` — so a screen reader
- * says what is true now as well as what pressing it will do, which a label alone cannot express.
- *
- * Disabled only while this Question's own mutation is being persisted; the icon and label keep
- * showing the stored value throughout, so a pending save never draws as though it had been written.
- */
-@Composable
-private fun SaveQuestionAction(
-    questionId: String,
-    action: ReviewSaveAction,
-) {
-    val stateLabel = stringResource(
-        if (action.isSaved) {
-            Res.string.assessment_review_saved_state
-        } else {
-            Res.string.assessment_review_unsaved_state
-        },
-    )
-    TextButton(
-        onClick = action.onToggle,
-        enabled = !action.isPending,
-        modifier = Modifier
-            .testTag(reviewQuestionSaveTag(questionId))
-            .semantics {
-                stateDescription = stateLabel
-                toggleableState = ToggleableState(action.isSaved)
-            },
-    ) {
-        Icon(
-            imageVector = if (action.isSaved) AppIcons.Bookmark else AppIcons.BookmarkBorder,
-            contentDescription = null,
-            modifier = Modifier.size(SaveIconSize),
-        )
-        Text(
-            text = stringResource(
-                if (action.isSaved) {
-                    Res.string.assessment_review_unsave_question
-                } else {
-                    Res.string.assessment_review_save_question
-                },
-            ),
-            modifier = Modifier.padding(start = AppSpacing.Tight),
-        )
-    }
-}
-
-/** Matches the leading-icon size Material gives a text button. */
-private val SaveIconSize = 18.dp
 
 /**
  * The badge, unless the surface has already said it.

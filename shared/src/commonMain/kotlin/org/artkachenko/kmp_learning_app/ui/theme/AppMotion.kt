@@ -75,6 +75,35 @@ internal object AppMotion {
         tween(durationMillis = durationMillis, easing = EmphasizedEasing)
 
     /**
+     * One thing on screen becoming another: the arriving half.
+     *
+     * The app pairs a decelerating arrival with a faster accelerating departure, so what is coming
+     * settles into place while what is going gets out of the way. That pairing was written out
+     * longhand wherever it was needed — the screen-state cross-fade and the compact navigation
+     * bar's slide each spelled out the same two `tween`s — which agreed only because nobody had
+     * retuned one of them yet.
+     *
+     * Decelerating rather than emphasized because the content is arriving rather than travelling
+     * through, and the full [StateChangeDurationMillis] because arriving is the half the learner
+     * actually watches. Distinct from [revealSpec], which is longer: that is content appearing
+     * *underneath* something already being read, and this is one state replacing another.
+     */
+    fun <T> arriveSpec(): FiniteAnimationSpec<T> =
+        tween(durationMillis = StateChangeDurationMillis, easing = EmphasizedDecelerateEasing)
+
+    /**
+     * The departing half of the same pairing.
+     *
+     * Half the duration by default, and accelerating: the outgoing state should be gone before the
+     * incoming one has finished arriving, or the two are briefly legible at once and the change
+     * reads as a dissolve rather than as a replacement. [durationMillis] is open because a departure
+     * that *moves* rather than fades needs the full duration to clear its own travel — the
+     * navigation bar sliding off the bottom is the one case.
+     */
+    fun <T> departSpec(durationMillis: Int = StateChangeDurationMillis / 2): FiniteAnimationSpec<T> =
+        tween(durationMillis = durationMillis, easing = EmphasizedAccelerateEasing)
+
+    /**
      * Content entering the screen, optionally after [delayMillis].
      *
      * Decelerating rather than emphasized: this is content that was not there a moment ago, so it

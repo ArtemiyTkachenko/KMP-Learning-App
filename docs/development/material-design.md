@@ -49,10 +49,28 @@ Every scale already exists. Change the scale, never the call site.
 | Type scale | `ui/theme/AppTypography.kt` |
 | Durations and easing | `ui/theme/AppMotion.kt` |
 | Colour scheme and semantic colours | `ui/theme/AppColorScheme.kt`, `AppSemanticColors.kt` |
+| Icon sizes, stroke weights, minimum touch target | `ui/theme/AppSizing.kt` |
 
 No literal `.dp` spacing in a screen when a scale step says the same thing. A pill is the
 exception `AppShapes` documents: `RoundedCornerShape(percent = 50)` locally, because a pill
 is a function of the element's own height.
+
+`AppSizing` covers the values that used to be a private `val` in every file that needed one —
+`20.dp` alone had reached twelve declarations under nine names. `AppIconSize` has three steps
+named by where the glyph sits: `Inline` (16dp, inside a line of body text), `Action`
+(`ButtonDefaults.IconSize`, 18dp, a text button's leading icon and anything matching one), and
+`Row` (20dp, beside a row's text — a chevron, a completion mark, a leading accent). `AppStroke`
+has `Hairline` (1dp, a surface's own edge) and `Emphasis` (2dp, a selected choice).
+`AppMinimumTouchTarget` is 48dp, for the bare `Row`s that must state it because they are not
+Material components and get no minimum of their own.
+
+A size that is genuinely about one surface still belongs to that surface, and several
+deliberately stayed local: the Topic marker's glyph is proportional to the marker around it, the
+navigation bar's icon is a navigation-bar token, the tab strip's height is
+`PrimaryNavigationTabTokens.ContainerHeight` rather than the touch target it happens to equal, a
+lesson bullet's column is a prose measure rather than an icon, and the trend chart's line, guide
+and marker sizes are a set of proportions that only mean anything relative to each other. The
+scale is for what the product shares.
 
 ## Surfaces are three levels, not a spectrum
 
@@ -354,6 +372,19 @@ are marked where they appear.
 
 ### How it moves
 
+- **One state becomes another through `ScreenStateTransition`, keyed on the state class.**
+  Every screen with loading, empty, error, and content branches switches them through that one
+  component, so the change reads as one thing becoming another rather than as a spinner one frame
+  and a full list the next. The default `contentKey` is the state's *class*, and that is the part
+  that matters: a data change inside `Content` keeps the same key and must not fade, because the
+  row that changed already owns its own `animateItem`. The transition covers the screen's **body**
+  — a bar, and anything pinned under it such as a reading or progress meter, is chrome and stays
+  outside, exactly as the top bar's own title does.
+- **Arriving and departing are a pair, and the pair is named.** `AppMotion.arriveSpec()`
+  decelerates over the full state-change duration; `AppMotion.departSpec()` accelerates over half
+  it, so the outgoing state is gone before the incoming one has finished arriving and the change
+  reads as a replacement rather than a dissolve. A departure that *moves* rather than fades passes
+  the full duration, because it has its own travel to clear.
 - **Stagger a reveal in the animation spec, not in a coroutine.** When several pieces of
   one reveal should arrive in order, give one container the layout expansion and give the
   children delayed specs through `AppMotion.revealSpec(delayMillis)` and
@@ -418,6 +449,14 @@ questions: what this area is for, why it is empty, and what to do next.
   searched for so a typo can be seen. It does not recommend anything.
 - **Only offer an action the product state supports**, and only where one exists.
   `ScreenAction` when there is a way forward, `ScreenMessage` when there is not.
+- **A whole-screen empty state takes an icon; one inside a tab or pane does not.** `ScreenAction`
+  has an optional `icon`, and the rule is what the glyph is measured against. Filling a screen, a
+  40dp mark is the first thing there is to see and it names the surface — Progress takes `Insights`,
+  Saved Questions the `Bookmark` the learner will press on a card, Mistakes a `CheckCircle` for a
+  queue that is empty because it was cleared, a no-match search the `Search` it just ran. Inside a
+  Topic detail tab the body is a fraction of the window and the same mark outweighs the tab strip
+  above it, so those states are text and a button. Reach for an existing `AppIcons` entry that
+  names the surface; never commission artwork for an empty state.
 
 ## Verifying a layout change
 
@@ -442,7 +481,25 @@ decision on both screens, because the line to the *left* of it is a coverage fra
 is an accuracy, and two readings with different denominators on one row is how a learner comes to
 believe they are one number.
 
-`ui/MetricComponents.kt`'s **`TrailingFigureRow`** is the rule, and both rows go through it. It
+`ui/MetricComponents.kt`'s **`TrailingFigureRow`** is the rule, and both rows go through it. So
+does the Saved Questions card header, which is the same shape with a different trailing child: the
+question text beside its saved-state bookmark, where at a doubled type size on a 360dp window the
+bookmark would otherwise leave the question less width than its own longest word. So, since the
+visual consolidation audit, do `PerformanceCard` and `AccuracyRow` — the two shared rows that carry
+this shape to the Progress dashboard, the per-Topic screen, and a Mixed interview's breakdown, and
+that had the same defect in the same form ("Structured concurren / cy").
+
+Two rules for the trailing slot, learned from those four callers:
+
+- **A fixed glyph does not take part.** The navigation chevron costs the same 20dp at every type
+  scale, so it cannot cause the squeeze and stays outside the `TrailingFigureRow` as a sibling in
+  the enclosing row. A figure that grows with the type scale goes inside. A navigation affordance
+  that dropped below the title would also stop marking the row as one that travels.
+- **The figure aligns itself to the trailing edge**, in its own `Column(horizontalAlignment =
+  Alignment.End)`. Beside the text that column is exactly its content width and the alignment
+  changes nothing; below the text it spans the row, and the alignment is what keeps the figure in
+  the right-hand column instead of jumping to the leading edge and reading as one more line of the
+  text above it. It
 measures rather than choosing a breakpoint: `Measurable.minIntrinsicWidth` on the text is the width
 of its longest unbreakable word, which is exactly the point below which Compose stops wrapping and
 starts breaking inside one. If the space left beside the figure is at least that, nothing changes;
@@ -455,6 +512,21 @@ already used. And the decision is not "is the type large": it depends on the win
 content, and the locale's longest word, so a row on a wide window at 2× may correctly not reflow at
 all while a narrow one at 1.5× does. Reach for this wherever a figure sits beside text that has to
 stay readable; do not reintroduce a font-scale threshold.
+
+### Prose about a component drifts when the component is redesigned
+
+When a change alters what a component *is* rather than how it is arranged — a control that becomes
+a different affordance, a row that changes what it says, a state that gains or loses a treatment —
+grep `docs/architecture/` for the component's name before reporting the work done. Nothing fails
+when this is skipped: prose has no compiler, and the description simply goes on describing something
+that no longer exists.
+
+This is not hypothetical and is not worth tooling. `docs/architecture/assessment.md` described the
+review save control as *"a text Save/Unsave control beside the question heading"* two design passes
+after it had become a bookmark, and an automated sweep for stale symbols was tried and abandoned —
+at this repository's level of cross-referencing it returns overwhelmingly false positives (Material
+and Kotlin API names, file names, enum values in content documents), and a signal that noisy is
+worse than none. The documentation map in `AGENTS.md` makes the check one search.
 
 Assertions do not see a state layer, a margin, or an overlap. When a change is about how
 something *looks*, capture it: a throwaway `runSkikoComposeUiTest` that renders the screen

@@ -1782,6 +1782,60 @@ internal class TopicBrowserScreenTest {
         onNodeWithTag(TopicBrowserSearchFieldTag).assertIsDisplayed()
         onNodeWithTag(TopicBrowserHeaderTag).assertIsDisplayed()
     }
+
+    /**
+     * Browsing becoming searching is a change of body and fades; typing within a search is not.
+     *
+     * This screen is the one place where the state *class* is the wrong grain for a transition:
+     * `Content` holds the browse list, the search results, and the no-match message, and a learner
+     * typing into the field crosses between them. Keying on the class would fade nothing; keying on
+     * the state would fade on every keystroke, so the results would lag a character behind the
+     * typing instead of tracking it.
+     *
+     * Asserted as the decision, never as an animation: one frame after the change, is the outgoing
+     * body still composed or was it replaced outright?
+     */
+    @Test
+    fun searchAndBrowseAreDifferentBodiesButTypingWithinSearchIsNot() = runComposeUiTest {
+        var query by mutableStateOf("")
+        mainClock.autoAdvance = false
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = TopicBrowserUiState.Content(
+                        topics = listOf(topicItem("compose", "Browsing Compose")),
+                        query = query,
+                        topicMatches = when (query) {
+                            "" -> emptyList()
+                            "co" -> listOf(topicItem("compose", "Matched Compose"))
+                            else -> listOf(topicItem("coroutines", "Matched Coroutines"))
+                        },
+                    ),
+                    onTopicClick = {},
+                    onSearchQueryChange = { query = it },
+                    onRetry = {},
+                )
+            }
+        }
+        mainClock.advanceTimeBy(SettleMillis)
+        onNodeWithText("Browsing Compose").assertIsDisplayed()
+
+        // Browsing to searching: the catalogue is still on screen while the results arrive.
+        runOnIdle { query = "co" }
+        mainClock.advanceTimeByFrame()
+        onNodeWithText("Browsing Compose").assertExists()
+        onNodeWithText("Matched Compose").assertExists()
+
+        mainClock.advanceTimeBy(SettleMillis)
+        onNodeWithText("Browsing Compose").assertDoesNotExist()
+
+        // Searching to searching: the previous matches are gone the moment the new ones arrive.
+        runOnIdle { query = "cor" }
+        mainClock.advanceTimeByFrame()
+        onNodeWithText("Matched Compose").assertDoesNotExist()
+        onNodeWithText("Matched Coroutines").assertIsDisplayed()
+    }
+
 }
 
 /**
@@ -1831,3 +1885,6 @@ private val TestHeaderSpacing = 12.dp
 
 /** The Material minimum touch target. */
 private val MinimumTouchTarget = 48.dp
+
+/** Comfortably longer than any spec on `AppMotion`, so "settled" never means "still moving". */
+private const val SettleMillis = 2_000L

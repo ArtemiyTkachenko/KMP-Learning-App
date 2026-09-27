@@ -42,6 +42,7 @@ import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.jetbrains.compose.resources.StringResource
@@ -301,32 +302,43 @@ internal fun TopicDetailScreen(
         )
 
         AppScreenPane(AppContentWidth.Standard) {
-            when (state) {
-                TopicDetailUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.topic_detail_loading),
-                    testTag = TopicDetailLoadingTag,
-                    modifier = Modifier.weight(1f),
-                )
+            // Keyed on the state's class, which is what the default `contentKey` gives: crossing
+            // from Loading into the tabs, a message, or an error is one thing becoming another and
+            // fades, while a change *within* content keeps the same key and does not.
+            ScreenStateTransition(state = state, modifier = Modifier.fillMaxSize()) { current ->
+                // The `Column` is not decoration: [TopicDetailTabs] is a `ColumnScope` extension
+                // because its pager takes the height the tab row leaves, and inside `AnimatedContent`
+                // the scope is a box. Restoring the column here keeps the tabs laid out exactly as
+                // they were, so the only thing this change alters is how one state becomes the next.
+                Column(Modifier.fillMaxSize()) {
+                    when (current) {
+                        TopicDetailUiState.Loading -> ScreenLoading(
+                            message = stringResource(Res.string.topic_detail_loading),
+                            testTag = TopicDetailLoadingTag,
+                            modifier = Modifier.weight(1f),
+                        )
 
-                is TopicDetailUiState.Content -> TopicDetailTabs(
-                    state = state,
-                    targetSubtopicId = targetSubtopicId,
-                    onStartTopicPractice = onStartTopicPractice,
-                    onStartSubtopicPractice = onStartSubtopicPractice,
-                    onPracticePreset = onPracticePreset,
-                    onLearningUnitClick = onLearningUnitClick,
-                )
+                        is TopicDetailUiState.Content -> TopicDetailTabs(
+                            state = current,
+                            targetSubtopicId = targetSubtopicId,
+                            onStartTopicPractice = onStartTopicPractice,
+                            onStartSubtopicPractice = onStartSubtopicPractice,
+                            onPracticePreset = onPracticePreset,
+                            onLearningUnitClick = onLearningUnitClick,
+                        )
 
-                TopicDetailUiState.NotFound -> ScreenMessage(
-                    message = stringResource(Res.string.topic_detail_not_found),
-                    modifier = Modifier.weight(1f),
-                )
+                        TopicDetailUiState.NotFound -> ScreenMessage(
+                            message = stringResource(Res.string.topic_detail_not_found),
+                            modifier = Modifier.weight(1f),
+                        )
 
-                TopicDetailUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.topic_browser_error),
-                    onRetry = onRetry,
-                    modifier = Modifier.weight(1f),
-                )
+                        TopicDetailUiState.Error -> ScreenError(
+                            message = stringResource(Res.string.topic_browser_error),
+                            onRetry = onRetry,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
             }
         }
     }

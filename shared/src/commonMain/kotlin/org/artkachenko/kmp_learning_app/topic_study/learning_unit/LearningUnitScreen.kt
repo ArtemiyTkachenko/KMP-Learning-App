@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.learning_lesson_not_studied
 import kmp_learning_app.shared.generated.resources.learning_lesson_studied
@@ -45,8 +44,10 @@ import org.artkachenko.kmp_learning_app.ui.ProgressMeter
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.artkachenko.kmp_learning_app.ui.theme.appListContentPadding
@@ -87,27 +88,33 @@ internal fun LearningUnitScreen(
         // nothing to show while the Unit is still resolving or turns out not to be current.
         AppTopBar(stringResource(Res.string.learning_unit_title), onBack, scrollBehavior)
         AppScreenPane(AppContentWidth.Standard) {
-            when (state) {
-                LearningUnitUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.learning_unit_loading),
-                    testTag = LearningUnitLoadingTag,
-                    modifier = Modifier.weight(1f),
-                )
-                LearningUnitUiState.NotFound -> ScreenMessage(
-                    message = stringResource(Res.string.learning_unit_not_found),
-                    modifier = Modifier.weight(1f),
-                )
-                LearningUnitUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.learning_unit_error),
-                    onRetry = onRetry,
-                    modifier = Modifier.weight(1f),
-                )
-                is LearningUnitUiState.Content -> LearningUnitContent(
-                    state = state,
-                    onLessonClick = onLessonClick,
-                    onPracticeUnit = onPracticeUnit,
-                    modifier = Modifier.weight(1f),
-                )
+            // Keyed on the state's class, which is what the default `contentKey` gives: crossing
+            // from Loading into content, a message, or an error is one thing becoming another and
+            // fades, while a change *within* content keeps the same key and does not. Keying on the
+            // state itself would fade the whole screen out and back in on every data change.
+            ScreenStateTransition(state = state, modifier = Modifier.fillMaxSize()) { current ->
+                when (current) {
+                    LearningUnitUiState.Loading -> ScreenLoading(
+                        message = stringResource(Res.string.learning_unit_loading),
+                        testTag = LearningUnitLoadingTag,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    LearningUnitUiState.NotFound -> ScreenMessage(
+                        message = stringResource(Res.string.learning_unit_not_found),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    LearningUnitUiState.Error -> ScreenError(
+                        message = stringResource(Res.string.learning_unit_error),
+                        onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    is LearningUnitUiState.Content -> LearningUnitContent(
+                        state = current,
+                        onLessonClick = onLessonClick,
+                        onPracticeUnit = onPracticeUnit,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }
@@ -350,7 +357,7 @@ private fun LearningLessonRow(
                         // it while scanning, and repeating it here would announce it twice.
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(StudiedMarkSize),
+                        modifier = Modifier.size(AppIconSize.Row),
                     )
                 }
             }
@@ -382,11 +389,7 @@ private fun LearningLessonRow(
             imageVector = AppIcons.ChevronRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(NavigationChevronSize),
+            modifier = Modifier.size(AppIconSize.Row),
         )
     }
 }
-
-/** The completion mark and the navigation chevron, at the size every other row draws them. */
-private val StudiedMarkSize = 20.dp
-private val NavigationChevronSize = 20.dp

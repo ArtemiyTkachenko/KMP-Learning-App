@@ -22,10 +22,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 
 /**
  * The words one product puts on taking its assessment again.
@@ -147,9 +148,9 @@ internal fun AssessmentRetakeAction(
                     if (busy) {
                         CircularProgressIndicator(
                             modifier = Modifier
-                                .size(ProgressIndicatorSize)
+                                .size(AppIconSize.Action)
                                 .testTag(progressTestTag),
-                            strokeWidth = ProgressStrokeWidth,
+                            strokeWidth = AppStroke.Indicator,
                         )
                         Text(
                             text = wording.starting,
@@ -205,12 +206,3 @@ private fun busyAwareOutlinedColors(): ButtonColors = ButtonDefaults.outlinedBut
     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
 )
 
-/**
- * Sized as the leading icon it effectively is, rather than as Material's standalone 40dp indicator.
- *
- * A progress indicator inside a button is a glyph beside a word, and the other two buttons in this
- * file — the save bookmark and the disclosure chevron — already take 18dp for exactly that reason.
- * The stroke is scaled to match: the 4dp default on an 18dp circle is a ring, not a spinner.
- */
-private val ProgressIndicatorSize = 18.dp
-private val ProgressStrokeWidth = 2.dp

@@ -270,9 +270,14 @@ independent state stream beside their own content, so a saved-state failure is n
 error and result loading never waits on saved state. Each ViewModel's `toggleSaved(questionId)`
 ignores an ID that is not a `ReviewQuestionItem.Available` in its current state, which is why a
 `ReviewQuestionItem.Missing` placeholder cannot be saved even though its stable ID is known.
-Presentation is the shared `ReviewQuestionCard`'s optional `ReviewSaveAction`: a text
-Save/Unsave control beside the question heading, with no affordance at all while saved state is
-`Loading` or `Error`, because "not known to be saved" is not "unsaved".
+Presentation is the shared `ReviewQuestionCard`'s optional `ReviewSaveAction`, rendered by
+`QuestionBookmarkAction` beside the question heading, with no affordance at all while saved state is
+`Loading` or `Error`, because "not known to be saved" is not "unsaved". That control is the app's
+one statement of saved state: a filled bookmark when saved and an outlined one when not, the word
+beside it, and the current value published separately as `stateDescription` and `toggleableState`,
+so shape, fill, word, and the accessible reading all change together. It lives in
+`QuestionContentComponents.kt` rather than in the review card, because its second caller is the
+Saved Questions collection.
 
 Saving is orthogonal to everything derived from history. It does not change scoring, coverage,
 weak areas, recommendations, or unresolved-mistake state, and no history invalidation follows it.
@@ -304,8 +309,8 @@ historical attempt, and a saved Question has none — the learner may have saved
 either way. Nothing about correctness, selection, or score is fabricated to reuse
 `ReviewQuestionCard`. What is shared is the neutral presentation in `QuestionContentComponents.kt`
 — the answer-option container and tag, the explanation block, the source links with their
-open-failure notice, and `QuestionDisclosure` — which both `ReviewQuestionCard` and the
-saved-Question card render.
+open-failure notice, `QuestionDisclosure`, and `QuestionBookmarkAction` — which both
+`ReviewQuestionCard` and the saved-Question card render.
 
 The disclosure is shared and its *default* is not, because the default is a statement about the
 surface. A result transcript opens the Questions the learner got wrong, because they came to read it
@@ -314,6 +319,19 @@ on request. The saved card previously had no disclosure at all, so a collection 
 that many permanently open blocks of options, explanation and sources, and finding one meant
 scrolling past all the others in full. The screen also states its own size, as the Mistakes queue
 beside it always has.
+
+Saved state is stated the same way here as on the review surfaces, because it is the same fact.
+Every entry on this screen is saved by construction, so each card renders `QuestionBookmarkAction`
+with `isSaved = true` and pressing it performs the removal the screen already had — the control
+says *this Question is saved; this toggles that*, not *delete this item*. A `Missing` placeholder
+carries the same control for the same reason: the content is gone but the saved identity is not,
+and that identity is what a bookmark represents. The surfaces keep separate test handles
+(`reviewQuestionSaveTag`, `savedQuestionRemoveTag`) over the one shared control, so neither
+surface's tests depend on the other's. Mutation semantics are unchanged: only the affected
+Question's control disables while its own write is in flight, and the row leaves through
+`animateItem()`. State switching goes through the shared `ScreenStateTransition` keyed on the state
+class, so `Loading` becoming a collection fades while removing a Question — which stays inside
+`Content` — does not.
 
 Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and

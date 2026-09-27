@@ -26,7 +26,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_none
 import kmp_learning_app.shared.generated.resources.mistake_review_unresolved_count
@@ -61,6 +60,8 @@ import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
 import org.artkachenko.kmp_learning_app.ui.ContentGroup
 import org.artkachenko.kmp_learning_app.ui.GroupRowPadding
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
+import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
 import org.artkachenko.kmp_learning_app.ui.theme.AppScreenPane
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
@@ -110,12 +111,6 @@ internal fun progressHistoryCardTag(attemptId: String): String = "progress_histo
 
 /** The row that opens Mistake Review, so a test can act on it rather than on its label text. */
 internal const val ProgressReviewMistakesTag = "progress_review_mistakes"
-
-/**
- * Material's minimum touch target. Stated here because this row is not a Material component and so
- * gets no minimum of its own, and it becomes a tap target whenever the queue is non-empty.
- */
-private val MinimumTouchTargetSize = 48.dp
 
 /** Stable per-row handle for a weak area's practice shortcut, whose label repeats across rows. */
 internal fun progressWeakAreaPracticeTag(area: WeakAreaUiModel): String =
@@ -568,7 +563,7 @@ private fun UnresolvedMistakeSummary(
             )
             // Inside the clickable, so the state layer spans the row rather than being inset from
             // it, and the row still clears the minimum touch target when it is a target.
-            .heightIn(min = MinimumTouchTargetSize)
+            .heightIn(min = AppMinimumTouchTarget)
             .padding(vertical = AppSpacing.Tight),
         horizontalArrangement = Arrangement.spacedBy(AppSpacing.Related),
         verticalAlignment = Alignment.CenterVertically,
@@ -577,7 +572,7 @@ private fun UnresolvedMistakeSummary(
             imageVector = if (resolved) AppIcons.CheckCircle else AppIcons.Warning,
             contentDescription = null,
             tint = if (resolved) semantic.correct else semantic.incorrect,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(AppIconSize.Row),
         )
         Text(
             text = if (resolved) {
@@ -598,7 +593,7 @@ private fun UnresolvedMistakeSummary(
                 imageVector = AppIcons.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(AppIconSize.Row),
             )
         }
     }
@@ -762,13 +757,10 @@ private fun HistoryRow(
             imageVector = AppIcons.ChevronRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(NavigationChevronSize),
+            modifier = Modifier.size(AppIconSize.Row),
         )
     }
 }
-
-/** The trailing navigation affordance, at the size every other row in the app draws it. */
-private val NavigationChevronSize = 20.dp
 
 @Composable
 private fun focusedScopeLabel(scope: FocusedScopeUiModel?): String? =

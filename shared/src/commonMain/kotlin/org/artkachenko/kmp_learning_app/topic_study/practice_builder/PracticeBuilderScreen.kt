@@ -93,6 +93,9 @@ import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.MetricFigure
+import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
+import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
@@ -338,7 +341,7 @@ private fun BuilderScopeLine(scope: PracticeScopeUiModel) {
             imageVector = AppIcons.Topics,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(ScopeIconSize),
+            modifier = Modifier.size(AppIconSize.Row),
         )
         Text(
             text = scope.label(),
@@ -607,7 +610,7 @@ private fun BuilderSummarySurface(content: @Composable ColumnScope.() -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(SummaryBorderWidth, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(AppStroke.Hairline, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(AppSpacing.Generous),
@@ -681,7 +684,7 @@ private fun AvailabilityVerdict(availability: PracticeAvailability) {
                     // that has to carry the state; the icon is the second one.
                     contentDescription = null,
                     tint = tone,
-                    modifier = Modifier.size(VerdictIconSize),
+                    modifier = Modifier.size(AppIconSize.Row),
                 )
             }
             Text(
@@ -875,7 +878,7 @@ private fun BuilderChoice(
     val borderWidth by transition.animateDp(
         transitionSpec = { AppMotion.spatialSpec() },
         label = "builderChoiceBorderWidth",
-    ) { if (it == BuilderChoiceState.Selected) SelectedBorderWidth else UnselectedBorderWidth }
+    ) { if (it == BuilderChoiceState.Selected) AppStroke.Emphasis else AppStroke.Hairline }
     val contentColor by transition.animateColor(
         transitionSpec = { AppMotion.effectSpec() },
         label = "builderChoiceContent",
@@ -919,7 +922,7 @@ private fun BuilderChoice(
         border = BorderStroke(width = borderWidth, color = border),
     ) {
         Box(
-            modifier = Modifier.heightIn(min = BuilderChoiceMinHeight),
+            modifier = Modifier.heightIn(min = AppMinimumTouchTarget),
             contentAlignment = Alignment.Center,
         ) {
             content(
@@ -940,7 +943,7 @@ private fun BuilderChoice(
  *
  * Material enforces a 48dp minimum interactive size on both, which inside a surface that is already
  * the touch target buys nothing and pads the control away from its own label. The surface carries
- * the target through [BuilderChoiceMinHeight] instead.
+ * the target through [AppMinimumTouchTarget] instead.
  */
 @Composable
 private fun BuilderChoiceControl(control: @Composable () -> Unit) {
@@ -1099,26 +1102,11 @@ private fun PracticeQuestionSource.labelResource(): StringResource =
         PracticeQuestionSource.UNRESOLVED_MISTAKES -> Res.string.practice_builder_source_mistakes
     }
 
-/** A small accent beside the subject line, not a container around it. */
-private val ScopeIconSize = 20.dp
-
-/** Sized to the `titleMedium` line the verdict is set in, so it marks the first line of it. */
-private val VerdictIconSize = 20.dp
-
-/** Material's `InteractiveComponentSize`. The surface carries it so its controls need not. */
-private val BuilderChoiceMinHeight = 48.dp
-
 /**
  * A minimum, never a width. Four count tiles fit one row on a small phone at the default type
  * scale and wrap from there, which is what `FlowRow` is for.
  */
 private val QuestionCountTileMinWidth = 64.dp
-
-private val SelectedBorderWidth = 2.dp
-private val UnselectedBorderWidth = 1.dp
-
-/** The hairline that makes the summary read as a lifted surface rather than a tone change. */
-private val SummaryBorderWidth = 1.dp
 
 /** Material's own disabled opacities, applied to content and to an edge rather than to a surface. */
 private const val DisabledContentAlpha = 0.38f

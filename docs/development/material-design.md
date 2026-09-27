@@ -445,6 +445,14 @@ questions: what this area is for, why it is empty, and what to do next.
   searched for so a typo can be seen. It does not recommend anything.
 - **Only offer an action the product state supports**, and only where one exists.
   `ScreenAction` when there is a way forward, `ScreenMessage` when there is not.
+- **A whole-screen empty state takes an icon; one inside a tab or pane does not.** `ScreenAction`
+  has an optional `icon`, and the rule is what the glyph is measured against. Filling a screen, a
+  40dp mark is the first thing there is to see and it names the surface — Progress takes `Insights`,
+  Saved Questions the `Bookmark` the learner will press on a card, Mistakes a `CheckCircle` for a
+  queue that is empty because it was cleared, a no-match search the `Search` it just ran. Inside a
+  Topic detail tab the body is a fraction of the window and the same mark outweighs the tab strip
+  above it, so those states are text and a button. Reach for an existing `AppIcons` entry that
+  names the surface; never commission artwork for an empty state.
 
 ## Verifying a layout change
 
@@ -500,6 +508,21 @@ already used. And the decision is not "is the type large": it depends on the win
 content, and the locale's longest word, so a row on a wide window at 2× may correctly not reflow at
 all while a narrow one at 1.5× does. Reach for this wherever a figure sits beside text that has to
 stay readable; do not reintroduce a font-scale threshold.
+
+### Prose about a component drifts when the component is redesigned
+
+When a change alters what a component *is* rather than how it is arranged — a control that becomes
+a different affordance, a row that changes what it says, a state that gains or loses a treatment —
+grep `docs/architecture/` for the component's name before reporting the work done. Nothing fails
+when this is skipped: prose has no compiler, and the description simply goes on describing something
+that no longer exists.
+
+This is not hypothetical and is not worth tooling. `docs/architecture/assessment.md` described the
+review save control as *"a text Save/Unsave control beside the question heading"* two design passes
+after it had become a bookmark, and an automated sweep for stale symbols was tried and abandoned —
+at this repository's level of cross-referencing it returns overwhelmingly false positives (Material
+and Kotlin API names, file names, enum values in content documents), and a signal that noisy is
+worse than none. The documentation map in `AGENTS.md` makes the check one search.
 
 Assertions do not see a state layer, a margin, or an overlap. When a change is about how
 something *looks*, capture it: a throwaway `runSkikoComposeUiTest` that renders the screen

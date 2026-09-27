@@ -22,11 +22,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 
 /**
  * The words one product puts on taking its assessment again.
@@ -150,7 +150,7 @@ internal fun AssessmentRetakeAction(
                             modifier = Modifier
                                 .size(AppIconSize.Action)
                                 .testTag(progressTestTag),
-                            strokeWidth = ProgressStrokeWidth,
+                            strokeWidth = AppStroke.Indicator,
                         )
                         Text(
                             text = wording.starting,
@@ -206,8 +206,3 @@ private fun busyAwareOutlinedColors(): ButtonColors = ButtonDefaults.outlinedBut
     disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
 )
 
-/**
- * Scaled to the [AppIconSize.Action] circle it draws in: the 4dp default on an 18dp indicator is a
- * ring rather than a spinner.
- */
-private val ProgressStrokeWidth = 2.dp

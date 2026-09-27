@@ -287,7 +287,7 @@ private fun FinishAction(isCompleting: Boolean, onComplete: () -> Unit) {
                 if (completing) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(AppIconSize.Action),
-                        strokeWidth = FinishProgressStroke,
+                        strokeWidth = AppStroke.Indicator,
                     )
                     Text(
                         text = stringResource(Res.string.assessment_taking_finishing),
@@ -301,8 +301,6 @@ private fun FinishAction(isCompleting: Boolean, onComplete: () -> Unit) {
     }
 }
 
-/** Scaled to the [AppIconSize.Action] circle it draws in, as every other busy control here is. */
-private val FinishProgressStroke = 2.dp
 
 @Composable
 private fun QuestionContent(

@@ -73,6 +73,41 @@ internal object AppStroke {
 
     /** The selected state of a choice the learner has made. */
     val Emphasis: Dp = 2.dp
+
+    /**
+     * The stroke of a busy control's progress indicator.
+     *
+     * Scaled to the [AppIconSize.Action] circle it draws in rather than to anything around it:
+     * Material's 4dp default on an 18dp indicator is a ring, not a spinner. It shares a number with
+     * [Emphasis] and not a meaning, which is why it is its own entry — a control's busy state and a
+     * learner's selected choice are not one concept that happens to be drawn twice.
+     */
+    val Indicator: Dp = 2.dp
+}
+
+/**
+ * How far a surface is lifted off the page.
+ *
+ * One entry, because this app states depth tonally — three surface levels, not a spectrum — and
+ * reaches for a shadow only where a surface has to outrank the cards *beside* it rather than sit at
+ * a different tone from them. That is the hero case and, so far, only the hero case.
+ */
+internal object AppElevation {
+
+    /**
+     * A hero, above the cards under it. `ElevationTokens.Level2`.
+     *
+     * The three heroes each declared this as 2dp, which is not a Material elevation level: the
+     * scale is 0, 1, 3, 6, 8, 12. It was landing between two levels rather than on one, and
+     * consolidating three copies of that would have settled an unasked question by accident.
+     *
+     * Level1 is the wrong answer even though it is nearer the old value, because 1dp is exactly
+     * what `FilledCardTokens.HoverContainerElevation` lifts an ordinary card to. On a pointer host
+     * hover is the resting state of whatever the cursor is over, so a hero at Level1 would be
+     * indistinguishable from any card the learner happened to be pointing at. Level2 is the first
+     * level that clears it, which is what the old 2dp was reaching for without a token to land on.
+     */
+    val Hero: Dp = 3.dp
 }
 
 /**

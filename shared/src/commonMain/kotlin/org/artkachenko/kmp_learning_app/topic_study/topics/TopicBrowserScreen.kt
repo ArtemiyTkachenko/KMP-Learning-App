@@ -93,6 +93,7 @@ import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.ContentGroup
 import org.artkachenko.kmp_learning_app.ui.GroupRowPadding
+import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
@@ -215,64 +216,77 @@ internal fun TopicBrowserScreen(
                 .padding(horizontal = LocalAppContentMargin.current)
                 .testTag(TopicBrowserViewportTag),
         ) {
-            when (state) {
-                TopicBrowserUiState.Loading -> ScreenLoading(
-                    message = stringResource(Res.string.topic_browser_loading),
-                    testTag = TopicBrowserLoadingTag,
-                )
-                is TopicBrowserUiState.Content -> when {
-                    state.query.isBlank() -> TopicList(
-                        topics = state.topics,
-                        onTopicClick = onTopicClick,
-                        // Absent unless the state carries them, which it never does while a query
-                        // is active: both cards belong to browsing, not to search results.
-                        recommendedNext = state.recommendedNext,
-                        onRecommendedNextClick = onRecommendedNextClick,
-                        continueStudying = state.continueStudying,
-                        onContinueStudyingClick = onContinueStudyingClick,
-                        continueLearning = state.continueLearning,
-                        onContinueLearningClick = onContinueLearningClick,
-                        onSavedQuestionsClick = onSavedQuestionsClick,
-                        listState = browseListState,
+            // Keyed on which *body* the viewport holds, not on the state class. This screen is the
+            // one place where the class is the wrong grain: `Content` covers three unrelated
+            // bodies, and a learner typing into the field crosses between them. Browsing becoming
+            // searching is one thing becoming another and fades; everything that happens *while*
+            // searching — a result set narrowing, matches running out, matches coming back — snaps,
+            // because those track the keystroke and a body that faded on every character would lag
+            // behind the typing rather than follow it.
+            ScreenStateTransition(
+                state = state,
+                modifier = Modifier.fillMaxSize(),
+                contentKey = TopicBrowserUiState::viewportBody,
+            ) { current ->
+                when (current) {
+                    TopicBrowserUiState.Loading -> ScreenLoading(
+                        message = stringResource(Res.string.topic_browser_loading),
+                        testTag = TopicBrowserLoadingTag,
                     )
-                    // The query stays in the field and is quoted back in the message, so the
-                    // learner can see exactly what was searched for and correct a typo without
-                    // retyping. The button clears it rather than suggesting something else to
-                    // look at: this screen searches the catalogue it is showing, and an empty
-                    // result means that catalogue does not hold the word — not that the app
-                    // should start guessing what was meant.
-                    state.topicMatches.isEmpty() && state.subtopicMatches.isEmpty() -> {
-                        ScreenAction(
-                            message = stringResource(
-                                Res.string.topic_browser_search_no_results,
-                                state.query.trim(),
-                            ),
-                            detail = stringResource(
-                                Res.string.topic_browser_search_no_results_detail,
-                            ),
-                            actionLabel = stringResource(
-                                Res.string.topic_browser_search_clear,
-                            ),
-                            onAction = { onSearchQueryChange("") },
-                            icon = AppIcons.Search,
-                            modifier = Modifier.testTag(TopicBrowserNoResultsTag),
+                    is TopicBrowserUiState.Content -> when {
+                        current.query.isBlank() -> TopicList(
+                            topics = current.topics,
+                            onTopicClick = onTopicClick,
+                            // Absent unless the state carries them, which it never does while a
+                            // query is active: both cards belong to browsing, not to search results.
+                            recommendedNext = current.recommendedNext,
+                            onRecommendedNextClick = onRecommendedNextClick,
+                            continueStudying = current.continueStudying,
+                            onContinueStudyingClick = onContinueStudyingClick,
+                            continueLearning = current.continueLearning,
+                            onContinueLearningClick = onContinueLearningClick,
+                            onSavedQuestionsClick = onSavedQuestionsClick,
+                            listState = browseListState,
+                        )
+                        // The query stays in the field and is quoted back in the message, so the
+                        // learner can see exactly what was searched for and correct a typo without
+                        // retyping. The button clears it rather than suggesting something else to
+                        // look at: this screen searches the catalogue it is showing, and an empty
+                        // result means that catalogue does not hold the word — not that the app
+                        // should start guessing what was meant.
+                        current.topicMatches.isEmpty() && current.subtopicMatches.isEmpty() -> {
+                            ScreenAction(
+                                message = stringResource(
+                                    Res.string.topic_browser_search_no_results,
+                                    current.query.trim(),
+                                ),
+                                detail = stringResource(
+                                    Res.string.topic_browser_search_no_results_detail,
+                                ),
+                                actionLabel = stringResource(
+                                    Res.string.topic_browser_search_clear,
+                                ),
+                                onAction = { onSearchQueryChange("") },
+                                icon = AppIcons.Search,
+                                modifier = Modifier.testTag(TopicBrowserNoResultsTag),
+                            )
+                        }
+                        else -> TopicSearchResults(
+                            topicMatches = current.topicMatches,
+                            subtopicMatches = current.subtopicMatches,
+                            onTopicClick = onTopicClick,
+                            onSubtopicClick = onSubtopicClick,
+                            listState = resultsListState,
                         )
                     }
-                    else -> TopicSearchResults(
-                        topicMatches = state.topicMatches,
-                        subtopicMatches = state.subtopicMatches,
-                        onTopicClick = onTopicClick,
-                        onSubtopicClick = onSubtopicClick,
-                        listState = resultsListState,
+                    TopicBrowserUiState.Empty -> ScreenMessage(
+                        message = stringResource(Res.string.topic_browser_empty),
+                    )
+                    TopicBrowserUiState.Error -> ScreenError(
+                        message = stringResource(Res.string.topic_browser_error),
+                        onRetry = onRetry,
                     )
                 }
-                TopicBrowserUiState.Empty -> ScreenMessage(
-                    message = stringResource(Res.string.topic_browser_empty),
-                )
-                TopicBrowserUiState.Error -> ScreenError(
-                    message = stringResource(Res.string.topic_browser_error),
-                    onRetry = onRetry,
-                )
             }
         }
     }
@@ -513,6 +527,26 @@ private fun hasDerivedGuidance(
     continueStudying: ContinueStudyingContext?,
     continueLearning: ContinueLearningUiModel?,
 ): Boolean = recommendedNext != null || continueStudying != null || continueLearning != null
+
+/**
+ * What the viewport is showing, which is what a transition between bodies has to be keyed on.
+ *
+ * Every other screen keys its state transition on the state's class, because there a class *is* a
+ * body. Here `TopicBrowserUiState.Content` holds three: the browse list with its guided-learning
+ * cards, the no-match message, and the search results. Naming the five bodies keeps the key from
+ * being an inscrutable boolean and makes the grouping reviewable — `Searching` deliberately covers
+ * both the results list and the no-match message, so running out of matches and finding them again
+ * is one body changing its contents rather than one body becoming another.
+ */
+private enum class TopicBrowserBody { Loading, Browsing, Searching, Empty, Error }
+
+private fun TopicBrowserUiState.viewportBody(): TopicBrowserBody = when (this) {
+    TopicBrowserUiState.Loading -> TopicBrowserBody.Loading
+    TopicBrowserUiState.Empty -> TopicBrowserBody.Empty
+    TopicBrowserUiState.Error -> TopicBrowserBody.Error
+    is TopicBrowserUiState.Content ->
+        if (query.isBlank()) TopicBrowserBody.Browsing else TopicBrowserBody.Searching
+}
 
 /** The same question asked of the whole state, for the pane width the screen chooses up front. */
 private fun TopicBrowserUiState.usesGuidancePane(): Boolean {

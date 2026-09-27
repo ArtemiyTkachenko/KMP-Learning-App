@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.progress_accuracy_caption
 import kmp_learning_app.shared.generated.resources.progress_completed_attempts_label
@@ -45,6 +44,7 @@ import org.artkachenko.kmp_learning_app.ui.MetricRow
 import org.artkachenko.kmp_learning_app.ui.ProgressMeter
 import org.artkachenko.kmp_learning_app.ui.accuracyColor
 import org.artkachenko.kmp_learning_app.ui.formatAccuracy
+import org.artkachenko.kmp_learning_app.ui.theme.AppElevation
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
@@ -143,7 +143,7 @@ internal fun ProgressHero(
         // is almost invisible; the shadow carries it in light, where the pale sweep sits close in
         // value to the page. Neither alone works in both schemes.
         border = BorderStroke(AppStroke.Hairline, onHero.copy(alpha = HeroBorderAlpha)),
-        shadowElevation = HeroElevation,
+        shadowElevation = AppElevation.Hero,
     ) {
         AnimatedVisibility(
             visibleState = entrance,
@@ -322,7 +322,6 @@ private const val HeroBorderAlpha = 0.14f
 /** The unfilled part of the coverage meter, in the hero's own on-colour. */
 private const val CoverageTrackAlpha = 0.2f
 
-private val HeroElevation = 2.dp
 
 /**
  * The hero rises by a fraction of its own height, so the distance suits the surface rather than

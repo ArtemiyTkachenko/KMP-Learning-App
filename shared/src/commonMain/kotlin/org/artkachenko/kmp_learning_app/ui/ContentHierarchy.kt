@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.theme.AppElevation
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 
@@ -78,7 +79,7 @@ internal fun AccuracyHeroCard(
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         border = BorderStroke(AppStroke.Hairline, MaterialTheme.colorScheme.outlineVariant),
-        shadowElevation = HeroElevation,
+        shadowElevation = AppElevation.Hero,
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(AppSpacing.Generous),
@@ -135,8 +136,6 @@ internal fun AccuracyHeroCard(
     }
 }
 
-/** The lift that makes a hero outrank the cards under it; see [AccuracyHeroCard]. */
-private val HeroElevation = 2.dp
 
 /**
  * Supporting summary content: the same shape language as [AccuracyHeroCard], two tonal steps

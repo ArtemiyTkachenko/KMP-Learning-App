@@ -55,11 +55,11 @@ Severity, confidence, and status use the same vocabulary as the
 | `VC-001` | Medium | High | Shared rows | `PerformanceCard` and `AccuracyRow` break their title inside a word at a doubled type size. | Fixed |
 | `VC-002` | Medium | High | Size tokens | One number, twelve declarations: there is no icon-size or stroke-width scale in `ui/theme/`. | Fixed |
 | `VC-003` | Low | High | Screen state | Nine of eleven stateful screens still replace their state branches in one frame. | Fixed |
-| `VC-004` | Low | Medium | Screen state | The Topic Browser cuts hard between three bodies *inside* its `Content` state, which a class-keyed transition would not cover. | Open |
+| `VC-004` | Low | Medium | Screen state | The Topic Browser cuts hard between three bodies *inside* its `Content` state, which a class-keyed transition would not cover. | Fixed |
 | `VC-005` | Low | High | Motion | The app's enter/exit state-change pair is written out longhand in two places rather than named on `AppMotion`. | Fixed |
-| `VC-006` | Observation | Medium | Empty states | Four of six `ScreenAction` call sites pass an icon; the split looks deliberate but is written down nowhere. | Open |
-| `VC-007` | Observation | High | Documentation | Architecture prose describing UI drifts silently when a component is redesigned. | Open |
-| `VC-008` | Low | High | Size tokens | `HeroElevation` and the busy-control stroke are each declared in several files; both were left out of `VC-002` because elevation needs a Material question answered first. | Open |
+| `VC-006` | Observation | Medium | Empty states | Four of six `ScreenAction` call sites pass an icon; the split looks deliberate but is written down nowhere. | Fixed |
+| `VC-007` | Observation | High | Documentation | Architecture prose describing UI drifts silently when a component is redesigned. | Fixed |
+| `VC-008` | Low | High | Size tokens | `HeroElevation` and the busy-control stroke are each declared in several files; both were left out of `VC-002` because elevation needs a Material question answered first. | Fixed |
 
 ---
 
@@ -319,7 +319,7 @@ regression the finding warns about.
 
 ## VC-004 — The Topic Browser cuts hard inside one state class
 
-**Severity** Low · **Confidence** Medium · **Status** Open
+**Severity** Low · **Confidence** Medium · **Status** Fixed
 
 **File** `topic_study/topics/TopicBrowserScreen.kt:221`
 
@@ -339,6 +339,26 @@ result-set to result-set.
 omission. If a transition is wanted, it needs a key that distinguishes the three bodies
 (`query.isBlank()`, empty matches, matches) and not the data inside them — the same principle as
 `contentKey`, applied one level down.
+
+**Resolution** The decision is **browse ⇄ search fades, everything within search snaps**, and it is
+expressed as a key rather than as a comment. `TopicBrowserBody` names the five bodies the viewport
+can hold — `Loading`, `Browsing`, `Searching`, `Empty`, `Error` — and `viewportBody()` maps the
+state onto one of them; `ScreenStateTransition` takes that as its `contentKey`.
+
+The grouping is the decision and is deliberately visible in the enum: `Searching` covers **both**
+the results list and the no-match message, so running out of matches and finding them again is one
+body changing its contents rather than one body becoming another. That is the half of the finding
+that argued against fading — those changes track a keystroke, and a body that faded on every
+character would lag a character behind the typing instead of following it. Crossing from the
+catalogue into search happens once per search session and is the change worth marking.
+
+An enum rather than the boolean the recommendation implied, because `query.isBlank()` as a
+`contentKey` is an inscrutable key: naming the bodies is what makes the grouping reviewable.
+
+**Protection** `searchAndBrowseAreDifferentBodiesButTypingWithinSearchIsNot` in
+`TopicBrowserScreenTest.kt` asserts both halves one frame after each change — the catalogue is still
+composed while results arrive, and the previous matches are gone the moment new ones do. Confirmed
+to be real protection by removing the `contentKey` argument, which fails it.
 
 ---
 
@@ -377,7 +397,7 @@ code and is now stated rather than implied.
 
 ## VC-006 — The empty-state icon split is undocumented
 
-**Severity** Observation · **Confidence** Medium · **Status** Open
+**Severity** Observation · **Confidence** Medium · **Status** Fixed
 
 `ScreenAction` takes an optional `icon`. Four call sites pass one — `ProgressScreen`
 (`AppIcons.Insights`), `MistakeReviewScreen` (`CheckCircle`), `SavedQuestionsScreen` (`Bookmark`),
@@ -393,11 +413,23 @@ state added has nothing to follow.
 [Material Design 3](../development/material-design.md), or give the two in-tab states icons. State
 the rule; do not add the icons by default.
 
+**Resolution** The rule is stated in the empty-states section of
+[Material Design 3](../development/material-design.md) and no icons were added: a whole-screen
+empty state takes a 40dp mark that names the surface, and one inside a tab or pane does not, because
+there the body is a fraction of the window and the same mark outweighs the tab strip above it. The
+rule also says to reach for an existing `AppIcons` entry and never to commission artwork for an
+empty state.
+
+One correction to the finding as filed: it counted three call sites passing an icon and three not.
+It is four and two — the Topic Browser's no-match state passes `AppIcons.Search`, which I missed on
+the first sweep. The two without are both in-tab, which is what makes the split a rule rather than
+an omission.
+
 ---
 
 ## VC-007 — Architecture prose describing UI drifts silently
 
-**Severity** Observation · **Confidence** High · **Status** Open
+**Severity** Observation · **Confidence** High · **Status** Fixed
 
 The Saved Questions pass found `docs/architecture/assessment.md` describing the review save control
 as *"a text Save/Unsave control beside the question heading"* — two design passes after it stopped
@@ -414,11 +446,18 @@ component *is* rather than how it is arranged, grep `docs/architecture/` for the
 before reporting completion. The documentation map in `AGENTS.md` makes that one search, and this
 audit is the evidence that it is not automatic.
 
+**Resolution** Added as step 8 of the `material-design` skill's workflow, where the check is
+actually reached, and argued in the "Verifying a layout change" section of
+[Material Design 3](../development/material-design.md), which is where the rest of the
+before-you-are-done guidance lives. The skill's Output section now also asks for any architecture
+prose corrected, so the check is reported rather than silently skipped. No tooling was added, and
+the abandoned sweep is recorded alongside the rule so it is not attempted again.
+
 ---
 
 ## VC-008 — Elevation and indicator stroke are still per-file
 
-**Severity** Low · **Confidence** High · **Status** Open
+**Severity** Low · **Confidence** High · **Status** Fixed
 
 **Files** `ui/ContentHierarchy.kt:138`, `progress/ProgressHero.kt:325`,
 `assessment_review/AssessmentCompletionHero.kt:310`, `assessment_review/AssessmentRetakeAction.kt:209`,
@@ -444,6 +483,25 @@ decision rather than justify a change of its own.
 
 **Recommendation** Answer the elevation question first, in the deviations table of
 [Material Design 3](../development/material-design.md), then give both values a home.
+
+**Resolution** The question is answered against the pinned tokens, and the answer removed the
+deviation rather than recording it. `ElevationTokens` is 0, 1, 3, 6, 8, 12dp, so 2dp was landing
+between two levels. Level1 is the wrong destination despite being nearer, because 1dp is exactly
+`FilledCardTokens.HoverContainerElevation` — what an ordinary card lifts to on hover — and on a
+pointer host, where hover is the resting state of whatever the cursor is over, a hero at Level1
+would be indistinguishable from any card being pointed at. Level2 is the first level that clears it,
+which is what 2dp was reaching for without a token to land on.
+
+`AppElevation.Hero` is therefore 3dp and the three heroes use it. Because this changes a rendered
+value rather than only a name, it was measured rather than asserted to be safe: the hero was captured
+at both values, and against the old 2dp the Level2 render differs on 3.13% of pixels with a maximum
+channel delta of **6/255** in light and 0.72% at **1/255** in dark — the shadow's penumbra and
+nothing else. The lift still reads against the card beneath it.
+
+`AppStroke.Indicator` takes the two busy-control spinner strokes. It is its own entry rather than a
+second use of `AppStroke.Emphasis`, which holds the same number: a control's busy state and a
+learner's selected choice are not one concept drawn twice, and collapsing them would mean retuning
+one could not help retuning the other.
 
 ---
 
@@ -488,9 +546,13 @@ moving while it does. **Done** — see its Resolution above; it touched fifteen.
 Resolutions above.
 
 `VC-004`, `VC-006` and `VC-008` are decisions to record more than code to write, and can ride along
-with any change that touches their surface.
+with any change that touches their surface. **Done.**
 
-`VC-007` is a habit, not a task.
+`VC-007` is a habit, not a task. **Done** — it is now step 8 of the `material-design` skill.
+
+All eight findings are closed. What this audit set out to measure — how much of the visual-polish
+pass had been adopted by the surfaces that predated each primitive — is now fully adopted: one
+bookmark affordance, one reflow rule, one size scale, one state transition, one motion pairing.
 
 ## What This Audit Concludes
 

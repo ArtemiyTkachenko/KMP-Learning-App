@@ -33,6 +33,9 @@ Compose solely to rename a symbol or adjust a test tag.
    its reason, in the same change.
 7. Verify visually. Assertions do not see a state layer or a margin — capture and measure
    the pixels, as the doc describes.
+8. If the change altered what a component *is* rather than how it is arranged, grep
+   `docs/architecture/` for its name and correct any prose that now describes the old one.
+   Nothing fails when this is missed; the description simply goes on being wrong.
 
 ## Project References
 
@@ -45,4 +48,5 @@ Compose solely to rename a symbol or adjust a test tag.
 ## Output
 
 Report which existing surface the change followed, any Material token quoted and its
-value, any deviation recorded, and how the result was visually verified.
+value, any deviation recorded or removed, how the result was visually verified, and any
+architecture prose corrected.

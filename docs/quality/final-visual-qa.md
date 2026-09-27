@@ -69,7 +69,7 @@ in disguise.
 | `VQA-006` | Observation | High | Weak-area card colouring | expanded, both themes | Left unchanged |
 | `VQA-007` | Observation | Medium | Mistake Review semantic density | compact and expanded | Left unchanged |
 | `VQA-008` | Observation | High | Page-level tab focus band | compact, light | Left unchanged |
-| `VQA-009` | Low | High | `TopicDetailScreen` tab labels | compact, 2× | Open — the one follow-up |
+| `VQA-009` | Low | High | `TopicDetailScreen` tab labels | compact, 2× | Fixed |
 
 ---
 
@@ -225,7 +225,8 @@ selected label's descender is whole.
 
 **This closes the clipping and not the wrapping.** At 2× on a 380dp window the longest label
 still wraps *inside the word*, as "Subtopi / cs". That is a separate, lower-severity
-residual and is filed as `VQA-009`; it is not fixable by a constraint on this component.
+residual and is filed as `VQA-009`; it is not fixable by a constraint on this component, and
+was fixed separately by a content-sized tab row.
 
 Protected by `theTopicTabsGrowWithTheTypeSizeRatherThanClippingTheirLabels` in
 `ui/LargeFontScaleTest.kt`, which asserts the decision in both directions: at an ordinary
@@ -381,7 +382,7 @@ for a stray container.
 
 ## VQA-009 — The longest tab label still wraps inside the word at a doubled type size
 
-**Severity** Low · **Confidence** High · **Status** Open — the one follow-up this pass leaves
+**Severity** Low · **Confidence** High · **Status** Fixed, as its own task after this pass
 
 **File** `topic_study/topic_detail/TopicDetailScreen.kt`
 
@@ -420,6 +421,73 @@ than cut; it cannot give it horizontal room, because the width is a third of the
 re-derive the pager-linked indicator's position from the tabs' own geometry rather than from
 an assumed equal cell width, keeping the drag coupling and the at-rest alignment that
 `TopicDetailScreenTest` already holds.
+
+**Resolution** That task, and nothing else.
+
+- **The row** is Material's `PrimaryScrollableTabRow` from the pinned `material3`
+  `1.11.0-alpha07`. It measures each tab with an unbounded maximum width, so a tab is its
+  label's single-line width and a word has nowhere to break. Two of its defaults are
+  replaced, both for the ordinary type size. The 52dp edge padding is `0.dp`: with it at each
+  end and the 90dp minimum per tab the row needs 374dp, more than a compact pane, so it would
+  scroll at every type size. The minimum tab width is `sharedMinimumTabWidth` — the largest
+  common minimum that does not make the row wider than the window, and never below Material's
+  90dp. When every label fits an equal share, that *is* the share, so the ordinary row is the
+  three equal cells it was; when one outgrows it, the wide tabs keep their width and the
+  narrow ones take the slack; only when the labels together are wider than the row does it
+  scroll. It is computed from the labels measured with `rememberTextMeasurer`, not from a font
+  scale, and it is only a floor: no tab is ever narrower than its label.
+- **The indicator** is still one `TopicTabIndicator`, positioned in `measure` from
+  `currentPage + currentPageOffsetFraction`, with no animation of its own. What changed is
+  where the geometry comes from: the `TabPosition`s the row passes to `tabIndicatorLayout` —
+  the same values it placed the tabs with — rather than `constraints.maxWidth` treated as a
+  cell. `tabIndicatorEdge` takes the tab below the continuous position and the one after it
+  and interpolates the rule's **start and end edges separately**, so a drag between a narrow
+  tab and a wide one moves the rule and changes its width from the one pager value. Only the
+  sum is read, so nothing changes where `currentPage` flips and the fraction changes sign; the
+  position is clamped to the first and last tab, so an overscroll pull cannot move the rule
+  off the row.
+- **Placement.** The row places the indicator slot at `max(0, (selected width − slot width) /
+  2)` and never adds the tab's `left`. The indicator reports a zero-width slot, which makes that
+  offset exactly half the selected tab, and places the rule back by that amount. It mirrors the
+  logical position by hand under right-to-left, because `placeRelative` does not mirror inside a
+  zero-width layout — which is also how Material's own indicator offset handles direction.
+- **Row scrolling** is Material's: it scrolls the selected tab into view when
+  `selectedTabIndex`, still `pagerState.currentPage`, changes. The indicator is inside the
+  scrolled content, so the two never disagree about where a tab is.
+
+**Pre-existing defect found on the way.** The equal-width indicator was wrong under a
+right-to-left layout: it placed itself with `place` rather than `placeRelative`, so off the
+first tab it was drawn past the end of the row. The new right-to-left assertion fails against
+it, and the placement above fixes it.
+
+**Verification** A throwaway harness re-rendered Topic detail at 380dp in both themes at 1×
+and 2×, and at 1280dp in both themes, with Study, Practice and Subtopics each selected. It also
+logged the tab and indicator bounds every frame through a tab tap, a drag with a reversal
+across the Practice/Subtopics midpoint, and an abandoned drag. It was deleted afterwards.
+
+- **Ordinary type:** no rendered difference. The cells are 126/126/126px at 380dp and
+  280/280/280px at 1280dp, exactly as with `PrimaryTabRow`, and the rule spans the cell.
+- **Doubled type at 380dp:** "Study", "Practice" and "Subtopics" are each one whole line, in
+  97/130/154px cells. That is 381px, one more than the window, so the row scrolls by that
+  pixel; nothing visible is cut. The tabs are 56px tall.
+- **Transitions:** on a tap from Study to Subtopics the rule's start runs 0→226px and its
+  width 97→154px without reversing. On a drag both edges follow the finger, the reversal
+  across the midpoint has no jump, and the row moves at most one pixel. The abandoned drag
+  springs back to Study.
+- **Themes:** the `primary` rule and label colours are unchanged. There is no container, pill,
+  or tonal strip behind the scrollable row in either theme. `VQA-008`'s focus band is untouched.
+
+Protected by `theTopicTabLabelsStayWholeWordsAndEveryTabStaysReachable` in
+`ui/LargeFontScaleTest.kt`. At 2× on its 360dp window, where the labels genuinely overflow and
+the row scrolls, it reads each label's line count from its own text layout — one word on more
+than one line is a word broken inside itself, whatever the font — and holds each label inside
+its tab and each tab at least 48dp tall. It then selects every tab, checks the tab is brought
+into the window, checks the indicator spans it, and checks the indicator is wider under
+Subtopics than under Study. Against the equal-width row it fails with *"Practice" is laid out on
+2 lines*. `atRestTheIndicatorUnderlinesExactlyTheSelectedTab` in `TopicDetailScreenTest` holds
+the at-rest rule to the selected tab's edges in both layout directions. The interpolation and
+the floor are pure functions covered in `commonTest` by `TabIndicatorEdgeTest` and
+`SharedMinimumTabWidthTest`.
 
 ---
 
@@ -481,9 +549,9 @@ before the text beside it, in a plain `SpaceBetween` row. That is `VC-001` one c
 further along, and it is fixed with the primitive `VC-001` produced. The fourth is a fixed
 height where a minimum was meant.
 
-One residual remains and is named rather than smoothed over: the longest Topic detail tab
-label still wraps inside the word at 2× on a phone, which needs a tab row that sizes to its
-content and therefore a rewrite of the pager-linked indicator. It is `VQA-009` and it is the
-single follow-up.
+One residual was named rather than smoothed over: the longest Topic detail tab label still
+wrapped inside the word at 2× on a phone, which needed a tab row that sizes to its content and
+therefore a rewrite of the pager-linked indicator. That is `VQA-009`, and it has since been fixed
+as its own task. No finding from this pass is open.
 
 The rest of the matrix rendered cleanly and was deliberately left alone.

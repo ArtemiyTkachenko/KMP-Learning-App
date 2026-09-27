@@ -3,8 +3,10 @@ package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
@@ -25,7 +27,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -133,9 +137,8 @@ internal class TopicDetailScreenTest {
      * The rule is now rendered once by the row and positioned from the pager, and the count is what
      * guards that: it holds on every page and cannot be satisfied by the arrangement it replaced.
      *
-     * Nothing about where the rule sits or how wide it is is asserted. That is geometry read off an
-     * animation, it would break on any honest change to the row, and it would say nothing about the
-     * coupling this test exists to protect.
+     * Where the rule sits at rest is asserted separately, by
+     * [atRestTheIndicatorUnderlinesExactlyTheSelectedTab]; nothing here reads it mid-animation.
      */
     @Test
     fun theTabRowCarriesExactlyOneIndicatorOnEveryPage() = runComposeUiTest {
@@ -164,6 +167,50 @@ internal class TopicDetailScreenTest {
 
         selectTab(TopicSubtopicsTabTag)
         onAllNodesWithTag(TopicTabIndicatorTag).assertCountEquals(1)
+    }
+
+    /**
+     * At rest, the one rule spans exactly the selected tab's cell, in either layout direction.
+     *
+     * The tabs are content-sized, so the rule reads its position and width from the tab row's own
+     * geometry rather than from an equal share of the window, and it has to undo the row's own
+     * placement of the indicator slot to do it. This asserts the relationship rather than any
+     * coordinate: the rule's edges are the tab's edges and it sits on the tab's bottom edge. Frames
+     * between two tabs are not asserted; the interpolation is covered by `TabIndicatorEdgeTest`.
+     *
+     * Right-to-left is asserted because the placement mirrors a logical position, and a mistake
+     * there puts the rule under the opposite tab — or off the row — without failing anything else.
+     */
+    @Test
+    fun atRestTheIndicatorUnderlinesExactlyTheSelectedTab() {
+        for (direction in LayoutDirection.entries) {
+            runComposeUiTest {
+                setContent {
+                    CompositionLocalProvider(LocalLayoutDirection provides direction) {
+                        MaterialTheme {
+                            TopicDetailScreen(
+                                state = topicContent(
+                                    subtopics = listOf(subtopicItem("subtopic_a", "Subtopic A")),
+                                ),
+                                onBack = {},
+                                onStartTopicPractice = {},
+                                onStartSubtopicPractice = {},
+                                onPracticePreset = {},
+                                onRetry = {},
+                            )
+                        }
+                    }
+                }
+
+                assertIndicatorUnderlines(TopicStudyTabTag, direction)
+                selectTab(TopicPracticeTabTag)
+                assertIndicatorUnderlines(TopicPracticeTabTag, direction)
+                selectTab(TopicSubtopicsTabTag)
+                assertIndicatorUnderlines(TopicSubtopicsTabTag, direction)
+                selectTab(TopicStudyTabTag)
+                assertIndicatorUnderlines(TopicStudyTabTag, direction)
+            }
+        }
     }
 
     /**
@@ -2039,6 +2086,18 @@ private suspend fun ComposeUiTest.selectTab(testTag: String) {
             runCatching { onNodeWithTag(testTag).assertIsSelected() }.isSuccess
     }
     waitForIdle()
+}
+
+/** The one indicator spans the tab's cell and sits on its bottom edge, to within a pixel. */
+@OptIn(ExperimentalTestApi::class)
+private fun ComposeUiTest.assertIndicatorUnderlines(tabTag: String, direction: LayoutDirection) {
+    val tab = onNodeWithTag(tabTag).fetchSemanticsNode().boundsInRoot
+    val indicator = onNodeWithTag(TopicTabIndicatorTag).fetchSemanticsNode().boundsInRoot
+    val message = "$direction: the indicator spans ${indicator.left}..${indicator.right} at " +
+        "${indicator.bottom}, under a tab at ${tab.left}..${tab.right} ending at ${tab.bottom}."
+    assertTrue(abs(indicator.left - tab.left) <= 1f, message)
+    assertTrue(abs(indicator.right - tab.right) <= 1f, message)
+    assertTrue(abs(indicator.bottom - tab.bottom) <= 1f, message)
 }
 
 /** The label's own bounds, not its button's: a `TextButton` includes its inset in its node. */

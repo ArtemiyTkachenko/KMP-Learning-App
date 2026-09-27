@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,9 +18,10 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabIndicatorScope
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,7 +29,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.topic_browser_error
@@ -124,10 +129,10 @@ internal const val TopicSubtopicsTabTag = "topic_tab_subtopics"
  * The single moving indicator, tagged only so a test can assert that there is exactly one of it.
  *
  * That is the whole point of the tag: the row used to own three separate rules that crossfaded past
- * each other, and one shared rule is what replaced them. Where it sits and how wide it is are not
- * asserted — those are geometry, and a test that pinned them would break on any honest change to
- * the row. A bare test tag adds no role, no label, and no state, so the indicator stays absent from
- * the accessibility tree; selection is still announced by the tabs alone.
+ * each other, and one shared rule is what replaced them. It also lets a test hold the rule to the
+ * selected tab's edges at rest — a relationship, never a coordinate or a mid-drag frame. A bare
+ * test tag adds no role, no label, and no state, so the indicator stays absent from the
+ * accessibility tree; selection is still announced by the tabs alone.
  */
 internal const val TopicTabIndicatorTag = "topic_tab_indicator"
 
@@ -156,13 +161,19 @@ private const val TabSnapPositionalThreshold = 0.25f
  * minimum touch target, so the two constraints are satisfied by one number.
  *
  * It is applied as a **minimum** rather than as a fixed height. As a fixed one it clipped the tab
- * labels in both axes at a doubled type size: the row had no vertical room for the label to wrap
- * into, so "Practice" and "Subtopics" were cut mid-word with no ellipsis, and no room for the line
- * box either, so the selected label's descender was sliced flat by the bottom of the cell.
- * `PrimaryTabRow` sizes itself from its tallest tab, so a minimum lets the row grow with the type
- * while leaving the touch target and the container height untouched at every ordinary scale.
+ * labels at a doubled type size: the cell had no room for the line box, so the selected label's
+ * descender was sliced flat by the bottom of the cell. The tab row sizes itself from its tallest
+ * tab, so a minimum lets the row grow with the type while leaving the touch target and the
+ * container height untouched at every ordinary scale.
  */
 private val TabHeight = 48.dp
+
+/**
+ * The space either side of a tab's label, which with the label is the whole of a tab's natural
+ * width — Material's `Tab` adds none of its own. Named because [sharedMinimumTabWidth] is given the
+ * natural widths before the tabs are composed, and has to add the same padding the tab does.
+ */
+private val TabLabelHorizontalPadding = AppSpacing.Related
 
 /**
  * Material's `PrimaryNavigationTabTokens.ActiveIndicatorHeight`, and the height of the rule that
@@ -216,7 +227,7 @@ private fun TopicDetailTab(
             text = stringResource(tab.label),
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(
-                horizontal = AppSpacing.Related,
+                horizontal = TabLabelHorizontalPadding,
                 vertical = AppSpacing.Related,
             ),
         )
@@ -241,11 +252,26 @@ private fun TopicDetailTab(
  * away from it. The coercion only guards an overscroll pull at either end, which is a stretch of
  * the pager and not a navigation.
  *
- * Placement goes through [TabIndicatorScope.tabIndicatorLayout] because that is where the tab
- * geometry is. `PrimaryTabRow` measures this slot at exactly one tab cell wide, on the same integer
- * pitch it places the tabs on, so `constraints.maxWidth` is the cell width and `position * width`
- * is the offset — no Dp round trip, and nothing to drift. Reading the pager inside `measure` also
- * means a drag re-measures this one node instead of recomposing the row.
+ * The tabs are content-sized, so neither where a tab starts nor how wide it is can be computed from
+ * its index. Both come from the `TabPosition`s the row hands [TabIndicatorScope.tabIndicatorLayout]
+ * — the same values it placed the tabs with — and the rule's two edges are interpolated separately
+ * by [tabIndicatorEdge]. Moving the edges rather than a centre is what makes the rule both travel
+ * and change width between a narrow tab and a wide one, from the one pager position and with no
+ * width animation of its own. Reading the pager inside `measure` means a drag re-measures this one
+ * node instead of recomposing the row.
+ *
+ * The rule spans the whole tab cell, as it did when the cells were equal thirds, rather than
+ * Material's content-width inset: it is the underline of the tab, not a mark under its word.
+ *
+ * The slot is placed by the row, not by this node: the row puts it at
+ * `max(0, (selected tab width - slot width) / 2)` from the start and never adds the tab's own
+ * `left`. Reporting a zero-width slot — which every constraint admits — makes that offset exactly
+ * half the selected tab's width, and the rule is placed back by the same amount. The row mirrors
+ * that offset under a right-to-left layout, but `placeRelative` does not mirror inside a zero-width
+ * layout, so the rule's own placement is mirrored here by hand — the tab positions are logical,
+ * measured from the start edge — as Material's own indicator offset does. [selectedTabIndex] has
+ * to be the index the row was given in the same composition, because it is the row's own offset
+ * being undone.
  *
  * Using the indicator slot at all is a reversal: it was left empty because it is placed after the
  * tabs, and the filled pill that lived here then would have covered the label it was marking. A
@@ -253,16 +279,29 @@ private fun TopicDetailTab(
  * It has no pointer input of its own, so it cannot take a tap from the tab underneath it.
  */
 @Composable
-private fun TabIndicatorScope.TopicTabIndicator(pagerState: PagerState) {
+private fun TabIndicatorScope.TopicTabIndicator(pagerState: PagerState, selectedTabIndex: Int) {
     Box(
         Modifier
-            .tabIndicatorLayout { measurable, constraints, _ ->
-                val tabWidth = constraints.maxWidth
-                val position = (pagerState.currentPage + pagerState.currentPageOffsetFraction)
-                    .coerceIn(0f, (pagerState.pageCount - 1).toFloat())
-                val placeable = measurable.measure(constraints)
-                layout(placeable.width, placeable.height) {
-                    placeable.place(x = (position * tabWidth).roundToInt(), y = 0)
+            .tabIndicatorLayout { measurable, constraints, tabPositions ->
+                if (tabPositions.isEmpty()) return@tabIndicatorLayout layout(0, 0) {}
+                val position = pagerState.currentPage + pagerState.currentPageOffsetFraction
+                val left = tabIndicatorEdge(position, tabPositions.size) {
+                    tabPositions[it].left.toPx()
+                }.roundToInt()
+                val right = tabIndicatorEdge(position, tabPositions.size) {
+                    tabPositions[it].right.toPx()
+                }.roundToInt()
+                val width = (right - left).coerceAtLeast(0)
+                val placeable = measurable.measure(
+                    constraints.copy(minWidth = width, maxWidth = width),
+                )
+                val rowOffset = tabPositions[selectedTabIndex].width.roundToPx() / 2
+                val x = when (layoutDirection) {
+                    LayoutDirection.Ltr -> left - rowOffset
+                    LayoutDirection.Rtl -> rowOffset - left - width
+                }
+                layout(0, placeable.height) {
+                    placeable.place(x = x, y = 0)
                 }
             }
             .fillMaxWidth()
@@ -270,6 +309,60 @@ private fun TabIndicatorScope.TopicTabIndicator(pagerState: PagerState) {
             .background(MaterialTheme.colorScheme.primary)
             .testTag(TopicTabIndicatorTag),
     )
+}
+
+/**
+ * One edge of the tab indicator — its start or its end — at a continuous pager [position], in the
+ * tab row's own logical coordinates.
+ *
+ * [position] is `currentPage + currentPageOffsetFraction`, and it is used only as that sum. The
+ * pager flips `currentPage` at the midpoint of a swipe while the fraction changes sign, so the page
+ * a gesture started from cannot be read off `currentPage`; the sum does not change at the flip, so
+ * neither does anything derived from it. The tab below the position and the one after it are the
+ * pair it lies between, and the edge moves linearly from one tab's to the other's, whichever
+ * direction the swipe is going and however often it reverses.
+ *
+ * The clamp is for an overscroll pull at either end, which stretches the pager past its first or
+ * last page without navigating anywhere: the edge stays on the end tab rather than leaving the row.
+ */
+internal fun tabIndicatorEdge(position: Float, tabCount: Int, edgeOf: (Int) -> Float): Float {
+    if (tabCount <= 1) return edgeOf(0)
+    val clamped = position.coerceIn(0f, (tabCount - 1).toFloat())
+    val from = clamped.toInt().coerceAtMost(tabCount - 2)
+    val fraction = clamped - from
+    return edgeOf(from) + (edgeOf(from + 1) - edgeOf(from)) * fraction
+}
+
+/**
+ * The minimum width every Topic tab is given, in pixels, from the row's width and each tab's
+ * natural width — its label on one line plus its padding.
+ *
+ * It is the largest common minimum that does not make the row wider than [rowWidth]: lifting the
+ * narrower tabs to it spends exactly the slack the wider ones leave. When every label fits an equal
+ * share, that share is the answer, so at an ordinary type size the row is the three equal cells it
+ * has always been. When one label outgrows its share, it keeps its natural width and the others
+ * divide what is left, so the row still fills the window and does not scroll. Only when the natural
+ * widths together are wider than the row is there nothing to share: the minimum falls to
+ * [materialMinimum], each tab keeps its own width, and the row scrolls.
+ *
+ * It never goes below [materialMinimum] — Material's own smallest scrollable tab — and it is a
+ * floor, not a width: no tab is ever made narrower than its label, whatever this returns. That is
+ * what keeps a word whole; this only decides how the row spends the space around it.
+ */
+internal fun sharedMinimumTabWidth(
+    rowWidth: Int,
+    naturalWidths: List<Int>,
+    materialMinimum: Int,
+): Int {
+    val ascending = naturalWidths.sorted()
+    // Lift the k narrowest tabs to a common width and leave the rest at their own; the largest k
+    // for which that width still covers every lifted tab is the answer.
+    for (lifted in ascending.size downTo 1) {
+        val remaining = rowWidth - ascending.drop(lifted).sum()
+        val shared = remaining / lifted
+        if (shared >= ascending[lifted - 1]) return maxOf(shared, materialMinimum)
+    }
+    return materialMinimum
 }
 
 /**
@@ -425,18 +518,49 @@ private fun ColumnScope.TopicDetailTabs(
         scope.launch { pagerState.animateScrollToPage(TopicDetailTab.Practice.ordinal) }
         Unit
     }
-    PrimaryTabRow(
-        // Only the row's own defaults read this; the indicator below is positioned from the pager
-        // itself, so the two cannot disagree about which tab is current.
-        selectedTabIndex = pagerState.currentPage,
-        indicator = { TopicTabIndicator(pagerState) },
-    ) {
-        tabs.forEach { tab ->
-            TopicDetailTab(
-                tab = tab,
-                selected = pagerState.currentPage == tab.ordinal,
-                onClick = { scope.launch { pagerState.animateScrollToPage(tab.ordinal) } },
-            )
+    // A content-sized row, so a label keeps its own width at a large type size instead of being
+    // broken inside a word to fit an equal third of the window. It scrolls only when the labels
+    // together are wider than the window, and Material scrolls the selected tab into view.
+    //
+    // Material's 52dp edge padding is removed: with it at each end and its 90dp minimum per tab,
+    // the row needs 374dp, wider than a compact pane, so it would scroll at every type size and
+    // open with a gap before Study. Its minimum is raised to [sharedMinimumTabWidth], which keeps
+    // the ordinary row the three equal cells it was and lets a larger type size spend the slack.
+    val selectedTabIndex = pagerState.currentPage
+    val labels = tabs.map { stringResource(it.label) }
+    val labelStyle = MaterialTheme.typography.titleSmall
+    val textMeasurer = rememberTextMeasurer()
+    BoxWithConstraints {
+        val density = LocalDensity.current
+        val rowWidth = constraints.maxWidth
+        val minTabWidth = remember(labels, labelStyle, rowWidth, density) {
+            with(density) {
+                val labelPadding = TabLabelHorizontalPadding.roundToPx() * 2
+                sharedMinimumTabWidth(
+                    rowWidth = rowWidth,
+                    naturalWidths = labels.map {
+                        textMeasurer.measure(it, labelStyle).size.width + labelPadding
+                    },
+                    materialMinimum = TabRowDefaults.ScrollableTabRowMinTabWidth.roundToPx(),
+                ).toDp()
+            }
+        }
+        PrimaryScrollableTabRow(
+            // Material reads this to size the indicator slot and to scroll the selected tab into
+            // view. The indicator's position is read from the pager itself, so the two cannot
+            // disagree about which tab is current.
+            selectedTabIndex = selectedTabIndex,
+            edgePadding = 0.dp,
+            minTabWidth = minTabWidth,
+            indicator = { TopicTabIndicator(pagerState, selectedTabIndex) },
+        ) {
+            tabs.forEach { tab ->
+                TopicDetailTab(
+                    tab = tab,
+                    selected = selectedTabIndex == tab.ordinal,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(tab.ordinal) } },
+                )
+            }
         }
     }
     HorizontalPager(

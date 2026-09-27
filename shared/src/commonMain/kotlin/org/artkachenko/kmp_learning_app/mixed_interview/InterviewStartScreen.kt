@@ -73,6 +73,7 @@ import org.artkachenko.kmp_learning_app.ui.AccuracyRow
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
 import org.artkachenko.kmp_learning_app.ui.ContentGroup
+import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentPane
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.AppElevation
@@ -553,24 +554,34 @@ private fun InterviewRecord(
         modifier = Modifier.fillMaxWidth().testTag(InterviewRecordTag),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Related),
     ) {
-        Row(
+        // `TrailingFigureRow` rather than an `Arrangement.SpaceBetween` row. That row measured the
+        // heading first against the whole width, leaving the count to measure against almost
+        // nothing: at a doubled type size on a small phone "4 completed" was drawn one character
+        // per line, a column tall enough to push the record it heads most of a screen down.
+        TrailingFigureRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = stringResource(Res.string.interview_history_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = stringResource(
-                    Res.string.interview_history_attempts,
-                    history.attemptCount,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+            figure = {
+                // End-aligned so the count keeps the right-hand column when it drops below the
+                // heading, instead of reading as a second line of the heading itself.
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = stringResource(
+                            Res.string.interview_history_attempts,
+                            history.attemptCount,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = stringResource(Res.string.interview_history_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            },
+        )
         // One container for the record rather than a card per entry. At most two rows ever reach
         // this, they answer the same question about the same thing, and the pair was reading as two
         // unrelated results stacked under a heading instead of as one record with two lines in it.

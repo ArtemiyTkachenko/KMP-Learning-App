@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
@@ -238,11 +239,19 @@ private fun SavedQuestionCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalGap = AppSpacing.Related,
                 figure = {
-                    SavedQuestionBookmark(
-                        questionId = question.questionId,
-                        isPending = isRemovalPending,
-                        onRemoveSaved = onRemoveSaved,
-                    )
+                    // End-aligned in a Column of its own, which is the rule
+                    // `docs/development/material-design.md` states for this slot and which the
+                    // other three callers already follow. `TrailingFigureRow` measures the figure
+                    // at the row's full width when it stacks, so passing the button directly made
+                    // *the button* full width: its label centred, and its hit area became the
+                    // whole card line rather than the control that draws it.
+                    Column(horizontalAlignment = Alignment.End) {
+                        SavedQuestionBookmark(
+                            questionId = question.questionId,
+                            isPending = isRemovalPending,
+                            onRemoveSaved = onRemoveSaved,
+                        )
+                    }
                 },
                 text = {
                     Text(

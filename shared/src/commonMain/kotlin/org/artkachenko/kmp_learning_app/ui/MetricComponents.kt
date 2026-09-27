@@ -397,7 +397,19 @@ internal fun TrailingFigureRow(
     }
 }
 
-/** A metric line: label on the left, value on the right, so figures form a scannable column. */
+/**
+ * A metric line: label on the left, value on the right, so figures form a scannable column.
+ *
+ * It goes through [TrailingFigureRow] rather than an `Arrangement.SpaceBetween` row, which is
+ * what it was. A `SpaceBetween` row measures its children in order against the width that is
+ * left, so the label — unweighted and unbounded — took the whole line and the value was measured
+ * against almost nothing: at a doubled type size on a small phone the Progress hero drew "140" as
+ * three stacked digits and "29.2%" as a vertical column. That is the same defect `TrailingFigureRow`
+ * was built for one component along, and this is the file it lives in.
+ *
+ * Nothing moves at an ordinary type scale. The beside branch places the figure hard against the
+ * trailing edge, which is where `SpaceBetween` put it for a row of two.
+ */
 @Composable
 internal fun MetricRow(
     label: String,
@@ -412,22 +424,27 @@ internal fun MetricRow(
      */
     labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
-    Row(
+    TrailingFigureRow(
         modifier = modifier
             .fillMaxWidth()
             .semantics(mergeDescendants = true) {},
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = labelColor,
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            color = valueColor,
-        )
-    }
+        figure = {
+            // End-aligned so the value stays in the right-hand column when it drops below the
+            // label, rather than reading as one more line of the label above it.
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = valueColor,
+                )
+            }
+        },
+        text = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = labelColor,
+            )
+        },
+    )
 }

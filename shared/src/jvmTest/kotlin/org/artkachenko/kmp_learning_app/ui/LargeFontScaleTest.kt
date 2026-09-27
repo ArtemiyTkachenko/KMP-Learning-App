@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
@@ -22,7 +23,9 @@ import androidx.compose.ui.test.v2.runSkikoComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentResultOutcome
@@ -33,6 +36,12 @@ import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionUiModel
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewSourceUiModel
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
+import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
+import org.artkachenko.kmp_learning_app.mixed_interview.InterviewAttemptUiModel
+import org.artkachenko.kmp_learning_app.mixed_interview.InterviewHistoryUiModel
+import org.artkachenko.kmp_learning_app.mixed_interview.InterviewHistoryUiState
+import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartScreen
 import org.artkachenko.kmp_learning_app.progress.ProgressActionPaneTag
 import org.artkachenko.kmp_learning_app.progress.ProgressContentTag
 import org.artkachenko.kmp_learning_app.progress.ProgressCoverageUiModel
@@ -56,7 +65,11 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeSco
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeScopeUiModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeSourceOption
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.SubtopicPracticeItem
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailScreen
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailUiState
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicLearningUnitsUiState
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsPage
+import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsTabTag
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
@@ -386,7 +399,140 @@ internal class LargeFontScaleTest {
                 "The bookmark spans ${bookmark.top}..${bookmark.bottom} beside text ending at " +
                     "${text.bottom}, so it is still squeezing the column the question wraps in.",
             )
+            // Dropping is only half the decision. `TrailingFigureRow` measures the stacked figure
+            // at the row's full width on purpose, so that a figure which aligns itself to the
+            // trailing edge stays in the right-hand column — and this call site passed the button
+            // itself rather than an end-aligned column around it, so *the button* took the full
+            // width. Its label then centred and its hit area became the whole card line, four
+            // times the affordance that draws it. The control stays narrower than the row it
+            // sits in.
+            assertTrue(
+                bookmark.width < text.width,
+                "The bookmark is ${bookmark.width}px wide inside a ${text.width}px row, so the " +
+                    "control still spans the whole card rather than sitting at its trailing edge.",
+            )
         }
+
+    /**
+     * The Progress hero states its figures as figures, not as columns of single characters.
+     *
+     * The hero's three metric rows and its coverage title were each an
+     * `Arrangement.SpaceBetween` `Row` of two unweighted `Text`s. A `Row` measures its children in
+     * order against the width that is left, so the label — unweighted and unbounded — took the
+     * whole line and the value was measured against almost nothing. At this type size on this
+     * window "140" was drawn as three stacked digits and "29.2%" as a vertical column: the
+     * figures a learner opens Progress to read, unreadable.
+     *
+     * `theDashboardKeepsItsFiguresInsideTheWindow` above does not catch it, and correctly so — it
+     * asserts that nothing leaves the window, and nothing did. The digits were being shredded
+     * inside it, which is exactly the shape `VC-001` found on the two shared performance rows.
+     *
+     * The assertion is that each figure still reads as a line of text rather than as a stack of
+     * characters, which is a property of the layout and not of the host's font metrics: a figure
+     * broken one character per line is far taller than it is wide, and an intact one is not.
+     *
+     * The window is [PhoneWidth] wide and [TallPhoneHeight] tall rather than the [PhoneHeight] the
+     * rest of this file uses. The defect is horizontal — a figure squeezed below its own width —
+     * so the narrow measure is the part that matters and is unchanged; the height only decides how
+     * much of the hero is on screen. At this type size the hero is about two phone screens tall, so
+     * on a 640dp window the coverage percentage sits just below the fold, and whether it lands
+     * inside or outside depends on the host's font metrics. This test first passed on one platform
+     * and failed on another for exactly that reason, which was the test measuring the window rather
+     * than the layout.
+     */
+    @Test
+    fun theProgressHeroKeepsItsFiguresOnOneLineAtADoubledTypeSize() =
+        runSkikoComposeUiTest(size = TallPhoneDisplay, density = DoubledText) {
+            setContent {
+                AppTheme {
+                    Box(Modifier.size(PhoneWidth, TallPhoneHeight).testTag(TestRootTag)) {
+                        ProgressScreen(heroFigureState(), {}, {}, {}, {}, { _, _ -> }, {}, {})
+                    }
+                }
+            }
+
+            assertReadsAsALine(onNodeWithText("140"), "The hero's answered-question count")
+            assertReadsAsALine(onNodeWithText("29.2%"), "The hero's coverage percentage")
+        }
+
+    /**
+     * The interview record's heading keeps its count beside it rather than stacking its letters.
+     *
+     * The same `SpaceBetween` pair as the Progress hero's rows, and worse here only because the
+     * trailing string is words: at this type size "4 completed" was drawn one character per line,
+     * a column tall enough to push the record it heads most of a screen further down.
+     *
+     * The record sits below the fold on this window and the screen is a `LazyColumn`, so the list
+     * is driven to it before the node is asked for.
+     */
+    @Test
+    fun theInterviewRecordHeadingKeepsItsCountWholeAtADoubledTypeSize() =
+        runSkikoComposeUiTest(size = PhoneDisplay, density = DoubledText) {
+            setContent {
+                AppTheme {
+                    Box(Modifier.size(PhoneWidth, PhoneHeight).testTag(TestRootTag)) {
+                        InterviewStartScreen({}, history = interviewRecordState())
+                    }
+                }
+            }
+
+            onNode(hasScrollAction()).performScrollToNode(hasText("4 completed"))
+            assertReadsAsALine(onNodeWithText("4 completed"), "The record's attempt count")
+        }
+
+    /**
+     * A Topic detail tab grows with the type size instead of clipping its label to a fixed height.
+     *
+     * `TabHeight` is 48dp for two reasons at once — it is
+     * `PrimaryNavigationTabTokens.ContainerHeight` and it is the Material touch target — and it was
+     * applied as a fixed `height`. At this type size that left the cell with no vertical room for
+     * the label to wrap into, so "Practice" and "Subtopics" were cut mid-word with no ellipsis, and
+     * no room for the line box either, so the selected label's descender was sliced flat by the
+     * bottom of the cell. It is now a minimum, and `PrimaryTabRow` sizes itself from its tallest
+     * tab.
+     *
+     * The assertion is that decision rather than the appearance, in both directions: at an ordinary
+     * type scale the cell is still exactly the Material height, and at a doubled one it is taller.
+     * Asserting that a label is not clipped would mean asserting the host's font metrics, and a
+     * clipped `Text` reports the bounds it was clamped to rather than the bounds it wanted.
+     */
+    @Test
+    fun theTopicTabsGrowWithTheTypeSizeRatherThanClippingTheirLabels() {
+        runSkikoComposeUiTest(size = PhoneDisplay, density = OrdinaryText) {
+            setContent {
+                AppTheme {
+                    Box(Modifier.size(PhoneWidth, PhoneHeight).testTag(TestRootTag)) {
+                        TopicDetailScreen(tabState(), null, {}, {}, {}, {}, {})
+                    }
+                }
+            }
+
+            val height = onNodeWithTag(TopicSubtopicsTabTag).fetchSemanticsNode().boundsInRoot.height
+            assertEquals(
+                MaterialTabHeight.value,
+                height,
+                "At an ordinary type scale the tab must still be exactly the Material tab height.",
+            )
+        }
+
+        runSkikoComposeUiTest(size = PhoneDisplay, density = DoubledText) {
+            setContent {
+                AppTheme {
+                    Box(Modifier.size(PhoneWidth, PhoneHeight).testTag(TestRootTag)) {
+                        TopicDetailScreen(tabState(), null, {}, {}, {}, {}, {})
+                    }
+                }
+            }
+
+            val height = onNodeWithTag(TopicSubtopicsTabTag).fetchSemanticsNode().boundsInRoot.height
+            assertTrue(
+                height > MaterialTabHeight.value,
+                "The tab is ${height}px tall at a doubled type size, which is still the fixed " +
+                    "${MaterialTabHeight.value}px cell — so its label is being clipped to fit " +
+                    "rather than given room to wrap.",
+            )
+        }
+    }
 
     /**
      * The two shared performance rows keep their title whole, because the accuracy figure drops.
@@ -462,6 +608,22 @@ internal class LargeFontScaleTest {
         }
 }
 
+/**
+ * A figure squeezed below its own intrinsic width is broken *inside* the string, one character per
+ * line, which makes it far taller than it is wide. An intact one is a line of text and is not.
+ *
+ * This is deliberately a shape rather than a measurement against a font: it holds for any string of
+ * more than one character in any face, and it is exactly what "the figure was not shredded" means.
+ */
+private fun assertReadsAsALine(figure: SemanticsNodeInteraction, subject: String) {
+    val bounds = figure.assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+    assertTrue(
+        bounds.width > bounds.height,
+        "$subject is ${bounds.width}x${bounds.height}px, taller than it is wide, so it is still " +
+            "being broken one character per line instead of measured as a figure.",
+    )
+}
+
 /** The one reflow decision both shared performance rows make, asserted the same way for each. */
 private fun assertFigureBelowTitle(
     title: SemanticsNodeInteraction,
@@ -526,4 +688,61 @@ private fun dashboardState() = ProgressUiState.Content(
     weakAreas = emptyList(),
     topics = listOf(ProgressTopicUiModel("a", "Kotlin", 20, 14, 70.0)),
     history = emptyList(),
+)
+
+/**
+ * The same narrow phone, tall enough to hold a whole surface at a doubled type size.
+ *
+ * For a test whose subject is how wide something is measured, not how much of it is on screen. The
+ * width is deliberately still [PhoneWidth]: that is the constraint under test.
+ */
+private val TallPhoneHeight = 1600.dp
+private val TallPhoneDisplay = Size(PhoneWidth.value, TallPhoneHeight.value)
+
+/** Density 1 and the ordinary type scale, so the two halves of the tab test differ in one thing. */
+private val OrdinaryText = Density(density = 1f, fontScale = 1f)
+
+/**
+ * `PrimaryNavigationTabTokens.ContainerHeight`, which is also the Material touch target.
+ *
+ * Duplicated rather than exposed, for the reason `ProgressHeroThemeTest` states about its own
+ * copy: the production constant is private because it is one surface's decision, and widening its
+ * visibility so a test can read it would be changing the code to suit the test.
+ */
+private val MaterialTabHeight = 48.dp
+
+/** A hero whose counts are wide enough that a squeezed value has something to break inside. */
+private fun heroFigureState() = ProgressUiState.Content(
+    completedAttemptCount = 9,
+    answeredQuestionCount = 140,
+    correctAnswerCount = 98,
+    percentage = 70.0,
+    coverage = ProgressCoverageUiModel(140, 480, 29.2),
+    recentPerformance = null,
+    unresolvedMistakeCount = 0,
+    weakAreas = emptyList(),
+    topics = emptyList(),
+    history = emptyList(),
+)
+
+private fun interviewRecordState() = InterviewHistoryUiState.Content(
+    InterviewHistoryUiModel(
+        attemptCount = 4,
+        latest = InterviewAttemptUiModel("latest", 15, 20, 75.0, RecordCompletedAt),
+        best = InterviewAttemptUiModel("best", 18, 20, 90.0, RecordCompletedAt),
+    ),
+)
+
+/** Fixed so the record's date renders the same whatever the agent's clock and zone are. */
+private val RecordCompletedAt: Instant = Instant.fromEpochMilliseconds(1_757_594_626_872)
+
+/** A loaded Topic, so the three tabs actually compose. Their content is not what is asserted. */
+private fun tabState() = TopicDetailUiState.Content(
+    topic = Topic("topic_a", "Coroutines and Flow"),
+    topicQuestionCount = 30,
+    subtopics = emptyList(),
+    learningUnits = TopicLearningUnitsUiState.Available(emptyList()),
+    learningContext = null,
+    studyProgress = StudyProgressUiState.Unavailable,
+    unresolvedMistakeCount = null,
 )

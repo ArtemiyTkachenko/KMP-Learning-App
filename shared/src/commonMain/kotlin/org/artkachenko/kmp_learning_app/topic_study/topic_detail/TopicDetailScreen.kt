@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
@@ -153,6 +154,13 @@ private const val TabSnapPositionalThreshold = 0.25f
 /**
  * Material's own tab height (`PrimaryNavigationTabTokens.ContainerHeight`). It is also exactly the
  * minimum touch target, so the two constraints are satisfied by one number.
+ *
+ * It is applied as a **minimum** rather than as a fixed height. As a fixed one it clipped the tab
+ * labels in both axes at a doubled type size: the row had no vertical room for the label to wrap
+ * into, so "Practice" and "Subtopics" were cut mid-word with no ellipsis, and no room for the line
+ * box either, so the selected label's descender was sliced flat by the bottom of the cell.
+ * `PrimaryTabRow` sizes itself from its tallest tab, so a minimum lets the row grow with the type
+ * while leaving the touch target and the container height untouched at every ordinary scale.
  */
 private val TabHeight = 48.dp
 
@@ -199,7 +207,7 @@ private fun TopicDetailTab(
         selected = selected,
         onClick = onClick,
         modifier = Modifier
-            .height(TabHeight)
+            .heightIn(min = TabHeight)
             .testTag(tab.testTag),
         selectedContentColor = MaterialTheme.colorScheme.primary,
         unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,

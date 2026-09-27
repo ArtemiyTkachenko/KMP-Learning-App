@@ -19,6 +19,7 @@ concurrency:
 jobs:
   build-and-test:
     name: Build and test
+    if: ${{ github.actor == 'ArtemiyTkachenko' }}
     runs-on: ubuntu-latest
 
     steps:

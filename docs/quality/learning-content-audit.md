@@ -2432,7 +2432,7 @@ integrated into the existing rules rather than appended:
 
 | Follow-up | Where it now lives |
 | --- | --- |
-| 1. Example vs report | Rule 11 — invented example identities, no repository facts as evidence, no "currently" statements outside versioned API contracts |
+| 1. Example vs report | Rule 11 — invented example identities, no repository facts as evidence, no "currently" statements about this repository's implementation outside versioned API contracts |
 | 2. Summaries | Rule 12 — *Summaries state the idea* |
 | 3. Nonexistent material | Rule 12 — cross-references resolve to shipped Units and Lessons; "curriculum" kept out of Lesson prose |
 | 4. Author-process narration | Rule 12 — results stated, verification and maintenance instructions omitted |

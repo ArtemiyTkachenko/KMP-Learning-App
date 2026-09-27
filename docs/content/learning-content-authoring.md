@@ -585,13 +585,20 @@ reasoning, the example and the Sources of Rule 9.
 This is not a ban on named types. An invented `QuestionRepository` with one implementation
 is concrete and teachable; the problem is coupling the Lesson to the real one.
 
-### No statements about the present state of a codebase
+### No statements about the present state of this codebase
 
-Temporal phrasing — "currently declares…", "at the moment…", "this repository uses…",
-"there are currently N…", "the app presently…" — describes a snapshot of some codebase.
-It is wrong in conceptual material: the learner cannot check it, and it goes stale on the
+Temporal statements about this repository's implementation — "this repository uses…",
+"the graph currently declares…", "there are currently N…", "at the moment the app…",
+"the app presently…" — describe a snapshot of the software the curriculum ships with. They
+are wrong in conceptual material: the learner cannot check them, and they go stale on the
 next commit. The exception is a versioned external API contract, where the version is
 part of the fact: "in lifecycle-runtime-compose 2.11.0-beta01, …".
+
+The words themselves are not the problem. "Currently" and "at the moment" are ordinary
+technical language when they describe runtime state ("the currently executing recompose
+scope", "at the moment of the read"), a modelling distinction ("is this currently true, or
+did it happen?"), or the state inside a worked example ("a title that is currently on
+hold").
 
 ### Practical consequences
 
@@ -766,8 +773,8 @@ Before a Lesson is considered ready to ship:
       it — verified by reading them, not by mapping them.
 - [ ] The Lesson teaches the concept rather than the phrasing of any question.
 - [ ] Worked examples use neutral or invented identities; nothing cites this repository's
-      classes, modules, counts, KDoc or current state as evidence, nothing says what a
-      codebase "currently" does, and version-specific results name their version.
+      classes, modules, counts, KDoc or current state as evidence, nothing says what this
+      repository "currently" does, and version-specific results name their version.
 - [ ] No author-process or maintenance narration: results are stated, not how they were
       checked or who should re-check them.
 - [ ] No Unit, Lesson, Topic, Subtopic or Question ID, backlog key or status value appears
@@ -776,7 +783,7 @@ Before a Lesson is considered ready to ship:
 - [ ] The Lesson is understandable without Unit numbers, the curriculum graph, or
       curriculum-ownership narration — checked in titles, summaries, callouts, table
       headers and cells, and code comments, not only paragraphs; "boundary" refers to
-      engineering, not to the course, and "curriculum" does not appear.
+      engineering, not to the course, and "curriculum" does not appear by default.
 - [ ] "The learner" and "the reader" are not used as routine framing; sentences state the
       technical fact.
 - [ ] "Shape" and similarly broad words are used only where they are more accurate than a

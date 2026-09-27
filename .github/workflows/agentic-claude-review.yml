@@ -12,6 +12,9 @@ on:
       review_artifact_name:
         required: true
         type: string
+      pr_number:
+        required: true
+        type: string
     secrets:
       ANTHROPIC_API_KEY:
         required: true
@@ -103,3 +106,59 @@ jobs:
           name: ${{ inputs.review_artifact_name }}
           path: .agent-work/claude-self-review.json
           retention-days: 14
+
+  publish:
+    needs: review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.review_artifact_name }}
+          path: .agent-work
+
+      - name: Render Claude review comment
+        env:
+          REVIEW_ROUND: ${{ inputs.review_round }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          data = json.loads(Path(".agent-work/claude-self-review.json").read_text(encoding="utf-8"))
+          lines = [
+              f"## Claude self-review {os.environ['REVIEW_ROUND']}/2",
+              "",
+              f"**Verdict:** {data['verdict']}",
+              "",
+              data["positionBrief"].strip(),
+              "",
+          ]
+          material = [f for f in data["findings"] if f["severity"] in {"BLOCKING", "IMPORTANT"}]
+          if material:
+              lines += ["### Material findings", ""]
+              for finding in material:
+                  location = finding["file"]
+                  if finding["line"]:
+                      location += f":{finding['line']}"
+                  lines += [
+                      f"**{finding['id']} · {finding['severity']} · {location}**",
+                      "",
+                      finding["problem"],
+                      "",
+                      f"Requested correction: {finding['requestedChange']}",
+                      "",
+                  ]
+          else:
+              lines += ["No blocking or important findings.", ""]
+          Path(".agent-work/review-comment.md").write_text("\n".join(lines), encoding="utf-8")
+          PY
+
+      - name: Post Claude self-review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: gh pr comment "$PR_NUMBER" --body-file .agent-work/review-comment.md

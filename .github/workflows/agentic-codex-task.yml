@@ -17,6 +17,7 @@ on:
 jobs:
   author:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
 
@@ -43,7 +44,10 @@ jobs:
           } >> .agent-work/task-prompt.md
 
       - name: Author task with Codex
-        uses: openai/codex-action@v1
+        # Pin the known-good v1.11 implementation by immutable commit. v1.12 has
+        # an upstream wrapper-lifecycle hang that can leave completed Codex work
+        # running indefinitely on GitHub-hosted runners.
+        uses: openai/codex-action@52fe01ec70a42f454c9d2ebd47598f9fd6893d56 # v1.11
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           permission-profile: ":read-only"
@@ -51,6 +55,7 @@ jobs:
           output-schema-file: .github/agentic/schemas/task.json
           output-file: .agent-work/task.json
           effort: high
+          codex-version: "0.157.1"
           codex-args: "--ephemeral"
 
       - name: Validate task output

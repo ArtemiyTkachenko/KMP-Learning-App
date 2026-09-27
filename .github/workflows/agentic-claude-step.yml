@@ -94,6 +94,7 @@ jobs:
 
       - name: Implement or challenge with Claude
         id: claude
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -105,6 +106,12 @@ jobs:
             --max-turns 60
             --allowedTools "Read,Glob,Grep,Edit,Write,WebSearch,WebFetch,Bash(git diff:*),Bash(git status:*),Bash(git show:*),Bash(git log:*),Bash(./gradlew:*)"
             --json-schema '${{ steps.schema.outputs.value }}'
+
+      - name: Diagnose Claude execution failure
+        if: ${{ steps.claude.outcome == 'failure' }}
+        env:
+          CLAUDE_EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: python3 .github/agentic/diagnose-claude-execution.py
 
       - name: Save Claude position
         env:

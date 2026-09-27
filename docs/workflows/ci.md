@@ -2,9 +2,12 @@
 
 ## Build And Test (`.github/workflows/main.yml`)
 
-Runs on pull requests to `main`, pushes to `main`, and manual dispatch. Ubuntu runner,
-Temurin JDK 21. The job is a fast data gate, then one Gradle invocation, then two
-verification steps over what that invocation produced.
+The workflow is triggered by pull requests to `main`, pushes to `main`, and manual dispatch,
+but the runner job executes only when `github.actor` is `ArtemiyTkachenko`. Events triggered
+by other accounts leave the job skipped, so public contributors cannot consume this
+repository's hosted-runner minutes. When it runs, it uses Ubuntu and Temurin JDK 21. The
+job is a fast data gate, then one Gradle invocation, then two verification steps over what
+that invocation produced.
 
 ### 1. Data gates
 
@@ -81,7 +84,7 @@ coverage.
 
 ## Backlog Sync (`.github/workflows/sync-backlog.yml`)
 
-Manual dispatch only. Installs PyYAML, validates `.github/project/backlog.yml`, verifies
+Manual dispatch only, with the job restricted to `ArtemiyTkachenko`. Installs PyYAML, validates `.github/project/backlog.yml`, verifies
 the runner's GitHub CLI supports parent/sub-issue functionality, then synchronizes the
 backlog to the GitHub Project. See [backlog](backlog.md) and `.github/AGENTS.md`.
 

@@ -1,0 +1,105 @@
+name: Agentic Claude self review
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+      review_round:
+        required: true
+        type: number
+      review_artifact_name:
+        required: true
+        type: string
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+    outputs:
+      clean:
+        value: ${{ jobs.review.outputs.clean }}
+      verdict:
+        value: ${{ jobs.review.outputs.verdict }}
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      clean: ${{ steps.gate.outputs.clean }}
+      verdict: ${{ steps.gate.outputs.verdict }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Ensure comparison base exists
+        run: git fetch --no-tags origin main
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-task
+          path: .agent-work
+
+      - name: Build Claude self-review prompt
+        env:
+          REVIEW_ROUND: ${{ inputs.review_round }}
+        run: |
+          cp .github/agentic/prompts/claude-self-reviewer.md .agent-work/review-prompt.md
+          {
+            printf '\n\n## Review state\n\n'
+            printf 'Self-review round: %s of 2\n' "$REVIEW_ROUND"
+          } >> .agent-work/review-prompt.md
+
+      - name: Compact self-review schema
+        id: schema
+        run: echo "value=$(jq -c . .github/agentic/schemas/claude-self-review.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Review independently with Claude
+        id: reviewer
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Read `.agent-work/review-prompt.md` and follow it exactly.
+            Return only the schema-valid structured review.
+          claude_args: >-
+            --max-turns 40
+            --allowedTools "Read,Glob,Grep,WebSearch,WebFetch,Bash(git diff:*),Bash(git status:*),Bash(git show:*),Bash(git log:*)"
+            --json-schema '${{ steps.schema.outputs.value }}'
+
+      - name: Save review and enforce clean gate
+        id: gate
+        env:
+          REVIEW_JSON: ${{ steps.reviewer.outputs.structured_output }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          data = json.loads(os.environ["REVIEW_JSON"])
+          Path(".agent-work/claude-self-review.json").write_text(
+              json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          active = [
+              f for f in data["findings"]
+              if f["severity"] in {"BLOCKING", "IMPORTANT"}
+          ]
+          clean = data["verdict"] == "CLEAN" and not active
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"clean={'true' if clean else 'false'}\n")
+              out.write(f"verdict={data['verdict']}\n")
+          PY
+          jq -e . .agent-work/claude-self-review.json >/dev/null
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.review_artifact_name }}
+          path: .agent-work/claude-self-review.json
+          retention-days: 14

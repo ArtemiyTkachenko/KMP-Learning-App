@@ -62,7 +62,8 @@ The full command reference is in [docs/development/validation.md](docs/developme
   [KMP boundaries](docs/development/kmp.md), [Gradle](docs/development/gradle.md),
   [testing](docs/development/testing.md), [validation](docs/development/validation.md).
 - **Workflows** — [backlog](docs/workflows/backlog.md),
-  [code review](docs/workflows/code-review.md), [CI](docs/workflows/ci.md).
+  [code review](docs/workflows/code-review.md), [CI](docs/workflows/ci.md),
+  [agentic development](docs/workflows/agentic-development.md).
 - **Content — assessment** — [curriculum](docs/content/curriculum.md),
   [authoring contract](docs/content/content-authoring.md),
   [authoring playbook](docs/content/question-authoring-playbook.md),

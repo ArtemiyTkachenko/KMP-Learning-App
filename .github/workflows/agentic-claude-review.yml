@@ -27,6 +27,7 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     outputs:
@@ -72,8 +73,11 @@ jobs:
           prompt: |
             Read `.agent-work/review-prompt.md` and follow it exactly.
             Return only the schema-valid structured review.
+          # Temporary workaround for anthropics/claude-code-action#1795:
+          # the action's post-run guard compares tool-result count to the API-round limit.
+          # Keep a generous CLI limit while the job timeout remains the hard wall-clock guard.
           claude_args: >-
-            --max-turns 40
+            --max-turns 120
             --allowedTools "Read,Glob,Grep,WebSearch,WebFetch,Bash(git diff:*),Bash(git status:*),Bash(git show:*),Bash(git log:*)"
             --json-schema '${{ steps.schema.outputs.value }}'
 
@@ -81,6 +85,7 @@ jobs:
         if: ${{ steps.reviewer.outcome == 'failure' }}
         env:
           CLAUDE_EXECUTION_FILE: ${{ steps.reviewer.outputs.execution_file }}
+          CLAUDE_CONFIGURED_MAX_TURNS: "120"
         run: python3 .github/agentic/diagnose-claude-execution.py
 
       - name: Save review and enforce clean gate

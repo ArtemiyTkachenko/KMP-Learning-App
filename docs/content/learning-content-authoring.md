@@ -15,6 +15,12 @@ the first Topic mapped under this contract and doubles as the worked example.
 This document defines authoring quality expectations. It does not define the serialized
 model, persistence, navigation, or learner progress; those belong to later `E20` issues.
 
+Much of this document is written in authoring vocabulary — what a Lesson *owns*, where the
+*full treatment* of a concept *lives*, primary and supporting concepts, Teach and Bridge.
+Those are directions to authors for deciding what goes where. They are not templates for
+sentences a learner reads; [Rule 12](#rule-12--lessons-are-written-for-learners-not-the-curriculum-graph)
+covers how those decisions become ordinary teaching prose.
+
 **Runtime AI-generated learning content is explicitly out of scope.** Every lesson that
 ships is authored, reviewed, and grounded in authoritative sources before it reaches the
 bundled curriculum. AI assistance during drafting is allowed and expected; unreviewed
@@ -57,7 +63,7 @@ A **Learning Unit** groups concepts that make sense to *learn together*. A **Les
 one focused piece of reading inside a Unit.
 
 The two hierarchies share Topics and they share the Subtopic vocabulary, but they are not
-the same shape and must not be forced into one:
+the same structure and must not be forced into one:
 
 - Do **not** require one Learning Unit per Subtopic.
 - Do **not** require one Lesson per Subtopic.
@@ -68,11 +74,16 @@ routinely touched by more than one Lesson at different depths. The Question Subt
 remains the stable bridge into assessment coverage — it is the vocabulary both sides
 share, not a structural constraint on either.
 
-The reason the shapes differ is that they were optimized for different jobs. The question
+The structures differ because they were optimized for different jobs. The question
 taxonomy is intentionally granular because fine-grained Subtopics make coverage
 measurable, practice selection precise, and progress meaningful. Granularity that helps
 assessment hurts teaching: a learner does not want fourteen disconnected micro-lessons
 that each match one Subtopic, they want a coherent path through a subject.
+
+Everything that encodes this hierarchy — Topic, Subtopic, Unit, Lesson and Question IDs,
+`primarySubtopicIds`, `supportingSubtopicIds`, `relatedLessonIds`, status fields — is
+authoring and runtime metadata. It exists for mapping, validation, navigation and progress,
+and it stays out of learner-facing prose (Rule 12).
 
 ## Rule 1 — Map the Complete Topic Before Authoring Lessons
 
@@ -135,14 +146,23 @@ needs and no further. Supporting concepts do **not** automatically become primar
 coverage.
 
 **Related and deeper content** is the other Lessons or Learning Units that hold the
-complete treatment of a concept. This is what makes bounded supporting explanation
-honest — the learner is told where the full story is instead of being left with a
-half-explanation.
+complete treatment of a concept. Bounded supporting explanation is honest because the
+Lesson first states what the current argument needs; a reference to deeper material can
+then help the learner continue, but it never stands in for that local explanation.
 
-A well-formed pointer reads like this:
+A well-formed supporting explanation reads like this:
 
-> `StateFlow` is introduced here as the ViewModel-to-UI state carrier. See the Flow
-> curriculum for hot and cold streams, sharing strategies, operators, and cancellation.
+> `StateFlow` always has a current value, so Compose can render meaningful state as soon
+> as collection begins. Its sharing and conflation behaviour is covered in more depth in
+> **StateFlow, SharedFlow and Hot Streams**.
+
+The first sentence teaches what this Lesson needs. The second is optional navigation, uses
+the human-facing title, and could be deleted without breaking the argument. Rule 12 covers
+when such a reference is worth writing at all.
+
+`relatedLessonIds` and prose references serve different purposes. The serialized
+relationship drives navigation in the app; it does not oblige the text to mention every
+related Lesson.
 
 A concept must not be both primary and supporting for the same Lesson. If it is, the
 Lesson is either teaching too much or claiming too little.
@@ -162,8 +182,12 @@ The rule is: **never make the learner leave a lesson merely to understand the le
 The counterweight is equally important: **supporting context must not reproduce another
 Topic's complete course.** A Compose lesson explains `StateFlow` as "the observable
 state holder the ViewModel exposes and the UI collects"; it does not teach `shareIn`
-versus `stateIn`, replay caches, or subscription timeouts. That is what the pointer to
-related content is for.
+versus `stateIn`, replay caches, or subscription timeouts. Those stay in the Lesson that
+teaches them, reachable through related content.
+
+Home Topic, ownership and bridging are how authors divide the material. The learner
+should see the subject, not that division: a Compose Lesson explains the `StateFlow` fact
+it needs without announcing that another Topic owns `StateFlow`.
 
 Primary and supporting relationships are therefore *not* required to stay inside the home
 Topic, and a blueprint that keeps every mapping inside its own Topic is usually a sign
@@ -177,8 +201,10 @@ Every area a blueprint maps gets exactly one of four editorial decisions.
 primary concepts of some Lesson, with Core depth at minimum.
 
 **Bridge** — concepts primarily owned by another Topic that are required to understand the
-current material. Explain enough locally for the current Lesson to stand on its own, then
-point to the deeper treatment. Bridged concepts appear as supporting concepts.
+current material. Explain enough locally for the current Lesson to stand on its own, then,
+where it helps the learner continue, name the deeper treatment by its title. Bridged
+concepts appear as supporting concepts. "Bridge" is the author's decision; the learner
+reads an explanation, not a bridge.
 
 **Reference** — useful knowledge that deserves a concise explanation somewhere but should
 not interrupt the main learning path. Reference material may become a short standalone
@@ -301,6 +327,78 @@ A finished Lesson should answer as many of these as apply:
 - What trade-offs matter?
 - What should I be able to explain in an interview?
 
+### Voice
+
+Write the way an experienced engineer explains something to another engineer: concise,
+technically precise, calm, and direct. Conversational without being chatty; confident
+about documented facts; willing to say "it depends" when a trade-off really does depend on
+something, and then say on what.
+
+The voice to avoid is any that puts something between the learner and the subject:
+documentation paraphrase, academic phrasing for its own sake, corporate or motivational
+tone, a content-design document describing itself, or a lecturer correcting the learner.
+Natural prose is mostly simpler prose. Do not make it deliberately casual — no jokes,
+filler, stock rhetorical questions, or fake conversational asides.
+
+### Precise vocabulary over habitual vocabulary
+
+Broad nouns are easy to reach for and often hide what the author means. The recurring
+example is **shape**. It is legitimate shorthand when the meaning really is broad
+structural form — "API shape", "state shape" — but before using it, ask what exactly is
+meant, and prefer the precise term when one exists: function signature, parameter list,
+state model, data representation, type structure, ownership structure, object graph, API
+contract, interface, call pattern, control flow, layout, collection structure.
+
+| Habitual | Precise, where accurate |
+| --- | --- |
+| two functions with the same shape | two functions with the same signature |
+| the producer shape | the producer-based design, or the mechanism itself |
+| the shape worth noticing is what is absent | There is no remembered flag. |
+
+There is no single replacement word; "structure" everywhere is the same habit with a
+different noun. The right term depends on what the sentence is about, and sometimes the
+right edit is to delete the framing entirely.
+
+**Boundary** is different: it is a real engineering term for architecture, APIs, modules,
+layers, dependency injection and platform abstractions, and "the repository forms a
+boundary between the UI and the data sources" is exactly right. What reads badly is a
+*curriculum* boundary described in engineering language — "this is outside the boundary of
+this Unit", "this Lesson stops at the boundary" — which Rule 12 covers.
+
+### Rhetorical framing earns its place
+
+Constructions such as "The point is…", "The important part is…", "What matters is…",
+"The useful question is…", "The rule is…", "The distinction is…", "the one worth
+noticing", "the honest answer", "worth understanding", "deliberately", and "not X, but Y"
+are not wrong. Used once, one of them can direct attention. Used as paragraph boilerplate,
+they produce a synthetic voice and delay the fact the sentence exists to state. Usually,
+state the fact:
+
+| Framed | Direct |
+| --- | --- |
+| The important part is that cancellation is not a kill switch. | Cancellation is cooperative; it cannot forcibly stop arbitrary blocking work. |
+| The honest answer is that this depends on ownership. | It depends on who owns the state. |
+
+This is an editing judgement, not a phrase list. A framing earns its place when removing it
+would lose emphasis the reader genuinely needs.
+
+### Confident about invariants, measured about preferences
+
+Match the strength of the language to the strength of the underlying contract.
+
+A **technical invariant** deserves plain, strong wording: an API guarantees something, a
+type makes a state unrepresentable, an operation cannot occur, a lifecycle event
+definitely cancels a scope, a correctness condition must hold. Hedging these makes the
+Lesson less accurate, not more polite.
+
+An **engineering preference** — an architectural choice, a default, a trade-off — does
+not. Words such as *always*, *never*, *must*, *should*, *wrong*, *correct*, *only*,
+*obviously*, *simply* and *clearly* are not banned; check each one against what backs it.
+When the conclusion depends on requirements, say so: "usually", "prefer", "a useful
+default", "when X is required", "the trade-off is", "this becomes useful when…". The
+learner should come away able to reason about the decision, not holding the author's
+preference as a rule to memorize.
+
 ## Rule 8 — Thorough but Bounded
 
 A Lesson should normally represent roughly **5–10 minutes of focused reading**. This is a
@@ -325,6 +423,19 @@ A typical Lesson contains:
 The boundary this rule protects: **the learning curriculum must not become another
 exhaustive documentation site.** Completeness of a *subject* is the goal; completeness of
 an *API surface* is not.
+
+### Concise, not cryptic
+
+Brevity succeeds only when the reasoning survives it. A short paragraph that forces the
+learner to reconstruct a missing step from another Lesson is not concise, it is
+incomplete. Most editorial tightening works the other way round: remove curriculum
+narration, remove rhetorical framing, add the one sentence of technical context the
+argument actually needs, and the result is usually shorter and clearer. Four sentences
+explaining why a concept is treated elsewhere can almost always become one sentence
+stating the relevant fact.
+
+Do not write motivational introductions, generic summaries, repeated recaps, or filler
+transitions to reach the time target.
 
 ## Rule 9 — Sources
 
@@ -458,6 +569,82 @@ parts of an example rather than as parts of this product:
 None of this is a reason to weaken an explanation. Replacing a specific claim with vague
 wording loses the teaching point, which is a worse outcome than the coupling it removed.
 
+## Rule 12 — Lessons Are Written for Learners, Not the Curriculum Graph
+
+Rule 11 keeps this application out of the Lesson. This rule keeps the curriculum's own
+machinery out of it. A learner should experience the subject, not the architecture of the
+course that teaches it.
+
+### Internal identity stays internal
+
+Unit, Lesson, Topic, Subtopic and Question IDs, and the fields that hold them, never
+appear in learner-facing prose as a way of referring to curriculum items. Text such as
+"`lesson_state_flow` owns those mechanics" or "see `lesson_composable_identity`" exposes a
+database key where the learner needed an explanation.
+
+The test is semantic, not typographic. snake_case is not the problem: a real technical
+identifier — a column such as `is_overdue`, a package path, a JSON field, a Gradle
+property — belongs in the Lesson whenever it is part of what is being taught, in code,
+schema, SQL or API examples, or inline in prose. A token that happens to begin with
+`lesson_` can be a legitimate package name in a worked example. The question is whether
+the identifier belongs to the subject or to the curriculum.
+
+The same applies to other product metadata: backlog keys, epic and issue numbers, and
+status values have no place in a Lesson.
+
+### Each Lesson is locally comprehensible
+
+A competent Android engineer should be able to open a Lesson directly and follow its
+central reasoning without knowing which numbered Unit precedes it, what an internal ID
+means, the blueprint, the backlog work that produced it, or the curriculum graph.
+
+This does not mean re-teaching every prerequisite. It means supplying the minimum context
+the current argument requires. A useful test for any paragraph:
+
+> If the learner arrived here directly from search six months after reading the
+> prerequisite, would this paragraph still make sense?
+
+If not, add the missing technical fact — usually a clause or a sentence. Do not add
+curriculum narration in its place; "as covered earlier" tells the learner that something
+is missing without supplying it.
+
+### Cross-references supplement explanation
+
+A reference to another Lesson or Unit is useful when the current Lesson has already given
+enough context for the present argument, the referenced material genuinely goes deeper,
+and the learner benefits from knowing where to continue. It must never substitute for
+explanation the current argument needs:
+
+| Substitutes for explanation | Explains, then optionally points |
+| --- | --- |
+| `lesson_state_flow` owns those mechanics. | `StateFlow` always has a current value, so the UI can render as soon as collection starts. For sharing and conflation, see **StateFlow, SharedFlow and Hot Streams**. |
+| This was covered in Unit 3. | *(state the fact the argument depends on; drop the reference if it adds nothing)* |
+| Unit 4 covers cancellation. | Cancellation is covered in **Cancellation, Failure and Coordination**. — or nothing, if the reference does not help this explanation. |
+
+When another Lesson or Unit is named, use its human-facing title. Avoid Unit and Lesson
+numbers and relative positions ("the next Unit", "the earlier Lesson"): authored order can
+change and a reader who arrived from search has no position, while a title stays
+meaningful. Do not add a reference just because `relatedLessonIds` contains one.
+
+### Authoring decisions become teaching, not narration
+
+The decisions this contract asks authors to make — what a Lesson owns, which concepts are
+supporting, where the full treatment lives, what is bridged or excluded — should be
+visible in *what* the Lesson explains, not described *to* the learner. Phrases such as
+"this Lesson owns…", "the Flow curriculum owns…", "this concept belongs to another Unit",
+"the complete treatment lives in…", "this Unit deliberately stops here", "we do not
+re-teach…", "the earlier Unit established…" and "the next Unit will explain why" are not
+the default way to write a Lesson.
+
+| Authoring decision | Learner-facing result |
+| --- | --- |
+| `StateFlow` sharing is supporting material here; full treatment belongs to the Flow Unit. | "`StateFlow` keeps a current value, which lets the UI render immediately when collection starts." Optionally: "For sharing policies and conflation, see **StateFlow, SharedFlow and Hot Streams**." |
+
+The learner does not need to know why the material was divided that way. Scope can still
+be stated when it helps the learner reason — "this Lesson assumes a single-module app" is
+a fact about the example — but the default is to teach within the scope rather than
+describe it.
+
 ## Authoring Checklist
 
 Before a blueprint is considered complete:
@@ -479,11 +666,23 @@ Before a Lesson is considered ready to ship:
 - [ ] Practical material reflects real engineering, including at least one failure mode.
 - [ ] Senior depth is present only where it is genuinely deeper reasoning.
 - [ ] It is roughly 5–10 minutes of focused reading.
-- [ ] Supporting concepts are explained to the depth this Lesson needs, and no further.
-- [ ] Related and deeper content is linked where a concept was deliberately bounded.
+- [ ] Supporting concepts are explained to the depth this Lesson needs, and no further —
+      enough locally for the current argument, before any reference elsewhere.
+- [ ] Cross-references supplement rather than replace explanation, name the target by its
+      human-facing title, and appear only where they help the learner continue.
 - [ ] Sources are authoritative and support the specific claims made.
 - [ ] The questions for its primary Subtopics are answerable by a reader who understood
       it — verified by reading them, not by mapping them.
 - [ ] The Lesson teaches the concept rather than the phrasing of any question.
 - [ ] Nothing in the Lesson requires the reader to know how this application is built;
       worked examples are framed as examples and measurements name their toolchain.
+- [ ] No Unit, Lesson, Topic, Subtopic or Question ID appears in learner prose; any
+      snake_case shown to the learner is a real technical identifier.
+- [ ] The Lesson is understandable without Unit numbers, the curriculum graph, or
+      curriculum-ownership narration; "boundary" refers to engineering, not to the course.
+- [ ] "Shape" and similarly broad words are used only where they are more accurate than a
+      specific term, and repeated rhetorical framing has been edited into direct statements.
+- [ ] Strong prescriptive language rests on a real invariant or contract; preferences and
+      trade-offs are qualified.
+- [ ] It sounds like an engineer explaining the concept, and its concision does not depend
+      on omitted reasoning.

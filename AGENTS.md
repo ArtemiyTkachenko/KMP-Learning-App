@@ -113,7 +113,8 @@ does not cover: [CI](docs/workflows/ci.md).
 **Quality**:
 [code quality audit](docs/quality/code-quality-audit.md) ·
 [visual consolidation audit](docs/quality/visual-consolidation-audit.md) ·
-[final visual QA](docs/quality/final-visual-qa.md)
+[final visual QA](docs/quality/final-visual-qa.md) ·
+[learning-content audit](docs/quality/learning-content-audit.md)
 
 **Content — assessment** — the interview question bank, not application code:
 [curriculum](docs/content/curriculum.md) ·

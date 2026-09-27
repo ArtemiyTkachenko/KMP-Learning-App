@@ -9,6 +9,7 @@ permissions:
 jobs:
   sync:
     name: Validate and sync backlog
+    if: ${{ github.actor == 'ArtemiyTkachenko' }}
     runs-on: ubuntu-latest
 
     steps:

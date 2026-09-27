@@ -64,6 +64,7 @@ jobs:
 
       - name: Review independently with Claude
         id: reviewer
+        continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -75,6 +76,12 @@ jobs:
             --max-turns 40
             --allowedTools "Read,Glob,Grep,WebSearch,WebFetch,Bash(git diff:*),Bash(git status:*),Bash(git show:*),Bash(git log:*)"
             --json-schema '${{ steps.schema.outputs.value }}'
+
+      - name: Diagnose Claude execution failure
+        if: ${{ steps.reviewer.outcome == 'failure' }}
+        env:
+          CLAUDE_EXECUTION_FILE: ${{ steps.reviewer.outputs.execution_file }}
+        run: python3 .github/agentic/diagnose-claude-execution.py
 
       - name: Save review and enforce clean gate
         id: gate

@@ -33,7 +33,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_description
 import kmp_learning_app.shared.generated.resources.mistake_review_empty
@@ -62,6 +61,7 @@ import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.MetricFigure
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
+import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
 import org.artkachenko.kmp_learning_app.ui.rememberAppTopBarScrollBehavior
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
@@ -408,7 +408,7 @@ private fun RemediationSurface(content: @Composable ColumnScope.() -> Unit) {
             modifier = Modifier.fillMaxWidth().testTag(MistakeRemediationSurfaceTag),
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surfaceContainer,
-            border = BorderStroke(RemediationBorderWidth, MaterialTheme.colorScheme.outlineVariant),
+            border = BorderStroke(AppStroke.Hairline, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(AppSpacing.Generous),
@@ -556,9 +556,6 @@ private fun LazyListScope.queueSection(
         }
     }
 }
-
-/** An edge, not an outline: the hairline that separates the block from the page. */
-private val RemediationBorderWidth = 1.dp
 
 /**
  * The block rises by a fraction of its own height, so the distance suits the surface rather than

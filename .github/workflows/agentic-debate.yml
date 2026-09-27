@@ -1,0 +1,484 @@
+name: Agentic Codex-Claude debate
+
+on:
+  workflow_dispatch:
+    inputs:
+      objective:
+        description: "High-level engineering objective for Codex to turn into the task"
+        required: true
+        type: string
+      backlog_key:
+        description: "Optional canonical E##-## backlog key"
+        required: false
+        default: ""
+        type: string
+      merge_when_consensus:
+        description: "Squash-merge after consensus and fresh CI"
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: agentic-debate-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  task:
+    name: Codex authors task
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agentic-codex-task.yml
+    with:
+      objective: ${{ inputs.objective }}
+      backlog_key: ${{ inputs.backlog_key }}
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  implement:
+    name: Claude implements
+    needs: task
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-claude-step.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      mode: IMPLEMENTATION
+      iteration: 0
+      position_artifact_name: claude-position-0
+      commit_message: "Agentic task: initial Claude implementation"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  open_pr:
+    name: Open draft PR
+    needs: implement
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    outputs:
+      number: ${{ steps.pr.outputs.number }}
+      url: ${{ steps.pr.outputs.url }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/debate-${{ github.run_id }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: agent-task
+          path: .agent-work
+
+      - name: Build PR body
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          task = json.loads(Path(".agent-work/task.json").read_text(encoding="utf-8"))
+          lines = [
+              "## Codex-authored task", "",
+              f"**{task['title']}**", "",
+              task["objective"], "",
+              "### Approach", "", task["approach"], "",
+              "### Acceptance criteria", "",
+          ]
+          lines.extend(f"- {x}" for x in task["acceptanceCriteria"])
+          lines.extend([
+              "", "### Agent roles", "",
+              "- Codex: task author and independent reviewer.",
+              "- Claude: implementation owner and challenger of Codex findings.",
+              "- Maximum negotiation: five Codex review → Claude response iterations.",
+              "- If consensus is still absent after Claude's fifth response and Codex's final check, this PR remains draft and receives a human decision packet.",
+              "", "The workflow never treats an AI opinion as a substitute for repository CI."
+          ])
+          Path(".agent-pr-body.md").write_text("\n".join(lines), encoding="utf-8")
+          PY
+
+      - name: Create draft PR
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: agent/debate-${{ github.run_id }}
+        run: |
+          url=$(gh pr create \
+            --draft \
+            --base main \
+            --head "$BRANCH" \
+            --title "Agentic debate: $(jq -r .title .agent-work/task.json)" \
+            --body-file .agent-pr-body.md)
+          number=$(gh pr view "$url" --json number --jq .number)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+
+  review_1:
+    name: "Iteration 1 · Codex review"
+    needs: [open_pr, implement]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agentic-codex-review.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      iteration: 1
+      claude_position_artifact: claude-position-0
+      review_artifact_name: codex-review-1
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  response_1:
+    name: "Iteration 1 · Claude response"
+    needs: review_1
+    if: ${{ needs.review_1.outputs.consensus != 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-claude-step.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      mode: RESPONSE
+      iteration: 1
+      position_artifact_name: claude-position-1
+      review_artifact: codex-review-1
+      commit_message: "Agentic debate: Claude response 1"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  review_2:
+    name: "Iteration 2 · Codex review"
+    needs: response_1
+    if: ${{ always() && needs.response_1.result == 'success' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agentic-codex-review.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      iteration: 2
+      claude_position_artifact: claude-position-1
+      previous_review_artifact: codex-review-1
+      review_artifact_name: codex-review-2
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  response_2:
+    name: "Iteration 2 · Claude response"
+    needs: review_2
+    if: ${{ needs.review_2.outputs.consensus != 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-claude-step.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      mode: RESPONSE
+      iteration: 2
+      position_artifact_name: claude-position-2
+      review_artifact: codex-review-2
+      commit_message: "Agentic debate: Claude response 2"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  review_3:
+    name: "Iteration 3 · Codex review"
+    needs: response_2
+    if: ${{ always() && needs.response_2.result == 'success' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agentic-codex-review.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      iteration: 3
+      claude_position_artifact: claude-position-2
+      previous_review_artifact: codex-review-2
+      review_artifact_name: codex-review-3
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  response_3:
+    name: "Iteration 3 · Claude response"
+    needs: review_3
+    if: ${{ needs.review_3.outputs.consensus != 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-claude-step.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      mode: RESPONSE
+      iteration: 3
+      position_artifact_name: claude-position-3
+      review_artifact: codex-review-3
+      commit_message: "Agentic debate: Claude response 3"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  review_4:
+    name: "Iteration 4 · Codex review"
+    needs: response_3
+    if: ${{ always() && needs.response_3.result == 'success' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agentic-codex-review.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      iteration: 4
+      claude_position_artifact: claude-position-3
+      previous_review_artifact: codex-review-3
+      review_artifact_name: codex-review-4
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  response_4:
+    name: "Iteration 4 · Claude response"
+    needs: review_4
+    if: ${{ needs.review_4.outputs.consensus != 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-claude-step.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      mode: RESPONSE
+      iteration: 4
+      position_artifact_name: claude-position-4
+      review_artifact: codex-review-4
+      commit_message: "Agentic debate: Claude response 4"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  review_5:
+    name: "Iteration 5 · Codex review"
+    needs: response_4
+    if: ${{ always() && needs.response_4.result == 'success' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agentic-codex-review.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      iteration: 5
+      claude_position_artifact: claude-position-4
+      previous_review_artifact: codex-review-4
+      review_artifact_name: codex-review-5
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  response_5:
+    name: "Iteration 5 · Claude response"
+    needs: review_5
+    if: ${{ needs.review_5.outputs.consensus != 'true' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/agentic-claude-step.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      mode: RESPONSE
+      iteration: 5
+      position_artifact_name: claude-position-5
+      review_artifact: codex-review-5
+      commit_message: "Agentic debate: Claude response 5"
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+  final_check:
+    name: Codex final consensus check
+    needs: response_5
+    if: ${{ always() && needs.response_5.result == 'success' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/agentic-codex-review.yml
+    with:
+      branch: agent/debate-${{ github.run_id }}
+      iteration: 5
+      final_consensus_check: true
+      claude_position_artifact: claude-position-5
+      previous_review_artifact: codex-review-5
+      review_artifact_name: codex-review-final
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+  conclude:
+    name: Consensus, escalation, or workflow failure
+    needs:
+      - open_pr
+      - review_1
+      - response_1
+      - review_2
+      - response_2
+      - review_3
+      - response_3
+      - review_4
+      - response_4
+      - review_5
+      - response_5
+      - final_check
+    if: ${{ always() && needs.open_pr.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Determine terminal state
+        id: state
+        env:
+          R1_RESULT: ${{ needs.review_1.result }}
+          R1_CONSENSUS: ${{ needs.review_1.outputs.consensus }}
+          P1_RESULT: ${{ needs.response_1.result }}
+          R2_RESULT: ${{ needs.review_2.result }}
+          R2_CONSENSUS: ${{ needs.review_2.outputs.consensus }}
+          P2_RESULT: ${{ needs.response_2.result }}
+          R3_RESULT: ${{ needs.review_3.result }}
+          R3_CONSENSUS: ${{ needs.review_3.outputs.consensus }}
+          P3_RESULT: ${{ needs.response_3.result }}
+          R4_RESULT: ${{ needs.review_4.result }}
+          R4_CONSENSUS: ${{ needs.review_4.outputs.consensus }}
+          P4_RESULT: ${{ needs.response_4.result }}
+          R5_RESULT: ${{ needs.review_5.result }}
+          R5_CONSENSUS: ${{ needs.review_5.outputs.consensus }}
+          P5_RESULT: ${{ needs.response_5.result }}
+          FINAL_RESULT: ${{ needs.final_check.result }}
+          FINAL_CONSENSUS: ${{ needs.final_check.outputs.consensus }}
+        run: |
+          python3 - <<'PY'
+          import os
+
+          reviews = [
+              (1, os.environ["R1_RESULT"], os.environ["R1_CONSENSUS"]),
+              (2, os.environ["R2_RESULT"], os.environ["R2_CONSENSUS"]),
+              (3, os.environ["R3_RESULT"], os.environ["R3_CONSENSUS"]),
+              (4, os.environ["R4_RESULT"], os.environ["R4_CONSENSUS"]),
+              (5, os.environ["R5_RESULT"], os.environ["R5_CONSENSUS"]),
+          ]
+          responses = [
+              os.environ["P1_RESULT"], os.environ["P2_RESULT"], os.environ["P3_RESULT"],
+              os.environ["P4_RESULT"], os.environ["P5_RESULT"],
+          ]
+
+          state = None
+          source = ""
+          for iteration, result, consensus in reviews:
+              if result == "success" and consensus == "true":
+                  state = "consensus"
+                  source = f"review-{iteration}"
+                  break
+
+          if state is None and os.environ["FINAL_RESULT"] == "success":
+              if os.environ["FINAL_CONSENSUS"] == "true":
+                  state = "consensus"
+                  source = "final"
+              else:
+                  state = "escalate"
+                  source = "final"
+
+          if state is None:
+              any_failure = any(r == "failure" for _, r, _ in reviews)
+              any_failure = any_failure or any(r == "failure" for r in responses)
+              any_failure = any_failure or os.environ["FINAL_RESULT"] == "failure"
+              state = "workflow_error" if any_failure else "workflow_error"
+              source = "incomplete"
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"state={state}\n")
+              out.write(f"source={source}\n")
+          print(f"terminal state={state}, source={source}")
+          PY
+
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/debate-${{ github.run_id }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Dispatch fresh CI after consensus
+        if: ${{ steps.state.outputs.state == 'consensus' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: agent/debate-${{ github.run_id }}
+        run: gh workflow run main.yml --ref "$BRANCH"
+
+      - name: Find fresh CI run
+        if: ${{ steps.state.outputs.state == 'consensus' }}
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: agent/debate-${{ github.run_id }}
+        run: |
+          run_id=""
+          for _ in $(seq 1 30); do
+            run_id=$(gh run list \
+              --workflow main.yml \
+              --branch "$BRANCH" \
+              --event workflow_dispatch \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId // empty')
+            [ -n "$run_id" ] && break
+            sleep 5
+          done
+          [ -n "$run_id" ] || { echo "Fresh CI run did not appear." >&2; exit 1; }
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Require fresh CI success
+        if: ${{ steps.state.outputs.state == 'consensus' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.ci.outputs.run_id }}
+        run: gh run watch "$RUN_ID" --exit-status
+
+      - name: Mark PR ready after consensus
+        if: ${{ steps.state.outputs.state == 'consensus' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ needs.open_pr.outputs.number }}
+        run: |
+          gh pr ready "$PR_NUMBER"
+          gh pr comment "$PR_NUMBER" --body "Codex and Claude reached engineering consensus. A fresh repository CI run also passed."
+
+      - name: Squash merge after consensus
+        if: ${{ steps.state.outputs.state == 'consensus' && inputs.merge_when_consensus }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ needs.open_pr.outputs.number }}
+        run: gh pr merge "$PR_NUMBER" --squash --delete-branch
+
+      - name: Download task for escalation
+        if: ${{ steps.state.outputs.state == 'escalate' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: agent-task
+          path: .agent-work
+
+      - name: Download final Codex position
+        if: ${{ steps.state.outputs.state == 'escalate' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: codex-review-final
+          path: .agent-work/codex
+
+      - name: Download final Claude position
+        if: ${{ steps.state.outputs.state == 'escalate' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: claude-position-5
+          path: .agent-work/claude
+
+      - name: Build and post human decision packet
+        if: ${{ steps.state.outputs.state == 'escalate' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ needs.open_pr.outputs.number }}
+        run: |
+          cp .agent-work/codex/*.json .agent-work/codex-review.json
+          cp .agent-work/claude/*.json .agent-work/claude-position.json
+          python3 .github/agentic/make-decision-packet.py \
+            .agent-work/task.json \
+            .agent-work/codex-review.json \
+            .agent-work/claude-position.json \
+            .agent-work/decision.md
+          gh pr comment "$PR_NUMBER" --body-file .agent-work/decision.md
+
+      - name: Fail clearly on automation failure
+        if: ${{ steps.state.outputs.state == 'workflow_error' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ needs.open_pr.outputs.number }}
+        run: |
+          gh pr comment "$PR_NUMBER" --body "The agentic workflow stopped because an automation/provider step failed. This is not classified as an engineering disagreement. Inspect the failed Actions job and rerun after correcting the infrastructure problem."
+          exit 1

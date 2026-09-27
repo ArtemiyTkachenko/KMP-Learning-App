@@ -4753,7 +4753,7 @@
       "id": "unit_effect_lifecycle_and_launched_effect",
       "topicId": "android_ui",
       "title": "Effect Lifecycle and LaunchedEffect",
-      "summary": "A composable body describes UI; it does not give arbitrary imperative work a reliable owner or lifetime. This unit starts from that missing contract, then uses LaunchedEffect to tie suspend work to one place in the Composition. It traces entry, ordinary recomposition, key change, removal and re-entry, and treats keys as declarations of what should end one effect lifetime and begin another.",
+      "summary": "A composable body describes UI; it does not give arbitrary imperative work a reliable owner or lifetime. LaunchedEffect supplies that contract for suspend work by tying it to one place in the Composition. Its lifetime follows entry, ordinary recomposition, key change, removal and re-entry, and its keys declare which changes should end one effect lifetime and begin another.",
       "lessons": [
         {
           "id": "lesson_why_effects_are_controlled",
@@ -4785,7 +4785,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The execution rules themselves belong to `lesson_composable_execution` and `lesson_composition_and_recomposition`. This unit applies them. A body may execute repeatedly, may be skipped, may execute in an order its caller must not depend on, and may participate in an optimistic composition whose result is discarded. This contract does not claim that Compose currently executes composables in parallel. It says that application code does not own their timing or count."
+                  "text": "A body may execute repeatedly, may be skipped, may execute in an order its caller must not depend on, and may participate in an optimistic composition whose result is discarded. This contract does not claim that Compose currently executes composables in parallel. It says that application code does not own their timing or count."
                 },
                 {
                   "type": "callout",
@@ -4799,7 +4799,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Repeated execution makes the first failure visible. If the body executes again, `screenOpened` records another opening and `questionWork.start` starts another operation. That can duplicate analytics, registrations or requests and leave several operations claiming to represent one screen. This is conditional wording on purpose: not every recomposition executes every composable. The precise rule is that whenever this body does execute, its ordinary imperative statements execute with it."
+                  "text": "Repeated execution makes the first failure visible. If the body executes again, `screenOpened` records another opening and `questionWork.start` starts another operation. That can duplicate analytics, registrations or requests and leave several operations claiming to represent one screen. The condition matters: not every recomposition executes every composable. The precise rule is that whenever this body does execute, its ordinary imperative statements execute with it."
                 },
                 {
                   "type": "paragraph",
@@ -4833,7 +4833,7 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Do not fix this by inventing a `Boolean` that says the body has already run. That flag still needs an owner, a lifetime and a rule for re-entry. The problem is not syntax for suppressing a second call; it is defining what owns the work and what ends it."
+                  "text": "A `Boolean` that records whether the body has already run does not fix this. That flag still needs an owner, a lifetime and a rule for re-entry. The problem is not syntax for suppressing a second call; it is defining what owns the work and what ends it."
                 }
               ]
             },
@@ -4842,11 +4842,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The Compose effect family exists because different work needs different ownership answers. Suspend work may belong to a place in the Composition. An external registration may require paired cleanup. A user event may start work at a time chosen by the callback rather than by composition. Long-lived work may need a current value without ending its lifetime. These are four motivating problems, not four APIs to memorize; later units provide the remaining mechanisms."
+                  "text": "The Compose effect family exists because different work needs different ownership answers. Suspend work may belong to a place in the Composition. An external registration may require paired cleanup. A user event may start work at a time chosen by the callback rather than by composition. Long-lived work may need a current value without ending its lifetime. These are four ownership problems, not four APIs to memorize."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The right review question is therefore not merely \"is there a side effect in this function?\" It is: which event should begin this work, which owner should bound it, and which event should cancel or clean it up? If the work must continue after this UI position leaves the Composition, a composition-owned effect is the wrong owner. Choosing the longer-lived owner is architecture material outside this unit."
+                  "text": "The right review question is therefore not merely \"is there a side effect in this function?\" It is: which event should begin this work, which owner should bound it, and which event should cancel or clean it up? If the work must continue after this UI position leaves the Composition, a composition-owned effect is the wrong owner: the work needs an owner that outlives that position, such as a screen-level state holder."
                 },
                 {
                   "type": "callout",
@@ -4934,7 +4934,7 @@
                 {
                   "type": "callout",
                   "kind": "KEY_TAKEAWAY",
-                  "text": "Say \"the effect enters Composition\", not \"the composable was called\". LaunchedEffect owns one coroutine lifetime at one remembered position. Ordinary re-execution with equal keys keeps that lifetime; changed identity or keys end it."
+                  "text": "An effect's lifetime begins when it enters Composition, not whenever the composable is called. LaunchedEffect owns one coroutine lifetime at one remembered position. Ordinary re-execution with equal keys keeps that lifetime; changed identity or keys end it."
                 }
               ]
             },
@@ -4947,7 +4947,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That stop uses the ordinary coroutine model from `lesson_coroutine_scope_ownership` and `lesson_cooperative_cancellation`. Cancellation is cooperative. A suspending operation that cooperates observes it and unwinds; arbitrary blocking or CPU-bound code that neither suspends nor checks cannot be forcibly preempted by Compose. Therefore \"leaving Composition cancels the effect\" describes the ownership request and coroutine protocol, not an immediate kill switch."
+                  "text": "That stop is ordinary coroutine cancellation, and cancellation is cooperative. A suspending operation that cooperates observes it and unwinds; arbitrary blocking or CPU-bound code that neither suspends nor checks cannot be forcibly preempted by Compose. Therefore \"leaving Composition cancels the effect\" describes the ownership request and coroutine protocol, not an immediate kill switch. For the underlying rules, see **Cancellation Is Cooperative**."
                 },
                 {
                   "type": "code",
@@ -4956,12 +4956,12 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "When `question` becomes null, that branch and its `LaunchedEffect` call site leave the Composition, so the pulse coroutine is cancelled even if the surrounding screen remains. If a question later becomes non-null, the call site enters again and launches a new effect. `lesson_composable_identity` contains the full identity model; here it explains exactly which UI lifetime owns the work."
+                  "text": "When `question` becomes null, that branch and its `LaunchedEffect` call site leave the Composition, so the pulse coroutine is cancelled even if the surrounding screen remains. If a question later becomes non-null, the call site enters again and launches a new effect. The effect belongs to its position in the Composition, so the branch containing the call site decides which UI lifetime owns the work. For how Compose assigns that identity, see **Composable Identity**."
                 },
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Do not say \"recomposition reruns LaunchedEffect\". Recomposition can execute the call again while the remembered effect and its coroutine continue unchanged. Ask whether the position remained in Composition and whether its keys still compare equal."
+                  "text": "Recomposition does not rerun LaunchedEffect on its own. It can execute the call again while the remembered effect and its coroutine continue unchanged. Whether the effect restarts depends on whether the position remained in Composition and whether its keys still compare equal."
                 }
               ]
             },
@@ -4970,7 +4970,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The resolved Compose runtime 1.11.2 contract says the coroutine context comes from the Composition's applying context, and the runtime launches and cancels the remembered effect through that context. That is enough context detail for this unit. It is not a universal promise that every Compose Multiplatform effect runs on the Android main thread, and dispatcher selection remains coroutine curriculum."
+                  "text": "In Compose runtime 1.11.2, the coroutine context comes from the Composition's applying context, and the runtime launches and cancels the remembered effect through that context. Which dispatcher that is depends on the host: it is not a universal promise that every Compose Multiplatform effect runs on the Android main thread."
                 },
                 {
                   "type": "paragraph",
@@ -5036,7 +5036,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Here a changed `questionId` means the current hint sequence describes the wrong question, so it should end and a new sequence should begin. `questionId` is a lifetime dependency. By contrast, a changing value that the same long-lived work merely needs to read currently does not automatically deserve to end that work. A later unit solves that latest-value problem; this unit stops at recognizing it."
+                  "text": "Here a changed `questionId` means the current hint sequence describes the wrong question, so it should end and a new sequence should begin. `questionId` is a lifetime dependency. By contrast, a changing value that the same long-lived work merely needs to read currently does not automatically deserve to end that work. `rememberUpdatedState` handles that latest-value case; see **Reading the Current Value Without Restarting**."
                 },
                 {
                   "type": "paragraph",
@@ -5054,7 +5054,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "In the resolved AndroidX Compose runtime 1.11.2, this comparison is exact: `LaunchedEffect(key)` is built with `remember(key)`, and `remember` retains its value when the new key compares equal with `==`/`equals`. Effect keys are therefore compared like remember keys. This is the runtime/API contract, not merely an analogy. `lesson_remember_key_memoization` owns the memoization half of the model."
+                  "text": "In AndroidX Compose runtime 1.11.2, this comparison is exact: `LaunchedEffect(key)` is built with `remember(key)`, and `remember` retains its value when the new key compares equal with `==`/`equals`. Effect keys are therefore compared like remember keys. This is the runtime/API contract, not merely an analogy."
                 },
                 {
                   "type": "code",
@@ -5084,7 +5084,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Those are different runtime/compiler decisions. A fresh structurally equal object can preserve an effect key while, if its type is unstable, the same fresh instance may prevent a composable invocation from being skipped. `lesson_stability_and_skipping` owns stability and strong skipping; the point here is to keep its parameter comparison out of the effect-key decision."
+                  "text": "Those are different runtime/compiler decisions. A fresh structurally equal object can preserve an effect key while, if its type is unstable, the same fresh instance may prevent a composable invocation from being skipped. The skipping comparison plays no part in deciding whether an effect restarts."
                 }
               ]
             },
@@ -5143,7 +5143,7 @@
         {
           "id": "lesson_effect_key_failures",
           "title": "Two Ways to Get Effect Keys Wrong",
-          "summary": "Too few lifetime dependencies let stale work continue after it should have ended. Keys that needlessly stop comparing equal cancel and replace still-valid work, discarding progress and possibly repeating completed external actions. Diagnose both directions from behavior rather than from key-list style.",
+          "summary": "Too few lifetime dependencies let stale work continue after it should have ended. Keys that needlessly stop comparing equal cancel and replace still-valid work, discarding progress and possibly repeating completed external actions. Both directions are diagnosed from behavior rather than from key-list style.",
           "primarySubtopicIds": [
             "compose_side_effects"
           ],
@@ -5220,7 +5220,7 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Do not report \"a new object caused the restart\" until you inspect equality. Fresh, structurally equal data-class keys preserve the effect. The restart requires a supplied key that actually stops comparing equal, such as a newly created identity-equality wrapper."
+                  "text": "A fresh object alone does not explain a restart. Fresh, structurally equal data-class keys preserve the effect; a restart requires a supplied key that actually stops comparing equal, such as a newly created identity-equality wrapper."
                 }
               ]
             },
@@ -5237,7 +5237,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Sometimes a long-lived effect should keep running while a value it reads changes. Adding that value as a key may create exactly the restart cost described here, while omitting it naïvely may leave a stale capture. Unit 10 starts from that tension and supplies the appropriate mechanism. This lesson establishes the problem and stops before teaching the solution."
+                  "text": "Sometimes a long-lived effect should keep running while a value it reads changes. Adding that value as a key may create exactly the restart cost described here, while omitting it naïvely may leave a stale capture. `rememberUpdatedState` resolves that tension: the effect keeps its lifetime and reads the current value when it needs it (see **Reading the Current Value Without Restarting**)."
                 },
                 {
                   "type": "callout",
@@ -5281,7 +5281,7 @@
       "id": "unit_latest_values_and_event_driven_work",
       "topicId": "android_ui",
       "title": "Latest-Value Effects and Event-Driven Coroutine Work",
-      "summary": "Some changing values should be visible to work that is already running without ending that work, while some suspend work should begin only when a user event asks for it. This unit separates those two ownership problems: rememberUpdatedState preserves an effect lifetime while exposing a current value, and rememberCoroutineScope gives callbacks a composition-bounded scope without launching anything by itself. The final lesson chooses between composition-driven and event-driven work from who owns the trigger.",
+      "summary": "Some changing values should be visible to work that is already running without ending that work, while some suspend work should begin only when a user event asks for it. These are two separate ownership problems: rememberUpdatedState preserves an effect lifetime while exposing a current value, and rememberCoroutineScope gives callbacks a composition-bounded scope without launching anything by itself. The choice between composition-driven and event-driven work comes from who owns the trigger.",
       "lessons": [
         {
           "id": "lesson_remember_updated_state",
@@ -5301,7 +5301,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Unit 9 gave effect keys a lifetime meaning: put a value in the key list when its change should end the current effect and begin replacement work. That leaves an important case. What if a changing value matters, but the current effect is still exactly the right work? Restarting would throw away valid progress, while capturing the launch-time value naively can leave the running coroutine with stale data."
+                  "text": "Effect keys have a lifetime meaning: a value belongs in the key list when its change should end the current effect and begin replacement work. That leaves an important case. What if a changing value matters, but the current effect is still exactly the right work? Restarting would throw away valid progress, while capturing the launch-time value naively can leave the running coroutine with stale data."
                 },
                 {
                   "type": "code",
@@ -5339,7 +5339,7 @@
                   "type": "comparison",
                   "headers": [
                     "Requirement",
-                    "Correct shape",
+                    "Implementation",
                     "Lifetime consequence"
                   ],
                   "rows": [
@@ -5371,11 +5371,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The public runtime contract describes a remembered State whose value is updated on recomposition so a long-lived lambda, object or operation can persist without cancellation and restart. In the resolved Compose runtime 1.11.2 source, the implementation is equivalent to `remember { mutableStateOf(newValue) }.apply { value = newValue }`. That implementation confirms the model, but the public purpose is the durable lesson: preserve the long-lived operation and change what it reads currently."
+                  "text": "The public runtime contract describes a remembered State whose value is updated on recomposition so a long-lived lambda, object or operation can persist without cancellation and restart. In Compose runtime 1.11.2, the implementation is equivalent to `remember { mutableStateOf(newValue) }.apply { value = newValue }`. That implementation confirms the model, but the public contract is what to rely on: preserve the long-lived operation and change which value it reads."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Callback syntax does not settle the choice. Unit 9 explains how equality and current compiler memoization affect whether a callback used as a key actually changes. This decision begins one level earlier: even if the callback would compare differently and restart the keyed effect, should that change end this work? If the answer is no, separate value currency from lifetime."
+                  "text": "Callback syntax does not settle the choice. Key equality and compiler memoization of lambdas decide whether a callback used as a key actually changes (see **What an Effect's Keys Declare**). This decision begins one level earlier: even if the callback would compare differently and restart the keyed effect, should that change end this work? If the answer is no, separate value currency from lifetime."
                 },
                 {
                   "type": "callout",
@@ -5428,7 +5428,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "`rememberCoroutineScope()` launches nothing. It returns the same remembered scope across recompositions of that call site. Only when `onClick` calls `scope.launch` does a coroutine start. The caller therefore owns whether work starts, when it starts, and whether another click launches another coroutine. The builder and returned `Job` mechanics are covered by `lesson_coroutine_builders`."
+                  "text": "`rememberCoroutineScope()` launches nothing. It returns the same remembered scope across recompositions of that call site. Only when `onClick` calls `scope.launch` does a coroutine start. The caller therefore owns whether work starts, when it starts, and whether another click launches another coroutine."
                 },
                 {
                   "type": "comparison",
@@ -5472,11 +5472,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "A remembered scope does not make direct body launching controlled. The composable body may execute repeatedly, be skipped, or take part in an abandoned composition, so calling `launch` there recreates the uncontrolled-body-work defect from Unit 9. Put event-driven launch inside the event callback. Use a composition-triggered effect when entering or changing composition state really should start the work."
+                  "text": "A remembered scope does not make direct body launching controlled. The composable body may execute repeatedly, be skipped, or take part in an abandoned composition, so a `launch` there is ordinary body work: it runs whenever the body happens to execute, and no event controls it. Put event-driven launch inside the event callback. Use a composition-triggered effect when entering or changing composition state really should start the work."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Calling `scope.launch` returns a `Job`. The event handler may retain that handle when a real requirement calls for manual cancellation or coordination, but another click is otherwise free to start another child. This lesson does not prescribe a concurrency policy; `lesson_coroutine_scope_ownership` and the structured-concurrency material own the deeper Job rules."
+                  "text": "Calling `scope.launch` returns a `Job`. The event handler may retain that handle when a real requirement calls for manual cancellation or coordination, but another click is otherwise free to start another child. Whether repeated clicks should run in parallel, be ignored or cancel earlier work is a policy the handler chooses; `rememberCoroutineScope` does not choose it."
                 },
                 {
                   "type": "callout",
@@ -5490,11 +5490,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The resolved runtime 1.11.2 KDoc says the scope is bound to this composition point, uses the Recomposer's applying dispatcher when no dispatcher is supplied, and is cancelled when the call leaves Composition. The optional supplied context may not contain a parent `Job`, because this scope is already a child of the Composition. That stable restriction is usually all application code needs."
+                  "text": "In Compose runtime 1.11.2, the KDoc says the scope is bound to this composition point, uses the Recomposer's applying dispatcher when no dispatcher is supplied, and is cancelled when the call leaves Composition. The optional supplied context may not contain a parent `Job`, because this scope is already a child of the Composition. That stable restriction is usually all application code needs."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The same KDoc says a violated context precondition does not throw directly from the composable call. In the resolved implementation, the returned scope instead contains a failed `Job` and cannot launch children. This is a diagnostic detail, not a reason to customize the scope's parent: ownership should remain with the Composition."
+                  "text": "The same KDoc says a violated context precondition does not throw directly from the composable call. In the 1.11.2 implementation, the returned scope instead contains a failed `Job` and cannot launch children. This is a diagnostic detail, not a reason to customize the scope's parent: ownership should remain with the Composition."
                 },
                 {
                   "type": "callout",
@@ -5527,7 +5527,7 @@
         {
           "id": "lesson_who_owns_the_trigger",
           "title": "Composition-Driven or Event-Driven?",
-          "summary": "Choose coroutine work from who owns its trigger. LaunchedEffect starts when a composition state enters or changes and composition owns both trigger and lifetime; rememberCoroutineScope lets an event choose launch time while composition still bounds the lifetime. Work required to outlive the screen belongs to neither.",
+          "summary": "Which coroutine mechanism fits depends on who owns the work's trigger. LaunchedEffect starts when a composition state enters or changes and composition owns both trigger and lifetime; rememberCoroutineScope lets an event choose launch time while composition still bounds the lifetime. Work required to outlive the screen belongs to neither.",
           "primarySubtopicIds": [
             "compose_side_effects"
           ],
@@ -5595,7 +5595,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The correct direct UI-mechanics version lets the click own the trigger. The screen remembers a composition-owned scope, and that particular callback invocation launches the suspend snackbar work. This comparison is deliberately bounded: it does not define an application-wide transient-event delivery architecture or guarantees for times when no UI is present."
+                  "text": "The corrected version lets the click own the trigger. The screen remembers a composition-owned scope, and that particular callback invocation launches the suspend snackbar work."
                 },
                 {
                   "type": "code",
@@ -5605,7 +5605,7 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Do not reduce the rule to \"LaunchedEffect is automatic and rememberCoroutineScope is manual\". Name the occurrence that owns the start. A rendered condition and a user occurrence carry different meaning even when both eventually call the same suspend function."
+                  "text": "\"LaunchedEffect is automatic and rememberCoroutineScope is manual\" hides the actual decision, which is the occurrence that owns the start. A rendered condition and a user occurrence carry different meaning even when both eventually call the same suspend function."
                 }
               ]
             },
@@ -5614,7 +5614,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Both mechanisms are wrong when the requirement says the operation must continue after this screen leaves Composition. A committed upload, durable save, payment submission or background synchronization cannot take its required lifetime from a composition-owned effect or remembered scope. Move it to an owner whose lifetime actually matches the requirement. Choosing and designing that owner belongs to later architecture curriculum; this unit does not turn `viewModelScope`, a repository, a queue or background-work API into a default escape hatch."
+                  "text": "Both mechanisms are wrong when the requirement says the operation must continue after this screen leaves Composition. A committed upload, durable save, payment submission or background synchronization cannot take its required lifetime from a composition-owned effect or remembered scope. Move it to an owner whose lifetime actually matches the requirement."
                 },
                 {
                   "type": "paragraph",
@@ -5660,7 +5660,7 @@
       "id": "unit_cleanup_synchronization_and_producers",
       "topicId": "android_ui",
       "title": "Cleanup, External Synchronization and State Producers",
-      "summary": "A screen touches a world Compose does not manage, and each direction across that boundary is a different ownership problem. This unit separates them: a registration the Composition acquires and must release, a value that must be published outward only after a composition has succeeded, and an asynchronous or callback-based source that must become Compose State the UI can read. The last lesson decides where an adapter for such a source belongs, from ownership and reuse rather than API preference.",
+      "summary": "A screen touches a world Compose does not manage, and each direction across that boundary is a different ownership problem. Three such problems recur: a registration the Composition acquires and must release, a value that must be published outward only after a composition has succeeded, and an asynchronous or callback-based source that must become Compose State the UI can read. Where an adapter for such a source belongs is decided by ownership and reuse rather than API preference.",
       "lessons": [
         {
           "id": "lesson_disposable_effect",
@@ -5680,11 +5680,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Unit 9 and Unit 10 asked who owns a coroutine. A screen also touches objects that Compose does not manage at all: a session that accepts listeners, a lifecycle that accepts observers, a platform service that accepts callbacks. Handing one of those a reference is not work that finishes; it is a registration. Something outside the Composition now holds something the Composition created, and it will keep holding it until it is told not to."
+                  "text": "Not everything a screen owns is a coroutine. A screen also touches objects that Compose does not manage at all: a session that accepts listeners, a lifecycle that accepts observers, a platform service that accepts callbacks. Handing one of those a reference is not work that finishes; it is a registration. Something outside the Composition now holds something the Composition created, and it will keep holding it until it is told not to."
                 },
                 {
                   "type": "paragraph",
-                  "text": "That is a resource ownership problem, and it has a different shape from \"run this suspend work while this screen is here\". The question is not when the work completes. The question is which composition lifetime is responsible for giving the registration back, and at which exact moment."
+                  "text": "That is a resource ownership problem, and it is a different problem from \"run this suspend work while this screen is here\". The question is not when the work completes. The question is which composition lifetime is responsible for giving the registration back, and at which exact moment."
                 },
                 {
                   "type": "code",
@@ -5693,11 +5693,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "`DisposableEffect` is the mechanism whose shape matches that problem. Its block runs when the effect enters the Composition for a given key, and it must end with an `onDispose` clause. The block acquires; `onDispose` releases. The resolved Compose runtime 1.11.2 states the guarantee plainly: there is one call to `onDispose` for every call to the effect block, and both run on the composition's apply dispatcher."
+                  "text": "`DisposableEffect` is built for that problem. Its block runs when the effect enters the Composition for a given key, and it must end with an `onDispose` clause. The block acquires; `onDispose` releases. The Compose runtime 1.11.2 documentation states the guarantee plainly: there is one call to `onDispose` for every call to the effect block, and both run on the composition's apply dispatcher."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The ownership model is worth stating as a sequence, because every later question in this lesson is answered from it: the effect enters with key K, the block acquires or registers something for K, that registration is owned for as long as this effect lifetime lasts, and when K changes or the call site leaves the Composition, that exact registration is released."
+                  "text": "Stated as a sequence, the ownership model answers every question that follows: the effect enters with key K, the block acquires or registers something for K, that registration is owned for as long as this effect lifetime lasts, and when K changes or the call site leaves the Composition, that exact registration is released."
                 },
                 {
                   "type": "callout",
@@ -5711,7 +5711,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Delete the `onDispose` body from the example above and say concretely what happens. A learner opens a session and moves through three questions, and each question composes `QuestionSessionStatus` at a new call site that leaves when the next one arrives. The session now holds three listeners. When the next answer is graded, the session delivers it three times. Two of those deliveries belong to screens that are no longer composed, and each of them writes into a `MutableState` that nothing renders. Meanwhile every one of those listeners closes over the screen's state, so none of it can be collected while the session is alive: the session outlives the screens, and it is holding them."
+                  "text": "Delete the `onDispose` body from the example above and say concretely what happens. A user opens a session and moves through three questions, and each question composes `QuestionSessionStatus` at a new call site that leaves when the next one arrives. The session now holds three listeners. When the next answer is graded, the session delivers it three times. Two of those deliveries belong to screens that are no longer composed, and each of them writes into a `MutableState` that nothing renders. Meanwhile every one of those listeners closes over the screen's state, so none of it can be collected while the session is alive: the session outlives the screens, and it is holding them."
                 },
                 {
                   "type": "paragraph",
@@ -5748,7 +5748,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Keep the third and fourth rows distinct. A key change disposes and re-establishes; leaving the Composition disposes and does not re-establish. Ordinary recomposition with equal keys is neither — it does not dispose, and it does not re-register. The Compose documentation describes the key-change path as disposing the current effect and resetting by calling the effect again, performing cleanup for the old operation before initializing the new, so the obsolete registration is released before the replacement exists. On the configured runtime this was observed directly: a key change produced setup for A, then dispose for A, then setup for B, in that order. The two registrations never coexist."
+                  "text": "Keep the third and fourth rows distinct. A key change disposes and re-establishes; leaving the Composition disposes and does not re-establish. Ordinary recomposition with equal keys is neither — it does not dispose, and it does not re-register. The Compose documentation describes the key-change path as disposing the current effect and resetting by calling the effect again, performing cleanup for the old operation before initializing the new, so the obsolete registration is released before the replacement exists. A probe with Compose runtime 1.11.2 observed exactly that order across a key change: setup for A, then dispose for A, then setup for B. The two registrations never coexist."
                 },
                 {
                   "type": "paragraph",
@@ -5761,12 +5761,12 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "With a constant key the effect claims the whole composition lifetime of this call site. When `session` changes, nothing disposes and nothing re-registers: the screen keeps listening to the session it no longer displays, and the session it does display has no listener at all. The eventual `onDispose` is still correct for what was registered — it removes the first session's listener — but the screen was wrong for the entire interval in between. `lesson_effect_keys_as_dependencies` owns the key-comparison rules; this is what getting them wrong does to a registration."
+                  "text": "With a constant key the effect claims the whole composition lifetime of this call site. When `session` changes, nothing disposes and nothing re-registers: the screen keeps listening to the session it no longer displays, and the session it does display has no listener at all. The eventual `onDispose` is still correct for what was registered — it removes the first session's listener — but the screen was wrong for the entire interval in between."
                 },
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "An `onDispose { }` with an empty body is not a way to satisfy the compiler. It is a claim that this effect acquired nothing that needs releasing — and if that claim is true, `DisposableEffect` is the wrong mechanism. Ask what the block acquired. If the answer is nothing, the work is either a publication, which is the next lesson's subject, or a coroutine, which is Unit 9's."
+                  "text": "An `onDispose { }` with an empty body is not a way to satisfy the compiler. It is a claim that this effect acquired nothing that needs releasing — and if that claim is true, `DisposableEffect` is the wrong mechanism. Ask what the block acquired. If the answer is nothing, the work is either a publication of composed state to a non-Compose object (`SideEffect`) or suspend work (`LaunchedEffect`)."
                 }
               ]
             },
@@ -5775,7 +5775,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The difference between `DisposableEffect` and `LaunchedEffect` is not that one has cleanup. A `LaunchedEffect` can perfectly well release something in a `finally` block, and `lesson_cancellation_cleanup_and_timeouts` already covers how a cancelled coroutine unwinds. The difference is what kind of lifetime the Composition is holding."
+                  "text": "The difference between `DisposableEffect` and `LaunchedEffect` is not that one has cleanup. A `LaunchedEffect` can perfectly well release something in a `finally` block, which runs as the cancelled coroutine unwinds. Cleanup that itself suspends needs more care; see **Cleanup, `NonCancellable` and Timeouts**. The difference is what kind of lifetime the Composition is holding."
                 },
                 {
                   "type": "comparison",
@@ -5803,7 +5803,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "One combination is worth naming because it comes up whenever a registration invokes a caller-supplied callback. The registration's identity may be perfectly stable while the callback it should invoke changes with recomposition. Keying the effect on the callback would tear down and re-register the external observer for a reason the external world does not care about, discarding a valid subscription. Unit 10's `rememberUpdatedState` solves the value half without touching the lifetime half."
+                  "text": "One combination is worth naming because it comes up whenever a registration invokes a caller-supplied callback. The registration's identity may be perfectly stable while the callback it should invoke changes with recomposition. Keying the effect on the callback would tear down and re-register the external observer for a reason the external world does not care about, discarding a valid subscription. `rememberUpdatedState` solves the value half without touching the lifetime half."
                 },
                 {
                   "type": "code",
@@ -5875,7 +5875,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "`SideEffect` schedules its block rather than running it. The resolved Compose runtime 1.11.2 describes it as scheduling the effect to run when the current composition completes successfully and applies changes, so that objects managed outside the Composition are not left in an inconsistent state if the composition operation fails. The block runs on the composition's apply dispatcher and always after `RememberObserver` callbacks, and the documentation states the resulting guarantee as executing after every successful recomposition."
+                  "text": "`SideEffect` schedules its block rather than running it. Compose runtime 1.11.2 documents it as scheduling the effect to run when the current composition completes successfully and applies changes, so that objects managed outside the Composition are not left in an inconsistent state if the composition operation fails. The block runs on the composition's apply dispatcher and always after `RememberObserver` callbacks, and the documentation states the resulting guarantee as executing after every successful recomposition."
                 },
                 {
                   "type": "paragraph",
@@ -5898,7 +5898,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Unit 9 established that Compose may calculate an updated UI and discard the result before it becomes the applied UI. That is the case the direct assignment gets wrong. If the attempt is abandoned rather than applied, the UI it described never takes effect — but `analytics.userType` was already overwritten, and the analytics client now reports a state the user was never shown. A `SideEffect` scheduled by that same abandoned attempt is not run, so it publishes nothing: the recorded effect never reaches the apply step it was recorded for."
+                  "text": "Compose may calculate an updated UI and discard the result before it becomes the applied UI. That is the case the direct assignment gets wrong. If the attempt is abandoned rather than applied, the UI it described never takes effect — but `analytics.userType` was already overwritten, and the analytics client now reports a state the user was never shown. A `SideEffect` scheduled by that same abandoned attempt is not run, so it publishes nothing: the recorded effect never reaches the apply step it was recorded for."
                 },
                 {
                   "type": "paragraph",
@@ -5927,12 +5927,12 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "On the configured runtime this was observed directly. A parent that recomposed twice published twice, while a child composable whose parameter had not changed was skipped on the second pass and published once. Note carefully what that does and does not say."
+                  "text": "A probe with Compose runtime 1.11.2 showed this: a parent that recomposed twice published twice, while a child composable whose parameter had not changed was skipped on the second pass and published once. The child published once because its call did not execute on the second pass, not because `SideEffect` watches for state changes."
                 },
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Do not compress the skipping row into \"SideEffect only runs when state changes\". The contract is about successful composition passes in which this call participates, not about which state changed. A pass that executes this call and is applied publishes, whatever caused the pass."
+                  "text": "The skipping row does not mean \"SideEffect only runs when state changes\". The contract is about successful composition passes in which this call participates, not about which state changed. A pass that executes this call and is applied publishes, whatever caused the pass."
                 }
               ]
             },
@@ -5954,11 +5954,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The bridge back is a question about the trigger, which Unit 10 already made the deciding one. If a click should start suspend work, the click owns the trigger and a remembered scope launches it. If entering or changing a composition state should start work, `LaunchedEffect` owns it. If an object outside Compose must be handed something back later, `DisposableEffect` owns it. `SideEffect` answers only the remaining case: composed state must be pushed synchronously into a non-Compose object once that composition has succeeded."
+                  "text": "Choosing the right mechanism instead starts from the trigger. If a click should start suspend work, the click owns the trigger and a remembered scope launches it. If entering or changing a composition state should start work, `LaunchedEffect` owns it. If an object outside Compose must be handed something back later, `DisposableEffect` owns it. `SideEffect` answers only the remaining case: composed state must be pushed synchronously into a non-Compose object once that composition has succeeded."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Two further limits follow from where the block runs. It is not a coroutine scope and cannot suspend, so it is not somewhere to launch work from. And because it runs on the composition's apply dispatcher, and appliers are never run concurrently with applying changes to the composition tree, expensive work placed here delays the application of the frame it belongs to. Keep it to assignment-shaped publication."
+                  "text": "Two further limits follow from where the block runs. It is not a coroutine scope and cannot suspend, so it is not somewhere to launch work from. And because it runs on the composition's apply dispatcher, and appliers are never run concurrently with applying changes to the composition tree, expensive work placed here delays the application of the frame it belongs to. Keep it to simple assignments."
                 },
                 {
                   "type": "callout",
@@ -6003,7 +6003,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Unit 8 answered one half of the observation problem: when a screen already has a `Flow`, `collectAsState` converts it into renderable Compose `State`. The other half is a source that is not a stream yet. A one-shot suspend load, or a platform object that pushes values through a callback, produces data the UI needs but exposes nothing a composable can read."
+                  "text": "When a screen already has a `Flow`, `collectAsState` converts it into renderable Compose `State`. That covers one half of the observation problem. The other half is a source that is not a stream yet. A one-shot suspend load, or a platform object that pushes values through a callback, produces data the UI needs but exposes nothing a composable can read."
                 },
                 {
                   "type": "paragraph",
@@ -6016,7 +6016,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The contract has four parts, and all four come from Unit 9's effect model rather than from anything new. The producer is launched when `produceState` enters the Composition. It is cancelled when `produceState` leaves the Composition. If a key changes, a running producer is cancelled and re-launched for the new source, using the same key comparison every effect uses. The producer writes results by assigning `value`, and the returned `State` is what Compose reads."
+                  "text": "The contract has four parts, and the first three are `LaunchedEffect`'s lifetime rules rather than anything new. The producer is launched when `produceState` enters the Composition. It is cancelled when `produceState` leaves the Composition. If a key changes, a running producer is cancelled and re-launched for the new source, using the same key comparison every effect uses. The producer writes results by assigning `value`, and the returned `State` is what Compose reads."
                 },
                 {
                   "type": "paragraph",
@@ -6025,7 +6025,7 @@
                 {
                   "type": "callout",
                   "kind": "KEY_TAKEAWAY",
-                  "text": "`produceState` is a producer with a composition lifetime and a `State` output. Everything about when it starts, stops and restarts is the effect-lifetime model you already have; what is new is that the result is a value the UI can read."
+                  "text": "`produceState` is a producer with a composition lifetime and a `State` output. Everything about when it starts, stops and restarts follows `LaunchedEffect`'s lifetime; what is new is that the result is a value the UI can read."
                 }
               ]
             },
@@ -6034,7 +6034,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Now answer the question this Lesson exists for. `questionId` changes from `q1` to `q2`. The `q1` producer is cancelled and a `q2` producer is launched, but loading takes time. What does the returned `State` hold in that interval?"
+                  "text": "The revealing case is a key change. `questionId` changes from `q1` to `q2`. The `q1` producer is cancelled and a `q2` producer is launched, but loading takes time. What does the returned `State` hold in that interval?"
                 },
                 {
                   "type": "paragraph",
@@ -6042,7 +6042,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The reason is visible in the resolved Compose runtime 1.11.2 implementation, and it is not stated on the documentation page. `produceState` is a `remember { mutableStateOf(initialValue) }` plus a `LaunchedEffect(key)` over that state. The `remember` has no keys. The key belongs to the producer, not to the holder, so a key change replaces the producer and leaves the holder — and its current value — exactly as it was. On the configured toolchain a probe confirmed it: key `A` produced `A-result`, changing the key to `B` restarted the producer while the returned `State` still read `A-result`, and only the `B` producer's own write changed it."
+                  "text": "The reason is visible in the Compose runtime 1.11.2 implementation, although the documentation page does not state it. `produceState` is a `remember { mutableStateOf(initialValue) }` plus a `LaunchedEffect(key)` over that state. The `remember` has no keys. The key belongs to the producer, not to the holder, so a key change replaces the producer and leaves the holder — and its current value — exactly as it was. A probe with Compose runtime 1.11.2 confirmed it: key `A` produced `A-result`, changing the key to `B` restarted the producer while the returned `State` still read `A-result`, and only the `B` producer's own write changed it."
                 },
                 {
                   "type": "paragraph",
@@ -6055,12 +6055,12 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The returned `State` also conflates. The runtime states it directly: no change is observable if a value equal to the current one is assigned, and observers may only see the latest value if several values are set in rapid succession. A probe on the configured runtime matched that — a producer that assigned the same loaded value three times produced exactly one observable change, and the reading composable executed twice in total, once for the initial value and once for the loaded one."
+                  "text": "The returned `State` also conflates. The runtime states it directly: no change is observable if a value equal to the current one is assigned, and observers may only see the latest value if several values are set in rapid succession. A probe with Compose runtime 1.11.2 matched that — a producer that assigned the same loaded value three times produced exactly one observable change, and the reading composable executed twice in total, once for the initial value and once for the loaded one."
                 },
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "\"The key changed, so the state resets to `initialValue`\" is false on this runtime, and it is the assumption behind a real production defect: the previous item's data displayed under the new item's key while the new load is in flight. Predict the value from the implementation, not from the parameter name."
+                  "text": "\"The key changed, so the state resets to `initialValue`\" is false for Compose runtime 1.11.2, and it is the assumption behind a real production defect: the previous item's data displayed under the new item's key while the new load is in flight. Predict the value from the implementation, not from the parameter name."
                 }
               ]
             },
@@ -6091,7 +6091,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "One boundary keeps this from being over-applied. `produceState` is not a replacement for ordinary stream collection. If the source is already a `Flow` and the requirement is simply to render its current collected value, the purpose-built conversion is Unit 8's — `collectAsState`, or the lifecycle-aware variant where the target's lifecycle should stop collection. Wrapping a collect call inside `produceState` is mechanically possible and is not the clearest abstraction for a source that is already a stream. Choose from what the source contract actually is, which is the next Lesson's subject."
+                  "text": "One boundary keeps this from being over-applied. `produceState` is not a replacement for ordinary stream collection. If the source is already a `Flow` and the requirement is simply to render its current collected value, the purpose-built conversion is `collectAsState`, or the lifecycle-aware variant where the target's lifecycle should stop collection. Wrapping a collect call inside `produceState` is mechanically possible and is not the clearest abstraction for a source that is already a stream. Choose from what the source contract actually is; **A Flow Below the UI, or a Producer at the Boundary?** works through that choice."
                 },
                 {
                   "type": "callout",
@@ -6140,7 +6140,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The previous Lesson's producer suspended: it called a suspend function and assigned the result. A callback-based source does not suspend. Registering a listener returns immediately, and a producer block that returns has finished — nothing is keeping the subscription's lifetime open, and nothing has been told to unregister when the producer is disposed."
+                  "text": "A producer that loads data suspends: it calls a suspend function and assigns the result. A callback-based source does not suspend. Registering a listener returns immediately, and a producer block that returns has finished — nothing is keeping the subscription's lifetime open, and nothing has been told to unregister when the producer is disposed."
                 },
                 {
                   "type": "paragraph",
@@ -6167,7 +6167,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "This looks like the first Lesson's `DisposableEffect`, and it is not the same decision. Both register a callback and both release it, so \"one is for callbacks\" explains nothing. Separate them by what the composable needs as output."
+                  "text": "This looks like a `DisposableEffect`, and it is not the same decision. Both register a callback and both release it, so \"one is for callbacks\" explains nothing. Separate them by what the composable needs as output."
                 },
                 {
                   "type": "comparison",
@@ -6191,11 +6191,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "A useful check: if a `DisposableEffect` exists only to write into a `remember { mutableStateOf(...) }` next to it, the producer shape is what that code actually wanted, and `produceState` states the intent in one call. If the registration produces no value the UI reads — a lifecycle observer that reports to analytics, a service that must be told a screen is visible — then no producer is required and `DisposableEffect` is the honest mechanism."
+                  "text": "A useful check: if a `DisposableEffect` exists only to write into a `remember { mutableStateOf(...) }` next to it, a state producer is what that code actually wanted, and `produceState` states the intent in one call. If the registration produces no value the UI reads — a lifecycle observer that reports to analytics, a service that must be told a screen is visible — then no producer is required and `DisposableEffect` is the right mechanism."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Unit 10's trigger distinction still applies and must not blur into this one. A listener registration is owned by a composition lifetime: it begins because the screen is composed and ends because the screen is gone. A button click that shows a snackbar is owned by an event: it begins because the user acted. Both are imperative, and that shared quality is not a reason to reach for the same API. Decide from the owner, the lifetime, the trigger, and whether a release is required."
+                  "text": "The trigger distinction between composition-driven and event-driven work still applies and must not blur into this one. A listener registration is owned by a composition lifetime: it begins because the screen is composed and ends because the screen is gone. A button click that shows a snackbar is owned by an event: it begins because the user acted. Both are imperative, and that shared quality is not a reason to reach for the same API. Decide from the owner, the lifetime, the trigger, and whether a release is required."
                 },
                 {
                   "type": "callout",
@@ -6209,7 +6209,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "There is one more question, and it is the one that separates a senior answer. The same callback source could be adapted one layer lower, as a `Flow` built with `callbackFlow`, whose `awaitClose` plays the same role for the same reason. So which side of the UI boundary should the adapter live on?"
+                  "text": "One more question separates a senior answer. The same callback source could be adapted one layer lower, as a `Flow` built with `callbackFlow`, whose `awaitClose` plays the same role for the same reason. So which side of the UI boundary should the adapter live on?"
                 },
                 {
                   "type": "comparison",
@@ -6242,7 +6242,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Notice that neither column is about which API is better written. Both columns are about ownership and reuse. A connection monitor that three features observe, that the data layer wants to combine with a retry policy, and whose lifetime is the application's belongs below the UI, and `lesson_flow_builders_and_callback_adapters` already covers how to build that adapter — this Lesson does not repeat it. A monitor observed by exactly one screen, whose values exist only to be rendered by that screen, is adapted at the boundary, and extracting a general stream for it produces a layer with one caller."
+                  "text": "Notice that neither column is about which API is better written. Both columns are about ownership and reuse. A connection monitor that three features observe, that the data layer wants to combine with a retry policy, and whose lifetime is the application's belongs below the UI (`callbackFlow` builds that adapter; see **Flow Builders and Adapting Callback APIs**). A monitor observed by exactly one screen, whose values exist only to be rendered by that screen, is adapted at the boundary, and extracting a general stream for it produces a layer with one caller."
                 },
                 {
                   "type": "paragraph",
@@ -6250,7 +6250,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Note also that the two answers are not symmetric in what they output. A Flow below the UI still has to reach the UI, and Unit 8's collection is what does that. Choosing the Flow does not remove the Compose-side step; it moves the adaptation and gives it other possible consumers. The full comparison of every Compose mechanism against a stated requirement is the subject of a later unit in this path."
+                  "text": "Note also that the two answers are not symmetric in what they output. A Flow below the UI still has to reach the UI, and collecting it into Compose `State` with `collectAsState` or its lifecycle-aware variant is what does that. Choosing the Flow does not remove the Compose-side step; it moves the adaptation and gives it other possible consumers. For a comparison of every Compose mechanism against a stated requirement, see **Choosing the Smallest Sufficient Mechanism**."
                 },
                 {
                   "type": "callout",

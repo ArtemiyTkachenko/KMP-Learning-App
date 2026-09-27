@@ -1,0 +1,63 @@
+name: Agentic Codex task author
+
+on:
+  workflow_call:
+    inputs:
+      objective:
+        required: true
+        type: string
+      backlog_key:
+        required: false
+        default: ""
+        type: string
+    secrets:
+      OPENAI_API_KEY:
+        required: true
+
+jobs:
+  author:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build task-author prompt
+        env:
+          OBJECTIVE: ${{ inputs.objective }}
+          BACKLOG_KEY: ${{ inputs.backlog_key }}
+        run: |
+          mkdir -p .agent-work
+          cp .github/agentic/prompts/codex-task-author.md .agent-work/task-prompt.md
+          {
+            printf '\n\n## User objective\n\n%s\n' "$OBJECTIVE"
+            if [ -n "$BACKLOG_KEY" ]; then
+              printf '\n## Backlog key\n\n%s\n' "$BACKLOG_KEY"
+              printf '\nResolve this key from `.github/project/backlog.yml` and treat its definition as authoritative constraints.\n'
+            fi
+          } >> .agent-work/task-prompt.md
+
+      - name: Author task with Codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          permission-profile: ":read-only"
+          prompt-file: .agent-work/task-prompt.md
+          output-schema-file: .github/agentic/schemas/task.json
+          output-file: .agent-work/task.json
+          effort: high
+          codex-args: "--ephemeral"
+
+      - name: Validate task output
+        run: jq -e . .agent-work/task.json >/dev/null
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-task
+          path: .agent-work/task.json
+          retention-days: 14

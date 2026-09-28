@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -853,16 +854,33 @@ private suspend fun ComposeUiTest.openTopicFromBrowser(topicName: String = UiTop
         }
         waitForIdle()
     }
-    // Nothing arrived after several attempts, so let the ordinary wait produce the failure and its
-    // message rather than throwing something less informative from here.
-    waitUntil(
-        conditionDescription = "Topic $topicName opens from its search result",
-        timeoutMillis = JourneyTimeoutMillis,
-    ) {
-        onAllNodesWithTag(TopicBrowserSearchFieldTag, useUnmergedTree = true)
-            .fetchSemanticsNodes().isEmpty() &&
-            onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
+    // Nothing arrived yet. The first journey in a fresh JVM pays cold composition, Room and
+    // derivation costs on the way to Topic detail, which on a shared CI runner has exceeded the
+    // ordinary journey timeout. The wait returns as soon as the Study list appears, so the longer
+    // ceiling costs nothing when navigation is fast.
+    try {
+        waitUntil(
+            conditionDescription = "Topic $topicName opens from its search result",
+            timeoutMillis = TopicArrivalTimeoutMillis,
+        ) {
+            onAllNodesWithTag(TopicBrowserSearchFieldTag, useUnmergedTree = true)
+                .fetchSemanticsNodes().isEmpty() &&
+                onAllNodesWithTag(TopicStudyListTag, useUnmergedTree = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+        }
+    } catch (timeout: ComposeTimeoutException) {
+        // Say where the journey actually is: a browser that never left means the tap did not
+        // navigate; a browser that left without a Study list means Topic detail never finished
+        // loading, or the tap reached a different destination.
+        val browserVisible = onAllNodesWithTag(TopicBrowserSearchFieldTag, useUnmergedTree = true)
+            .fetchSemanticsNodes().isNotEmpty()
+        val topicNameVisible = onAllNodesWithText(topicName).fetchSemanticsNodes().isNotEmpty()
+        throw AssertionError(
+            "Topic $topicName did not open from its search result within " +
+                "${TopicArrivalTimeoutMillis}ms: browser visible=$browserVisible, " +
+                "Topic name visible=$topicNameVisible, Study list visible=false.",
+            timeout,
+        )
     }
 }
 
@@ -1043,6 +1061,12 @@ private class RecordingUriHandler(private val opened: MutableList<String>) : Uri
 private fun LearningLesson.blocks(): List<LearningBlock> = sections.flatMap { it.blocks }
 
 private const val JourneyTimeoutMillis = 10_000L
+
+/**
+ * Ceiling for arriving on Topic detail after the search tap, which is the first navigation of every
+ * journey and so the one that pays cold-start costs on a slow runner.
+ */
+private const val TopicArrivalTimeoutMillis = 30_000L
 
 /** How many times the journey re-taps a Topic row that did not navigate. */
 private const val NavigationAttempts = 3

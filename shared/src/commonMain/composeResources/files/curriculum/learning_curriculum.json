@@ -6288,7 +6288,7 @@
       "id": "unit_production_ui_effects_and_selection",
       "topicId": "android_ui",
       "title": "Production UI Effects and Mechanism Selection",
-      "summary": "Every mechanism in this path has now been met on its own, and production asks a different question: given a requirement, which of them does it actually need? This unit answers that from ownership, trigger, lifetime and cleanup, and takes the smallest mechanism that satisfies all four. It then separates what a screen currently is from what the UI should do once, and ends on the question a Compose effect cannot answer by itself — what must happen to a one-off occurrence when no UI is present to run it.",
+      "summary": "Given a UI requirement, choose the smallest Compose mechanism that matches it. Four facts decide: who owns the state, what triggers the work, how long the work must live, and what has to be released. Rendering what a screen currently is differs from performing something once, and a one-off occurrence adds a delivery question no Compose effect answers by itself: what must happen when no UI is present to run it.",
       "lessons": [
         {
           "id": "lesson_choosing_a_compose_mechanism",
@@ -6308,11 +6308,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Five units have introduced these mechanisms one problem at a time, and every one of them was the right answer to the problem it arrived with. Production does not arrive in that order. It arrives as a requirement — this screen has to show something, remember something, start something, register something, or hand something outward — and the engineer has to say which mechanism that requirement needs and why. That decision is this lesson, and it introduces no new API."
+                  "text": "A screen requirement arrives in product terms: this screen has to show something, remember something, start something, register something, or hand something outward. The engineering question is which Compose mechanism that requirement needs, and why."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The failure it replaces is rarely ignorance of the APIs. It is reaching for the most powerful mechanism that could work rather than the smallest one that does. An unnecessary effect is not free: it is another lifetime to reason about, another key list to get right, and another thing every future reader of the screen has to check before changing anything. Often the correct answer is that no mechanism is needed at all."
+                  "text": "The usual failure is not ignorance of the APIs. It is reaching for the most powerful mechanism that could work rather than the smallest one that does. An unnecessary effect is not free: it is another lifetime to reason about, another key list to get right, and another thing every future reader of the screen has to check before changing anything. Often the correct answer is that no mechanism is needed at all."
                 },
                 {
                   "type": "paragraph",
@@ -6391,7 +6391,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "State owner: none. Trigger owner: the tap. Lifetime: the screen — if the learner navigates away mid-scroll, the work should stop with the screen. Cleanup: cancellation of the launched coroutine, which the remembered scope already provides. The smallest sufficient mechanism is `rememberCoroutineScope` and a `launch` from the callback, and the shape worth noticing is what is absent: no remembered flag, and nothing for an effect to observe."
+                  "text": "State owner: none. Trigger owner: the tap. Lifetime: the screen — if the user navigates away mid-scroll, the work should stop with the screen. Cleanup: cancellation of the launched coroutine, which the remembered scope already provides. The smallest sufficient mechanism is `rememberCoroutineScope` and a `launch` from the callback. There is no remembered flag and nothing for an effect to observe."
                 },
                 {
                   "type": "callout",
@@ -6400,7 +6400,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The same four columns answer the rest of the screens this path has built towards. Every outcome in the table is a mechanism an earlier unit owns, and the last row is an outcome with no mechanism in it at all."
+                  "text": "Apply the four facts to the rest of a practice-question screen. For the submitted-assessment upload, the answer is no Compose mechanism at all."
                 },
                 {
                   "type": "comparison",
@@ -6470,7 +6470,7 @@
                       "`rememberUpdatedState`"
                     ],
                     [
-                      "Scroll to the hint and confirm it when the learner taps Show hint",
+                      "Scroll to the hint and confirm it when the user taps Show hint",
                       "None",
                       "The tap",
                       "The screen",
@@ -6510,7 +6510,7 @@
                       "A Flow below the UI, then ordinary collection"
                     ],
                     [
-                      "A submitted assessment must finish uploading even if the learner leaves the screen",
+                      "A submitted assessment must finish uploading even if the user leaves the screen",
                       "Not the screen's",
                       "The submit tap",
                       "Longer than the screen",
@@ -6521,7 +6521,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Read the table as output rather than as a lookup. Two rows can be the same screen: the sixth and seventh are one countdown, separated because they answer different facts. The twelfth row is the eleventh with one fact changed, and what moved the adapter was ownership rather than anything about callbacks. A row can only be reached by having answered the four columns to its left, which is the part a table cannot do for you."
+                  "text": "Read the table as output rather than as a lookup. Two rows can describe the same code: the two countdown rows are one countdown, separated because starting it and calling the current `onTimeout` answer different facts. The shared-source row is the single-screen callback-source row with one fact changed — a second screen and code below the UI need the same source — and what moved the adapter below the UI was ownership rather than anything about callbacks. A row can only be reached by answering the four columns to its left, which is the part a table cannot do for you."
                 }
               ]
             },
@@ -6550,11 +6550,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The last question in the sequence is the one worth practising, because its answer is a negative result and negative results feel like failures. A committed submission, a durable save, an upload already in flight, a payment: each names a lifetime the screen does not have, and no composition-owned mechanism can lend it one. A remembered scope is cancelled when the call leaves the Composition, and an effect is cancelled when its position leaves — that is what they are for, and it is exactly wrong for work that must not stop. Answering \"none of these\" is therefore a correct outcome of the decision, and it is reached by asking about lifetime rather than by trying mechanisms until one seems to fit."
+                  "text": "The last question in the sequence needs practice, because its answer is a negative result and negative results feel like failures. A committed submission, a durable save, an upload already in flight, a payment: each names a lifetime the screen does not have, and no composition-owned mechanism can lend it one. A remembered scope is cancelled when the call leaves the Composition, and an effect is cancelled when its position leaves — that is what they are for, and it is exactly wrong for work that must not stop. Answering \"none of these\" is therefore a correct outcome of the decision, and it is reached by asking about lifetime rather than by trying mechanisms until one seems to fit."
                 },
                 {
                   "type": "paragraph",
-                  "text": "What happens next is deliberately not this unit's decision. The work needs an owner whose lifetime matches the requirement; which owner that is, how it is built and where it lives belong to the architecture curriculum. This unit's contribution is the diagnosis and the vocabulary to state it precisely: the required lifetime exceeds the Composition's, so the Composition cannot be the owner."
+                  "text": "That result still states a requirement: the work needs an owner whose lifetime matches it. The required lifetime exceeds the Composition's, so the Composition cannot be the owner."
                 },
                 {
                   "type": "callout",
@@ -6629,7 +6629,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Current state is the ordinary case and needs no effect at all. The question that is selected, whether the screen is loading, a validation message that should stay on screen while the input is still invalid, the active filter: each of these is true until something makes it false, and a composition that describes it again is doing exactly its job. This is why the previous lesson's decision starts with rendering — most of a production screen is this, and none of it needs a mechanism."
+                  "text": "Current state is the ordinary case and needs no effect at all. The question that is selected, whether the screen is loading, a validation message that should stay on screen while the input is still invalid, the active filter: each of these is true until something makes it false, and a composition that describes it again is doing exactly its job. This is why choosing a mechanism starts by asking whether there is state to render — most of a production screen is this, and none of it needs a mechanism."
                 },
                 {
                   "type": "paragraph",
@@ -6637,7 +6637,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The tempting shortcut is to sort requirements by widget, and dialogs are the clearest evidence that this does not work. \"The unsaved-changes dialog is visible while an unsaved edit exists\" is a condition, and modelling it as state is right — it should still be there after the screen is rebuilt. \"Open the image chooser once, because the learner just asked for it\" is an occurrence. Same component, different requirement, different answer. Decide from what the requirement says must be true, never from the type of UI involved."
+                  "text": "The tempting shortcut is to sort requirements by widget, and dialogs are the clearest evidence that this does not work. \"The unsaved-changes dialog is visible while an unsaved edit exists\" is a condition, and modelling it as state is right — it should still be there after the screen is rebuilt. \"Open the image chooser once, because the user just asked for it\" is an occurrence. Same component, different requirement, different answer. Decide from what the requirement says must be true, never from the type of UI involved."
                 },
                 {
                   "type": "callout",
@@ -6651,7 +6651,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The failure worth seeing in full is an occurrence given the contract of a condition. Here is a screen state carrying a flag for a completed save."
+                  "text": "The common failure is an occurrence given the contract of a condition. Here is a screen state carrying a flag for a completed save."
                 },
                 {
                   "type": "code",
@@ -6665,11 +6665,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Read the field before reading the effect. `saved` says that a save succeeded, and nothing in the type says it stops being true afterwards; it is a condition, and the screen's owner keeps it as part of the current value. Now read the effect. It starts when that branch enters the Composition with `saved == true`, and it starts again every later time the branch enters with the same value — after the screen is rebuilt and collects the current state again, after the learner returns while the flag still stands, or simply after the branch left and came back. Each of those is a new effect lifetime, and each runs the snackbar, although the learner saved once."
+                  "text": "Read the field before reading the effect. `saved` says that a save succeeded, and nothing in the type says it stops being true afterwards; it is a condition, and the screen's owner keeps it as part of the current value. Now read the effect. It starts when that branch enters the Composition with `saved == true`, and it starts again every later time the branch enters with the same value — after the screen is rebuilt and collects the current state again, after the user returns while the flag still stands, or simply after the branch left and came back. Each of those is a new effect lifetime, and each runs the snackbar, although the user saved once."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The defect is not the API and not the key. `LaunchedEffect(state.saved)` behaves precisely as the effect unit described: equal keys keep an effect running across recomposition, and a new lifetime starts a new effect. The defect is that a durable condition was handed to a mechanism whose job is execution. The value answers \"is a successful save currently recorded?\" while the requirement asked \"did a save just happen?\", and no key list can express a difference the value does not carry."
+                  "text": "The defect is not the API and not the key. `LaunchedEffect(state.saved)` behaves exactly as its contract says: equal keys keep an effect running across recomposition, and each new entry into the Composition starts a new effect. The defect is that a durable condition was handed to a mechanism whose job is execution. The value answers \"is a successful save currently recorded?\" while the requirement asked \"did a save just happen?\", and no key list can express a difference the value does not carry."
                 },
                 {
                   "type": "comparison",
@@ -6698,7 +6698,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This is a different question from the one the trigger lesson asked about a similar shape. There the choice was between a composition-owned trigger and an event-owned one, and letting the tap launch the snackbar was the fix. Here the prior question is what contract the value has at all — because a screen whose state genuinely carries a durable fact is not repaired by moving the trigger, and a fact the requirement says must survive the screen's absence is not repaired by deleting it either."
+                  "text": "A similar flag-driven snackbar has a different fix. When the requirement is \"when the user taps Save, confirm it\", the tap is the occurrence: the flag gave the Composition a trigger that belongs to the event, and launching the snackbar from the click through a remembered scope removes the flag entirely. **Composition-Driven or Event-Driven?** works through that case. Here the prior question is what contract the value has at all — because a screen whose state genuinely carries a durable fact is not repaired by moving the trigger, and a fact the requirement says must survive the screen's absence is not repaired by deleting it either."
                 },
                 {
                   "type": "paragraph",
@@ -6707,11 +6707,11 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Compressing this into \"transient effects use `LaunchedEffect`\" or \"transient effects use `rememberCoroutineScope`\". Both rules build the wrong screen about half the time. The occurrence that owns the start is still what decides, and this lesson only changes what you ask before you get there."
+                  "text": "Compressing this into \"transient effects use `LaunchedEffect`\" or \"transient effects use `rememberCoroutineScope`\". Both rules build the wrong screen about half the time. Whatever owns the start still decides the mechanism; whether the value is a condition or an occurrence is asked before that, not instead of it."
                 },
                 {
                   "type": "paragraph",
-                  "text": "A navigation request deserves naming because it is the transient action most often got wrong, and because it changes none of the reasoning. From here, \"ask to show the result screen\" is one more piece of UI work that should happen once: it has a trigger, it executes, and performing it twice is visible as a duplicated destination. How destinations, routes and the back stack work is the navigation curriculum's subject, and nothing in this decision depends on it."
+                  "text": "A navigation request is the transient action most often got wrong, and it changes none of the reasoning. \"Ask to show the result screen\" is one more piece of UI work that should happen once: it has a trigger, it executes, and performing it twice is visible as a duplicated destination. Nothing in this decision depends on how destinations, routes or the back stack are implemented."
                 }
               ]
             },
@@ -6724,11 +6724,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "So the useful habit is a question rather than a rule. Before turning an occurrence into transient UI execution, ask what has to be true if nobody is there to execute it. A Compose effect can only run what the UI receives while the UI is present, and whether that is acceptable is a property of the requirement rather than of the API. That question is the next lesson, and it is where the Compose boundary turns out to have an edge."
+                  "text": "So the useful habit is a question rather than a rule. Before turning an occurrence into transient UI execution, ask what has to be true if nobody is there to execute it. A Compose effect can only run what the UI receives while the UI is present, and whether that is acceptable is a property of the requirement rather than of the API. **What Delivery Guarantee Does This Occurrence Need?** works through that question, and some of its answers no Compose mechanism can satisfy."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Where this stops is deliberate. Whether such an occurrence is carried in the screen's state, recorded somewhere as handled, or delivered in some other way is an application-architecture decision with real trade-offs, and the architecture curriculum owns it. What belongs here is the Compose-side diagnosis and the ability to state it exactly: an execution mechanism was given a value whose contract does not say \"once\", and no effect key repairs that."
+                  "text": "Whether such an occurrence is carried in the screen's state, recorded somewhere as handled, or delivered in some other way is an application-architecture decision with real trade-offs. The Compose-side diagnosis is narrower and can be stated exactly: an execution mechanism was given a value whose contract does not say \"once\", and no effect key repairs that."
                 },
                 {
                   "type": "callout",
@@ -6779,11 +6779,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The previous lesson ended with an occurrence that has to be executed and a screen that may or may not be present to execute it. That gap is the subject here, and the order of reasoning is the whole point: state the requirement first, choose the mechanism second. Picking a shared flow, a channel, a state holder, a remembered flag or a particular Compose effect before the requirement is stated is how a screen ends up with a delivery guarantee nobody asked for, or without one nobody noticed was missing."
+                  "text": "A one-off occurrence has to be executed, and the screen that would execute it may or may not be present. Reason about that gap in a fixed order: state the requirement first, choose the mechanism second. Picking a shared flow, a channel, a state holder, a remembered flag or a particular Compose effect before the requirement is stated is how a screen ends up with a delivery guarantee nobody asked for, or without one nobody noticed was missing."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Make the absence concrete. A learner starts a practice session, backgrounds the app and goes to do something else, so the screen that would react is not composed at all. Somewhere below the UI, work finishes — a sync completes, a purchase is confirmed, a session is scored — and produces the occurrence \"show the result\". Some time later the screen appears."
+                  "text": "Make the absence concrete. A user starts a practice session, backgrounds the app and goes to do something else, so the screen that would react is not composed at all. Somewhere below the UI, work finishes — a sync completes, a purchase is confirmed, a session is scored — and produces the occurrence \"show the result\". Some time later the screen appears."
                 },
                 {
                   "type": "paragraph",
@@ -6816,7 +6816,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The coroutines and Flow path already settled the emitter's half of this, and the job here is to apply it rather than rebuild it. One conclusion carries most of the weight: a producer accepting a value and the intended UI handling the occurrence are different facts."
+                  "text": "Start from the producer's side. A producer accepting a value and the intended UI handling the occurrence are different facts, and a shared flow's contract speaks only to the first."
                 },
                 {
                   "type": "code",
@@ -6825,7 +6825,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "On an unbuffered shared flow with no subscriber, that call returns `true` and the value is gone at once: `true` records that the flow took the call, and with nobody to hand the value to and no replay cache to hold it, nothing remains. The stream lesson measured exactly that on the same toolchain, so this lesson cites it rather than re-deriving it. At the Compose boundary the consequence is blunt — a UI effect cannot execute something the UI never received, and a log line written from a `true` result is evidence about the producer, not about the screen."
+                  "text": "`tryEmit` returns `true` when the flow accepted the value under its current buffer configuration, and `false` only when a plain `emit` would have to suspend: the overflow strategy is `SUSPEND` and at least one subscriber is not ready to accept the value within the configured buffer. A `true` result does not by itself mean that any collector received the value, let alone handled it. With no subscribers the difference is total. The flow then keeps a value only in its replay cache, and with `replay = 0` there is no replay cache, so on a `MutableSharedFlow()` with nobody collecting, `tryEmit` returns `true` and the value is dropped at once. A collector that starts afterwards receives only what the replay cache still holds and what is emitted from then on, so that value never reaches it. At the Compose boundary the consequence is blunt — a UI effect cannot execute something the UI never received, and a log line written from a `true` result is evidence about the producer, not about the screen."
                 },
                 {
                   "type": "paragraph",
@@ -6856,7 +6856,7 @@
                     [
                       "A screen arriving later must be able to see that this is currently true",
                       "A fact about current state, not an occurrence at all",
-                      "A current value that somebody owns — the shape the stream curriculum calls current-value semantics"
+                      "A current value that somebody owns and a late collector reads at once — current-value semantics, as `StateFlow` provides"
                     ],
                     [
                       "It must not disappear merely because nobody was watching, and somebody must have handled it",
@@ -6867,15 +6867,15 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The first class is real, and choosing it is not a compromise. A brief animation when a score changes, a non-essential confirmation, a focus request on the field the learner is currently in: each of them is meaningless with no UI, and answering \"nothing needs to happen\" is a decision rather than an oversight. These are exactly the occurrences the previous lesson's mechanisms execute, and nothing further is warranted."
+                  "text": "The first class is real, and choosing it is not a compromise. A brief animation when a score changes, a non-essential confirmation, a focus request on the field the user is currently in: each of them is meaningless with no UI, and answering \"nothing needs to happen\" is a decision rather than an oversight. These are exactly the occurrences a remembered scope or a keyed effect executes, and nothing further is warranted."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The second class is the one most often mis-filed. \"There is an unfinished practice session\" or \"the last submission failed\" sound like events because they became true at a particular moment, but the requirement is that a screen opening afterwards knows the current position. That is a state requirement, and recognising it is the correction — the stream curriculum already establishes what current-value semantics provide, and which holder should own that value is an architecture decision this unit does not make."
+                  "text": "The second class is the one most often mis-filed. \"There is an unfinished practice session\" or \"the last submission failed\" sound like events because they became true at a particular moment, but the requirement is that a screen opening afterwards knows the current position. That is a state requirement, and recognising it is the correction. A `StateFlow` always holds a current value, and a new collector receives it immediately; updates are conflated, so after that a slow collector may skip intermediate values but always sees the latest one. A screen that opens afterwards reads the position instead of waiting for an event. Which holder should own that value is a separate architecture decision. **Choosing a Stream Abstraction by Delivery Guarantees** compares current-value semantics with the other delivery contracts."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The third class is where the Compose boundary ends. If the requirement names persistence, acknowledgement, queueing, retries, a durable record or guaranteed later handling, then no configuration of a transient in-memory stream and no Compose effect satisfies it, because each of them lives and dies with the objects holding it. The Android architecture guidance states the same limit from the producer's side: when the producer outlives the consumer, these solutions do not guarantee the delivery and processing of those events. Say that plainly, then choose an owner whose lifetime and guarantees actually match — and stop, because designing that owner is the architecture curriculum's work and not this unit's."
+                  "text": "The third class is where the Compose boundary ends. If the requirement names persistence, acknowledgement, queueing, retries, a durable record or guaranteed later handling, then no configuration of a transient in-memory stream and no Compose effect satisfies it, because each of them lives and dies with the objects holding it. The Android architecture guidance states the same limit from the producer's side: when the producer outlives the consumer, these solutions do not guarantee the delivery and processing of those events. Say that plainly, then choose an owner whose lifetime and guarantees actually match the requirement."
                 }
               ]
             },
@@ -6888,15 +6888,15 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The general form is worth being able to state. A stream type describes delivery; a requirement describes handling; and no description of delivery answers a question about handling. The dimensions that actually decide were established by the stream curriculum — whether a current value is obligatory, whether observers are present at production time, what is retained for a late one, whether delivery is broadcast or single-receiver, whether duplication or loss is acceptable, and whether anything records that the occurrence was dealt with. This lesson contributes only the consumer's half of the question, and it is the half a stream cannot see."
+                  "text": "Stated generally: a stream type describes delivery; a requirement describes handling; and no description of delivery answers a question about handling. The dimensions that decide are whether a current value is obligatory, whether observers are present at production time, what is retained for a late one, whether delivery is broadcast or single-receiver, whether duplication or loss is acceptable, and whether anything records that the occurrence was dealt with. The consumer's half of that question is the half a stream cannot see."
                 },
                 {
                   "type": "paragraph",
-                  "text": "That contrast is the reason this lesson exists beside the stream material rather than repeating it. The stream lessons ask what a given abstraction delivers. This one asks whether that delivery contract satisfies the requirement, given that this particular UI exists for only part of the time — a fact about the screen's lifetime that no configuration of the producer knows about."
+                  "text": "A stream's contract says what a given abstraction delivers. The requirement asks whether that delivery is enough, given that this particular UI exists for only part of the time — a fact about the screen's lifetime that no configuration of the producer knows about."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The endpoint of the decision is therefore not an architecture; it is a sentence. Choose an owner whose lifetime and delivery guarantees actually match the requirement. Which owner that is, how the occurrence is recorded, how handling is marked and how the UI consumes it are genuine design questions with genuine trade-offs, and the architecture curriculum answers them. Recognising that you have arrived at them, and being able to say precisely which guarantee is missing, is what this unit is for."
+                  "text": "The decision therefore ends in a precise statement, not an architecture. A producer's successful emission is not the consumer's handling. A transient in-memory stream cannot provide durability it was not designed to provide: whatever it retains for an absent consumer — a replay cache, a buffered channel's elements — lives in memory and is lost with the object holding it, including when the process dies. When handling must survive the UI's absence, process death or a restart, the requirement needs a different owner or a durable representation, and choosing one starts from saying exactly which guarantee is missing."
                 },
                 {
                   "type": "callout",

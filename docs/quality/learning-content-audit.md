@@ -377,11 +377,11 @@ for another reason).
 | LC-077 | `LC-LEAK` | High | `unit_cleanup_synchronization_and_producers` | `lesson_flow_adapter_or_compose_producer` | SENIOR / paragraph 2 | "`lesson_flow_builders_and_callback_adapters` already covers how to build that adapter — this Lesson does not repeat it." | Internal Lesson ID plus "does not repeat it". | "(`callbackFlow` builds that adapter; see **Flow Builders and Adapting Callback APIs**.)" | Resolved — see [Remediation Log](#remediation-log) |
 | LC-078 | `LC-XREF` | Low | `unit_cleanup_synchronization_and_producers` | `lesson_flow_adapter_or_compose_producer` | CORE / paragraph 1; PRACTICAL / paragraphs 1–3; SENIOR / paragraph 4 | "The previous Lesson's producer suspended"; "the first Lesson's `DisposableEffect`"; "the producer shape is what that code actually wanted"; "the honest mechanism"; "Unit 10's trigger distinction"; "Unit 8's collection"; "the subject of a later unit in this path" | Positional references (all restated locally), one "shape" (the contract's own example of the habit) and one "honest". | Name mechanisms directly (`collectAsState`, `DisposableEffect`); "a state producer is what that code wanted"; "`DisposableEffect` is the right mechanism"; name **Choosing the Smallest Sufficient Mechanism** for the later pointer. | Resolved — see [Remediation Log](#remediation-log) |
 | LC-079 | `LC-VOCAB` | Low | `unit_cleanup_synchronization_and_producers` | `lesson_side_effect_publication` | SENIOR / paragraph 4 | "Keep it to assignment-shaped publication." | Vague coinage. | "Keep it to simple assignments." | Resolved — see [Remediation Log](#remediation-log) |
-| LC-080 | `LC-META` | Low | `unit_production_ui_effects_and_selection` | — (Unit-level) | Unit summary | "Every mechanism in this path has now been met on its own… This unit answers that…" | Opens on course position. | "Given a requirement, which Compose mechanism does it need?" then the four facts. | Open |
-| LC-081 | `LC-META` | Medium | `unit_production_ui_effects_and_selection` | `lesson_choosing_a_compose_mechanism` | CORE / paragraph 1; PRACTICAL / paragraph 7; SENIOR / paragraph 3 | "Five units have introduced these mechanisms… That decision is this lesson, and it introduces no new API."; "the rest of the screens this path has built towards. Every outcome in the table is a mechanism an earlier unit owns"; "What happens next is deliberately not this unit's decision… belong to the architecture curriculum. This unit's contribution is the diagnosis…" | Opening, table introduction and Senior close all narrate the course; the decision model itself is excellent. | Open with the requirement-driven question; introduce the table as "The four facts applied to a practice-question screen"; end S para 3 at "…so the Composition cannot be the owner." | Open |
-| LC-082 | `LC-VOICE` | Low | `unit_production_ui_effects_and_selection` | `lesson_choosing_a_compose_mechanism` | PRACTICAL / paragraphs 6, 8 | "the shape worth noticing is what is absent: no remembered flag"; "the sixth and seventh are one countdown… The twelfth row is the eleventh with one fact changed" | The authoring contract's own example of rhetorical "shape"; ordinal row references into a 13-row table force counting. | "There is no remembered flag and nothing for an effect to observe." Refer to rows by requirement ("the two countdown rows", "the shared-source row"). | Open |
-| LC-083 | `LC-META` | Low | `unit_production_ui_effects_and_selection` | `lesson_transient_ui_effects` | CORE / paragraph 2; PRACTICAL / paragraphs 3–4, 6; SENIOR / paragraphs 2–3 | "the previous lesson's decision starts with rendering"; "as the effect unit described"; "the one the trigger lesson asked about a similar shape"; "the navigation curriculum's subject"; "That question is the next lesson"; "Where this stops is deliberate… the architecture curriculum owns it." | Positional and ownership narration around a strong condition-vs-occurrence argument. | Drop the narration; name **Composition-Driven or Event-Driven?** for the trigger contrast; replace "a similar shape" with "a similar flag-driven snackbar". | Open |
-| LC-084 | `LC-META` | Medium | `unit_production_ui_effects_and_selection` | `lesson_transient_effect_delivery` | PRACTICAL / paragraphs 1–2, 6–7, comparison 1; SENIOR / paragraphs 2–4 | "The coroutines and Flow path already settled the emitter's half… the job here is to apply it rather than rebuild it."; "The stream lesson measured exactly that on the same toolchain, so this lesson cites it rather than re-deriving it."; "the shape the stream curriculum calls current-value semantics"; "an architecture decision this unit does not make"; "and stop, because designing that owner is the architecture curriculum's work and not this unit's"; "That contrast is the reason this lesson exists beside the stream material rather than repeating it."; "is what this unit is for" | Roughly a sixth of the Lesson explains why the Lesson exists and which curriculum owns what; the Senior section in particular is an authoring rationale. Key facts ("a `true` from `tryEmit` is not delivery") are stated but framed as citations of other Lessons, so the learner is told where proof lives rather than given it. | State the `tryEmit`/replay facts in the Lesson's own voice (one sentence each); delete the ownership and existence-justification sentences; end on the three consequences. Optional pointer: **Choosing a Stream Abstraction by Delivery Guarantees**. | Open |
+| LC-080 | `LC-META` | Low | `unit_production_ui_effects_and_selection` | — (Unit-level) | Unit summary | "Every mechanism in this path has now been met on its own… This unit answers that…" | Opens on course position. | "Given a requirement, which Compose mechanism does it need?" then the four facts. | Resolved — see [Remediation Log](#remediation-log) |
+| LC-081 | `LC-META` | Medium | `unit_production_ui_effects_and_selection` | `lesson_choosing_a_compose_mechanism` | CORE / paragraph 1; PRACTICAL / paragraph 7; SENIOR / paragraph 3 | "Five units have introduced these mechanisms… That decision is this lesson, and it introduces no new API."; "the rest of the screens this path has built towards. Every outcome in the table is a mechanism an earlier unit owns"; "What happens next is deliberately not this unit's decision… belong to the architecture curriculum. This unit's contribution is the diagnosis…" | Opening, table introduction and Senior close all narrate the course; the decision model itself is excellent. | Open with the requirement-driven question; introduce the table as "The four facts applied to a practice-question screen"; end S para 3 at "…so the Composition cannot be the owner." | Resolved — see [Remediation Log](#remediation-log) |
+| LC-082 | `LC-VOICE` | Low | `unit_production_ui_effects_and_selection` | `lesson_choosing_a_compose_mechanism` | PRACTICAL / paragraphs 6, 8 | "the shape worth noticing is what is absent: no remembered flag"; "the sixth and seventh are one countdown… The twelfth row is the eleventh with one fact changed" | The authoring contract's own example of rhetorical "shape"; ordinal row references into a 13-row table force counting. | "There is no remembered flag and nothing for an effect to observe." Refer to rows by requirement ("the two countdown rows", "the shared-source row"). | Resolved — see [Remediation Log](#remediation-log) |
+| LC-083 | `LC-META` | Low | `unit_production_ui_effects_and_selection` | `lesson_transient_ui_effects` | CORE / paragraph 2; PRACTICAL / paragraphs 3–4, 6; SENIOR / paragraphs 2–3 | "the previous lesson's decision starts with rendering"; "as the effect unit described"; "the one the trigger lesson asked about a similar shape"; "the navigation curriculum's subject"; "That question is the next lesson"; "Where this stops is deliberate… the architecture curriculum owns it." | Positional and ownership narration around a strong condition-vs-occurrence argument. | Drop the narration; name **Composition-Driven or Event-Driven?** for the trigger contrast; replace "a similar shape" with "a similar flag-driven snackbar". | Resolved — see [Remediation Log](#remediation-log) |
+| LC-084 | `LC-META` | Medium | `unit_production_ui_effects_and_selection` | `lesson_transient_effect_delivery` | PRACTICAL / paragraphs 1–2, 6–7, comparison 1; SENIOR / paragraphs 2–4 | "The coroutines and Flow path already settled the emitter's half… the job here is to apply it rather than rebuild it."; "The stream lesson measured exactly that on the same toolchain, so this lesson cites it rather than re-deriving it."; "the shape the stream curriculum calls current-value semantics"; "an architecture decision this unit does not make"; "and stop, because designing that owner is the architecture curriculum's work and not this unit's"; "That contrast is the reason this lesson exists beside the stream material rather than repeating it."; "is what this unit is for" | Roughly a sixth of the Lesson explains why the Lesson exists and which curriculum owns what; the Senior section in particular is an authoring rationale. Key facts ("a `true` from `tryEmit` is not delivery") are stated but framed as citations of other Lessons, so the learner is told where proof lives rather than given it. | State the `tryEmit`/replay facts in the Lesson's own voice (one sentence each); delete the ownership and existence-justification sentences; end on the three consequences. Optional pointer: **Choosing a Stream Abstraction by Delivery Guarantees**. | Resolved — see [Remediation Log](#remediation-log) |
 | LC-085 | `LC-CLARITY` | Observation | `unit_production_ui_effects_and_selection` | `lesson_transient_effect_delivery` | Lesson title | "What Delivery Guarantee Does This Occurrence Need?" vs Unit 24 "What Guarantee Does This Occurrence Need?" | Two Lessons in different Topics have near-identical titles; once references use human titles (the recommended fix), these two become easy to confuse. | Differentiate the titles when either Unit is rewritten (e.g. Compose side: "One-Off UI Effects When No Screen Is Present"). | Resolved — see [Remediation Log](#remediation-log) |
 | LC-086 | `LC-META` | Low | `unit_coroutines_and_structured_concurrency` | — (Unit-level) | Unit summary | "in the order the ideas depend on one another"; "Where code actually runs, how cancellation works, and what a failure does are deliberately later units — all three assume this material." | Course-order narration in an otherwise excellent summary. | End after the structured-concurrency clause; drop the "deliberately later units" sentence. | Open |
 | LC-087 | `LC-XREF` | Medium | `unit_coroutines_and_structured_concurrency` | `lesson_suspension_and_blocking` | PRACTICAL / paragraph 2; SENIOR / paragraphs 2, 4 | "The third question has a unit of its own and is deliberately left there."; "the next unit's subject"; "removes the ground the next unit stands on"; "which is exactly why the dispatchers unit separates the pools"; "which the cancellation unit later builds on"; "the third unit's subject rather than this one's" | Six forward pointers by position ("next", "third", "the dispatchers unit"). The bridging content is local and good ("For now it is enough to know that the dispatcher…"), so the pointers are pure navigation and should use titles if kept. | Keep the local bridges; convert at most one pointer per topic to a title (**Dispatchers and Where Code Actually Runs**, **Cancellation Is Cooperative**) and delete the rest. | Open |
@@ -2267,7 +2267,7 @@ covers the Lesson. Words are learner-facing prose words.
 ## Unit Audit Summary
 
 At audit time, every Unit's status was **Reviewed** (rewrite not started). The table
-records that baseline. Current remediation status: Units 7 through 11, 19 through 24, 29 and 30 are **Re-verified** (see
+records that baseline. Current remediation status: Units 7 through 12, 19 through 24, 29 and 30 are **Re-verified** (see
 [Remediation Log](#remediation-log)); every other Unit remains **Reviewed**.
 
 | # | Unit ID | Human title | Lessons | Reviewed | None / Light / Substantive | Dominant categories | Overall rewrite scope | Explanation |
@@ -3420,3 +3420,137 @@ Concerns for later batches:
   reminder-time preference. **How Much Architecture Does This Feature Need?** (Unit 24)
   reuses the reminder-time setting and the borrowing domain with compatible names, so no
   consistency edit was needed there.
+
+### Batch 6 — Unit 12 (2026-09-28)
+
+Scope: `unit_production_ui_effects_and_selection`, findings LC-080 through LC-084. LC-085
+(the title observation) was already resolved by the Unit 24 retitle in Batch 4 and is
+unchanged: the Compose Lesson keeps the title **What Delivery Guarantee Does This Occurrence
+Need?**. Every finding was checked against the text at the implementation baseline
+(`ccdb203`, equal to `origin/main`) before editing. The Unit was unchanged since the
+audited commit, so no finding was already resolved. The batch followed Rules 7, 11 and 12.
+Status: **Rewrite complete**, then **Re-verified**. The re-verification read the Unit summary
+and all three Lessons in full, in authored order, after the targeted edits, and made the
+further edits listed below. Locations count paragraphs within a section, as in the ledger.
+
+Preserved: Unit and Lesson IDs, all three Lesson titles, topic, statuses, authored order,
+section depths, block counts and types, Subtopic mappings, `relatedLessonIds`, sources,
+every comparison's headers and row count, every bullet list's item count, and every code
+block including its comments. A structural comparison of the whole document against HEAD,
+with prose fields masked, found no difference; only Unit 12's prose changed. The
+learning-question coverage report changed only in its learning-curriculum fingerprint. The
+question fingerprint and every association and count are unchanged. There are no
+structural changes in this batch: no block was added or deleted.
+
+| Finding | Resolution |
+| --- | --- |
+| LC-080 | The Unit summary now states the decision: given a UI requirement, choose the smallest Compose mechanism that matches it. The same four facts decide it: who owns the state, what triggers the work, how long the work must live, and what has to be released. It keeps the condition-versus-occurrence distinction and the delivery question no Compose effect answers by itself. The course-position opening ("Every mechanism in this path has now been met…", "This unit answers that…") is gone. |
+| LC-081 | Core paragraph 1 opens with the requirement ("A screen requirement arrives in product terms…") and asks which Compose mechanism it needs, and why. "Five units have introduced these mechanisms…" and "That decision is this lesson, and it introduces no new API" are gone. Core paragraph 2's "The failure it replaces" became "The usual failure", because its antecedent was removed. The table introduction now reads "Apply the four facts to the rest of a practice-question screen", and it no longer mentions "the screens this path has built towards" or "a mechanism an earlier unit owns". Senior paragraph 3 now ends on the engineering conclusion: the work needs an owner whose lifetime matches the requirement, and the required lifetime exceeds the Composition's, so the Composition cannot be the owner. The architecture-curriculum clause and "This unit's contribution…" were removed. The four facts, the ordered questions, the three worked screens, the 13-row table and the six over-reach substitutions are unchanged. |
+| LC-082 | "The shape worth noticing is what is absent" became "There is no remembered flag and nothing for an effect to observe." (S018). The ordinal row references were replaced by requirement names. "The sixth and seventh" became "the two countdown rows", now also stating the two facts they separate (starting the countdown and calling the current `onTimeout`). "The twelfth row is the eleventh" became "the shared-source row is the single-screen callback-source row with one fact changed", and the changed fact is named. The prose no longer depends on counting table rows. |
+| LC-083 | Every positional and ownership pointer was removed or replaced. "The previous lesson's decision starts with rendering" became "choosing a mechanism starts by asking whether there is state to render". "As the effect unit described" became "exactly as its contract says", followed by the contract itself. The navigation-curriculum clause became "Nothing in this decision depends on how destinations, routes or the back stack are implemented". "Where this stops is deliberate… the architecture curriculum owns it" became a plain statement that the carrying decision is an application-architecture trade-off, followed by the narrower Compose-side diagnosis. "The one the trigger lesson asked about a similar shape" is now stated locally: in a similar flag-driven snackbar where the tap is the occurrence, the flag gave the Composition a trigger that belongs to the event, and launching from the click through a remembered scope removes the flag. That local statement is followed by the pointer **Composition-Driven or Event-Driven?**. "That question is the next lesson" became a pointer to **What Delivery Guarantee Does This Occurrence Need?**, placed after the question is stated. |
+| LC-084 | The Flow facts are now stated in the Lesson's own voice (see *Delivery semantics* below). "The previous lesson ended with…", "The coroutines and Flow path already settled…", "the job here is to apply it rather than rebuild it", "The stream lesson measured exactly that… cites it rather than re-deriving it", "the shape the stream curriculum calls…", "the stream curriculum already establishes…", "an architecture decision this unit does not make", "designing that owner is the architecture curriculum's work and not this unit's", "established by the stream curriculum", "This lesson contributes only…", "the reason this lesson exists beside the stream material" and "the architecture curriculum answers them… is what this unit is for" were all removed. Senior paragraph 3 now states the contrast as engineering: a stream's contract says what it delivers, and the requirement asks whether that is enough for a UI that exists only part of the time. Senior paragraph 4 ends on the consequences. A producer's successful emission is not the consumer's handling. A transient in-memory stream cannot provide durability it was not designed to provide. When handling must survive the UI's absence, process death or a restart, the requirement needs a different owner or a durable representation, chosen by naming the missing guarantee. No persistent-queue design was added. |
+
+**Delivery semantics.** Practical paragraph 2 now states locally, consistent with the
+Lesson's two Kotlin sources (`SharedFlow`, `MutableSharedFlow.tryEmit`):
+
+- `tryEmit` returns `true` when the flow accepted the value under its current buffer
+  configuration.
+- It returns `false` only when a plain `emit` would have to suspend, which requires the
+  `SUSPEND` overflow strategy and at least one subscriber that is not ready to accept the
+  value.
+- A `true` result does not by itself mean that any collector received the value, let alone
+  handled it.
+- With no subscribers the flow keeps a value only in its replay cache. With `replay = 0`
+  there is none, so on a `MutableSharedFlow()` with nobody collecting, `tryEmit` returns
+  `true` and the value is dropped.
+- A collector that starts afterwards receives only what the replay cache still holds, then
+  later emissions.
+
+The replay paragraph (retention is not delivery, and not exactly-once) is unchanged. The
+second-class paragraph states the current-value fact locally: a `StateFlow` always holds a
+value, and a new collector receives it immediately; updates are conflated, so a slow
+collector may skip intermediate values but always sees the latest one. The comparison
+cell now reads "current-value semantics, as `StateFlow` provides" (S020). The
+Senior durability sentence names what a transient stream retains for an absent consumer (a
+replay cache, a buffered channel's elements) and states that it lives in memory and is lost
+with its holder. No version qualification applied before or after; none was introduced.
+
+The full re-read also made edits the ledger quotes did not list:
+
+- "The learner" in the practice-question worked examples (eight occurrences, two of them
+  table cells in **Choosing the Smallest Sufficient Mechanism**) became "the user",
+  matching Batches 1, 2 and 4.
+- The "worth" framing was re-voiced in three places: "the one worth practising" became
+  "needs practice", "The failure worth seeing in full" became "The common failure", and
+  "The general form is worth being able to state" became "Stated generally:".
+- `lesson_transient_ui_effects` Practical callout: "this lesson only changes what you ask
+  before you get there" became "whether the value is a condition or an occurrence is asked
+  before that, not instead of it". Practical paragraph 6's "deserves naming because" and
+  "From here," were removed.
+- `lesson_choosing_a_compose_mechanism`: the table introduction no longer repeats the
+  closing sentence ("A row can only be reached by answering the four columns to its left").
+
+Inventory reconciliation for this batch:
+
+- **Identifier inventory**: Unit 12 had no rows. A contextual search of every prose block,
+  table cell, summary and code comment in the Unit found no curriculum identifiers, Unit
+  numbers, course positions, "curriculum", "this unit/lesson", "path", "honest" or
+  ordinal row references. The remaining "later" and "worth" matches are technical ("a
+  screen arriving later", "a source worth reusing").
+- **Cross-reference inventory**, 20 rows:
+  - **Remove** (15): all deleted. No pointer was added under a Remove row. Where the pointer
+    stood in for a fact, the fact is now local: rendering state comes first when choosing a
+    mechanism; the effect-key contract; the effect gap stated without "the previous lesson";
+    "a remembered scope or a keyed effect" for "the previous lesson's mechanisms"; and the
+    owner-lifetime conclusion in both Senior closings. Batch 4 listed "the architecture
+    curriculum owns it" in this Unit as a candidate for a title pointer. It was removed
+    rather than re-pointed, because the local statement is enough and the rows are Remove.
+  - **Bring required context local** (2): the `tryEmit`/replay facts (Practical paragraph 2)
+    and current-value semantics in the comparison cell, both in
+    `lesson_transient_effect_delivery`.
+  - **Rewrite using human title** (3): all 3 kept as title pointers, each placed after the
+    local fact it supplements. They are **Composition-Driven or Event-Driven?**
+    (`lesson_transient_ui_effects` Practical paragraph 4), **What Delivery Guarantee Does
+    This Occurrence Need?** (`lesson_transient_ui_effects` Senior paragraph 2) and
+    **Choosing a Stream Abstraction by Delivery Guarantees**
+    (`lesson_transient_effect_delivery` Practical paragraph 6).
+  - Every title was checked against the bundled curriculum, and every pointer can be
+    deleted without breaking its paragraph.
+- **Shape inventory**, S018–S020: S018 was removed ("There is no remembered flag…"). S019
+  became "A similar flag-driven snackbar". S020 became "current-value semantics, as
+  `StateFlow` provides". No "shape" remains in Unit 12.
+
+Technical claims: the edits keep the Unit's models unchanged. These are the four facts
+(state owner, trigger owner, lifetime, release) and the smallest-sufficient-mechanism
+decision across ordinary rendering, `remember`, hoisting, `collectAsState` and its
+lifecycle-aware variant, `LaunchedEffect`, `rememberUpdatedState`,
+`rememberCoroutineScope`, `DisposableEffect`, `SideEffect` and `produceState`. They also
+cover the condition-versus-occurrence contract and the re-entering flag failure, the event
+versus composition trigger, and the three delivery classes. Every code block is
+byte-identical. The locally stated `tryEmit`, no-subscriber and late-subscriber facts were
+read against the Lesson's `SharedFlow` and `MutableSharedFlow.tryEmit` sources and agree
+with them, as well as with **`SharedFlow`: Replay, Buffering and Subscribers**. The `false`
+condition follows the documented rule: `SUSPEND` strategy and subscribers present. No
+source changed and no quotation changed. No claim was found that needs to be flagged as
+**TECHNICAL REVIEW NEEDED**.
+
+Test change: none. `BundledLearningCurriculumTest` asserts IDs, titles, mappings and
+`relatedLessonIds`, all unchanged. Validation run:
+`python3 tools/learning_question_coverage.py --write` and `--check` (current),
+`./gradlew :shared:jvmTest` (1 681 tests, 0 failures), `git diff --check` (clean).
+
+Lesson prose length (learner-facing words including title and summary, code excluded),
+before → after:
+
+| Lesson | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| **Choosing the Smallest Sufficient Mechanism** | 2 184 | 2 100 | −4% |
+| **Rendering State and Running a Transient Effect** | 1 325 | 1 326 | 0% |
+| **What Delivery Guarantee Does This Occurrence Need?** | 1 546 | 1 596 | +3% |
+
+Unit summary: 90 → 71 words. The delivery Lesson grew slightly, although it was the
+Substantive rewrite, because the Flow facts it previously cited to another Lesson are now
+stated in full.
+
+Batch 6 status: Unit 12 is **Re-verified**, and LC-080 through LC-084 are resolved (LC-085
+was resolved in Batch 4). Batch 7 (Units 25–28) has not started.

@@ -3570,10 +3570,12 @@ ledger.
 
 Preserved: Unit and Lesson IDs, all twelve Lesson titles and both Unit titles, topics,
 statuses, authored order, section depths, block counts and types, Subtopic mappings,
-`relatedLessonIds`, sources, every comparison's headers and row count, every bullet list's
-item count, and every code block including its comments. A structural comparison of the
-whole document against HEAD, with prose fields masked, found no difference. Only Units 25
-and 26 changed. The learning-question coverage report changed only in its
+`relatedLessonIds`, every comparison's headers and row count, every bullet list's item
+count, and every code block including its comments. Sources are unchanged except one
+addition: **Asking For It, or Being Given It** now also cites **Create ViewModels with
+dependencies**, to support a claim this batch introduced (see *Technical claims*). A
+structural comparison of the whole document against HEAD, with prose fields masked, found
+no other difference. Only Units 25 and 26 changed. The learning-question coverage report changed only in its
 learning-curriculum fingerprint. The question fingerprint and every association and count
 are unchanged. No block was added or deleted.
 
@@ -3599,10 +3601,10 @@ are unchanged. No block was added or deleted.
 **Integration boundary.** Practical paragraph 6 of **Asking For It, or Being Given It** now
 justifies the qualification on engineering grounds:
 
-- Android instantiates activities and services itself, through a no-argument constructor
-  by default, so the application has no ordinary construction site at which to pass them
-  collaborators.
-- A `ViewModel` is created by a framework-provided factory when a screen first asks for it.
+- Android instantiates framework classes such as activities and fragments itself, so the
+  application has no ordinary construction site at which to pass them collaborators.
+- A `ViewModel` is instantiated by a `ViewModelProvider.Factory` in the scope of its owner,
+  so the screen obtains it rather than calling its constructor.
 - In both cases the boundary code obtains a finished object whose own requirements are
   still declared in its constructor.
 - "Lookup is bad" would condemn both. "Which code hides whose requirements" separates them
@@ -3752,19 +3754,26 @@ Technical claims: the edits keep the Units' models unchanged.
   requirement-driven reuse, requirement → owner → reuse rule, runtime input against graph
   dependency by origin, same-type collisions, and mechanism-specific graph validation.
 
-Every code block is byte-identical, and no source or quotation changed. A few facts are now
+Every code block is byte-identical, and no quotation changed; one source was added (below). A few facts are now
 stated locally:
 
-- Framework instantiation of activities and services. The Lesson's Android dependency
-  injection source supports this.
+- Framework instantiation of activities and fragments. The Lesson's Android dependency
+  injection source states this directly: "Certain Android framework classes such as
+  activities and fragments are instantiated by the system, so constructor injection is not
+  possible." An earlier draft said "activities and services… through a no-argument
+  constructor by default"; the source supports neither detail, so the sentence was
+  narrowed to the source's wording.
 - A Dagger component as both graph declaration and request point.
 - `CoroutineScope` owning work through a `Job` hierarchy.
-- `ViewModel` creation by a framework-provided factory on the first request. This is
-  standard AndroidX behaviour documented in the ViewModel overview. That page is not among
-  the two sources attached to **Asking For It, or Being Given It**, and no other Lesson
-  states the factory detail. It was not flagged as a technical concern. A later source
-  review may choose to attach the ViewModel overview; sources were left unchanged here, as
-  this batch requires.
+- `ViewModel` instantiation through a `ViewModelProvider.Factory`. Review found this was
+  not supported by the Lesson's two original sources, and an earlier draft said
+  "framework-provided factory… when a screen first asks for it", which overstated the
+  documentation: factories are frequently written by the application. The sentence now
+  follows the official page — "Only implementations of this interface can instantiate
+  ViewModels in the right scope" — and **Create ViewModels with dependencies**
+  (`developer.android.com/topic/libraries/architecture/viewmodel/viewmodel-factories`) was
+  added to the Lesson's sources. This is the one source change in Batch 7A; the ViewModel
+  overview was considered and not used, because it does not discuss factories.
 
 No claim was found that needs to be flagged as **TECHNICAL REVIEW NEEDED**.
 

@@ -18158,7 +18158,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "This distinction is not bookkeeping; real integration points depend on it. Android instantiates activities and services itself, through a no-argument constructor by default, so the application has no ordinary construction site at which to pass them collaborators. A `ViewModel` is created by a framework-provided factory when a screen first asks for it, so the screen obtains it at that boundary rather than constructing it. In both cases the boundary code obtains a finished object whose own requirements are still declared in its constructor. A rule of \"lookup is bad\" would condemn both; the question \"which code hides whose requirements\" separates them from a feature class that consults a registry to hide its own. **When Android Owns Construction** and **Resolving a ViewModel at the Boundary** show how Hilt and Koin handle these two cases."
+                  "text": "This distinction is not bookkeeping; real integration points depend on it. Android instantiates framework classes such as activities and fragments itself, so the application has no ordinary construction site at which to pass them collaborators. A `ViewModel` is instantiated by a `ViewModelProvider.Factory` in the scope of its owner, so the screen obtains it at that boundary rather than calling its constructor. In both cases the boundary code obtains a finished object whose own requirements are still declared in its constructor. A rule of \"lookup is bad\" would condemn both; the question \"which code hides whose requirements\" separates them from a feature class that consults a registry to hide its own. **When Android Owns Construction** and **Resolving a ViewModel at the Boundary** show how Hilt and Koin handle these two cases."
                 },
                 {
                   "type": "callout",
@@ -18203,6 +18203,10 @@
             {
               "title": "Dependency injection in Android",
               "url": "https://developer.android.com/training/dependency-injection"
+            },
+            {
+              "title": "Create ViewModels with dependencies",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel/viewmodel-factories"
             }
           ],
           "status": "ACTIVE"

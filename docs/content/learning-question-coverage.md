@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `99568b8eb954ff304ea525b4f364f348364e32126916ae3f74c459d126c2cde4` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `7fc7dc5404a7a480bbc0b84fda6f0af21029e8ebce51c1653fd19456c85def0b` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `55e2b92287ad5c30fd3c70afc5fb8dc6dd7fb63c44e4506a47e5f53317b4a022` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -2044,7 +2044,7 @@ Supporting context — not primary coverage:
 | `sharedflow` — SharedFlow | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `single_source_of_truth` — Single source of truth | 2 | `architecture` — Application Architecture & Design Principles |
 
-#### What Guarantee Does This Occurrence Need? (`lesson_delivery_guarantees`)
+#### Lost, Repeated or Acknowledged: Stating an Occurrence's Guarantee (`lesson_delivery_guarantees`)
 
 Primary concepts:
 

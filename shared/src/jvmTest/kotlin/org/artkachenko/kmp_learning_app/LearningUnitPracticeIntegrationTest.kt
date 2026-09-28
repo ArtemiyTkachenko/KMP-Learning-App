@@ -1634,7 +1634,11 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(0, attemptCount())
         }
 
-    /** E27-08: every primary Koin concept has semantic scenario coverage. */
+    /**
+     * E27-08, narrowed by the KMP content-separation question migration: the two Koin-in-KMP
+     * Questions moved to `kmp/koin_kmp`, so the still-primary `koin_multiplatform` Lesson reaches
+     * no Question until the learning migration re-homes it.
+     */
     @Test
     fun theKoinUnitPractisesOnlyItsFivePrimaryConcepts() =
         runUnitPracticeTest {
@@ -1645,7 +1649,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(7, available.eligibleQuestionCount)
+            assertEquals(5, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -1664,29 +1668,31 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(
                 setOf(
                     "di_koin_factory_vs_single",
-                    "koin_multiplatform_common_module",
                     "koin_container_startup_composition_boundary",
                     "koin_interview_scope_owner",
                     "koin_viewmodel_construction_vs_ownership",
                     "koin_definition_from_reuse_requirement",
-                    "koin_shared_and_platform_binding_split",
                 ),
                 questionIds,
             )
-            assertEquals(7, questions.size)
+            assertEquals(5, questions.size)
             assertEquals(
-                mapOf(QuestionLevel.FOUNDATION to 1, QuestionLevel.APPLIED to 6),
+                mapOf(QuestionLevel.FOUNDATION to 1, QuestionLevel.APPLIED to 4),
                 questions.groupingBy { it.level }.eachCount(),
             )
 
-            assertEquals(concepts, questions.map { it.subtopicId }.toSet())
+            assertEquals(concepts - "koin_multiplatform", questions.map { it.subtopicId }.toSet())
 
             val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
             assertTrue(questions.none { it.subtopicId in supportingOnly })
             assertEquals(0, attemptCount())
         }
 
-    /** E27-08: strategy practice plus the intentional Unit 1 overlap through `manual_di`. */
+    /**
+     * E27-08: strategy practice plus the intentional Unit 1 overlap through `manual_di`.
+     * `di_strategy_smallest_sufficient_choice` moved to `kmp/kmp_library_selection` in the KMP
+     * content-separation question migration, so it no longer reaches this Unit.
+     */
     @Test
     fun theStrategyUnitPractisesOnlyItsTwoPrimaryConcepts() =
         runUnitPracticeTest {
@@ -1697,7 +1703,7 @@ internal class LearningUnitPracticeIntegrationTest {
 
             assertEquals(unit.title, settled.scope.name)
             val available = assertIs<PracticeAvailability.Available>(settled.availability)
-            assertEquals(3, available.eligibleQuestionCount)
+            assertEquals(2, available.eligibleQuestionCount)
             builder.selectQuestionCount(available.eligibleQuestionCount)
             builder.settled()
 
@@ -1711,13 +1717,12 @@ internal class LearningUnitPracticeIntegrationTest {
                 setOf(
                     "manual_di_graph_growth_cost",
                     "di_graph_check_timing_by_mechanism",
-                    "di_strategy_smallest_sufficient_choice",
                 ),
                 questionIds,
             )
-            assertEquals(3, questions.size)
+            assertEquals(2, questions.size)
             assertEquals(
-                mapOf(QuestionLevel.APPLIED to 2, QuestionLevel.ADVANCED to 1),
+                mapOf(QuestionLevel.APPLIED to 2),
                 questions.groupingBy { it.level }.eachCount(),
             )
 

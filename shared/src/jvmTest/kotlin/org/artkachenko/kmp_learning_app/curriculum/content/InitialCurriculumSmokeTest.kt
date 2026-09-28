@@ -17,16 +17,16 @@ internal class InitialCurriculumSmokeTest {
 
         assertEquals(17, initialCurriculum.topics.size)
         assertEquals(361, initialCurriculum.subtopics.size)
-        assertEquals(478, initialCurriculum.questions.size)
+        assertEquals(480, initialCurriculum.questions.size)
         assertEquals(
-            437,
+            439,
             initialCurriculum.questions.count { it.status == ContentStatus.ACTIVE },
         )
         assertEquals(
             41,
             initialCurriculum.questions.count { it.status == ContentStatus.DEPRECATED },
         )
-        assertEquals(431, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
+        assertEquals(433, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
         assertEquals(47, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.MULTIPLE })
     }
 
@@ -35,11 +35,11 @@ internal class InitialCurriculumSmokeTest {
         val initialCurriculum = BundledCurriculumSource.load()
 
         assertEquals(
-            LevelDistribution(foundation = 237, applied = 213, advanced = 28),
+            LevelDistribution(foundation = 238, applied = 214, advanced = 28),
             initialCurriculum.questions.levelDistribution(),
         )
         assertEquals(
-            LevelDistribution(foundation = 203, applied = 206, advanced = 28),
+            LevelDistribution(foundation = 204, applied = 207, advanced = 28),
             initialCurriculum.questions
                 .filter { it.status == ContentStatus.ACTIVE }
                 .levelDistribution(),
@@ -58,9 +58,9 @@ internal class InitialCurriculumSmokeTest {
                 "kotlin_language" to LevelDistribution(25, 2, 0),
                 "async_reactive" to LevelDistribution(23, 29, 10),
                 "architecture" to LevelDistribution(10, 32, 2),
-                "dependency_injection" to LevelDistribution(18, 26, 1),
-                "local_data" to LevelDistribution(17, 4, 1),
-                "networking" to LevelDistribution(12, 11, 1),
+                "dependency_injection" to LevelDistribution(18, 24, 0),
+                "local_data" to LevelDistribution(16, 4, 1),
+                "networking" to LevelDistribution(12, 10, 1),
                 "background_work" to LevelDistribution(14, 5, 1),
                 "notifications" to LevelDistribution(7, 7, 0),
                 "testing" to LevelDistribution(8, 16, 0),
@@ -68,7 +68,7 @@ internal class InitialCurriculumSmokeTest {
                 "security" to LevelDistribution(9, 6, 3),
                 "build_delivery" to LevelDistribution(12, 7, 0),
                 "mobile_system_design" to LevelDistribution(1, 13, 4),
-                "kmp" to LevelDistribution(11, 7, 0),
+                "kmp" to LevelDistribution(13, 11, 1),
             ),
             initialCurriculum.questions
                 .groupBy(Question::topicId)
@@ -92,9 +92,9 @@ internal class InitialCurriculumSmokeTest {
                 "kotlin_language" to 25,
                 "async_reactive" to 57,
                 "architecture" to 40,
-                "dependency_injection" to 41,
-                "local_data" to 21,
-                "networking" to 24,
+                "dependency_injection" to 38,
+                "local_data" to 20,
+                "networking" to 23,
                 "background_work" to 19,
                 "notifications" to 12,
                 "testing" to 21,
@@ -102,7 +102,7 @@ internal class InitialCurriculumSmokeTest {
                 "security" to 17,
                 "build_delivery" to 17,
                 "mobile_system_design" to 17,
-                "kmp" to 16,
+                "kmp" to 23,
             ),
             countsByTopic,
         )

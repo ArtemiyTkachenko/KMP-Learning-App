@@ -23,6 +23,247 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: KMP content-separation question migration
+    date: 2026-09-29
+    baseline: 6efbcfa (origin/main, Quality improvements #437)
+    scope: >-
+      PR 1 of docs/quality/kmp-content-separation-audit.md, assessment curriculum only. Five
+      KMP Questions filed under core Topics were re-routed to kmp; the duplicate Subtopic
+      dependency_injection/koin_multiplatform was deprecated in favour of kmp/koin_kmp; four
+      core Questions had KMP-specific teaching removed; two mixed core/KMP Questions were split,
+      keeping each core ID as a complete Android/Kotlin Question and adding one new kmp
+      Question per split. Afterwards topicId == "kmp" holds all 23 KMP-specific ACTIVE
+      Questions. No Question was deprecated, no Question ID changed, and the other 467
+      Questions were not re-reviewed. learning_curriculum.json was not touched.
+    reviewed: 13
+    active: 13
+    retired: 0
+    deterministic_checks: PASS
+    method: |
+      Every affected Question was read whole and solved from its stem and options before its
+      key was consulted. The five re-routed Questions were re-solved, and their authored
+      content (text, options, key, level, explanation, sources) was confirmed byte-identical
+      to the baseline, so only topicId and subtopicId changed. Each rewritten or new Question
+      was solved again from its final text. Every distractor was then checked to be plausible
+      and definitively false, and every explanation sentence was checked against a source
+      read in this pass.
+
+      Primary sources were read on 2026-09-29: kotlinlang.org serialization pages and the
+      kotlinx.serialization README; Koin 4.2 "Start Koin on Android", Modules and Start Koin
+      reference; Android "The activity lifecycle", "Support multi-window mode" and the
+      Lifecycle.State reference; the androidx FlowExt.kt KDoc; SharingStarted.Eagerly and
+      WhileSubscribed; Kotlin Multiplatform "Lifecycle" (desktop mapping table); Kotlin "Calling
+      Kotlin from Java" (checked exceptions), "Exceptions", and "Interoperability with
+      Swift/Objective-C" (errors and exceptions). The javac behaviour behind the
+      checked-exception Question was also compiled directly with OpenJDK 25.0.3.
+
+      Where the audit's proposed wording disagreed with the primary sources, the sources won:
+      - Android multi-window focus loss is not a pause on current Android. "Support
+        multi-window mode" documents multi-resume from Android 10 (API 29), so every visible
+        Activity stays RESUMED. The rewritten lifecycle Question uses the Activity-lifecycle
+        page's own example instead: a semi-transparent Activity pauses the one it covers,
+        RESUMED to STARTED.
+      - "Without @Throws a Java caller cannot even name the checked exception in a catch"
+        is true only of that specific exception. javac rejects catch (IOException e) around
+        the call ("exception IOException is never thrown in body of corresponding try
+        statement"), but catch (Exception e) and unhandled calls both compile. The
+        explanation states only the documented case, and the keyed option does not depend
+        on it.
+      - The old kotlinx.serialization explanation's "missing serializers are reported when
+        compiling" had no support in any current source, and it is not true of
+        Json.encodeToString on a non-@Serializable class. It was removed. The overview page
+        it cited no longer mentions generation or reflection, so it was replaced.
+      - The Koin key names the Application class, not only Application.onCreate. Koin also
+        documents AndroidX Startup (KoinStartup), which runs before onCreate.
+
+      Source liveness (341 URLs, all 200), anchor resolution (50 fragments, all present) and
+      the body-length sweep (306 pages, no stub) from the playbook's Part 7 were run over the
+      whole bank. The Part 3 anti-cue script and the Part 9 neighbour scan (6 pairs, no
+      disagreement) were run over the final bank.
+    # summary counts the 11 pre-existing Questions; the 2 new ones are under new_questions.
+    summary:
+      status:
+        PASS: 5
+        PASS_WITH_MINOR_CHANGES: 2
+        FIXED: 4
+        REVIEW_REQUIRED: 0
+        REPLACE: 0
+      severity:
+        BLOCKER: 0
+        MAJOR: 1
+        MINOR: 5
+      source_verification:
+        VERIFIED: 5
+        PARTIALLY_VERIFIED: 1
+        UNVERIFIED: 0
+        INVALID: 0
+        CARRIED_FORWARD_NOT_REREAD: 5
+      final_counts:
+        questions: 480
+        active: 439
+        deprecated: 41
+        kmp_active: 23
+        single: 433
+        multiple: 47
+        levels_all: { FOUNDATION: 238, APPLIED: 214, ADVANCED: 28 }
+        levels_active: { FOUNDATION: 204, APPLIED: 207, ADVANCED: 28 }
+        active_by_changed_topic: { networking: 23, dependency_injection: 38, local_data: 20, kmp: 23, android_ui: 49, kotlin_language: 25, architecture: 40 }
+        subtopics: { total: 361, active: 360, deprecated: 1 }
+
+    rerouted:
+      note: >-
+        Taxonomy-only moves. Each was re-solved and its authored content confirmed unchanged;
+        level is unchanged. Its semantic verdict and source verification are carried forward
+        from the review named, and its sources were not re-read in this pass beyond the
+        bank-wide liveness, anchor and body-length checks, which all passed.
+      items:
+        - { n: 328, id: retrofit_vs_ktor_client_multiplatform, from: networking/retrofit_vs_ktor, to: kmp/ktor_kmp, status: PASS, confidence: HIGH, prior_source_verification: VERIFIED, prior_review: "Questions 276-399" }
+        - { n: 342, id: koin_multiplatform_common_module, from: dependency_injection/koin_multiplatform, to: kmp/koin_kmp, status: PASS, confidence: HIGH, prior_source_verification: VERIFIED, prior_review: E27-08 }
+        - { n: 476, id: koin_shared_and_platform_binding_split, from: dependency_injection/koin_multiplatform, to: kmp/koin_kmp, status: PASS, confidence: HIGH, prior_source_verification: VERIFIED, prior_review: E27-08 }
+        - { n: 369, id: room_vs_sqldelight_generation_direction, from: local_data/room_vs_sqldelight, to: kmp/sqldelight, status: PASS, confidence: HIGH, prior_source_verification: VERIFIED, prior_review: "Questions 276-399" }
+        - { n: 478, id: di_strategy_smallest_sufficient_choice, from: dependency_injection/di_framework_tradeoffs, to: kmp/kmp_library_selection, status: PASS, confidence: HIGH, prior_source_verification: VERIFIED, prior_review: E27-08 }
+      sqldelight_vs_room_kmp: >-
+        room_vs_sqldelight_generation_direction went to sqldelight rather than room_kmp. Its
+        distractors and key turn on which side generates what, and the thing the key
+        distinguishes is SQLDelight's SQL-first direction.
+
+    deprecated_subtopics:
+      - id: koin_multiplatform
+        topic: dependency_injection
+        replaced_by: kmp/koin_kmp
+        reason: >-
+          Duplicated kmp/koin_kmp and held only the two Koin-in-KMP Questions re-routed above.
+          The ID is kept because unit_koin_and_dependency_injection_in_kmp still names it as a
+          Lesson primary and a supporting Subtopic until the learning migration (PR 2)
+          re-homes those Lessons. Until then that Lesson reaches no ACTIVE Question.
+
+    findings:
+      - id: kotlinx_serialization_001
+        n: 110
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q13_SOURCE_SUPPORTS_ANSWER, Q15_EXPLANATION_CORRECT]
+        issues:
+          - The key combined the tested claim with a second one, Kotlin Multiplatform support, which put KMP teaching into a core networking Question.
+          - The cited serialization overview no longer states compiler generation or the reflection contrast.
+          - The explanation claimed missing serializers are reported at compile time, which no current source supports and which does not hold for encoding a non-@Serializable class.
+        changes:
+          - Keyed option replaced with a new ID, kotlinx_serialization_001_h ("generates serializers at compile time instead of using reflection"), because the logical claim changed. The retired _b is no longer authored. Distractors _e, _f and _g keep their IDs and were re-validated against the new key.
+          - The explanation now covers only plugin-generated serializers, the absence of reflection, and why the annotation and plugin are required. The Kotlin/Native and Kotlin/JS sentence and the compile-time-error claim were removed.
+          - Sources replaced with "Get started with Kotlin serialization", "Create and use serializers" and the kotlinx.serialization README ("reflectionless serialization"; "a compiler plugin, that generates visitor code").
+
+      - id: koin_container_startup_composition_boundary
+        n: 472
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: []
+        issues:
+          - The only koin_fundamentals Question used a KMP multi-host scenario to test composition-root placement, which is core Koin.
+        changes:
+          - The stem is now an Android app with repository modules plus a Room/DataStore module. The key is a new ID, koin_container_startup_composition_boundary_e (the Application class as the composition root, starting Koin with its full module set before features resolve). Distractors _a, _c and _d keep their IDs.
+          - The explanation now names startKoin in onCreate or KoinStartup through AndroidX Startup, and the Koin Multiplatform source was replaced by "Start Koin on Android". Level stays APPLIED.
+
+      - id: compose_lifecycle_collection_stops_the_collector_not_the_producer
+        n: 434
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: []
+        issues:
+          - The core android_ui Question framed collector-versus-producer lifetime on the Compose Multiplatform desktop host.
+          - The audit's proposed Android contrast (multi-window focus loss is ON_PAUSE) is wrong on Android 10+ multi-resume.
+        changes:
+          - The stem is now an Android screen, and the user presses Home. Distractor _b was replaced with a new ID, _e ("a backgrounded Activity stays at the default threshold until it is destroyed"). The key _a and distractors _c and _d keep their IDs.
+          - The explanation now covers Home, ON_STOP and STARTED to CREATED, with a semi-transparent Activity (ON_PAUSE, RESUMED to STARTED) as the case that keeps collecting. The Eagerly and WhileSubscribed reasoning was kept.
+          - The Compose Multiplatform lifecycle source was replaced by "The activity lifecycle" and Lifecycle.State. SharingStarted.WhileSubscribed was added for the sentence that already relied on it. Level stays ADVANCED.
+
+      - id: kotlin_no_checked_exceptions_interop
+        n: 392
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: []
+        issues:
+          - One core Kotlin Question tested both Java and Swift interop, and it cited Objective-C interop documentation.
+        changes:
+          - The stem is now Java only. Key _c keeps its ID because its claim is unchanged (no compiler-enforced signal, and @Throws declares the exception in the signature); only "The caller" became "A Java caller".
+          - The explanation now covers the catch-or-declare rule and javac rejecting catch (IOException e) without @Throws, which was verified by compiling. The Swift and Kotlin/Native sentences were removed. Sources are "Exceptions" and "Calling Kotlin from Java#checked-exceptions". Level stays FOUNDATION.
+
+      - id: clean_architecture_dependency_rule_tradeoff
+        n: 382
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: []
+        issues:
+          - The explanation had an incidental aside, "in a multiplatform project it is exactly the layer that can be shared".
+        changes:
+          - Removed that aside only. Options, keys, level and sources are unchanged.
+
+      - id: dependency_direction_domain_framework_types
+        n: 383
+        status: PASS_WITH_MINOR_CHANGES
+        severity: MINOR
+        confidence: HIGH
+        source_verification: PARTIALLY_VERIFIED
+        failed_checks: []
+        issues:
+          - The explanation said the use case "cannot be shared unchanged with a non-Android target", which is KMP framing.
+        changes:
+          - Now reads "cannot live unchanged in a plain Kotlin/JVM module that has no Android dependency". This follows from the explanation's own statement that accepting a Uri requires the Android SDK. The Domain layer page supports isolation and testability but does not state it, hence PARTIALLY_VERIFIED. The keyed "portability" is kept in its general sense.
+
+    new_questions:
+      note: >-
+        One new kmp Question per split, with new Question and AnswerOption IDs that collide
+        with nothing current or deprecated. Each was classified after its stem and options were
+        final.
+      items:
+        - n: 479
+          id: kmp_desktop_window_lifecycle_collection_threshold
+          subtopic: kmp/compose_multiplatform
+          split_from: compose_lifecycle_collection_stops_the_collector_not_the_producer
+          level: APPLIED
+          level_justification: Two documented contracts (default STARTED threshold; desktop windowLostFocus = ON_PAUSE, windowIconified = ON_STOP) applied to a two-event scenario.
+          status: PASS
+          confidence: HIGH
+          source_verification: VERIFIED
+          independent_answer: _c (only minimisation stops the collection)
+        - n: 480
+          id: kmp_swift_undeclared_exception_terminates
+          subtopic: kmp/kotlin_native
+          split_from: kotlin_no_checked_exceptions_interop
+          level: FOUNDATION
+          level_justification: One documented contract - only @Throws classes and subclasses become NSError, and other exceptions reaching Swift terminate the program - decides every option.
+          status: PASS
+          confidence: HIGH
+          source_verification: VERIFIED
+          independent_answer: _d (program termination)
+          duplication_check: Distinct from kmp_swift_interop_suspend_flow, which tests suspend/Flow export shape, not exception semantics.
+
+    systemic:
+      - >-
+        Moving Questions by Subtopic changes Learning Unit practice pools before the learning
+        content moves. The Koin Unit now practises 5 Questions instead of 7, and the DI strategy
+        Unit 2 instead of 3. LearningUnitPracticeIntegrationTest was updated to those pools.
+        learning-question-coverage.md now reports one primary Subtopic with no ACTIVE Question
+        (koin_multiplatform). This is the interim state the audit's migration order accepts,
+        and PR 2 is expected to clear it.
+      - >-
+        The audit's proposed wording failed against primary sources twice: multi-window pause
+        and "cannot catch". Both claims read like established Android and Java folklore.
+        Proposals in a planning document are candidate claims, not validated ones.
+      - >-
+        question-bank-coverage.md had not been regenerated since E25-08, so this pass's
+        regeneration also absorbed the E26-08 and E27-08 batches. Its prose was corrected
+        wherever the regenerated tables contradicted it.
+
   - review: Dependency Injection and Object Graphs Units 1-6 assessment gaps (E27-08)
     date: 2026-09-19
     scope: >-

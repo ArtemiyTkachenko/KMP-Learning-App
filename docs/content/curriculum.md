@@ -33,6 +33,10 @@ incrementally without changing existing content identity.
 - Topic IDs are globally unique.
 - Subtopic IDs are also globally unique for simplicity.
 - Numeric database IDs are intentionally not used.
+- A retired Subtopic keeps its ID with status `DEPRECATED` rather than being deleted,
+  because Questions, attempts and Lessons may still reference it. Every Subtopic listed
+  here is `ACTIVE` unless its row is marked **DEPRECATED**, which also names its
+  replacement.
 
 ## MVP Boundaries
 
@@ -311,7 +315,7 @@ trade-offs across Dagger, Hilt, and Koin.
 | `koin_definitions` | single/factory definitions |
 | `koin_scopes` | Koin scopes |
 | `koin_viewmodels` | Koin ViewModel integration |
-| `koin_multiplatform` | Koin and Kotlin Multiplatform |
+| `koin_multiplatform` | Koin and Kotlin Multiplatform — **DEPRECATED**; duplicated `kmp/koin_kmp`, which replaces it |
 
 ### Comparison
 
@@ -714,7 +718,7 @@ ecosystem trade-offs.
 | `ktor_kmp` | Ktor in KMP |
 | `room_kmp` | Room KMP |
 | `sqldelight` | SQLDelight |
-| `koin_kmp` | Koin in KMP |
+| `koin_kmp` | Koin in KMP — the active home for Koin-in-KMP material |
 
 ### Trade-offs
 

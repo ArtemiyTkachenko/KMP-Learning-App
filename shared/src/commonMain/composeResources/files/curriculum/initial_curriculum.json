@@ -889,7 +889,7 @@
       "id": "koin_multiplatform",
       "topicId": "dependency_injection",
       "name": "Koin and Kotlin Multiplatform",
-      "status": "ACTIVE"
+      "status": "DEPRECATED"
     },
     {
       "id": "di_framework_tradeoffs",
@@ -6413,8 +6413,8 @@
           "text": "It resolves serializers by reflecting over properties at runtime."
         },
         {
-          "id": "kotlinx_serialization_001_b",
-          "text": "It uses compiler-assisted serializers and supports Kotlin Multiplatform."
+          "id": "kotlinx_serialization_001_h",
+          "text": "It generates serializers at compile time instead of using reflection."
         },
         {
           "id": "kotlinx_serialization_001_f",
@@ -6428,13 +6428,21 @@
       "selectionMode": "SINGLE",
       "level": "FOUNDATION",
       "correctAnswerIds": [
-        "kotlinx_serialization_001_b"
+        "kotlinx_serialization_001_h"
       ],
-      "explanation": "The kotlinx.serialization compiler plugin generates a serializer for each @Serializable class at compile time. Because nothing depends on runtime reflection, it works on Kotlin/Native and Kotlin/JS as well as the JVM, and missing serializers are reported when compiling rather than when the model is first parsed.",
+      "explanation": "The kotlinx.serialization compiler plugin generates a serializer for each @Serializable class at compile time, and encoding and decoding run through that generated code instead of reflecting over the class's properties at runtime. That is why a class needs both the annotation and the plugin, and why an ordinary model needs no hand-written serializer.",
       "sources": [
         {
-          "title": "Kotlin Serialization",
-          "url": "https://kotlinlang.org/docs/serialization.html"
+          "title": "Get started with Kotlin serialization",
+          "url": "https://kotlinlang.org/docs/serialization-get-started.html"
+        },
+        {
+          "title": "Create and use serializers",
+          "url": "https://kotlinlang.org/docs/serialization-create-and-use-serializers.html"
+        },
+        {
+          "title": "kotlinx.serialization",
+          "url": "https://github.com/Kotlin/kotlinx.serialization"
         }
       ],
       "status": "ACTIVE"
@@ -14649,8 +14657,8 @@
     },
     {
       "id": "retrofit_vs_ktor_client_multiplatform",
-      "topicId": "networking",
-      "subtopicId": "retrofit_vs_ktor",
+      "topicId": "kmp",
+      "subtopicId": "ktor_kmp",
       "text": "A shared data layer must issue HTTP calls from commonMain on both Android and iOS. Which difference between Retrofit and the Ktor client decides that choice?",
       "answers": [
         {
@@ -15183,8 +15191,8 @@
     },
     {
       "id": "koin_multiplatform_common_module",
-      "topicId": "dependency_injection",
-      "subtopicId": "koin_multiplatform",
+      "topicId": "kmp",
+      "subtopicId": "koin_kmp",
       "text": "A Kotlin Multiplatform shared module needs a dependency container usable from commonMain on both Android and iOS. Why is Koin a candidate where Dagger and Hilt are not?",
       "answers": [
         {
@@ -16193,8 +16201,8 @@
     },
     {
       "id": "room_vs_sqldelight_generation_direction",
-      "topicId": "local_data",
-      "subtopicId": "room_vs_sqldelight",
+      "topicId": "kmp",
+      "subtopicId": "sqldelight",
       "text": "A shared Kotlin Multiplatform data layer must persist relational data on Android and iOS. What is the substantive difference between Room and SQLDelight for that job?",
       "answers": [
         {
@@ -16718,7 +16726,7 @@
         "clean_architecture_dependency_rule_tradeoff_b",
         "clean_architecture_dependency_rule_tradeoff_d"
       ],
-      "explanation": "Pointing every dependency inward means the innermost layer names no framework type, so it compiles and runs in a plain JVM test — and in a multiplatform project it is exactly the layer that can be shared. The cost lands wherever a framework-annotated type would otherwise have been reused: a Room entity or framework-annotated transport DTO may not double as the domain model, so mapping code and extra types appear at that boundary. An unannotated, domain-owned type can still be deserialized by a suitable converter without requiring mapping. That is real work, worth paying when the domain has rules to protect and hard to justify when it does not. Build speed follows from module structure rather than layer count, and the rules stay ordinary Kotlin.",
+      "explanation": "Pointing every dependency inward means the innermost layer names no framework type, so it compiles and runs in a plain JVM test. The cost lands wherever a framework-annotated type would otherwise have been reused: a Room entity or framework-annotated transport DTO may not double as the domain model, so mapping code and extra types appear at that boundary. An unannotated, domain-owned type can still be deserialized by a suitable converter without requiring mapping. That is real work, worth paying when the domain has rules to protect and hard to justify when it does not. Build speed follows from module structure rather than layer count, and the rules stay ordinary Kotlin.",
       "sources": [
         {
           "title": "Domain layer",
@@ -16755,7 +16763,7 @@
       "correctAnswerIds": [
         "dependency_direction_domain_framework_types_d"
       ],
-      "explanation": "The dependency rule exists so the innermost layer names nothing from the outer ones. Accepting a Uri requires the Android SDK and returning a Response ties the use case to Retrofit, so the domain module loses framework independence, cannot be shared unchanged with a non-Android target, and has to change whenever the transport contract changes. The use case can still be tested with appropriate Android-aware JVM or device infrastructure, so coupling does not mean untestability. The fix is to accept and return domain types and let the data layer do the mapping. Nothing here inherently breaks injection, coroutines or compilation, which is precisely why the design problem is easy to leave in place.",
+      "explanation": "The dependency rule exists so the innermost layer names nothing from the outer ones. Accepting a Uri requires the Android SDK and returning a Response ties the use case to Retrofit, so the domain module loses framework independence, cannot live unchanged in a plain Kotlin/JVM module that has no Android dependency, and has to change whenever the transport contract changes. The use case can still be tested with appropriate Android-aware JVM or device infrastructure, so coupling does not mean untestability. The fix is to accept and return domain types and let the data layer do the mapping. Nothing here inherently breaks injection, coroutines or compilation, which is precisely why the design problem is easy to leave in place.",
       "sources": [
         {
           "title": "Domain layer",
@@ -17070,7 +17078,7 @@
       "id": "kotlin_no_checked_exceptions_interop",
       "topicId": "kotlin_language",
       "subtopicId": "kotlin_exceptions",
-      "text": "Kotlin has no checked exceptions. What does that mean for a Kotlin function that is also called from Java or from Swift?",
+      "text": "Kotlin has no checked exceptions. What does that mean for a Kotlin function that is also called from Java?",
       "answers": [
         {
           "id": "kotlin_no_checked_exceptions_interop_a",
@@ -17082,7 +17090,7 @@
         },
         {
           "id": "kotlin_no_checked_exceptions_interop_c",
-          "text": "The caller gets no compiler-enforced signal, so @Throws is needed to declare it in the signature."
+          "text": "A Java caller gets no compiler-enforced signal, so @Throws is needed to declare it in the signature."
         },
         {
           "id": "kotlin_no_checked_exceptions_interop_d",
@@ -17094,15 +17102,15 @@
       "correctAnswerIds": [
         "kotlin_no_checked_exceptions_interop_c"
       ],
-      "explanation": "Kotlin removed checked exceptions, so a Kotlin signature says nothing about what may be thrown and a Kotlin caller is never forced to handle anything. That is workable inside Kotlin, but Java's catch-or-declare rule and Swift's throwing-function model both need the information: annotating the declaration with @Throws puts the exception into the generated signature, which is what makes a Kotlin/Native function usable as a throwing function from Swift. Exceptions do cross the boundary — an undeclared one simply arrives unannounced, and from Swift it terminates the app.",
+      "explanation": "Kotlin removed checked exceptions, so the Java signature of a Kotlin function normally declares nothing it may throw, and a Kotlin caller is never forced to handle anything. Java's catch-or-declare rule then works against the Java caller: because the signature has no throws clause, javac rejects `catch (IOException e)` around the call even when the function does throw it. Annotating the Kotlin declaration with @Throws(IOException::class) puts the exception into the generated signature, so the Java caller can handle it by name. The exception itself still reaches Java at runtime; what is missing without @Throws is the declaration, not the exception.",
       "sources": [
         {
           "title": "Exceptions in Kotlin",
           "url": "https://kotlinlang.org/docs/exceptions.html"
         },
         {
-          "title": "Interoperability with Swift/Objective-C: errors and exceptions",
-          "url": "https://kotlinlang.org/docs/native-objc-interop.html#errors-and-exceptions"
+          "title": "Calling Kotlin from Java: checked exceptions",
+          "url": "https://kotlinlang.org/docs/java-to-kotlin-interop.html#checked-exceptions"
         }
       ],
       "status": "ACTIVE"
@@ -18778,15 +18786,15 @@
       "id": "compose_lifecycle_collection_stops_the_collector_not_the_producer",
       "topicId": "android_ui",
       "subtopicId": "compose_state",
-      "text": "A Compose Multiplatform desktop screen renders a `StateFlow` its owner built with `stateIn(ownerScope, SharingStarted.Eagerly, Loading)` over a database query, collecting it with `collectAsStateWithLifecycle()` at the default `minActiveState`. The learner minimises the window. What happens?",
+      "text": "An Android screen renders a `StateFlow` its owner built with `stateIn(ownerScope, SharingStarted.Eagerly, Loading)` over a database query, collecting it with `collectAsStateWithLifecycle()` at the default `minActiveState`. The user presses Home and the app moves to the background. What happens?",
       "answers": [
         {
           "id": "compose_lifecycle_collection_stops_the_collector_not_the_producer_a",
           "text": "The UI collection stops, while the shared query keeps producing under its own scope and sharing policy."
         },
         {
-          "id": "compose_lifecycle_collection_stops_the_collector_not_the_producer_b",
-          "text": "Neither stops, because a minimised window is still at the default threshold; only losing focus drops below it."
+          "id": "compose_lifecycle_collection_stops_the_collector_not_the_producer_e",
+          "text": "Neither stops, because a backgrounded Activity stays at the default threshold until it is destroyed."
         },
         {
           "id": "compose_lifecycle_collection_stops_the_collector_not_the_producer_c",
@@ -18802,11 +18810,15 @@
       "correctAnswerIds": [
         "compose_lifecycle_collection_stops_the_collector_not_the_producer_a"
       ],
-      "explanation": "Two lifetimes are being decided by two different owners. `collectAsStateWithLifecycle` defaults to `minActiveState = Lifecycle.State.STARTED`, and its contract is that the upstream is collected while the lifecycle is at least that state and that collection stops when the lifecycle falls below it. On the desktop host, minimising the window is the `windowIconified` callback, which is `ON_STOP` and moves the lifecycle from `STARTED` to `CREATED` — below the threshold — so this collection ends. Losing focus is the other direction: it is `ON_PAUSE`, `RESUMED` to `STARTED`, which is still at the threshold, so it stops nothing. What the upstream does is a separate decision made by whoever shares it: `SharingStarted.Eagerly` starts sharing immediately and never stops, independently of subscribers, so the query keeps running in `ownerScope` after the last UI collector goes away. That is also why cancelling the collector cannot cancel the flow here — the producer is running in another scope — and why subscriber count is not the rule: it would be under `WhileSubscribed`, which is a different policy from the one this owner chose.",
+      "explanation": "Two lifetimes are being decided by two different owners. `collectAsStateWithLifecycle` defaults to `minActiveState = Lifecycle.State.STARTED`, and its contract is that the upstream is collected while the lifecycle is at least that state and that collection stops when the lifecycle falls below it. Pressing Home leaves the Activity no longer visible, so it is stopped: `ON_STOP` moves its lifecycle from `STARTED` to `CREATED`, below the threshold, and this collection ends. A backgrounded Activity does not wait for destruction; what stays at the threshold is a partial interruption, such as a semi-transparent Activity opening on top, which only pauses it, `RESUMED` to `STARTED`, so collection continues. What the upstream does is a separate decision made by whoever shares it: `SharingStarted.Eagerly` starts sharing immediately and never stops, so the query keeps running in `ownerScope` after the last UI collector goes away. That is also why cancelling the collector cannot cancel the flow here — the producer is running in another scope — and why subscriber count is not the rule: it would be under `WhileSubscribed`, which is a different policy from the one this owner chose.",
       "sources": [
         {
-          "title": "Lifecycle in Compose Multiplatform",
-          "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html"
+          "title": "The activity lifecycle",
+          "url": "https://developer.android.com/guide/components/activities/activity-lifecycle"
+        },
+        {
+          "title": "Lifecycle.State",
+          "url": "https://developer.android.com/reference/kotlin/androidx/lifecycle/Lifecycle.State"
         },
         {
           "title": "Lifecycle runtime Compose Flow extensions source",
@@ -18815,6 +18827,10 @@
         {
           "title": "SharingStarted.Eagerly",
           "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-sharing-started/-companion/-eagerly.html"
+        },
+        {
+          "title": "SharingStarted.WhileSubscribed",
+          "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/-sharing-started/-companion/-while-subscribed.html"
         }
       ],
       "status": "ACTIVE"
@@ -20364,15 +20380,15 @@
       "id": "koin_container_startup_composition_boundary",
       "topicId": "dependency_injection",
       "subtopicId": "koin_fundamentals",
-      "text": "A KMP application has common repository definitions and one platform storage module per host. Where should Koin startup and module assembly live?",
+      "text": "An Android app splits its repository definitions across several Koin modules and binds its Room database and DataStore in one more. Where should Koin startup and module assembly live?",
       "answers": [
         {
           "id": "koin_container_startup_composition_boundary_a",
           "text": "Inside each repository method, so the repository starts a container before resolving its storage dependency."
         },
         {
-          "id": "koin_container_startup_composition_boundary_b",
-          "text": "At each host's composition boundary, loading common and platform modules once before feature resolution."
+          "id": "koin_container_startup_composition_boundary_e",
+          "text": "In the Application class, the app's composition root, starting Koin with its full module set before features resolve."
         },
         {
           "id": "koin_container_startup_composition_boundary_c",
@@ -20386,17 +20402,17 @@
       "selectionMode": "SINGLE",
       "level": "APPLIED",
       "correctAnswerIds": [
-        "koin_container_startup_composition_boundary_b"
+        "koin_container_startup_composition_boundary_e"
       ],
-      "explanation": "A module groups definitions; it is not a running container. The host is the composition boundary that knows both the shared graph and its platform bindings, so it starts Koin and loads that module set once. Repositories and ViewModels remain consumers with explicit constructor requirements rather than starting or consulting containers inside their business methods.",
+      "explanation": "A Koin module is a logical container of definitions, not a running container: it takes effect only when a started Koin application loads it. On Android the composition root is the Application class, so Koin's Android setup starts Koin there, normally with startKoin in onCreate or through AndroidX Startup with KoinStartup, supplies the Android context, and loads the module set before any Activity, ViewModel or repository resolves a dependency. Repositories and ViewModels remain consumers with explicit constructor requirements rather than starting or consulting containers inside their business methods.",
       "sources": [
         {
           "title": "Koin Modules",
           "url": "https://insert-koin.io/docs/reference/koin-core/modules/"
         },
         {
-          "title": "Koin Multiplatform",
-          "url": "https://insert-koin.io/docs/reference/koin-mp/kmp/"
+          "title": "Start Koin on Android",
+          "url": "https://insert-koin.io/docs/reference/koin-android/start/"
         }
       ],
       "status": "ACTIVE"
@@ -20518,8 +20534,8 @@
     },
     {
       "id": "koin_shared_and_platform_binding_split",
-      "topicId": "dependency_injection",
-      "subtopicId": "koin_multiplatform",
+      "topicId": "kmp",
+      "subtopicId": "koin_kmp",
       "text": "A shared TopicRepository depends on a Storage interface and a Clock. Android and iOS use different Storage implementations, while topicId comes from the current route. How should a Koin KMP graph be split?",
       "answers": [
         {
@@ -20596,8 +20612,8 @@
     },
     {
       "id": "di_strategy_smallest_sufficient_choice",
-      "topicId": "dependency_injection",
-      "subtopicId": "di_framework_tradeoffs",
+      "topicId": "kmp",
+      "subtopicId": "kmp_library_selection",
       "text": "A mature KMP product shares about forty frequently changed definitions across Android, iOS, desktop, and web. Its Koin classic graph already works, the team knows it well, and its toolchain supports the current Koin compiler plugin. Missing definitions have caused incidents, but Android lifecycle integration is not a problem and a framework migration would consume a quarter. Which decision is smallest while meeting the new requirement?",
       "answers": [
         {
@@ -20639,6 +20655,88 @@
         {
           "title": "Dagger Basic Usage",
           "url": "https://dagger.dev/dev-guide/basic-usage"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_desktop_window_lifecycle_collection_threshold",
+      "topicId": "kmp",
+      "subtopicId": "compose_multiplatform",
+      "text": "A Compose Multiplatform desktop screen collects a `StateFlow` with `collectAsStateWithLifecycle()` at the default `minActiveState`. The user clicks into another application, leaving the window visible, and later minimises the window. Which of these stops the collection?",
+      "answers": [
+        {
+          "id": "kmp_desktop_window_lifecycle_collection_threshold_a",
+          "text": "Only the focus loss, which the host dispatches as `ON_STOP` although the window stays visible."
+        },
+        {
+          "id": "kmp_desktop_window_lifecycle_collection_threshold_b",
+          "text": "Neither, since the host dispatches the minimisation as `ON_PAUSE`, leaving the lifecycle at `STARTED`."
+        },
+        {
+          "id": "kmp_desktop_window_lifecycle_collection_threshold_c",
+          "text": "Only the minimisation, which the host dispatches as `ON_STOP`, moving the lifecycle to `CREATED`."
+        },
+        {
+          "id": "kmp_desktop_window_lifecycle_collection_threshold_d",
+          "text": "Both, since the host dispatches each of them as `ON_STOP`, moving the lifecycle to `CREATED`."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "kmp_desktop_window_lifecycle_collection_threshold_c"
+      ],
+      "explanation": "`collectAsStateWithLifecycle` collects while the lifecycle is at least `minActiveState`, which defaults to `STARTED`, and stops when the lifecycle falls below it. The Compose Multiplatform desktop host maps Swing window callbacks onto that lifecycle. `windowLostFocus` is `ON_PAUSE`, `RESUMED` to `STARTED`, which is still at the threshold, so clicking into another application stops nothing while the window stays visible. `windowIconified` is `ON_STOP`, `STARTED` to `CREATED`, which is below it, so minimising ends the collection, and `windowDeiconified` (`ON_START`) restarts it. An unfocused window is paused, not stopped: only a collection that raised `minActiveState` to `RESUMED` would stop on focus loss.",
+      "sources": [
+        {
+          "title": "Lifecycle in Compose Multiplatform: desktop",
+          "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html#desktop"
+        },
+        {
+          "title": "Lifecycle runtime Compose Flow extensions source",
+          "url": "https://github.com/androidx/androidx/blob/androidx-main/lifecycle/lifecycle-runtime-compose/src/commonMain/kotlin/androidx/lifecycle/compose/FlowExt.kt"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kmp_swift_undeclared_exception_terminates",
+      "topicId": "kmp",
+      "subtopicId": "kotlin_native",
+      "text": "A shared Kotlin function that is not suspend is annotated @Throws(IOException::class) and called from Swift with try inside do/catch. At runtime it throws an IllegalStateException instead. What happens?",
+      "answers": [
+        {
+          "id": "kmp_swift_undeclared_exception_terminates_a",
+          "text": "The catch block receives it as an NSError, because every Kotlin exception becomes a Swift error."
+        },
+        {
+          "id": "kmp_swift_undeclared_exception_terminates_b",
+          "text": "The call returns normally, because exceptions not listed in @Throws are dropped at the boundary."
+        },
+        {
+          "id": "kmp_swift_undeclared_exception_terminates_c",
+          "text": "The catch block receives an IOException error, because it is converted to the declared class."
+        },
+        {
+          "id": "kmp_swift_undeclared_exception_terminates_d",
+          "text": "The program terminates, because only the declared classes and their subclasses become Swift errors."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "FOUNDATION",
+      "correctAnswerIds": [
+        "kmp_swift_undeclared_exception_terminates_d"
+      ],
+      "explanation": "Kotlin/Native exports to Swift through Objective-C, where a non-suspend function with @Throws becomes an NSError-producing method and, in Swift, a throws method. Only an exception that is an instance of a class listed in @Throws, or of one of its subclasses, is propagated as an NSError the Swift catch block can handle. IllegalStateException is not an IOException, so it reaches Swift as an unhandled Kotlin exception, and the documented result is program termination. It is not converted to the declared class, and it is not silently dropped: an exception that is not propagated as an error still terminates the program, which is why every exception Swift is expected to handle has to be listed.",
+      "sources": [
+        {
+          "title": "Interoperability with Swift/Objective-C: errors and exceptions",
+          "url": "https://kotlinlang.org/docs/native-objc-interop.html#errors-and-exceptions"
+        },
+        {
+          "title": "Exceptions in Kotlin: exception interoperability",
+          "url": "https://kotlinlang.org/docs/exceptions.html#exception-interoperability-with-java-swift-and-objective-c"
         }
       ],
       "status": "ACTIVE"

@@ -3468,7 +3468,8 @@ Lesson's two Kotlin sources (`SharedFlow`, `MutableSharedFlow.tryEmit`):
 
 The replay paragraph (retention is not delivery, and not exactly-once) is unchanged. The
 second-class paragraph states the current-value fact locally: a `StateFlow` always holds a
-value, and a new collector receives it immediately and then later changes. The comparison
+value, and a new collector receives it immediately; updates are conflated, so a slow
+collector may skip intermediate values but always sees the latest one. The comparison
 cell now reads "current-value semantics, as `StateFlow` provides" (S020). The
 Senior durability sentence names what a transient stream retains for an absent consumer (a
 replay cache, a buffered channel's elements) and states that it lives in memory and is lost

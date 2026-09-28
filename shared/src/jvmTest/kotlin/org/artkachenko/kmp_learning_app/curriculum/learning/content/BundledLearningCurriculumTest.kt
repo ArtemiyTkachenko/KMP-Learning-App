@@ -560,7 +560,7 @@ internal class BundledLearningCurriculumTest {
         assertEquals(
             listOf(
                 "Is This State, or Is It Something That Happened?",
-                "What Guarantee Does This Occurrence Need?",
+                "Lost, Repeated or Acknowledged: Stating an Occurrence's Guarantee",
                 "Choosing an Owner From the Lifetime the Requirement Needs",
                 "How Much Architecture Does This Feature Need?",
             ),
@@ -2089,7 +2089,7 @@ internal class BundledLearningCurriculumTest {
             lessons.getValue("lesson_delivery_guarantees").relatedLessonIds,
         )
         // The observable-API link is load-bearing rather than decorative: the Lesson's
-        // application-scope rung turns on this repository having no observable source to
+        // application-scope rung turns on a data layer having no observable source to
         // subscribe to, which is that Lesson's decision, so the bounded claim carries its pointer.
         assertEquals(
             listOf(

@@ -15736,12 +15736,12 @@
       "id": "unit_responsibility_models_mvp_mvvm_mvi",
       "topicId": "architecture",
       "title": "MVP, MVVM and MVI Responsibility Models",
-      "summary": "The previous four units taught every decision these pattern names are about — ownership, mutation path, dependency direction, lifetime and what a boundary costs — without once using a pattern name. This unit adds the vocabulary, and it starts by saying what the vocabulary is worth: there is no normative specification governing modern use of MVC, MVP, MVVM or MVI, so the unit teaches the responsibility properties that are stable across sources and says where the naming varies. One hypothetical practice-configuration screen runs through the comparison unchanged, so every difference the reader sees is a difference in the responsibility model rather than in the product. The unit's purpose is classification rather than prescription: finish it able to read an unfamiliar screen, say where its state lives, who may mutate it, whether its behaviour owner knows the UI, how input arrives and how output returns — and only then say what a team would probably call it.",
+      "summary": "MVP, MVVM and MVI are different arrangements of responsibilities around the same questions about a screen: where its state lives, who may mutate it, whether the state owner knows the UI, how input reaches that owner, and how output reaches the UI. No normative specification governs modern use of MVC, MVP, MVVM or MVI, and the same arrangement is routinely given different names by different teams, so the answers to those questions describe a screen more reliably than any label. A label is a summary of the answers, useful only when both sides agree on what it means.",
       "lessons": [
         {
           "id": "lesson_one_screen_five_questions",
           "title": "One Screen, Five Questions",
-          "summary": "Four units taught how to describe what a screen's architecture actually does without ever needing a pattern name. This one adds the names, and it starts by saying what they are worth. Five questions — where state lives, who may mutate it, whether the behaviour owner knows the UI, how input arrives and how output returns — describe any screen arrangement completely, and a sixth consequence falls out of the answers rather than being asked separately. MVC appears only as the origin of the vocabulary and as the reason the vocabulary stopped being dependable.",
+          "summary": "Five questions — where state lives, who may mutate it, whether the behaviour owner knows the UI, how input arrives and how output returns — describe any screen arrangement completely, and the lifetime bookkeeping an arrangement forces follows from the answers rather than being chosen separately. MVP, MVVM and MVI name particular sets of answers, but the names vary between sources. MVC is the origin of the vocabulary and the clearest example of why the vocabulary stopped being dependable.",
           "primarySubtopicIds": [
             "mvc"
           ],
@@ -15757,21 +15757,21 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Four units have been building one instrument. Who owns this responsibility, who may change this value and through what path, which component may name which, how long must each part live, and what does a boundary cost? A reader who can ask those questions about a screen can already describe its architecture completely. What they have not been given is the vocabulary an interview actually uses to ask about it — MVC, MVP, MVVM, MVI — and this unit adds it. It adds nothing structurally new: every arrangement in the next four lessons is something the previous units already gave you the means to reason about."
+                  "text": "Interviews ask about screen architecture in the vocabulary of MVC, MVP, MVVM and MVI. Each of those names stands for a set of decisions — who owns the screen's state, who may change it and through what path, which component may reference which, and how long each part must live — and those decisions can be described completely without any of the names."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The vocabulary comes with a warning, and the warning has to come first because it changes how the rest of the unit should be read. **There is no single normative specification governing modern use of these four names.** They were coined for different UI toolkits across several decades, their original descriptions do not entirely agree with one another, and the same arrangement is routinely given different names by different teams. Martin Fowler, writing the most-cited practitioner history of the subject, opens it by saying that \"MVC is one of the most misunderstood architectural patterns around\" and that systems using the name \"display a range of important differences\". That is not a complaint about sloppy engineers. It is the actual state of the terminology."
+                  "text": "The vocabulary comes with a warning: **there is no single normative specification governing modern use of these four names.** They were coined for different UI toolkits across several decades, their original descriptions do not entirely agree with one another, and the same arrangement is routinely given different names by different teams. Martin Fowler, writing the most-cited practitioner history of the subject, opens it by saying that \"MVC is one of the most misunderstood architectural patterns around\" and that systems using the name \"display a range of important differences\". That is the actual state of the terminology, not a complaint about sloppy engineers."
                 },
                 {
                   "type": "paragraph",
-                  "text": "So this unit does not resolve the disagreement by picking one author's diagram and presenting it as the truth. It teaches the properties that are stable across sources — ownership, mutation path, dependency direction, how input travels, how output travels, and what lifetime bookkeeping follows — and says explicitly where the naming varies. The instrument for that is five questions. Asked about any screen, in any codebase, in any framework, they describe completely how that screen's UI and its behaviour owner relate — which is the whole of what these four names are about — without using a pattern name once."
+                  "text": "Picking one author's diagram and presenting it as the truth does not resolve that disagreement. What is stable across sources is a set of properties: ownership, mutation path, dependency direction, how input travels, how output travels, and what lifetime bookkeeping follows. Five questions capture them. Asked about any screen, in any codebase, in any framework, they describe completely how that screen's UI and its behaviour owner relate — which is the whole of what these four names are about — without using a pattern name once."
                 },
                 {
                   "type": "bullet_list",
                   "items": [
                     "**Where does the screen's state live?** Which component holds the values the screen renders — a widget, a composable, a screen-scoped owner, something longer-lived.",
-                    "**Who is allowed to mutate that state?** One component through one path, or anything that can reach it. This is ownership in the sense the foundations unit fixed: not who reads a value, but who may write it.",
+                    "**Who is allowed to mutate that state?** One component through one path, or anything that can reach it. Ownership here means who may write a value, not who reads it.",
                     "**Does the behaviour owner know about the View or UI instance?** Does it hold a reference to something it can call, or does it publish something the UI reads? This is a dependency-direction question, and it is the one that decides most of the rest.",
                     "**How does user input reach the behaviour owner?** A method call on a contract, a named function on a holder, a value representing what the user did — and who decides what that input means.",
                     "**How does output or state reach the UI?** A sequence of imperative calls into the UI, or one current value the UI observes and renders."
@@ -15779,7 +15779,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Then there is a sixth question, and it deliberately is not a sixth category: **what lifetime bookkeeping does this arrangement force on somebody?** It is asked last because it is a *consequence* of the answers to the five, chiefly of the third. If the behaviour owner holds a reference to a UI instance, and the UI instance can be destroyed while the owner survives, then somebody has to coordinate when that reference is usable — and that requirement was created by the dependency, not chosen separately. If the owner holds no such reference, that particular bookkeeping does not exist, although the owner's own lifetime and the lifetime of whoever is observing it still do. Every named pattern in this unit differs mainly in the answers to questions three, four and five, and the sixth follows."
+                  "text": "Then there is a sixth question, but it is not a sixth category: **what lifetime bookkeeping does this arrangement force on somebody?** It is asked last because it is a *consequence* of the answers to the five, chiefly of the third. If the behaviour owner holds a reference to a UI instance, and the UI instance can be destroyed while the owner survives, then somebody has to coordinate when that reference is usable — and that requirement was created by the dependency, not chosen separately. If the owner holds no such reference, that particular bookkeeping does not exist, although the owner's own lifetime and the lifetime of whoever is observing it still do. MVP, MVVM and MVI differ mainly in the answers to questions three, four and five, and the sixth follows."
                 },
                 {
                   "type": "callout",
@@ -15793,13 +15793,13 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "One hypothetical screen runs through this lesson and the three that follow, and it does not change between them. That is the point of it: if the example changed with the pattern, every difference the reader saw would be a difference in the product rather than in the responsibility model. It is a **practice-configuration screen**, and its requirements are fixed here once."
+                  "text": "Take one concrete screen: a **practice-configuration screen** in a quiz application, with these requirements:"
                 },
                 {
                   "type": "bullet_list",
                   "items": [
                     "It loads the practice options that are available — which topics can be practised, and which difficulty levels exist.",
-                    "It holds several selections the reader makes: a topic, a difficulty, and how many questions the session should contain.",
+                    "It holds several selections the user makes: a topic, a difficulty, and how many questions the session should contain.",
                     "It validates those selections against each other, because not every combination has questions behind it.",
                     "It enables a Start control only when the current configuration is valid.",
                     "It can be loading, and it can fail while loading.",
@@ -15808,20 +15808,20 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Rich enough to expose every trade-off the unit is about, small enough that the arrangement stays visible. Now describe one possible design of it by answering the five questions, and notice that nothing below is a pattern name."
+                  "text": "That is enough to expose the trade-offs between the patterns while keeping the arrangement visible. Here is one possible design, described by answering the five questions — no pattern name appears."
                 },
                 {
                   "type": "code",
-                  "code": "1. Where does the state live?      One screen-scoped owner holds the loaded options,\n                                   the current selections, and whether Start is allowed.\n\n2. Who may mutate it?              Only that owner. The UI never assigns to it.\n\n3. Does the owner know the UI?     No. It holds no reference to any UI instance and\n                                   cannot call one.\n\n4. How does input reach it?        The UI reports what the reader did — chose a topic,\n                                   chose a difficulty, asked to retry. The owner decides\n                                   what each of those means for the configuration.\n\n5. How does output reach the UI?   The owner publishes one current value describing the\n                                   whole screen. The UI observes it and renders it.\n\n6. What bookkeeping follows?       No owner-to-UI reference exists, so nothing has to\n                                   track whether the UI is attached. The owner's own\n                                   lifetime, and the lifetime of whoever is observing,\n                                   are still real and still have to be decided.",
+                  "code": "1. Where does the state live?      One screen-scoped owner holds the loaded options,\n                                   the current selections, and whether Start is allowed.\n\n2. Who may mutate it?              Only that owner. The UI never assigns to it.\n\n3. Does the owner know the UI?     No. It holds no reference to any UI instance and\n                                   cannot call one.\n\n4. How does input reach it?        The UI reports what the user did — chose a topic,\n                                   chose a difficulty, asked to retry. The owner decides\n                                   what each of those means for the configuration.\n\n5. How does output reach the UI?   The owner publishes one current value describing the\n                                   whole screen. The UI observes it and renders it.\n\n6. What bookkeeping follows?       No owner-to-UI reference exists, so nothing has to\n                                   track whether the UI is attached. The owner's own\n                                   lifetime, and the lifetime of whoever is observing,\n                                   are still real and still have to be decided.",
                   "language": "text"
                 },
                 {
                   "type": "paragraph",
-                  "text": "Now ask the question the unit exists to make awkward: *what architecture is this?* The honest first answer is that we already know the important part, because we have just described the arrangement completely. Every question these four pattern names can settle — what breaks when the UI is absent, what has to be coordinated when the reader rotates the device, where a change to the screen's own behaviour lands, whether a second UI could be put in front of the same owner — is answerable from the six lines above. What the six lines deliberately do **not** settle is everything on the other side of that owner: whether there is a repository, which source is authoritative, whether a rule earns a domain layer, how dependencies are supplied. Those are the previous units' decisions, they are independent of this one, and no pattern name in this unit decides them either. A name adds nothing to the description. What a name does is let two people refer to it in three syllables, and that only works if they already agree on what the syllables mean."
+                  "text": "*What architecture is this?* The important part is already known, because the arrangement has just been described completely. Every question these pattern names can settle — what breaks when the UI is absent, what has to be coordinated when the user rotates the device, where a change to the screen's own behaviour lands, whether a second UI could be put in front of the same owner — is answerable from the six lines above. What the six lines do **not** settle is everything on the other side of that owner: whether there is a repository, which source is authoritative, whether a rule earns a domain layer, how dependencies are supplied. Those decisions are independent of this one, and no pattern name decides them either. A name adds nothing to the description. What it does is let two people refer to the description in three syllables, and that only works if they already agree on what the syllables mean."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Which is exactly where the trouble is. Three teams could implement precisely the arrangement above and describe it in three different ways, and none of them would be wrong."
+                  "text": "That agreement is exactly what is missing. Three teams could implement precisely the arrangement above and describe it in three different ways, and none of them would be wrong."
                 },
                 {
                   "type": "comparison",
@@ -15842,7 +15842,7 @@
                       "B",
                       "MVI-ish MVVM",
                       "The same holder, but user input is represented as values of a closed set of types rather than as separate functions.",
-                      "The shape of question 4's answer. Ownership, mutation path and view knowledge are identical."
+                      "How input is modelled (question 4). Ownership, mutation path and view knowledge are identical."
                     ],
                     [
                       "C",
@@ -15854,11 +15854,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The reader who can recognise all three as the same architecture has the skill this unit is for. Note carefully what that does **not** mean: labels are not meaningless and this unit does not treat them as noise. Inside a team that shares a definition, \"we're MVVM here\" is a useful three-syllable summary that saves a paragraph, and refusing to use the word in an interview because the sources disagree is its own kind of unhelpful. The claim is narrower and it holds: **a label cannot replace the description, because the label does not determine the responsibilities and two teams using the same label may not have the same ones.**"
+                  "text": "Recognising all three as the same architecture is the core skill. That does **not** make labels meaningless. Inside a team that shares a definition, \"we're MVVM here\" is a useful three-syllable summary that saves a paragraph, and refusing to use the word in an interview because the sources disagree is its own kind of unhelpful. The claim is narrower, and it holds: **a label cannot replace the description, because the label does not determine the responsibilities and two teams using the same label may not have the same ones.**"
                 },
                 {
                   "type": "paragraph",
-                  "text": "MVC is where all of this vocabulary came from, and this unit deliberately teaches it no further than that. It names a three-part separation originating in Smalltalk, and it is the reason every later name in this family is built from \"Model\", \"View\" and a third role. The third role is the unstable part: \"controller\" means substantially different things in different communities, and Fowler records that many designs \"follow the MVP style but use 'controller' as a synonym for presenter\". There is no fourth implementation of the practice-configuration screen in this unit, because a canonical MVC implementation is precisely the thing the sources do not supply. What MVC is here for is the conclusion that follows from it: when an interviewer asks whether you have used MVC, the strong move is to ask what they mean by the controller's responsibility, and then answer in the vocabulary of the five questions."
+                  "text": "MVC is where all of this vocabulary came from. It names a three-part separation originating in Smalltalk, and it is the reason every later name in this family is built from \"Model\", \"View\" and a third role. The third role is the unstable part: \"controller\" means substantially different things in different communities, and Fowler records that many designs \"follow the MVP style but use 'controller' as a synonym for presenter\". The sources do not supply a canonical modern MVC implementation to compare against. The practical conclusion: when an interviewer asks whether you have used MVC, the strong move is to ask what they mean by the controller's responsibility, and then answer in the vocabulary of the five questions."
                 },
                 {
                   "type": "callout",
@@ -15872,7 +15872,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "It is worth understanding *why* the names drifted, because the reason predicts where the next disagreement will be. These terms were coined for particular UI toolkits over a span of decades, and the toolkits differed in what they made possible. MVC was described for a system in which the view could observe the model directly; MVP was described for frameworks where it could not, and where somebody therefore had to push updates into widgets; MVVM's ancestor, Fowler's Presentation Model, was described for a world where synchronising a model and a widget tree was the central problem, and Fowler explicitly gives two arrangements for it — the presentation model referencing the view, or the view referencing the presentation model — with different trade-offs. When the underlying toolkit changes, the parts of a pattern that were solutions to the old toolkit's problems either disappear or get quietly redefined, and the name survives the redefinition."
+                  "text": "Why the names drifted predicts where the next disagreement will be. These terms were coined for particular UI toolkits over a span of decades, and the toolkits differed in what they made possible. MVC was described for a system in which the view could observe the model directly; MVP was described for frameworks where it could not, and where somebody therefore had to push updates into widgets; MVVM's ancestor, Fowler's Presentation Model, was described for a world where synchronising a model and a widget tree was the central problem, and Fowler explicitly gives two arrangements for it — the presentation model referencing the view, or the view referencing the presentation model — with different trade-offs. When the underlying toolkit changes, the parts of a pattern that were solutions to the old toolkit's problems either disappear or get quietly redefined, and the name survives the redefinition."
                 },
                 {
                   "type": "paragraph",
@@ -15880,16 +15880,16 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The sixth question deserves one more pass, because collapsing it into the first five is a common way to get a lifetime answer wrong. Read it in both directions. If the answer to question three is *yes, the owner holds the UI instance*, then the arrangement has created an obligation: the UI can be destroyed while the owner survives, calling a destroyed UI is invalid, and something has to know which is currently true. If the answer is *no*, that specific obligation does not exist — but it is a mistake to conclude that lifetime stopped mattering. The owner still has a lifetime, decided by whoever owns it; whoever observes the published state still has to start and stop observing; and work the owner started still has to be cancelled by someone. The state-holder unit worked all of that out. What the third question decides is only whether one further piece of bookkeeping — *is the view currently there* — is forced on the design."
+                  "text": "Collapsing the sixth question into the first five is a common way to get a lifetime answer wrong. Read it in both directions. If the answer to question three is *yes, the owner holds the UI instance*, then the arrangement has created an obligation: the UI can be destroyed while the owner survives, calling a destroyed UI is invalid, and something has to know which is currently true. If the answer is *no*, that specific obligation does not exist — but it is a mistake to conclude that lifetime stopped mattering. The owner still has a lifetime, decided by whoever owns it; whoever observes the published state still has to start and stop observing; and work the owner started still has to be cancelled by someone. What the third question decides is only whether one further piece of bookkeeping — *is the view currently there* — is forced on the design."
                 },
                 {
                   "type": "paragraph",
-                  "text": "One last framing before the pattern lessons. It is tempting to read a section like this as \"names do not matter\", and that is not the argument. Names matter a great deal, because they are how a team coordinates and how an interview is conducted. What does not hold is the inference from name to behaviour. You cannot deduce from \"we use MVVM\" that the owner publishes one value rather than six, or that input is modelled as functions rather than as values, or that there is an explicit transition function somewhere — and every one of those is a decision with real consequences. The next three lessons take the same screen through three sets of answers, and the last one puts a real, unlabelled design in front of you and asks you to classify it."
+                  "text": "It is tempting to read all of this as \"names do not matter\", and that is not the argument. Names matter a great deal, because they are how a team coordinates and how an interview is conducted. What does not hold is the inference from name to behaviour. You cannot deduce from \"we use MVVM\" that the owner publishes one value rather than six, or that input is modelled as functions rather than as values, or that there is an explicit transition function somewhere — and every one of those is a decision with real consequences."
                 },
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Be ready to describe a screen's architecture in five sentences with no pattern name in them, then say which label your team uses and note that the term varies between sources. Be ready to say why MVC in particular needs clarification before it can be answered — the controller role is the contested part, and even the primary practitioner literature records the variance rather than resolving it. Do not defend one definition of a contested name against an interviewer; describe the responsibilities and let the label follow."
+                  "text": "Be ready to describe a screen's architecture in five sentences with no pattern name in them, then say which label your team uses and note that the term varies between sources. Be ready to say why MVC in particular needs clarification before it can be answered — the controller role is the contested part, and even the primary practitioner literature records the variance rather than resolving it. Rather than defending one definition of a contested name against an interviewer, describe the responsibilities and let the label follow."
                 }
               ]
             }
@@ -15917,7 +15917,7 @@
         {
           "id": "lesson_mvp_view_contract",
           "title": "MVP: an Explicit View Contract",
-          "summary": "MVP's defining decision is that the behaviour owner holds an abstraction of the view and pushes updates into it by calling methods. Everything characteristic of the pattern follows from that one dependency: an interface that enumerates what the screen can be told to do, output as an ordered sequence of calls rather than a value, and attach and detach bookkeeping that exists because a reference can outlive the thing it points at. It is a coherent responsibility model with real strengths, taught here as one, not as a strawman for the lesson that follows.",
+          "summary": "MVP's defining decision is that the behaviour owner holds an abstraction of the view and pushes updates into it by calling methods. Everything characteristic of the pattern follows from that one dependency: an interface that enumerates what the screen can be told to do, output as an ordered sequence of calls rather than a value, and attach and detach bookkeeping that exists because a reference can outlive the thing it points at. It is a coherent responsibility model with real strengths as well as real costs.",
           "primarySubtopicIds": [
             "mvp"
           ],
@@ -15932,11 +15932,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Take the practice-configuration screen from the previous lesson — the same loaded options, the same selections, the same cross-validation, the same Start control, the same failure and retry — and change exactly one answer. **The behaviour owner is given a reference to the view.** Not to a concrete widget class, but to an abstraction of it: an interface the owner may call. That single decision is Model-View-Presenter, and everything else the pattern is known for follows from it."
+                  "text": "Take a practice-configuration screen: it loads the topics and difficulty levels on offer, holds the user's selections, validates them against each other, enables a Start control only when the combination is valid, and can fail while loading and offer a retry. Now make one decision about it. **The behaviour owner is given a reference to the view.** Not to a concrete widget class, but to an abstraction of it: an interface the owner may call. That single decision is Model-View-Presenter, and everything else the pattern is known for follows from it."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The behaviour owner is called a **presenter**. It receives the user's actions, decides what they mean, obtains whatever data the behaviour needs, and then updates the screen by *calling methods on the view interface it holds*. The view is comparatively passive: it renders what it is told to render and reports what the user did. Run the five questions over it and the shape is immediately different from the arrangement the last lesson described."
+                  "text": "The behaviour owner is called a **presenter**. It receives the user's actions, decides what they mean, obtains whatever data the behaviour needs, and then updates the screen by *calling methods on the view interface it holds*. The view is comparatively passive: it renders what it is told to render and reports what the user did. Run the five questions over it — where state lives, who may mutate it, whether the owner knows the UI, how input arrives, how output returns — and the answers are immediately different from an arrangement in which the owner publishes state for the UI to observe."
                 },
                 {
                   "type": "code",
@@ -15945,7 +15945,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Two things about the name before going further, because the unit's standing rule applies here as much as anywhere. First, the role is not always called a presenter — Fowler notes that \"a lot of designs will follow the MVP style but use 'controller' as a synonym for presenter\", which is one of the reasons MVC and MVP are so easily confused. Second, MVP has recognised variants that disagree about how much the view is allowed to do. In **Passive View**, the presenter manipulates every widget and the view contains no logic at all; in **Supervising Controller**, the view \"handles simple mapping to the underlying model\" itself and the controller handles \"input response and complex view logic\". Fowler is explicit that the fully passive variant \"isn't part of the original descriptions of MVP\". What is stable across all of them — and what this lesson teaches — is the presenter-holds-a-view-abstraction relationship and the consequences of it."
+                  "text": "Two points about the name first, because pattern names vary between sources. First, the role is not always called a presenter — Fowler notes that \"a lot of designs will follow the MVP style but use 'controller' as a synonym for presenter\", which is one of the reasons MVC and MVP are so easily confused. Second, MVP has recognised variants that disagree about how much the view is allowed to do. In **Passive View**, the presenter manipulates every widget and the view contains no logic at all; in **Supervising Controller**, the view \"handles simple mapping to the underlying model\" itself and the controller handles \"input response and complex view logic\". Fowler is explicit that the fully passive variant \"isn't part of the original descriptions of MVP\". What is stable across all of them is the presenter-holds-a-view-abstraction relationship and the consequences of it."
                 },
                 {
                   "type": "callout",
@@ -15968,7 +15968,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "And the presenter holds one, receives the reader's actions, and decides what each of them means."
+                  "text": "And the presenter holds one, receives the user's actions, and decides what each of them means."
                 },
                 {
                   "type": "code",
@@ -15977,7 +15977,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That is deliberately as little code as the argument needs; a production presenter would have more, and none of it would change the shape. The shape is what matters, and the first thing to read out of it is that **output is a sequence of calls rather than a value.** Loading the screen and choosing a difficulty produces something like this, in this order:"
+                  "text": "A production presenter would have more code, and none of it would change the arrangement. The first thing to read out of it is that **output is a sequence of calls rather than a value.** Loading the screen and choosing a difficulty produces something like this, in this order:"
                 },
                 {
                   "type": "code",
@@ -15986,15 +15986,15 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "What the reader sees is therefore the accumulated result of *which calls happened, in what order, and which ones the view was not there to receive*. This is a real architectural property and it is worth stating precisely, because the careless version of it is wrong. It is not true that MVP implementations necessarily have ordering defects — a careful presenter that always updates every affected affordance after every change is perfectly correct. What is true is that correctness here is a property of the call sequence rather than of a value: nothing in the arrangement makes it impossible to update the selection and forget to re-evaluate whether Start should be enabled, and the screen then shows a combination the presenter never intended. Compare that with an arrangement where the output is one value describing the whole screen. Be precise about what that changes, because the overstated version is wrong in the other direction: one value does not by itself make the bad combination unthinkable — a state value holding the selection beside a separate `canStart` field can be copied with one updated and the other left stale, which is exactly the representable-but-impossible problem the state-holder unit treats at length. What it does change is that the two facts now travel together, so a consumer can never observe the screen part-way through a multi-field update; and making the combination genuinely impossible is then one further step available to it — derive the flag from the selection, or model the state so the pair cannot disagree — which is a step the call-sequence arrangement has nowhere to take."
+                  "text": "What the user sees is therefore the accumulated result of *which calls happened, in what order, and which ones the view was not there to receive*. This is a real architectural property, and the careless version of it is wrong. It is not true that MVP implementations necessarily have ordering defects — a careful presenter that always updates every affected affordance after every change is perfectly correct. What is true is that correctness here is a property of the call sequence rather than of a value: nothing in the arrangement makes it impossible to update the selection and forget to re-evaluate whether Start should be enabled, and the screen then shows a combination the presenter never intended. Compare that with an arrangement where the output is one value describing the whole screen. Be precise about what that changes, because the overstated version is wrong in the other direction: one value does not by itself make the bad combination unthinkable — a state value holding the selection beside a separate `canStart` field can be copied with one updated and the other left stale, which is a state the type can represent although the screen should never be in it. What it does change is that the two facts now travel together, so a consumer can never observe the screen part-way through a multi-field update; and making the combination genuinely impossible is then one further step available to it — derive the flag from the selection, or model the state so the pair cannot disagree — which is a step the call-sequence arrangement has nowhere to take."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Now the bookkeeping, and it must be understood as *caused* rather than merely required. The presenter holds `view`. A UI instance can be destroyed — the reader navigates away, the host recreates it — while the presenter survives, because something else owns the presenter's lifetime. A reference to a destroyed view is still a valid object reference, so calling it compiles and runs and does something wrong: it updates widgets nobody will see, or touches a UI that has been torn down. Therefore somebody has to coordinate when that reference is usable, which is what `attach` and `detach` are. That obligation was not chosen for its own sake and it is not a quirk of any particular Android class; it is the direct price of the answer to question three. The lifecycle mechanics that implement it — which callback calls `detach`, how the presenter is retained — belong to the lifecycle curriculum and are not this lesson's subject. The *requirement* is."
+                  "text": "Now the bookkeeping, and it must be understood as *caused* rather than merely required. The presenter holds `view`. A UI instance can be destroyed — the user navigates away, the host recreates it — while the presenter survives, because something else owns the presenter's lifetime. A reference to a destroyed view is still a valid object reference, so calling it compiles and runs and does something wrong: it updates widgets nobody will see, or touches a UI that has been torn down. Therefore somebody has to coordinate when that reference is usable, which is what `attach` and `detach` are. That obligation was not chosen for its own sake and it is not a quirk of any particular Android class; it is the direct price of the answer to question three. Which callback calls `detach`, and how the presenter is retained, differ between hosts; the requirement does not."
                 },
                 {
                   "type": "paragraph",
-                  "text": "With those on the table, both sides of MVP can be stated concretely, which is the only honest way to teach a pattern that is often dismissed. Its genuine strengths:"
+                  "text": "With those on the table, both sides of MVP can be stated concretely. Its genuine strengths:"
                 },
                 {
                   "type": "bullet_list",
@@ -16002,12 +16002,12 @@
                     "**The contract enumerates what the screen can be told to do.** Reading `PracticeConfigView` tells you the complete set of things behaviour is allowed to ask of this UI. That is a real and unusual property — most state-based designs cannot answer that question without reading the renderer.",
                     "**Presentation logic leaves the view class.** In the toolkit MVP was designed for, the realistic alternative was all of this logic inside an Activity or a Fragment, mixed with widget wiring and lifecycle callbacks. Extracting it was a large, concrete improvement.",
                     "**The view can stay genuinely simple.** In the passive variant it does nothing but render what it is handed and report what was touched.",
-                    "**The contract is a boundary in the foundations unit's exact sense.** The presenter's needs define `PracticeConfigView`, and the rendering implementation depends on it — so the interface is consumer-owned rather than a wrapper around an implementation, which is what makes substituting a different renderer a real possibility rather than a claim."
+                    "**The contract is owned by its consumer.** The presenter's needs define `PracticeConfigView`, and the rendering implementation depends on it — so the interface is not a wrapper around an implementation, which is what makes substituting a different renderer a real possibility rather than a claim."
                   ]
                 },
                 {
                   "type": "paragraph",
-                  "text": "And its costs, stated as things rather than as the word \"boilerplate\", which names nothing a reader can weigh:"
+                  "text": "And its costs, stated as things rather than as the word \"boilerplate\", which names nothing anyone can weigh:"
                 },
                 {
                   "type": "bullet_list",
@@ -16032,15 +16032,15 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The deeper reason MVP is worth reasoning about is that it makes a trade visible that later designs make invisible. An explicit view contract gives you **enumerability**: the set of things behaviour may ask of the UI is written down in one file, and anything outside it is a compile error. A state-based design gives you **consistency**: every output is a complete description of the screen, so a partially applied update is not expressible. Those are different properties and you cannot have both in full. Knowing which one you traded away is what makes the modern choice defensible rather than merely conventional — and it is exactly the question an interviewer is probing when they ask why you would not use MVP today."
+                  "text": "MVP makes visible a trade that later designs make invisible. An explicit view contract gives you **enumerability**: the set of things behaviour may ask of the UI is written down in one file, and anything outside it is a compile error. A state-based design gives you **consistency**: every output is a complete description of the screen, so a partially applied update is not expressible. Those are different properties and you cannot have both in full. Knowing which one you traded away is what makes the modern choice defensible rather than merely conventional — and it is exactly the question an interviewer is probing when they ask why you would not use MVP today."
                 },
                 {
                   "type": "paragraph",
-                  "text": "It is also worth being precise about what MVP does *not* decide, because this is where the pattern gets blamed for things that are not its fault. It says nothing about threading — a presenter is not inherently main-thread or background. It says nothing about whether the presenter survives a configuration change; that depends entirely on what owns the presenter, which is a separate decision, and a presenter that is retained by something long-lived has *more* attach/detach bookkeeping to do, not less. It says nothing about the data layer: a presenter can sit above repositories, use cases, both or neither, exactly as any other behaviour owner can. And it does not require a specific view granularity — one contract per screen is conventional, but a contract per section of a screen is a legitimate design that trades a longer interface for several shorter ones."
+                  "text": "MVP also leaves several things undecided, and this is where the pattern gets blamed for things that are not its fault. It says nothing about threading — a presenter is not inherently main-thread or background. It says nothing about whether the presenter survives a configuration change; that depends entirely on what owns the presenter, which is a separate decision, and a presenter that is retained by something long-lived has *more* attach/detach bookkeeping to do, not less. It says nothing about the data layer: a presenter can sit above repositories, use cases, both or neither, exactly as any other behaviour owner can. And it does not require a specific view granularity — one contract per screen is conventional, but a contract per section of a screen is a legitimate design that trades a longer interface for several shorter ones."
                 },
                 {
                   "type": "paragraph",
-                  "text": "One more observation, and it matters for how the next lesson is read. The properties that make MVP costly on Android today are not properties of MVP's reasoning; they are the interaction between a held view reference and a platform where UI instances are destroyed and recreated underneath surviving owners. On a platform where the view's lifetime matched the presenter's, several of the costs listed above would simply not arise. That is a useful habit to carry into any architecture argument: ask whether the cost you are naming belongs to the pattern or to the environment it is running in, because the answer changes whether the pattern is wrong or merely mismatched."
+                  "text": "The properties that make MVP costly on Android today are not properties of MVP's reasoning; they are the interaction between a held view reference and a platform where UI instances are destroyed and recreated underneath surviving owners. On a platform where the view's lifetime matched the presenter's, several of the costs listed above would simply not arise. That is a useful habit to carry into any architecture argument: ask whether the cost you are naming belongs to the pattern or to the environment it is running in, because the answer changes whether the pattern is wrong or merely mismatched."
                 },
                 {
                   "type": "callout",
@@ -16073,7 +16073,7 @@
         {
           "id": "lesson_mvvm_observed_state",
           "title": "MVVM: a UI That Observes State",
-          "summary": "Change one answer in MVP — take the view reference away from the behaviour owner — and almost everything characteristic of MVVM follows. The UI observes state the owner publishes, intentions travel inward, and the owner never needs to know whether anyone is currently looking. The state-holder unit built this arrangement without naming it, so this lesson adds the vocabulary rather than the design, and spends the rest of its length on what MVVM is not: a class, a folder, or a count of state streams.",
+          "summary": "Change one answer in MVP — take the view reference away from the behaviour owner — and almost everything characteristic of MVVM follows. The UI observes state the owner publishes, intentions travel inward, and the owner never needs to know whether anyone is currently looking. The dependency direction defines the arrangement; a class name, a folder, or a count of state streams does not.",
           "primarySubtopicIds": [
             "mvvm"
           ],
@@ -16089,7 +16089,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Keep the practice-configuration screen exactly as it was — same options to load, same selections, same cross-validation, same Start rule, same failure and retry — and ask one question about the MVP design: **what happens if the behaviour owner stops calling the view?** It cannot push `showOptions` or `setStartEnabled` any more, so it needs another way to make the screen change. The answer is to invert the direction of the output: instead of the owner calling the UI, the owner *publishes* the current state and the UI *observes* it."
+                  "text": "Take the MVP design of a practice-configuration screen — a presenter that holds a view interface and calls `showOptions` or `setStartEnabled` on it — and ask one question: **what happens if the behaviour owner stops calling the view?** It cannot push updates any more, so it needs another way to make the screen change. The answer is to invert the direction of the output: instead of the owner calling the UI, the owner *publishes* the current state and the UI *observes* it."
                 },
                 {
                   "type": "code",
@@ -16098,16 +16098,16 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That is the arrangement usually called MVVM, and the property doing the work is stated as a negative: **the owner holds no reference to the UI instance.** It publishes something; whether anyone is reading it is not its concern. Run the five questions and the difference from the previous lesson is concentrated in exactly one of them."
+                  "text": "That is the arrangement usually called MVVM, and the property doing the work is stated as a negative: **the owner holds no reference to the UI instance.** It publishes something; whether anyone is reading it is not its concern. Run the five questions and the difference from MVP is concentrated in exactly one of them."
                 },
                 {
                   "type": "code",
-                  "code": "1. Where does the state live?      In the screen's state owner, as one or more\n                                   observable values. Nothing authoritative lives\n                                   in the widgets.\n\n2. Who may mutate it?              Only the owner, through one write path.\n\n3. Does the owner know the UI?     NO. This is the change, and the rest follows.\n\n4. How does input reach it?        The UI reports what the reader intended; the owner\n                                   decides what that means. (Unchanged from MVP.)\n\n5. How does output reach the UI?   As current state the UI observes, not as calls.\n\n6. What bookkeeping follows?       No presenter-to-view reference exists, so nothing\n                                   has to track whether the view is attached.",
+                  "code": "1. Where does the state live?      In the screen's state owner, as one or more\n                                   observable values. Nothing authoritative lives\n                                   in the widgets.\n\n2. Who may mutate it?              Only the owner, through one write path.\n\n3. Does the owner know the UI?     NO. This is the change, and the rest follows.\n\n4. How does input reach it?        The UI reports what the user intended; the owner\n                                   decides what that means. (Unchanged from MVP.)\n\n5. How does output reach the UI?   As current state the UI observes, not as calls.\n\n6. What bookkeeping follows?       No presenter-to-view reference exists, so nothing\n                                   has to track whether the view is attached.",
                   "language": "text"
                 },
                 {
                   "type": "paragraph",
-                  "text": "Be precise about what disappeared, because the overstated version of this is wrong. What is gone is the *presenter-to-view* bookkeeping specifically: no held UI reference, therefore no attach and detach relationship required by that reference, therefore no enumerated set of view methods, therefore no update sequence whose order can leave the screen in a combination nobody intended. What is **not** gone is lifetime as a subject. The owner still has a lifetime and something still decides it; whoever observes the published state still has to start and stop observing; work the owner started still has to be cancelled by someone. The state-holder unit worked all of that out, and none of it is repealed by removing one reference."
+                  "text": "Be precise about what disappeared, because the overstated version of this is wrong. What is gone is the *presenter-to-view* bookkeeping specifically: no held UI reference, therefore no attach and detach relationship required by that reference, therefore no enumerated set of view methods, therefore no update sequence whose order can leave the screen in a combination nobody intended. What is **not** gone is lifetime as a subject. The owner still has a lifetime and something still decides it; whoever observes the published state still has to start and stop observing; work the owner started still has to be cancelled by someone. None of it is repealed by removing one reference."
                 },
                 {
                   "type": "callout",
@@ -16121,7 +16121,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The most useful thing that can be said about this design to a reader of this curriculum is that **they have already built it.** The state-holder unit designed an owner that holds the state a screen renders, accepts the intentions the UI reports, is the one place that state changes, exposes it read-only, and knows nothing about any UI instance — and it did so without using the word MVVM once, because the reasoning did not need the word. So this lesson is not a new design. It is a name for one, and a set of corrections about what the name does and does not establish."
+                  "text": "In code, the arrangement is a screen state holder: an owner that holds the state a screen renders, accepts the intentions the UI reports, is the one place that state changes, exposes it read-only, and knows nothing about any UI instance. None of that needs the word MVVM to describe it. The name adds vocabulary, not design, and most of what is worth knowing about it is what the name does and does not establish. **What a Screen State Holder Is Responsible For** covers that owner's responsibilities in depth."
                 },
                 {
                   "type": "code",
@@ -16130,7 +16130,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "There is no `PracticeConfigView` interface, nothing to attach, and nothing to detach. The observable value is shown here as a `StateFlow` because that is what this curriculum's stack uses, and it is worth saying plainly that **the choice of carrier is not part of the pattern**: an observing UI can read a `StateFlow`, a Compose snapshot state object, a platform observable, or a callback registration, and the responsibility arrangement is unchanged. The coroutines curriculum owns how `StateFlow` behaves; nothing in this lesson depends on those mechanics."
+                  "text": "There is no `PracticeConfigView` interface, nothing to attach, and nothing to detach. The observable value is shown here as a `StateFlow`, a Kotlin stream that always holds one current value, but **the choice of carrier is not part of the pattern**: an observing UI can read a `StateFlow`, a Compose snapshot state object, a platform observable, or a callback registration, and the responsibility arrangement is unchanged."
                 },
                 {
                   "type": "paragraph",
@@ -16138,7 +16138,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The second: **a folder layout does not make an architecture MVVM.** This is the architecture-versus-structure argument from the foundations unit applied to a pattern name, and it fails in exactly the same way."
+                  "text": "The second: **a folder layout does not make an architecture MVVM.**"
                 },
                 {
                   "type": "code",
@@ -16147,11 +16147,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "A directory name is a claim about where a file is, not about what depends on what. Two projects with identical trees can differ completely in mutation path and dependency direction, which is the property the foundations unit established with two package trees and one architecture. If you want to know whether a codebase is MVVM-shaped, the three-second test is not to open the project pane: it is to search whether anything in the behaviour owners holds a reference to a UI type."
+                  "text": "A directory name is a claim about where a file is, not about what depends on what. Two projects with identical trees can differ completely in mutation path and dependency direction. If you want to know whether a codebase has an MVVM arrangement, the three-second test is not to open the project pane: it is to search whether anything in the behaviour owners holds a reference to a UI type."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The third correction gets a full comparison in the classification lesson, but it belongs here as a warning: **the number of observable values does not define MVVM.** An owner that exposes one combined UI state and an owner that exposes four separate observables both satisfy the arrangement — state out, intentions in, no view reference, one write path. The choice between them is a real decision with real consequences, and the state-holder unit weighed them: one value makes each emission a complete, consistent description of the screen, so a consumer never observes it part-way through a multi-field change, while several values allow exactly that. That is a state-modelling trade-off. It is not what the pattern name is about, and a team that switches from four values to one has changed its state model, not its architecture."
+                  "text": "The third: **the number of observable values does not define MVVM.** An owner that exposes one combined UI state and an owner that exposes four separate observables both satisfy the arrangement — state out, intentions in, no view reference, one write path. The choice between them is a real decision with real consequences: one value makes each emission a complete, consistent description of the screen, so a consumer never observes it part-way through a multi-field change, while several values allow exactly that. That is a state-modelling trade-off. It is not what the pattern name is about, and a team that switches from four values to one has changed its state model, not its architecture."
                 },
                 {
                   "type": "paragraph",
@@ -16169,19 +16169,19 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Why is the absent view reference the load-bearing property, rather than one characteristic among several? Because every other MVVM characteristic is a consequence of it, and it is the only one that cannot be removed without the arrangement becoming something else. Once the owner cannot call the UI, output must become something the UI *reads* rather than something the owner *pushes*, and that inversion is what the rest follows from. Be careful about how much it forces, though: it makes consumer-read output the only channel, and the overwhelmingly common form of that is current state, but it does not make every output current state. An owner holding no view reference can still publish one-off instructions for the UI to collect, which is a design question the next two lessons take up. What the inversion does settle is that the owner no longer needs to know whether anyone is currently looking, which is what makes it safe for the UI to be absent. Once it is safe for the UI to be absent, the owner can be exercised — and reasoned about — without constructing one. Reverse the order and none of it works: you can publish state from an owner that also holds a view reference, and you will still have the attach-and-detach problem, because the problem was never the shape of the output."
+                  "text": "Why is the absent view reference the load-bearing property, rather than one characteristic among several? Because every other MVVM characteristic is a consequence of it, and it is the only one that cannot be removed without the arrangement becoming something else. Once the owner cannot call the UI, output must become something the UI *reads* rather than something the owner *pushes*, and that inversion is what the rest follows from. Be careful about how much it forces, though: it makes consumer-read output the only channel, and the overwhelmingly common form of that is current state, but it does not make every output current state. An owner holding no view reference can still publish one-off instructions for the UI to collect, and how such outputs are delivered is a design question of its own. What the inversion does settle is that the owner no longer needs to know whether anyone is currently looking, which is what makes it safe for the UI to be absent. Once it is safe for the UI to be absent, the owner can be exercised — and reasoned about — without constructing one. Reverse the order and none of it works: you can publish state from an owner that also holds a view reference, and you will still have the attach-and-detach problem, because the problem was never whether output is pushed or published."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The terminology variance around this name is worth carrying into an interview. The arrangement descends from Fowler's **Presentation Model**, which represents \"the state and behavior of the presentation independently of the GUI controls used in the interface\" — and Fowler describes it with *both* possible reference directions, the presentation model referencing the view or the view referencing the presentation model, with different trade-offs for each. The name MVVM itself arrived later, from a platform whose declarative data binding made the second direction the default. That history is why sources disagree today about whether data binding is required, whether a class has to be called `ViewModel`, whether a screen may expose more than one observable, and what the commands or one-off messages between UI and owner should look like. What no credible source disagrees about is the direction of the dependency, which is why this curriculum defines the pattern by it."
+                  "text": "The terminology variance around this name is worth carrying into an interview. The arrangement descends from Fowler's **Presentation Model**, which represents \"the state and behavior of the presentation independently of the GUI controls used in the interface\" — and Fowler describes it with *both* possible reference directions, the presentation model referencing the view or the view referencing the presentation model, with different trade-offs for each. The name MVVM itself arrived later, from a platform whose declarative data binding made the second direction the default. That history is why sources disagree today about whether data binding is required, whether a class has to be called `ViewModel`, whether a screen may expose more than one observable, and what the commands or one-off messages between UI and owner should look like. What no credible source disagrees about is the direction of the dependency, which makes it the most reliable definition of the pattern."
                 },
                 {
                   "type": "paragraph",
-                  "text": "A related point of precision, and this curriculum has been careful about it before: do not translate \"the owner does not reference the view\" into claims about what survives what. Whether a particular owner outlives a particular UI instance is decided by whatever holds that owner, and on a multiplatform target it is decided by whichever host supplies that thing — which the state-holder unit worked through one situation at a time. The dependency direction and the lifetime are separate facts. MVVM settles the first and says nothing at all about the second, and an answer that conflates them will not survive a follow-up question."
+                  "text": "A related point of precision: \"the owner does not reference the view\" says nothing about what survives what. Whether a particular owner outlives a particular UI instance is decided by whatever holds that owner, and on a multiplatform target by whichever host supplies that holder. The dependency direction and the lifetime are separate facts. MVVM settles the first and says nothing at all about the second, and an answer that conflates them will not survive a follow-up question."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Finally, the boundary of the claim. MVVM is a *presentation* responsibility model. Adopting it decides nothing about whether there is a repository, whether the data layer exposes streams or suspending functions, whether a domain layer exists, how dependencies are supplied, or how the app is modularised — all of which the previous units showed to be independent decisions with their own conditions. \"We're MVVM\" is an answer to questions three, four and five about one screen. It is not an application architecture, and treating it as one is how teams end up believing that a structural choice was made for them."
+                  "text": "Finally, the boundary of the claim. MVVM is a *presentation* responsibility model. Adopting it decides nothing about whether there is a repository, whether the data layer exposes streams or suspending functions, whether a domain layer exists, how dependencies are supplied, or how the app is modularised — each an independent decision with its own conditions. \"We're MVVM\" is an answer to questions three, four and five about one screen. It is not an application architecture, and treating it as one is how teams end up believing that a structural choice was made for them."
                 },
                 {
                   "type": "callout",
@@ -16236,7 +16236,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The practice-configuration screen has not changed and will not change: the same options to load, the same selections, the same cross-validation, the same Start rule, the same failure and retry. What changes in this lesson is how two of the five answers are *modelled*. The owner still publishes state and still holds no reference to the UI — questions three and five have the same answers as the previous lesson. Model-View-Intent's contribution is to question four, and to something the five questions do not ask directly: what happens in between."
+                  "text": "Take a practice-configuration screen — load the available options, hold a topic, a difficulty and a question count, validate them together, enable Start only when the combination is valid, fail and retry — designed as in MVVM: the owner publishes state and holds no reference to the UI. Model-View-Intent keeps those answers. What it changes is how input reaching the owner is *modelled*, and something the usual classification questions — where state lives, who may mutate it, whether the owner knows the UI, how input arrives, how output returns — do not ask directly: what happens between one state and the next."
                 },
                 {
                   "type": "paragraph",
@@ -16258,7 +16258,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The function or logic that performs that step — given the current state and an input, produce the next state — is what **reduction** names, and the thing that does it is usually called a **reducer**. Be careful with how much that word is taken to imply, because this is where Android adaptations differ most from each other. This curriculum's definition requires only that the transition is explicit and that the next state is determined from the current state and the input. It does **not** require that the reducer be a pure function, that a `Store` type exist, that the transition live in its own class, or that any particular library be used. Those are implementation choices that vary between sources, and treating any one of them as the definition of MVI is the same mistake as treating a folder name as the definition of MVVM."
+                  "text": "The function or logic that performs that step — given the current state and an input, produce the next state — is what **reduction** names, and the thing that does it is usually called a **reducer**. Be careful with how much that word is taken to imply, because this is where Android adaptations differ most from each other. A workable definition requires only that the transition is explicit and that the next state is determined from the current state and the input. It does **not** require that the reducer be a pure function, that a `Store` type exist, that the transition live in its own class, or that any particular library be used. Those are implementation choices that vary between sources, and treating any one of them as the definition of MVI is the same mistake as treating a folder name as the definition of MVVM."
                 },
                 {
                   "type": "callout",
@@ -16272,7 +16272,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The clearest way to see what this buys is to write one transition out in full. The reader has chosen a topic and no difficulty yet, so Start is not allowed. Then they choose a difficulty."
+                  "text": "The clearest way to see what this buys is to write one transition out in full. The user has chosen a topic and no difficulty yet, so Start is not allowed. Then they choose a difficulty."
                 },
                 {
                   "type": "code",
@@ -16281,7 +16281,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Notice where the validation went. `canStart` is not something the UI computes and not something a caller sets: it is part of the next state, decided during the transition from the topic and the difficulty that the next state holds. This is the same invariant argument the state-holder unit made about ownership, expressed in a different shape — an invariant that the transition establishes cannot be broken by anything downstream, because nothing downstream produces state. What MVI adds is that the moment the invariant is applied is now a named, readable place rather than a line inside whichever handler happened to run."
+                  "text": "Notice where the validation went. `canStart` is not something the UI computes and not something a caller sets: it is part of the next state, decided during the transition from the topic and the difficulty that the next state holds. An invariant that the transition establishes cannot be broken by anything downstream, because nothing downstream produces state — the same reason a single owner with one write path protects its invariants. What MVI adds is that the moment the invariant is applied is now a named, readable place rather than a line inside whichever handler happened to run."
                 },
                 {
                   "type": "code",
@@ -16290,7 +16290,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That is enough code to make the model visible and deliberately no more. What it buys is worth listing precisely, because each item is a property a reader can check for rather than a slogan:"
+                  "text": "What this buys can be listed precisely, as properties you can check for rather than slogans:"
                 },
                 {
                   "type": "bullet_list",
@@ -16303,11 +16303,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Equally important is what it does **not** buy, and this list exists because each of these is claimed somewhere. Modelling input as values and transitions explicitly does not make the transitions correct — a wrong rule inside `reduce` is exactly as wrong as a wrong rule inside a handler. It does not provide thread safety, which depends on how the state is held and updated. It does not persist anything; the state value vanishes with its owner exactly as any other in-memory state does. It does not guarantee that anything happens once. And it says nothing about rendering performance, which is the subject of a correction below."
+                  "text": "Equally important is what it does **not** buy, since each of these is claimed somewhere. Modelling input as values and transitions explicitly does not make the transitions correct — a wrong rule inside `reduce` is exactly as wrong as a wrong rule inside a handler. It does not provide thread safety, which depends on how the state is held and updated. It does not persist anything; the state value vanishes with its owner exactly as any other in-memory state does. It does not guarantee that anything happens once. And it says nothing about rendering performance, which is the subject of a correction below."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The ceremony has to be counted honestly, in things rather than in the word \"boilerplate\":"
+                  "text": "The ceremony is real, and it can be counted in things rather than in the word \"boilerplate\":"
                 },
                 {
                   "type": "bullet_list",
@@ -16321,7 +16321,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That fourth item deserves care, including about vocabulary. A navigation request is not a description of the screen's current condition, so it does not belong in the state value — and in MVI material such an output is frequently called an **effect**. That word is already taken in this curriculum. Compose's `LaunchedEffect`, `DisposableEffect` and `SideEffect` are a family of APIs for running work tied to a composition's lifetime, and they have nothing whatever to do with MVI's one-off outputs. Whenever the MVI sense is meant here it is qualified — an *MVI-style side output*, or *a one-off output sometimes called an effect in MVI literature* — and the bare word is never used for either. Naming the design question is as far as this lesson goes: which mechanism delivers such an output, what happens if nobody is listening, whether a late consumer should still act on it, and how anything records that it was handled are the subject of the next unit, which starts from the guarantee the requirement needs rather than from a mechanism."
+                  "text": "That fourth item needs care, including about vocabulary. A navigation request is not a description of the screen's current condition, so it does not belong in the state value — and in MVI material such an output is frequently called an **effect**. In Compose, `LaunchedEffect`, `DisposableEffect` and `SideEffect` already use that word for APIs that run work tied to a composition's lifetime, and they have nothing to do with MVI's one-off outputs. In a Compose codebase, make it explicit when \"effect\" means a one-off output — an *MVI-style side output*, or *a one-off output sometimes called an effect* — rather than using the bare word for both. Which mechanism delivers such an output, what happens if nobody is listening, whether a late consumer should still act on it, and how anything records that it was handled are separate questions, answered from the guarantee the requirement needs; **Lost, Repeated or Acknowledged: Stating an Occurrence's Guarantee** works through them."
                 },
                 {
                   "type": "callout",
@@ -16335,19 +16335,19 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Two more claims have to be rejected explicitly, because both are common enough to appear in interviews as though they were settled. The first is **\"MVVM means several state streams and MVI means one\"**. Stream count is a state-modelling decision, and both patterns are compatible with either answer: an owner with no view reference publishing one combined immutable value is a perfectly ordinary MVVM-style design, and an MVI-influenced implementation can perfectly well be built on machinery that is not a `StateFlow` at all. Counting observables tells you about the state model; it tells you nothing about whether input is modelled as values or whether transitions are explicit. The classification lesson puts designs in front of you that make this obvious."
+                  "text": "Two more claims have to be rejected explicitly, because both are common enough to appear in interviews as though they were settled. The first is **\"MVVM means several state streams and MVI means one\"**. Stream count is a state-modelling decision, and both patterns are compatible with either answer: an owner with no view reference publishing one combined immutable value is a perfectly ordinary MVVM-style design, and an MVI-influenced implementation can perfectly well be built on machinery that is not a `StateFlow` at all. Counting observables tells you about the state model; it tells you nothing about whether input is modelled as values or whether transitions are explicit. **Classifying What a Real Codebase Actually Does** puts concrete designs side by side that make this obvious."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The second is **\"MVI reduces recompositions\"**, and it does not survive contact with how Compose actually decides to re-execute anything. Invalidation follows from which state a composable reads, how that state compares for equality, and how the UI is structured — none of which a pattern name determines. The honest statement runs the other way as well: moving from several narrow observables to one large state value can cause a composable that reads the whole value to re-execute for changes it does not care about, so the change can increase recomposition rather than reduce it. Whatever is true for a particular screen is a fact about that implementation's state reads and stability, which the Compose curriculum owns, and no pattern label predicts it. A candidate who names the pattern as the reason for a performance property has made a claim they cannot support."
+                  "text": "The second is **\"MVI reduces recompositions\"**, and it does not survive contact with how Compose actually decides to re-execute anything. Invalidation follows from which state a composable reads, how that state compares for equality, and how the UI is structured — none of which a pattern name determines. The effect can even run the other way: moving from several narrow observables to one large state value can cause a composable that reads the whole value to re-execute for changes it does not care about, so the change can increase recomposition rather than reduce it. Whatever is true for a particular screen is a fact about that implementation's state reads and stability, and no pattern label predicts it; **Stability and Skipping** covers how Compose decides. A candidate who names the pattern as the reason for a performance property has made a claim they cannot support."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The origin explains most of the variance you will meet. MVI comes from **Cycle.js**, a fully reactive JavaScript framework, where André Staltz described it as a composition of functions over streams: \"Intent: function from Observable of user events to Observable of 'actions'\" and \"Model: function from Observable of actions to Observable of state\", with a cycle in which \"the user's rendering reacts to the View's output, which reacts to the Model's output, which reacts to the Intent's output (actions), which reacts to user events\". That is a stricter and more functional formulation than most Android implementations adopt, and it arrived in Android as an adaptation — several adaptations, in fact, which differ from the original and from each other on whether reduction must be pure, whether a store abstraction exists, how side outputs are delivered, and whether every input value is called an intent. **No adaptation is canonical**, and presenting a particular library's implementation as MVI itself is the error this unit exists to prevent."
+                  "text": "The origin explains most of the variance you will meet. MVI comes from **Cycle.js**, a fully reactive JavaScript framework, where André Staltz described it as a composition of functions over streams: \"Intent: function from Observable of user events to Observable of 'actions'\" and \"Model: function from Observable of actions to Observable of state\", with a cycle in which \"the user's rendering reacts to the View's output, which reacts to the Model's output, which reacts to the Intent's output (actions), which reacts to user events\". That is a stricter and more functional formulation than most Android implementations adopt, and it arrived in Android as an adaptation — several adaptations, in fact, which differ from the original and from each other on whether reduction must be pure, whether a store abstraction exists, how side outputs are delivered, and whether every input value is called an intent. **No adaptation is canonical**, and presenting a particular library's implementation as MVI itself turns one team's implementation choices into a definition."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Which leaves the useful question, the one an interviewer is actually asking: when is this modelling worth its ceremony? The honest answer is that it scales with how much of the screen's difficulty lives in its transitions. A screen whose state is three independent fields and whose rules are trivial pays the ceremony and gets an enumeration it did not need. A screen where many inputs interact, where invalid combinations are genuinely reachable, and where \"how did it get into this state\" is a question people actually ask, gets a model that answers it. That is a proportionality judgement of the kind this subject closes on, and — as with every structural decision in the previous four units — the fact that the technique exists is not an argument for applying it uniformly."
+                  "text": "Which leaves the question an interviewer is actually asking: when is this modelling worth its ceremony? It scales with how much of the screen's difficulty lives in its transitions. A screen whose state is three independent fields and whose rules are trivial pays the ceremony and gets an enumeration it did not need. A screen where many inputs interact, where invalid combinations are genuinely reachable, and where \"how did it get into this state\" is a question people actually ask, gets a model that answers it. That is a proportionality judgement, and — as with any structural decision — the fact that the technique exists is not an argument for applying it uniformly."
                 },
                 {
                   "type": "callout",
@@ -16377,7 +16377,7 @@
         {
           "id": "lesson_classifying_a_real_architecture",
           "title": "Classifying What a Real Codebase Actually Does",
-          "summary": "Real screens are not textbook diagrams. They borrow a lifecycle-owned state holder from one tradition, a single immutable state value from another, callbacks or action values from wherever the team landed, and they work. This lesson is the unit's payoff: classify such a design by its responsibilities first, name which traditions it resembles second, and use the four claims that do not survive classification — stream counts, sealed intents, recomposition and folder names — as the test of whether you are reading the architecture or the vocabulary.",
+          "summary": "Real screens are not textbook diagrams. They borrow a lifecycle-owned state holder from one tradition, a single immutable state value from another, callbacks or action values from wherever the team landed, and they work. Such a design is classified by its responsibilities first, by the traditions it resembles second, and by a label last. Four common claims — about stream counts, sealed intents, recomposition and folder names — fail when tested against concrete designs, and testing them is how to tell reading the architecture from reading the vocabulary.",
           "primarySubtopicIds": [
             "mvvm_vs_mvi"
           ],
@@ -16393,11 +16393,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The three previous lessons each showed one screen under one set of answers, which is how patterns are taught and not how code is written. A real screen is produced by a team making several decisions at different times for different reasons, and the result routinely takes its owner and lifetime from one tradition, its state model from another and its input shape from a third. That is not sloppiness; it is what happens when the decisions really are independent — and the previous four units spent their length establishing that they are."
+                  "text": "Pattern descriptions show one screen under one set of answers, which is not how code is written. A real screen is produced by a team making several decisions at different times for different reasons, and the result routinely takes its owner and lifetime from one tradition, its state model from another and its input model from a third. That is not sloppiness; it is what happens when the decisions really are independent — and ownership, state modelling, input modelling and dependency direction can each be decided without the others."
                 },
                 {
                   "type": "paragraph",
-                  "text": "So the skill this unit is actually for is classification, and it has a fixed order. **Describe the responsibilities, then identify the traditions, then — and only then — reach for a label.**"
+                  "text": "Classifying such a screen has a fixed order. **Describe the responsibilities, then identify the traditions, then — and only then — reach for a label.**"
                 },
                 {
                   "type": "bullet_list",
@@ -16424,7 +16424,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Three designs, all realistic, none of them a textbook instance of anything. Read each one by the answers rather than by the shape of the summary."
+                  "text": "Three designs, all realistic, none of them a textbook instance of anything. Read each one by its answers rather than by its label."
                 },
                 {
                   "type": "comparison",
@@ -16474,20 +16474,20 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Input is now a value, so by the claim this is MVI. But nothing about the transition changed: the next state is still assembled by a sequence of updates inside each branch, the validation is still a separate call that can be forgotten, and there is still no function from a state and an input to a state that anyone can read or reason about. What was added is a spelling for the input; what MVI is actually about — the transition discipline — is exactly as absent as it was before. This is the single most useful thing to be able to demonstrate in an interview on this subject, because it separates people who have adopted a shape from people who chose a model."
+                  "text": "Input is now a value, so by the claim this is MVI. But nothing about the transition changed: the next state is still assembled by a sequence of updates inside each branch, the validation is still a separate call that can be forgotten, and there is still no function from a state and an input to a state that anyone can read or reason about. What was added is a spelling for the input; what MVI is actually about — the transition discipline — is exactly as absent as it was before. This is the single most useful thing to be able to demonstrate in an interview on this subject, because it separates people who have adopted a syntax from people who chose a model."
                 },
                 {
                   "type": "paragraph",
-                  "text": "**\"MVI reduces recompositions.\"** Compose re-executes a composable because of which state it read, how that state compares for equality and how the UI is structured; no pattern label is an input to any of those decisions. Concretely: design C's four observables let a composable subscribe to only the one it renders, while design A's single value means a composable reading the whole state can be invalidated by a change to a field it never displays. So the design usually labelled \"more MVI\" can re-execute *more*, not less. Whatever is true of a particular screen is a fact about its state reads and stability — the Compose curriculum's subject — and any performance claim attached to a pattern name is a claim about one implementation wearing a label."
+                  "text": "**\"MVI reduces recompositions.\"** Compose re-executes a composable because of which state it read, how that state compares for equality and how the UI is structured; no pattern label is an input to any of those decisions. Concretely: design C's four observables let a composable subscribe to only the one it renders, while design A's single value means a composable reading the whole state can be invalidated by a change to a field it never displays. So the design usually labelled \"more MVI\" can re-execute *more*, not less. Whatever is true of a particular screen is a fact about its state reads and stability, and any performance claim attached to a pattern name is a claim about one implementation wearing a label."
                 },
                 {
                   "type": "paragraph",
-                  "text": "**\"The folder layout tells me the pattern.\"** Put designs A, B and C in identical `model/ view/ viewmodel/` trees and the trees say nothing about what distinguishes them. Worse, put an MVP presenter in a file under `viewmodel/`, holding a view interface and calling `setStartEnabled` on it, and the tree still reads as MVVM while the architecture is the one from two lessons ago. A directory is a claim about where a file is; the five questions are about what depends on what and who may write what."
+                  "text": "**\"The folder layout tells me the pattern.\"** Put designs A, B and C in identical `model/ view/ viewmodel/` trees and the trees say nothing about what distinguishes them. Worse, put an MVP presenter in a file under `viewmodel/`, holding a view interface and calling `setStartEnabled` on it, and the tree still reads as MVVM while the architecture is MVP. A directory is a claim about where a file is; the five questions are about what depends on what and who may write what."
                 },
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Trying to decide whether a codebase \"is really MVVM or really MVI\" before describing what it does. The question has no answer in the general case, because the two names do not partition the space of designs — and a team's own label is a fact about the team, not about the code. Describe ownership, mutation path, view knowledge, input shape and transition explicitness; the classification is then a summary of things you have established rather than a vote."
+                  "text": "Trying to decide whether a codebase \"is really MVVM or really MVI\" before describing what it does. The question has no answer in the general case, because the two names do not partition the space of designs — and a team's own label is a fact about the team, not about the code. Describe ownership, mutation path, view knowledge, input model and transition explicitness; the classification is then a summary of things you have established rather than a vote."
                 }
               ]
             },
@@ -16496,28 +16496,24 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "One more piece of evidence for the whole argument. A `LessonScrollStateReducer` takes raw scroll positions and turns them into a `LessonScrollUiState` describing whether the reading chrome should be shown — a transition function, named a reducer, in an application nobody would describe as MVI. It is also instructive about how loosely the word travels: it is not a pure function of a state and an input, because it accumulates scroll distance across calls in its own fields. Both observations point the same way. An architectural technique — an explicit transition, a state value, a closed input type — is available to any design that finds it useful, and using one does not enrol a codebase in a pattern. **This is evidence that techniques travel independently of labels; it is not evidence that the application \"uses MVI\", and reading it that way would be exactly the inference this unit rejects.**"
+                  "text": "The same independence shows up in code that makes no architectural claim at all. Consider a feed screen in an application nobody would describe as MVI. A `ToolbarScrollReducer` takes raw scroll offsets and turns them into a `ToolbarUiState` saying whether the top bar should be shown — a transition function, named a reducer. It also shows how loosely the word travels: it is not a pure function of a state and an input, because it accumulates scroll distance across calls in its own fields. Both observations point the same way. An architectural technique — an explicit transition, a state value, a closed input type — is available to any design that finds it useful, and using one does not enrol a codebase in a pattern. One reducer shows that techniques travel independently of labels; it does not make the application MVI."
                 },
                 {
                   "type": "paragraph",
-                  "text": "A practice-configuration screen from the same codebase is a live instance of design A. `PracticeBuilderViewModel` holds one immutable `PracticeBuilderUiState` data class, exposes it read-only, takes named callbacks — select a count, toggle a level, select a source, retry — holds no reference to any UI instance, derives whether Start is allowed from the state rather than accepting it from a caller, and sends its one outward occurrence through a separate channel because a request to start a session is not a description of what the screen currently is. There is no action type and no reducer. Classified by the six answers it is unambiguous; labelled, it is whatever the team says, and the label would change nothing about how it behaves."
+                  "text": "Design A is just as recognisable in ordinary code. Take a checkout screen: `CheckoutViewModel` holds one immutable `CheckoutUiState` data class, exposes it read-only, takes named callbacks — choose a delivery slot, apply a voucher, retry — holds no reference to any UI instance, derives whether Place Order is allowed from the state rather than accepting it from a caller, and sends its one outward occurrence through a separate channel, because a request to open the confirmation screen is not a description of what the screen currently is. There is no action type and no reducer. Classified by the six answers it is unambiguous; labelled, it is whatever the team says, and the label would change nothing about how it behaves."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Two boundaries keep this unit's conclusions the right size. The first: these are **presentation** responsibility models. Choosing MVP, MVVM or MVI does not decide whether there is a repository, which source is authoritative, whether the data layer exposes streams or suspending functions, whether a domain layer earns its place, how dependencies are supplied, how navigation works, or how the project is modularised. Every one of those was shown in the previous units to be an independent decision with its own conditions, and an answer that treats a pattern name as having settled them is describing a convention rather than an architecture."
+                  "text": "Two limits keep these conclusions the right size. First, these are **presentation** responsibility models: choosing MVP, MVVM or MVI does not decide whether there is a repository, which source is authoritative, whether the data layer exposes streams or suspending functions, whether a domain layer earns its place, how dependencies are supplied, how navigation works, or how the project is modularised, and an answer that treats a pattern name as having settled those is describing a convention rather than an architecture. Second, they are **not alternatives to Clean Architecture**. Its dependency rule is about which way source dependencies point between policy and detail; MVP, MVVM and MVI are about how one screen's behaviour owner relates to its UI. A codebase can coherently have inward-pointing dependencies, an MVVM-style presentation arrangement and MVI-style explicit transitions inside some of its state owners — three independent decisions that happen to have vocabulary attached, not a hybrid needing a name."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The second: these patterns are **not alternatives to Clean Architecture**, and the previous unit is the reason the question arises at all. The dependency rule is a statement about which way source dependencies point between policy and detail; MVP, MVVM and MVI are statements about how one screen's behaviour owner relates to its UI. They answer different questions at different scales, so a codebase can perfectly coherently have inward-pointing dependencies in the Clean Architecture sense, an MVVM-style presentation arrangement, and MVI-style explicit transitions inside some of its state owners. That combination is not a contradiction and not a hybrid needing a name; it is three independent decisions that happen to have vocabulary attached."
-                },
-                {
-                  "type": "paragraph",
-                  "text": "Which is what makes the interview version of this answerable. Asked \"do you use MVVM or MVI?\", the weak answer picks one. The strong answer describes and then names: *we use a screen-scoped state owner that publishes one immutable state; the UI sends intentions and observes that state; the owner holds no reference to the view; a few screens with genuinely interacting inputs model those inputs as values and put the transition in one reducer function, and the rest use callbacks. The team calls that MVVM, though it borrows MVI-style state modelling where it pays.* Everything in it is checkable, none of it depends on the interviewer sharing your definitions, and the last clause tells them you know the definitions are contested. Do not memorise it as a script — the reason it works is that every clause is one of the five answers, which means you can produce it for any codebase you have actually read."
+                  "text": "Which is what makes the interview version of this answerable. Asked \"do you use MVVM or MVI?\", the weak answer picks one. The strong answer describes and then names: *we use a screen-scoped state owner that publishes one immutable state; the UI sends intentions and observes that state; the owner holds no reference to the view; a few screens with genuinely interacting inputs model those inputs as values and put the transition in one reducer function, and the rest use callbacks. The team calls that MVVM, though it borrows MVI-style state modelling where it pays.* Everything in it is checkable, none of it depends on the interviewer sharing your definitions, and the last clause tells them you know the definitions are contested. It is not a script to memorise: it works because every clause is one of the five answers, which means you can produce it for any codebase you have actually read."
                 },
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Be ready to classify an unfamiliar screen out loud: state location, mutation path, view knowledge, input shape, output shape, transition explicitness — then the label. Be ready to falsify the four claims with an implementation rather than a contradiction. And be ready to say what a pattern name does not decide: the data layer, the domain layer, dependency supply, navigation, modularization, or anything measurable about rendering."
+                  "text": "Be ready to classify an unfamiliar screen out loud: state location, mutation path, view knowledge, input model, output model, transition explicitness — then the label. Be ready to falsify the four claims with an implementation rather than a contradiction. And be ready to say what a pattern name does not decide: the data layer, the domain layer, dependency supply, navigation, modularization, or anything measurable about rendering."
                 }
               ]
             }
@@ -16551,12 +16547,12 @@
       "id": "unit_state_events_lifetime_and_selection",
       "topicId": "architecture",
       "title": "State, Events, Lifetime and Architecture Selection",
-      "summary": "The five previous units each started from something that already existed — a boundary to judge, a screen owner to design, a repository to shape, a layer to justify, an arrangement to classify. This one starts from a product requirement and nothing built, and asks four questions in the order that makes them answerable: what must the application represent, what guarantee does that representation need, whose lifetime matches the guarantee, and how much structure does the whole feature earn? It adds no new mechanism. It applies the five units, and it finishes an argument the Compose curriculum deliberately left at a negative result — a transient in-memory mechanism cannot promise that an occurrence was handled, so this unit says what can, who would own it, and where the answer stops being architecture and becomes somebody else's curriculum. Finish it able to take one requirement and defend an architecture for it, including the frequent and correct answer that the smallest structure is enough.",
+      "summary": "Architecture work often starts from something that already exists — a boundary to judge, a screen owner to design, a repository to shape. A new feature starts from a requirement with nothing built yet, and four decisions follow in order. What must the application represent: something currently true, or something that happened? If it happened, what delivery guarantee does the requirement need — may it be lost, may it repeat, must a later consumer act on it, must the obligation survive the process? Whose lifetime matches that guarantee, from one UI element to something that outlives the process? And how much structure does the whole feature earn? A transient in-memory mechanism cannot promise that an occurrence was handled, so some requirements need a recorded, owned fact — and often the smallest structure is the correct one.",
       "lessons": [
         {
           "id": "lesson_state_or_occurrence",
           "title": "Is This State, or Is It Something That Happened?",
-          "summary": "One real-world fact — a practice session was scored — needs a different representation under different requirements: something currently true that the screen renders, something currently true that must survive the process, or something that happened and is executed once. This lesson separates the two dimensions hiding behind that comparison, corrects the facts most often misfiled as occurrences because they became true at a moment, and shows the duplicate-execution failure that follows from recording an occurrence as persistent current truth.",
+          "summary": "One real-world fact — a practice session was scored — needs a different representation under different requirements: something currently true that the screen renders, something currently true that must survive the process, or something that happened and is performed once. Two dimensions hide behind that comparison: whether the fact is currently true or happened, and how long a current truth must remain reconstructable. Facts that became true at a moment are often still state, and an occurrence recorded as persistent current truth with no rule for what \"already handled\" means will be performed twice.",
           "primarySubtopicIds": [
             "state_ownership"
           ],
@@ -16572,15 +16568,15 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The five previous units each began with something that already existed: a component to place, a boundary to judge, a repository to design, a layer to justify, a screen to classify. This one begins with a product requirement and nothing built. Its question runs in four steps — what must the application represent, what guarantee does that representation need, whose lifetime matches the guarantee, and how much structure does the whole feature earn — and this lesson answers the first."
+                  "text": "Designing a feature from a requirement, with nothing built yet, starts with one question before any type or owner is chosen: what must the application represent?"
                 },
                 {
                   "type": "paragraph",
-                  "text": "Start with the divide everything else hangs from, because getting it wrong is what produces the failures later in this lesson. **Is this something that is currently true, or something that happened?** A fact that is currently true is *rendered*: a screen reads it and draws it, and drawing it a second time changes nothing. Something that happened is *executed*: it is performed once, and performing it again is visible to the reader. The Compose curriculum established that contrast at the screen boundary and this unit applies it rather than re-deriving it."
+                  "text": "Start with the divide everything else hangs from, because getting it wrong produces the failures described below. **Is this something that is currently true, or something that happened?** A fact that is currently true is *rendered*: a screen reads it and draws it, and drawing it a second time changes nothing. Something that happened is *executed*: it is performed once, and performing it again is visible to the user. **Rendering State and Running a Transient Effect** draws the same contrast at the level of a single screen."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Then ask a second question, and ask it only of the first kind: **how long must that truth remain reconstructable?** Some current state is needed for as long as one component is on screen. Some is needed for as long as the destination exists. Some must still be correct after the process has been killed and started again. That is a requirement about lifetime, not a different kind of thing — which is why the three cases this lesson compares should not be read as three mutually exclusive runtime types."
+                  "text": "Then ask a second question, and ask it only of the first kind: **how long must that truth remain reconstructable?** Some current state is needed for as long as one component is on screen. Some is needed for as long as the destination exists. Some must still be correct after the process has been killed and started again. That is a requirement about lifetime, not a different kind of thing — which is why the three cases compared below should not be read as three mutually exclusive runtime types."
                 },
                 {
                   "type": "bullet_list",
@@ -16592,7 +16588,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The practical consequence of keeping the dimensions apart is that the two questions have different owners. The first decides the shape of the model — a value somebody publishes, or an occurrence somebody performs. The second decides *which* owner may hold it, and that is the next-but-one lesson's subject. Collapsing them into one three-way choice is how a design ends up with a durable record of something that should have vanished, or with a transient signal carrying something the product promised would survive."
+                  "text": "The practical consequence of keeping the dimensions apart is that the two questions have different owners. The first decides the kind of model — a value somebody publishes, or an occurrence somebody performs. The second decides *which* owner may hold it, and that is chosen from the lifetime the requirement needs, as **Choosing an Owner From the Lifetime the Requirement Needs** works through. Collapsing them into one three-way choice is how a design ends up with a durable record of something that should have vanished, or with a transient signal carrying something the product promised would survive."
                 },
                 {
                   "type": "callout",
@@ -16606,19 +16602,19 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Take one fact and hold it fixed: **the practice session was scored.** It is a single real event in the world — the reader answered the last question, the answers were marked, a result exists. Nothing about that sentence says what the application should build. Three different requirements about it produce three different answers, and every difference below comes from the requirement rather than from the fact."
+                  "text": "Take one fact and hold it fixed: **the practice session was scored.** It is a single real event in the world — the user answered the last question, the answers were marked, a result exists. Nothing about that sentence says what the application should build. Three different requirements about it produce three different answers, and every difference below comes from the requirement rather than from the fact."
                 },
                 {
                   "type": "paragraph",
-                  "text": "**Requirement A — the result screen must render the finished session.** The reader is looking at the score, the pass or fail verdict, their answers and the actions available next. What the application must represent here is a current truth: *this session currently has a completed result, and the result is this one.* A screen that arrives at this session later must immediately see the correct current result rather than waiting for something to be re-announced. That is current state with current-value semantics, which the streams curriculum already characterises."
+                  "text": "**Requirement A — the result screen must render the finished session.** The user is looking at the score, the pass or fail verdict, their answers and the actions available next. What the application must represent here is a current truth: *this session currently has a completed result, and the result is this one.* A screen that arrives at this session later must immediately see the correct current result rather than waiting for something to be re-announced. That is current state with current-value semantics: an observer arriving at any time reads the latest value immediately, as a `StateFlow` collector does."
                 },
                 {
                   "type": "paragraph",
-                  "text": "**Requirement B — the application must still know the score after the reader leaves.** They close the result screen, navigate elsewhere, background the app, come back tomorrow to a restarted process, and the session still reads as scored eight out of ten. Nothing about the representation's *kind* changed: it is still a fact that is currently true. What changed is its required retention — it must now survive every in-memory owner being destroyed, so it has to be recorded somewhere that outlives them and reconstructed from there. Which owner is authoritative for it is the source-of-truth decision the data-ownership unit makes, and the mechanism belongs to the persistence curriculum."
+                  "text": "**Requirement B — the application must still know the score after the user leaves.** They close the result screen, navigate elsewhere, background the app, come back tomorrow to a restarted process, and the session still reads as scored eight out of ten. Nothing about the representation's *kind* changed: it is still a fact that is currently true. What changed is its required retention — it must now survive every in-memory owner being destroyed, so it has to be recorded somewhere that outlives them and reconstructed from there. Which record is authoritative for it is a source-of-truth decision; **Which Source Is Authoritative?** covers that choice."
                 },
                 {
                   "type": "paragraph",
-                  "text": "**Requirement C — immediately after scoring, celebrate.** While the reader is still on the active result screen, play a short animation, give one haptic confirmation and show a brief congratulatory message. This is not a fact anyone renders; it is something the application *does*, once. And if the reader closed the app in the half-second before it ran, performing it tomorrow when they open the borrowed-items list would be wrong — a celebration for a session they finished yesterday and have already seen the result of. The occurrence may legitimately be lost."
+                  "text": "**Requirement C — immediately after scoring, celebrate.** While the user is still on the active result screen, play a short animation, give one haptic confirmation and show a brief congratulatory message. This is not a fact anyone renders; it is something the application *does*, once. And if the user closed the app in the half-second before it ran, performing it tomorrow when they next open the app would be wrong — a celebration for a session they finished yesterday and have already seen the result of. The occurrence may legitimately be lost."
                 },
                 {
                   "type": "comparison",
@@ -16639,7 +16635,7 @@
                       "B — still know it tomorrow, after a restart",
                       "The same current state, with a retention requirement: it must be reconstructable after every in-memory owner is gone",
                       "The same current result, read back from wherever it was recorded",
-                      "A defect, and a worse one: the application would have forgotten something the reader was told"
+                      "A defect, and a worse one: the application would have forgotten something the user was told"
                     ],
                     [
                       "C — celebrate on the active result screen",
@@ -16651,7 +16647,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The third row is the one worth pausing on, because it is routinely treated as an embarrassment to be engineered away. It is not. **Loss is a defect only when it violates the requirement**, and Requirement C's requirement is satisfied by doing nothing when nobody is there. The same is true of a haptic confirmation for a button the reader is pressing, or a request to scroll the visible list to the item that was just added: each is meaningful only in the presence of the UI it belongs to, and each is correctly discarded in its absence. Designing a durable record and an acknowledgement for any of them buys a guarantee nobody asked for and makes it permanent."
+                  "text": "The third row is routinely treated as an embarrassment to be engineered away. It is not. **Loss is a defect only when it violates the requirement**, and Requirement C's requirement is satisfied by doing nothing when nobody is there. The same is true of a haptic confirmation for a button the user is pressing, or a request to scroll the visible list to the item that was just added: each is meaningful only in the presence of the UI it belongs to, and each is correctly discarded in its absence. Designing a durable record and an acknowledgement for any of them buys a guarantee nobody asked for and makes it permanent."
                 },
                 {
                   "type": "callout",
@@ -16660,11 +16656,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Now the misfiling that costs the most, and it runs the other way. Some facts sound like occurrences because they became true at a particular moment, and they are state. *There is an unfinished practice session. The last submission failed. This borrowing request is awaiting approval. The reader's account needs another confirmation step before anything else can be borrowed.* Every one of those is the residue of something that happened — a session was abandoned, a submission failed, a request was filed — and in each case the requirement is not that somebody be told at the moment it happened. It is that a screen opening afterwards knows the current position."
+                  "text": "Now the misfiling that costs the most, and it runs the other way. Some facts sound like occurrences because they became true at a particular moment, and they are state. *There is an unfinished practice session. The last attempt to submit answers failed. This session's result is waiting for a reviewer. The account needs another confirmation step before a new session can start.* Every one of those is the residue of something that happened — a session was abandoned, a submission failed, a result was sent for review — and in each case the requirement is not that somebody be told at the moment it happened. It is that a screen opening afterwards knows the current position."
                 },
                 {
                   "type": "paragraph",
-                  "text": "So the past occurrence is not the important representation; the **current consequence** is. \"There is an unfinished practice session\" is a fact that stays true until the reader resumes or abandons it, and a screen that opens six days later must read it and offer to resume. Modelling that as something announced once, at the moment the session was abandoned, gives a screen that was not present nothing to read — and the reflex repair is to retain the announcement, which answers a different question badly instead of answering this one at all."
+                  "text": "So the past occurrence is not the important representation; the **current consequence** is. \"There is an unfinished practice session\" is a fact that stays true until the user resumes or abandons it, and a screen that opens six days later must read it and offer to resume. Modelling that as something announced once, at the moment the session was abandoned, gives a screen that was not present nothing to read — and the reflex repair is to retain the announcement, which answers a different question badly instead of answering this one at all."
                 },
                 {
                   "type": "paragraph",
@@ -16677,11 +16673,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Nothing is wrong with that value until somebody observes it a second time. The owner survives a configuration change, or the destination is still on the back stack when the reader returns to it, or the fact was written somewhere durable in service of Requirement B and read back on a fresh process — and the consumer reads `showCongratulations = true`, correctly concludes that the screen currently says a celebration is warranted, and celebrates again. The reader has now been congratulated twice for one session."
+                  "text": "Nothing is wrong with that value until somebody observes it a second time. The owner survives a configuration change, or the destination is still on the back stack when the user returns to it, or the fact was written somewhere durable in service of Requirement B and read back on a fresh process — and the consumer reads `showCongratulations = true`, correctly concludes that the screen currently says a celebration is warranted, and celebrates again. The user has now been congratulated twice for one session."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Be precise about what went wrong, because the usual diagnosis is wrong in a way that misdirects the repair. The defect is **not** that a boolean was used, and it is not that current state is the wrong tool for transient behaviour in general. The defect is that an occurrence was recorded as persistent current truth **without any rule for what \"already handled\" means.** The value says a celebration is warranted; it does not say whether one has happened; and no consumer can tell the difference from the value alone. Whether the fix is to keep the state and add that rule, or to stop representing it as state at all, is decided by the guarantee the requirement needs — which is the next lesson, and not something to settle by reaching for an occurrence wrapper type."
+                  "text": "Be precise about what went wrong, because the usual diagnosis is wrong in a way that misdirects the repair. The defect is **not** that a boolean was used, and it is not that current state is the wrong tool for transient behaviour in general. The defect is that an occurrence was recorded as persistent current truth **without any rule for what \"already handled\" means.** The value says a celebration is warranted; it does not say whether one has happened; and no consumer can tell the difference from the value alone. Whether the fix is to keep the state and add that rule, or to stop representing it as state at all, is decided by the guarantee the requirement needs — see **Lost, Repeated or Acknowledged: Stating an Occurrence's Guarantee** — and not by reaching for an occurrence wrapper type."
                 },
                 {
                   "type": "callout",
@@ -16695,7 +16691,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "There is a deeper reason the two dimensions cannot be collapsed, and it is the most useful thing in this lesson for an interview. **Current state is a lossy compression of the occurrences that produced it.** The result screen holds one value:"
+                  "text": "There is a deeper reason the two dimensions cannot be collapsed. **Current state is a lossy compression of the occurrences that produced it.** The result screen holds one value:"
                 },
                 {
                   "type": "code",
@@ -16704,19 +16700,19 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "and that value is enough to render everything the screen owes the reader. It is not enough to answer any question about how the session got there. Which answer was changed first, how long the reader spent on question six, whether the score was computed once or recomputed after a correction, how many intermediate values existed between the first answer and the last — none of it is recoverable, because none of it was recorded. The compression happened at the moment the application decided what to keep."
+                  "text": "and that value is enough to render everything the screen owes the user. It is not enough to answer any question about how the session got there. Which answer was changed first, how long the user spent on question six, whether the score was computed once or recomputed after a correction, how many intermediate values existed between the first answer and the last — none of it is recoverable, because none of it was recorded. The compression happened at the moment the application decided what to keep."
                 },
                 {
                   "type": "paragraph",
-                  "text": "That asymmetry is exactly why a consumer arriving late can be *correct about state* and cannot be *correct about history*. Give it the current value and it renders the truth; ask it what happened and it has nothing, and no retention setting on any stream changes that, because retention keeps the most recent values rather than the sequence that produced them. A late reader of `score = 8 / 10` cannot distinguish a session answered confidently in one pass from one answered twice with a correction, and if the product ever needs to distinguish them, that is a **new requirement** rather than a bug in the state."
+                  "text": "That asymmetry is exactly why a consumer arriving late can be *correct about state* and cannot be *correct about history*. Give it the current value and it renders the truth; ask it what happened and it has nothing, and no retention setting on any stream changes that, because retention keeps the most recent values rather than the sequence that produced them. A late observer of `score = 8 / 10` cannot distinguish a session answered confidently in one pass from one answered twice with a correction, and if the product ever needs to distinguish them, that is a **new requirement** rather than a bug in the state."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The conclusion is a design rule worth stating plainly: **if the product requires history, current state is not enough, and the requirement has to name the occurrences worth preserving as recorded facts in their own right.** \"Show the reader their last five practice sessions and how each was scored\" is not satisfied by holding the latest score better; it is satisfied by deciding that each scored session is a fact the application keeps. That is a modelling decision with a cost — more records, a retention policy, a decision about what counts as the same session — and it is made deliberately, for a stated requirement. It is emphatically not a reason to record every change to everything and derive all current state from the log; that is an architecture of its own, with consequences this curriculum does not teach and most products do not ask for."
+                  "text": "The design rule follows: **if the product requires history, current state is not enough, and the requirement has to name the occurrences worth preserving as recorded facts in their own right.** \"Show the user their last five practice sessions and how each was scored\" is not satisfied by holding the latest score better; it is satisfied by deciding that each scored session is a fact the application keeps. That is a modelling decision with a cost — more records, a retention policy, a decision about what counts as the same session — and it is made deliberately, for a stated requirement. It is emphatically not a reason to record every change to everything and derive all current state from the log; that is an architecture of its own, event sourcing, with consequences most products do not ask for."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Hold the two dimensions together one last time, because the useful quadrant is the one the three-way comparison hides. Requirements A and B are the *same* kind of thing at two retentions, and a fact that is both current state and durable is the ordinary case rather than a special one: the scored session, the list of loans, the reader's studied lessons. A plain example: a studied lesson is a durable fact in the database and a current truth projected in memory for the screens that render it, and a codebase that models it this way should be careful to say which of the two is authoritative. What varies across the three requirements is not the nature of the fact but what the product promised about it, and that is the only input the decision ever had."
+                  "text": "Holding the two dimensions together exposes the case the three-way comparison hides. Requirements A and B are the *same* kind of thing at two retentions, and a fact that is both current state and durable is the ordinary case rather than a special one: the scored session, a saved draft, an account's settings. A plain example: a scored session is a durable fact in the database and a current truth projected in memory for the screens that render it, and a design that models it this way has to say which of the two is authoritative. What varies across the three requirements is not the nature of the fact but what the product promised about it, and that is the only input the decision ever had."
                 },
                 {
                   "type": "callout",
@@ -16751,8 +16747,8 @@
         },
         {
           "id": "lesson_delivery_guarantees",
-          "title": "What Guarantee Does This Occurrence Need?",
-          "summary": "The Compose curriculum reached a negative result and stopped there: a transient in-memory mechanism cannot promise that an occurrence was handled. This lesson starts from that result and answers the question it left open. Four independent questions state the guarantee, a fifth asks whether the obligation must survive the process, and the answers decide who must own a readable pending-or-handled fact — before any stream type is considered, and without building a queue.",
+          "title": "Lost, Repeated or Acknowledged: Stating an Occurrence's Guarantee",
+          "summary": "A one-off occurrence needs a stated guarantee before any mechanism is chosen. Four independent questions state it — may it be lost, must a later consumer act on it, is repeated handling safe, must handling be recorded — and a fifth asks whether the obligation must survive the process. When a later consumer must act once, what satisfies the requirement is a readable pending-or-handled fact with an owner, not a stream type and not a queue.",
           "primarySubtopicIds": [
             "state_ownership"
           ],
@@ -16768,7 +16764,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The previous lesson sorted a fact into current state or an occurrence. If it is an occurrence, one question decides everything that follows, and it is not a question about a type: **what does the product actually guarantee about it?** The Compose curriculum asked that from the consumer's side and reached a deliberate stopping point — a requirement naming persistence, acknowledgement or guaranteed later handling has left the UI layer, and designing the owner on the other side is this curriculum's work. This lesson does that work."
+                  "text": "When something that happened must be acted on, one question decides everything that follows, and it is not a question about a type: **what does the product actually guarantee about it?** A transient in-memory mechanism can deliver an occurrence to a consumer that is present; it cannot promise that the occurrence was handled. A requirement that names persistence, acknowledgement or guaranteed later handling therefore needs an owner beyond the UI, and the guarantee decides what that owner must hold."
                 },
                 {
                   "type": "paragraph",
@@ -16789,7 +16785,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Only now is a mechanism a sensible thing to choose, and the order is the whole content of this lesson:"
+                  "text": "Only now is a mechanism a sensible thing to choose, and the order matters more than any single answer:"
                 },
                 {
                   "type": "code",
@@ -16808,7 +16804,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Work one real requirement through the questions. In the library application, a reader submits a borrowing request for a title that is currently on hold. The submission is sent, the library's system confirms it a minute or two later, and by then the reader has left the screen and backgrounded the app. The product's promise is explicit: the next time they open the application they must see that the request was confirmed, and the confirmation must be acknowledged once. Put beside it a second occurrence from the same screen — after a new loan appears in the list, scroll the list to it — and answer the five questions for both."
+                  "text": "Work one requirement through the questions. Consider a library application in which a reader submits a borrowing request for a title that is currently on hold. The submission is sent, the library's system confirms it a minute or two later, and by then the reader has left the screen and backgrounded the app. The product's promise is explicit: the next time they open the application they must see that the request was confirmed, and the confirmation must be acknowledged once. Put beside it a second occurrence from the same screen — after a new loan appears in the list, scroll the list to it — and answer the five questions for both."
                 },
                 {
                   "type": "comparison",
@@ -16847,11 +16843,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The right-hand column is a complete answer, and the correct design for it is the transient one the Compose curriculum already supplies. Giving it a durable record and an acknowledgement would be over-architecture in the precise sense the closing lesson of this unit defines: structure whose cost is real and whose requirement does not exist. The left-hand column is the one that has left the UI layer, and the rest of this lesson is about what it needs."
+                  "text": "The right-hand column is a complete answer, and the correct design for it is transient: scroll if the list is on screen, and drop the request otherwise (**What Delivery Guarantee Does This Occurrence Need?** covers delivering such UI effects). Giving it a durable record and an acknowledgement would be over-architecture: structure whose cost is real and whose requirement does not exist. The left-hand column is the one that has left the UI layer, and the rest of this argument is about what it needs."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Two conclusions from the streams curriculum apply immediately and are not re-derived here. The first concerns **replay**: a retention window changes what a subscriber arriving later can recover, and that is all it changes. It does not mean anybody handled the value, that it was handled only once, that it survived the process, or that the intended consumer was the one who got it — a collector created after a configuration change is simply a new subscriber, and it reads what was retained exactly as the first one did. Answering question two with a retention setting therefore also answers question three, badly, and usually without anyone noticing."
+                  "text": "Two facts about hot streams apply immediately. The first concerns **replay**: a retention window — a `SharedFlow`'s replay cache, or the current value a `StateFlow` always holds — changes what a subscriber arriving later can recover, and that is all it changes. It does not mean anybody handled the value, that it was handled only once, that it survived the process, or that the intended consumer was the one who got it — a collector created after a configuration change is simply a new subscriber, and it reads what was retained exactly as the first one did. Answering question two with a retention setting therefore also answers question three, badly, and usually without anyone noticing."
                 },
                 {
                   "type": "paragraph",
@@ -16868,15 +16864,15 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "A stream having accepted a value creates none of that. A retention cache creates none of it either: it holds the most recent values, and \"most recent\" is not \"outstanding\". The question the design has to answer out loud is **who owns the pending-or-handled truth**, because that owner's lifetime is what the guarantee actually rests on — which is the next lesson's subject, and the reason these two lessons are adjacent."
+                  "text": "A stream having accepted a value creates none of that. A retention cache creates none of it either: it holds the most recent values, and \"most recent\" is not \"outstanding\". The question the design has to answer out loud is **who owns the pending-or-handled truth**, because that owner's lifetime is what the guarantee actually rests on. **Choosing an Owner From the Lifetime the Requirement Needs** covers how to choose it."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Android's own guidance reaches this conclusion and is worth reading for its reason rather than its recommendation. It states the limit first — when the producer outlives the consumer, stream-based solutions for one-off events \"don't guarantee the delivery and processing of those events\" — and then says what to do instead: \"Handle such events immediately and reduce them to UI state\", because \"UI state better represents the UI at a given point in time, it gives you more delivery and processing guarantees\". Its worked shape is exactly the pending-or-handled pair above: the state carries the outstanding item, the UI acts on it, and then tells the owner, \"causing another UI state update to clear the `userMessage` property\"."
+                  "text": "Android's own guidance reaches this conclusion and is worth reading for its reason rather than its recommendation. It states the limit first — when the producer outlives the consumer, stream-based solutions for one-off events \"don't guarantee the delivery and processing of those events\" — and then says what to do instead: \"Handle such events immediately and reduce them to UI state\", because \"UI state better represents the UI at a given point in time, it gives you more delivery and processing guarantees\". Its worked example is exactly the pending-or-handled pair above: the state carries the outstanding item, the UI acts on it, and then tells the owner, \"causing another UI state update to clear the `userMessage` property\"."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The reason is the part worth carrying into an interview. **A current value is readable: a consumer arriving at any moment can ask whether work remains. A transient emission is not: a consumer arriving after it has nothing to ask.** That is why reduction to state answers question two and question four together, and it is also why it is a *conclusion from the requirement* rather than a universal rule. The right-hand column of the table above stays transient, and turning every occurrence into state would give the scroll request a lifetime and a clearing protocol it never needed."
+                  "text": "The reason is what carries into an interview. **A current value is readable: a consumer arriving at any moment can ask whether work remains. A transient emission is not: a consumer arriving after it has nothing to ask.** That is why reduction to state answers question two and question four together, and it is also why it is a *conclusion from the requirement* rather than a universal rule. The right-hand column of the table above stays transient, and turning every occurrence into state would give the scroll request a lifetime and a clearing protocol it never needed."
                 },
                 {
                   "type": "callout",
@@ -16890,23 +16886,23 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Be careful with \"exactly once\", because it is three different claims that a single sentence tends to merge. **Recording application handling state** is what a pending-or-acknowledged fact provides: the application can read whether an obligation remains outstanding. **Transport delivery** is what a stream or a network call provides, and it is a separate matter. **Side-effect execution** is whether the thing in the world actually happened once. The three come apart at one specific moment, and it is worth being exact about which way round it falls: if the process ends *after* the external action has been performed and *before* the record of it has been written, the action happened and the application has no idea that it did. The obligation still reads as outstanding, so whatever resumes it performs the action a second time. That is the ordinary reason a retry duplicates a request — not a failure to execute, but a missing record of an execution that succeeded — and no arrangement of owners closes that window by itself."
+                  "text": "Be careful with \"exactly once\", because it is three different claims that a single sentence tends to merge. **Recording application handling state** is what a pending-or-acknowledged fact provides: the application can read whether an obligation remains outstanding. **Transport delivery** is what a stream or a network call provides, and it is a separate matter. **Side-effect execution** is whether the thing in the world actually happened once. The three come apart at one specific moment, and the order matters: if the process ends *after* the external action has been performed and *before* the record of it has been written, the action happened and the application has no idea that it did. The obligation still reads as outstanding, so whatever resumes it performs the action a second time. That is the ordinary reason a retry duplicates a request — not a failure to execute, but a missing record of an execution that succeeded — and no arrangement of owners closes that window by itself."
                 },
                 {
                   "type": "paragraph",
-                  "text": "So prefer the claim the design can actually support. \"The application can record whether this obligation remains pending, and a consumer can read that record\" is honest and usually sufficient; \"this is handled exactly once\" is a much stronger promise, and general exactly-once processing is a subject outside this curriculum. Where a requirement genuinely needs the stronger property, the sources of it are things like an identity the external system recognises so that a repeat is recognisable as the same request — and that is a data-ownership and integration decision, not something a state holder arrangement provides on its own."
+                  "text": "So prefer the claim the design can actually support. \"The application can record whether this obligation remains pending, and a consumer can read that record\" is accurate and usually sufficient; \"this is handled exactly once\" is a much stronger promise, and general exactly-once processing is a distributed-systems problem in its own right. Where a requirement genuinely needs the stronger property, the sources of it are things like an identity the external system recognises so that a repeat is recognisable as the same request — and that is a data-ownership and integration decision, not something a state holder arrangement provides on its own."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Process death deserves the same precision, because it is where most confident designs fail. Every in-memory carrier disappears with the process: a `StateFlow`, a `SharedFlow`, a `Channel`, a state holder, a ViewModel. The ViewModel's own documentation places its lifetime with its `ViewModelStoreOwner` — \"A `ViewModel` remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears\" — and names saved state as a *separate* mechanism that \"lets you persist data not just through configuration changes, but across process death\". Retained lifetime and durability are two facts, and neither implies the other. If the fifth question is answered yes, the fact must live somewhere with a durability contract, and which mechanism that is belongs to the persistence and lifecycle curricula rather than here."
+                  "text": "Process death deserves the same precision, because it is where most confident designs fail. Every in-memory carrier disappears with the process: a `StateFlow`, a `SharedFlow`, a `Channel`, a state holder, a ViewModel. The ViewModel's own documentation places its lifetime with its `ViewModelStoreOwner` — \"A `ViewModel` remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears\" — and names saved state as a *separate* mechanism that \"lets you persist data not just through configuration changes, but across process death\". Retained lifetime and durability are two facts, and neither implies the other. If the fifth question is answered yes, the fact must live somewhere with a durability contract, such as a local database."
                 },
                 {
                   "type": "paragraph",
-                  "text": "This is also where the unit deliberately stops. Having concluded that an obligation needs a recorded owner, it is tempting to keep going and build the general machinery — an application-wide event bus, a durable queue with consumers and offsets, a delivery protocol with retries and dead-letter handling, an outbox that ties the record and the external call into one transaction. Every one of those is a real subject with real trade-offs, and none of them is this curriculum's. The decision this lesson exists to teach is complete when you can say which guarantee is missing, which fact would have to exist, and who would own it. Building a messaging infrastructure is a different project, and reaching for one before that sentence can be said is the most expensive way to get this wrong."
+                  "text": "Once an obligation needs a recorded owner, it is tempting to keep going and build general machinery — an application-wide event bus, a durable queue with consumers and offsets, a delivery protocol with retries and dead-letter handling, an outbox that ties the record and the external call into one transaction. Each of those is a separate design problem with its own trade-offs. The decision here is complete when you can say which guarantee is missing, which fact would have to exist, and who would own it; reaching for messaging infrastructure before that sentence can be said is the most expensive way to get this wrong."
                 },
                 {
                   "type": "paragraph",
-                  "text": "One last framing, because it generalises past the example. A mechanism describes *delivery*; a requirement describes *handling*; and no description of delivery answers a question about handling. That is why the argument in this lesson never needed to compare two stream types, and why comparing them is the wrong first move: both of them lose everything they hold when the process ends, so if the fifth question is yes the comparison was decided before it began. If it is no, the answer is still not that either will do — it is that the four remaining guarantees do the choosing. Whether a consumer arriving later must receive the value, whether more than one consumer must, and whether losing it or repeating it is acceptable are precisely what replay, buffering, conflation and single-receiver against broadcast delivery decide, and the streams curriculum sets out which contract provides which. The mechanism becomes a detail only once every guarantee that applies is satisfied, which is the last step of the sequence rather than a way of skipping it."
+                  "text": "A mechanism describes *delivery*; a requirement describes *handling*; and no description of delivery answers a question about handling. That is why the argument above never needed to compare two stream types, and why comparing them is the wrong first move: both of them lose everything they hold when the process ends, so if the fifth question is yes the comparison was decided before it began. If it is no, the answer is still not that either will do — it is that the four remaining guarantees do the choosing. Whether a consumer arriving later must receive the value, whether more than one consumer must, and whether losing it or repeating it is acceptable are precisely what replay, buffering, conflation and single-receiver against broadcast delivery decide, and each stream type's contract states which of them it provides; **Choosing a Stream Abstraction by Delivery Guarantees** compares them. The mechanism becomes a detail only once every guarantee that applies is satisfied, which is the last step of the sequence rather than a way of skipping it."
                 },
                 {
                   "type": "callout",
@@ -16958,7 +16954,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The previous lesson ended on a question it deliberately did not answer: an obligation needs an owner, so which one? The answer is not chosen from importance, from where the code already was, or from which scope happened to be available in the constructor. It is chosen from a single property of the requirement — **how long must this survive, and what event is allowed to end it?** — and the whole of this lesson is learning to read that property out of a requirement and match it."
+                  "text": "A piece of state, a unit of work or an outstanding obligation needs an owner — so which one? The answer is not chosen from importance, from where the code already was, or from which scope happened to be available in the constructor. It is chosen from a single property of the requirement — **how long must this survive, and what event is allowed to end it?** — and the decision is reading that property out of a requirement and matching it to an owner."
                 },
                 {
                   "type": "paragraph",
@@ -16975,7 +16971,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "So the question to ask of any piece of state or work is deliberately awkward: **what is the shortest lifetime that still satisfies the requirement?** Start at the bottom rung and move only when a stated requirement forces it, naming the requirement each time. That is the same cost discipline the foundations unit applied to boundaries, applied to lifetime instead."
+                  "text": "So the question to ask of any piece of state or work is: **what is the shortest lifetime that still satisfies the requirement?** Start at the bottom rung and move only when a stated requirement forces it, naming the requirement each time."
                 },
                 {
                   "type": "callout",
@@ -16989,7 +16985,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Put four requirements from one feature on that ladder. The borrowed-items screen lists a reader's loans; it can filter them; it refreshes; and from it the reader can submit a borrowing request for a title on hold. Four pieces of state or work, four different answers — and the screen-level owner, which is where all four would end up by default, is the wrong lifetime for two of them in opposite directions."
+                  "text": "Put four requirements from one feature on that ladder. Consider a library application whose borrowed-items screen lists a reader's loans; it can filter them; it refreshes; and from it the reader can submit a borrowing request for a title on hold. Four pieces of state or work, four different answers — and the screen-level owner, which is where all four would end up by default, is the wrong lifetime for two of them in opposite directions."
                 },
                 {
                   "type": "paragraph",
@@ -16997,19 +16993,19 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "**Two — the loaded loans, the current filter selection and the in-flight refresh.** All of this is about the destination: it is produced for this screen, it must survive a configuration change while the reader is on it, and it stops mattering the moment the destination is permanently gone. That is the screen-level owner, exactly as the state-holder unit designed it, and the refresh is exactly the owner-scoped work that unit described — cancelling it when the reader leaves is the correct outcome rather than a loss."
+                  "text": "**Two — the loaded loans, the current filter selection and the in-flight refresh.** All of this is about the destination: it is produced for this screen, it must survive a configuration change while the reader is on it, and it stops mattering the moment the destination is permanently gone. That is the screen-level owner — a screen state holder such as a ViewModel — and the refresh is work scoped to that owner: cancelling it when the reader leaves is the correct outcome rather than a loss."
                 },
                 {
                   "type": "paragraph",
-                  "text": "**Three — the studied-lesson and progress projections several screens share.** Now the requirement changes shape. More than one destination renders the same truth, those destinations are simultaneously alive on a back stack, and a change made in one must be visible in the others when the reader navigates back. Notice first what does **not** force the rung, because this is where the argument is most often waved through. Several screens needing one fact is not enough on its own: destination-scoped owners that each observe an *observable* source all receive the change as it happens, keep their own derived state, and none of them goes stale — which is the arrangement the data-ownership unit describes and the ordinary answer. The rung is forced only when there is no such source to observe, so that a change made in one destination reaches another only if something above both of them is holding the result. That is the situation the example below is in, which is why it is a worked example rather than a general rule."
+                  "text": "**Three — the loan count and overdue status several screens show.** Now the requirement changes. More than one destination renders the same truth, those destinations are simultaneously alive on a back stack, and a change made in one must be visible in the others when the reader navigates back. Notice first what does **not** force the rung, because this is where the argument is most often waved through. Several screens needing one fact is not enough on its own: destination-scoped owners that each observe an *observable* source all receive the change as it happens, keep their own derived state, and none of them goes stale — which is the ordinary answer when the data layer exposes observable reads. The rung is forced only when there is no such source to observe, so that a change made in one destination reaches another only if something above both of them is holding the result."
                 },
                 {
                   "type": "paragraph",
-                  "text": "In that example an `AppCoroutineScope` is a distinct type wrapping a scope with a `SupervisorJob`, deliberately named so that injecting it is unambiguous, and the reason it exists is stated rather than inferred: the caches built on it are shared by several screens and survive a navigation entry being destroyed, so they cannot belong to a `viewModelScope`. Five state holders receive it. That is the argument in the right order — a requirement about what must survive a navigation entry being destroyed, and then a scope chosen to match. It is worth adding what makes it defensible *there*, and the decisive detail is the one the previous paragraph named: **every repository in that application exposes one-shot suspending reads and none of them returns a `Flow`**, across every interface and implementation. There is therefore no observable source for a destination-scoped owner to subscribe to, and the shared projection exists to supply what an observable repository would otherwise have supplied — it is read back from the repository after every mutation and republished, with the database remaining the source of truth. That application is also local-first with no network layer. **Application scope is not the generic answer**, and it is not earned by the number of screens reading a fact; it was earned there by a data-layer shape that leaves nothing else to observe. Change that shape and this rung stops being the right one."
+                  "text": "Suppose the data layer exposes only one-shot suspending reads: each repository call returns a value once, and none returns a `Flow`. There is then nothing observable for a destination-scoped owner to subscribe to. A renewal made on the loan detail screen is written to the database, but the borrowed-items screen underneath it on the back stack keeps the count it loaded, and so does any other screen showing the same status. If several destinations need the same evolving projection, that projection needs an owner whose lifetime spans those destinations: something above them reads the value back after every mutation and republishes it, while the database remains the source of truth. Because the projection must survive any one navigation entry being destroyed, a `viewModelScope` cannot hold that work; it runs in an application-lifetime scope — for example, a dedicated type wrapping a scope with a `SupervisorJob`, named so that injecting it is unambiguous. That is the argument in the right order — a requirement about what must survive a navigation entry being destroyed, and then a scope chosen to match. **Application scope is not the generic answer**, and it is not earned by the number of screens reading a fact; here it is earned by a data layer with no observable reads. Change that, and this rung stops being the right one."
                 },
                 {
                   "type": "paragraph",
-                  "text": "That qualification is worth spending a paragraph on, because the application rung is the one most often taken for the wrong reason. An application-lifetime owner never goes away, so everything it holds never goes away either, and the costs are specific rather than stylistic:"
+                  "text": "The application rung is the one most often taken for the wrong reason. An application-lifetime owner never goes away, so everything it holds never goes away either, and the costs are specific rather than stylistic:"
                 },
                 {
                   "type": "bullet_list",
@@ -17024,7 +17020,7 @@
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "Moving work to an application-scoped owner because it was being cancelled. Cancellation is the screen owner doing its job, and the fact that it is inconvenient is evidence about the requirement rather than about the scope. Application scope is a deliberate lifetime, not an escape from cancellation — and if the requirement is that the work finishes regardless, the next rung down is usually the honest answer rather than this one."
+                  "text": "Moving work to an application-scoped owner because it was being cancelled. Cancellation is the screen owner doing its job, and the fact that it is inconvenient is evidence about the requirement rather than about the scope. Application scope is a deliberate lifetime, not an escape from cancellation — and if the requirement is that the work finishes regardless, the next rung down is usually the right answer rather than this one."
                 },
                 {
                   "type": "paragraph",
@@ -17032,7 +17028,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The honest conclusion is therefore that **an in-process coroutine owner is not enough, and this requirement leaves the scoping question entirely.** Android's own guidance draws the same line: asynchronous work \"is not guaranteed to finish if the app stops being in a valid lifecycle stage\", and the task-scheduling APIs are \"a more flexible option when you need to do tasks that need to continue even if the user leaves the app\". Which scheduler, which constraints, what retry and backoff policy and how the platform's execution rules apply are the background-work curriculum's subject, and this lesson stops at naming the rung."
+                  "text": "So **an in-process coroutine owner is not enough, and this requirement leaves the scoping question entirely.** Android's own guidance draws the same line: asynchronous work \"is not guaranteed to finish if the app stops being in a valid lifecycle stage\", and the task-scheduling APIs are \"a more flexible option when you need to do tasks that need to continue even if the user leaves the app\". On Android, that rung is usually a scheduler such as WorkManager, which records the work durably and runs it under the constraints and retry policy it was given; choosing those is a design problem of its own."
                 },
                 {
                   "type": "comparison",
@@ -17065,7 +17061,7 @@
                       "Something outliving the process",
                       "The work actually completing",
                       "The product promised the operation finishes regardless of the app being closed or killed",
-                      "A scheduler's constraints and deferral, and a mechanism whose curriculum is not this one"
+                      "A scheduler such as WorkManager, with its constraints, deferral and retry policy"
                     ]
                   ]
                 }
@@ -17076,19 +17072,19 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "The sharpest thing in this lesson is that one owner was wrong in **both directions on the same screen**. The screen-level holder is too long-lived for the filter sheet's expansion, which should have died with the sheet, and too short-lived for the borrowing submission, which must outlive everything. A design that reaches for it by default gets both wrong, and it gets them wrong invisibly: the over-hoisted value looks like tidy centralisation, and the under-scoped work looks correct on every machine fast enough to finish before the reader navigates away."
+                  "text": "One owner was wrong in **both directions on the same screen**. The screen-level holder is too long-lived for the filter sheet's expansion, which should have died with the sheet, and too short-lived for the borrowing submission, which must outlive everything. A design that reaches for it by default gets both wrong, and it gets them wrong invisibly: the over-hoisted value looks like tidy centralisation, and the under-scoped work looks correct on every machine fast enough to finish before the reader navigates away."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Be careful with what is said about the screen-level owner itself, because the convenient shorthand is false. A ViewModel does not have a lifetime of its own; it has the lifetime of its `ViewModelStoreOwner`, and the documentation is explicit that it \"remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears\", naming an activity finishing, a navigation entry being removed from the back stack and a composable leaving the composition as three different endings. \"The ViewModel survives the screen\" compresses that into a claim that is true of some hosts and not others, and the state-holder unit works the full ladder of events through; this lesson only needs the conclusion, which is that **naming the owner is what makes a lifetime answer checkable.**"
+                  "text": "Be careful with what is said about the screen-level owner itself, because the convenient shorthand is false. A ViewModel does not have a lifetime of its own; it has the lifetime of its `ViewModelStoreOwner`, and the documentation is explicit that it \"remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears\", naming an activity finishing, a navigation entry being removed from the back stack and a composable leaving the composition as three different endings. \"The ViewModel survives the screen\" compresses that into a claim that is true of some hosts and not others. **Naming the owner is what makes a lifetime answer checkable.** For those endings host by host, see **The ViewModel Owner: Lifetime Is Not Persistence**."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The same discipline applies one rung up the navigation stack, and the boundary is worth stating. A destination owns a lifetime, and so can a group of destinations: a multi-step flow can share one owner across its steps and lose it when the flow is popped, which is a genuinely different lifetime from either a single screen or the application. That is a real rung and it is used here to describe the shape of the ladder — how a back stack is built, how entries are scoped and what API expresses it belong to the lifecycle and navigation curriculum, and this lesson teaches none of it."
+                  "text": "The same discipline applies to groups of destinations. A destination owns a lifetime, and so can a group of destinations: a multi-step flow can share one owner across its steps and lose it when the flow is popped, which is a genuinely different lifetime from either a single screen or the application. That is a real rung between the two, and how it is expressed depends on the navigation library in use."
                 },
                 {
                   "type": "paragraph",
-                  "text": "Finally, the reasoning trap this lesson exists to remove. Asked where something should live, the tempting inputs are all about the code: where the class already is, which scope is in scope, what the base class provides, which choice needs the fewest constructor parameters. None of them is about lifetime, and each of them produces an owner by accident. The requirement, by contrast, always names an ending — *until the sheet closes*, *until the reader leaves for good*, *until the process ends*, *until the work is done* — and reading that ending out of the requirement is the entire decision. When a lifetime was chosen rather than inherited, the design usually shows it: a scope handed in as a parameter records that somebody decided which lifetime the work needed, and the next reader can see that they did."
+                  "text": "The common reasoning trap is that, asked where something should live, the tempting inputs are all about the code: where the class already is, which scope is in scope, what the base class provides, which choice needs the fewest constructor parameters. None of them is about lifetime, and each of them produces an owner by accident. The requirement, by contrast, always names an ending — *until the sheet closes*, *until the reader leaves for good*, *until the process ends*, *until the work is done* — and reading that ending out of the requirement is the entire decision. When a lifetime was chosen rather than inherited, the design usually shows it: a scope handed in as a parameter records that somebody decided which lifetime the work needed, and the next engineer can see that they did."
                 },
                 {
                   "type": "callout",
@@ -17124,7 +17120,7 @@
         {
           "id": "lesson_smallest_sufficient_architecture",
           "title": "How Much Architecture Does This Feature Need?",
-          "summary": "Two features in one application, designed end to end: a reminder-time setting that needs a state holder and one data contract, and a borrowing checkout that earns repositories, a domain operation, explicit transitions, a durable submitted fact and an owner that outlives the screen. Every element in the second is traced to a requirement the first does not have, both are then designed wrongly by swapping their structures, and the cost of each mistake is counted rather than called over- or under-engineering.",
+          "summary": "How much architecture a feature needs is set by its requirements. A reminder-time setting needs a state holder and one data contract; a borrowing checkout earns repositories, a domain operation, explicit transitions, a durable submitted fact and an owner that outlives the screen, each traced to a requirement the setting does not have. Swapping their structures produces costs that can be counted, which is more useful than calling either mistake over- or under-engineering.",
           "primarySubtopicIds": [
             "architecture_tradeoffs"
           ],
@@ -17140,15 +17136,15 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "This is the last question in the subject, and it is the one that makes the others usable: **how much architecture does this feature actually need?** Every previous unit produced a candidate — a boundary, a screen owner, a repository, a domain operation, a pattern, a durable fact, a longer-lived owner — and each of them arrived with a condition attached. This lesson puts two features side by side and applies every condition at once."
+                  "text": "**How much architecture does this feature actually need?** The candidates are familiar — a boundary, a screen owner, a repository, a domain operation, a pattern, a durable fact, a longer-lived owner — and each of them arrives with a condition attached. Putting two features side by side and applying every condition at once shows how differently they resolve."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The principle is short, and the discipline is in applying it honestly. **The amount of structure is chosen from the complexity actually present, and every element in the design has to be traceable to a requirement that names it.** Not to a convention, not to a diagram, not to what the previous feature looked like, and not to the unit that happened to teach it. If you cannot say which requirement pays for a component, the component is not yet justified — which is a reason to leave it out, and to be able to say what would bring it back."
+                  "text": "The principle is short; the discipline is in applying it. **The amount of structure is chosen from the complexity actually present, and every element in the design has to be traceable to a requirement that names it.** Not to a convention, not to a diagram, not to what the previous feature looked like, and not to whichever technique is most familiar. If you cannot say which requirement pays for a component, the component is not yet justified — which is a reason to leave it out, and to be able to say what would bring it back."
                 },
                 {
                   "type": "paragraph",
-                  "text": "The consequence surprises people, so it is worth stating before the examples. A screen state holder and one small data contract, with no domain layer, no use case, no reducer, no repository interface and no occurrence mechanism, is a **complete and correct architecture** for a feature whose requirements are that shape. It is not a first draft to be grown out of and it is not a compromise. It satisfies every requirement the feature has, which is the only test any architecture is held to."
+                  "text": "The consequence surprises people. A screen state holder and one small data contract, with no domain layer, no use case, no reducer, no repository interface and no occurrence mechanism, is a **complete and correct architecture** for a feature whose requirements are that small. It is not a first draft to be grown out of and it is not a compromise. It satisfies every requirement the feature has, which is the only test any architecture is held to."
                 },
                 {
                   "type": "callout",
@@ -17162,7 +17158,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Two features in the library application. The first is the reminder-time setting the domain unit already used: the reader picks a time of day at which they want to be reminded about loans due soon, and it is remembered. Its requirements, stated in full, are unusually short — load one current preference, let the reader change it, store it through one source, and that is all. No rule beyond the value being a time of day, no second caller, nothing to coordinate, no transition worth naming and no occurrence anybody must be guaranteed."
+                  "text": "Take two features in a library application. The first is a reminder-time setting: the reader picks a time of day at which they want to be reminded about loans due soon, and it is remembered. Its requirements, stated in full, are unusually short — load one current preference, let the reader change it, store it through one source, and that is all. No rule beyond the value being a time of day, no second caller, nothing to coordinate, no transition worth naming and no occurrence anybody must be guaranteed."
                 },
                 {
                   "type": "code",
@@ -17171,7 +17167,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That is the whole architecture, and every part of it earns its place. A state holder exists because the screen has state to own and one write path to keep. A data contract exists because the screen owner should not name the storage mechanism, which is the boundary the data-ownership unit designed. What the feature deliberately does **not** have is the interesting half: no domain layer, because none of the four conditions that earn one is present; no use case forwarding a single repository call; no reducer or action type, because there is one transition and it is an assignment; no occurrence mechanism, because nothing here must be delivered to anybody; and no second representation of a time of day, because both sides of the boundary have exactly one reason to change between them. One thing it does take care about is not structure at all: the write has to commit, because the reader was shown the new value, so it belongs to an owner that will not be cancelled halfway through it. That is the owner-scoped-work test answered without adding a single type."
+                  "text": "That is the whole architecture, and every part of it earns its place. A state holder exists because the screen has state to own and one write path to keep. A data contract exists because the screen owner should not name the storage mechanism. What the feature does **not** have is the interesting half: no domain layer, because nothing earns one — no second caller to reuse it, no orchestration across data sources, no rule that belongs to neither the screen nor the store, and not enough decision-making to want one authoritative answer; no use case forwarding a single repository call; no reducer or action type, because there is one transition and it is an assignment; no occurrence mechanism, because nothing here must be delivered to anybody; and no second representation of a time of day, because both sides of the boundary have exactly one reason to change between them. One thing it does take care about is not structure at all: the write has to commit, because the reader was shown the new value, so it belongs to an owner that will not be cancelled halfway through it. That requirement is met by choosing which owner runs the write, without adding a single type."
                 },
                 {
                   "type": "paragraph",
@@ -17189,7 +17185,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Each of those buys one piece of structure, and nothing buys two. The eligibility rule plus three callers earns a domain operation with a home of its own — reuse, orchestration and policy, which is precisely the condition the domain unit stated. Several data responsibilities with independent sources and freshness questions earn repository boundaries rather than one. The invariants earn an explicit transition, because a rule that must hold across every change is cheaper to keep in one function than in five callbacks. The submitted fact earns a durable record with a pending-or-acknowledged position, from the guarantee lesson. And the submission's promise to complete regardless of the reader leaving earns an owner above the screen, from the lifetime lesson."
+                  "text": "Each of those buys one piece of structure, and nothing buys two. The eligibility rule plus three callers earns a domain operation with a home of its own — reuse, orchestration and policy are exactly the conditions that justify one. Several data responsibilities with independent sources and freshness questions earn repository boundaries rather than one. The invariants earn an explicit transition, because a rule that must hold across every change is cheaper to keep in one function than in five callbacks. The submitted fact must be acknowledged once and survive the process, which earns a durable record with a pending-or-acknowledged position. And the submission's promise to complete regardless of the reader leaving earns an owner whose lifetime exceeds the screen's — and, because it must survive the process, one outside the process entirely, such as a scheduler."
                 },
                 {
                   "type": "comparison",
@@ -17260,11 +17256,11 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Notice which question was never asked: whether either feature is MVVM or MVI. That is deliberate, and it preserves what the pattern unit taught. The decisions that were actually made are where state lives, who may write it, how explicit the transitions are, what lifetime each owner needs, what must be delivered or durable, and which way each dependency points. Once those are settled, the implementation will resemble one pattern or another — the checkout's explicit transition over one current workflow state will read as MVI-ish to most teams — but the resemblance is a **description of the result** rather than an input to it. Choosing the label first means choosing answers to five questions before they have been asked."
+                  "text": "Notice which question was never asked: whether either feature is MVVM or MVI. The omission is deliberate: a pattern name summarises decisions rather than making them. The decisions that were actually made are where state lives, who may write it, how explicit the transitions are, what lifetime each owner needs, what must be delivered or durable, and which way each dependency points. Once those are settled, the implementation will resemble one pattern or another — the checkout's explicit transition over one current workflow state will read as MVI-ish to most teams — but the resemblance is a **description of the result** rather than an input to it. Choosing the label first means committing to those answers before the questions have been asked."
                 },
                 {
                   "type": "paragraph",
-                  "text": "There is one honest argument against everything in this lesson, and a strong engineer should be able to make it. **Uniformity has real value.** A team that gives every feature the same broad structure buys things a proportionate design does not: an engineer opening an unfamiliar feature knows where to look before they read anything; a reviewer has one shape to check rather than a judgement to second-guess; new engineers need fewer local decisions and make fewer novel mistakes; and tooling, templates and conventions can assume the shape. Those benefits are worth paying indirection for, and a team that has decided this is not confused."
+                  "text": "There is one serious argument against everything above, and a strong engineer should be able to make it. **Uniformity has real value.** A team that gives every feature the same broad structure buys things a proportionate design does not: an engineer opening an unfamiliar feature knows where to look before they read anything; a reviewer has one shape to check rather than a judgement to second-guess; new engineers need fewer local decisions and make fewer novel mistakes; and tooling, templates and conventions can assume the shape. Those benefits are worth paying indirection for, and a team that has decided this is not confused."
                 },
                 {
                   "type": "paragraph",
@@ -17272,11 +17268,11 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Resist, too, the reflex to turn all of this into a table. There is no scoring rubric here, no complexity threshold above which a domain layer is required and no count of repositories that implies a reducer. Any such rule would make the judgement mechanical, and the judgement is the skill — a rubric would have added the mapping layer to the reminder setting and would have been perfectly happy with the under-architected checkout, because neither mistake is visible in a count. The checklist this subject offers is a list of *questions*, and it never outputs an architecture on its own."
+                  "text": "Resist, too, the reflex to turn all of this into a table. There is no scoring rubric here, no complexity threshold above which a domain layer is required and no count of repositories that implies a reducer. Any such rule would make the judgement mechanical, and the judgement is the skill — a rubric would have added the mapping layer to the reminder setting and would have been perfectly happy with the under-architected checkout, because neither mistake is visible in a count. The useful checklist is a list of *questions*, and it never outputs an architecture on its own."
                 },
                 {
                   "type": "paragraph",
-                  "text": "So close the loop where the subject opened it. The foundations unit asked four questions about a boundary, and the whole curriculum has been assembling the material to answer them for a whole feature. Ask them of both designs above and the answers are complete sentences in both cases:"
+                  "text": "Five questions summarise every decision above: what responsibility exists, who owns it, what may depend on what, what lifetime each part requires, and what each boundary costs. Ask them of both designs and the answers are complete sentences in both cases:"
                 },
                 {
                   "type": "bullet_list",
@@ -17290,7 +17286,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "That is the subject's actual answer to \"what architecture should I use\": not a stack, not an acronym, and not a number of layers, but the smallest arrangement in which every responsibility has an owner, every dependency points somewhere defensible, every lifetime matches a requirement, and every boundary was paid for by an independent change it isolates. Both features above satisfy that description, and they look nothing like each other — which is the point."
+                  "text": "That is the actual answer to \"what architecture should I use\": not a stack, not an acronym, and not a number of layers, but the smallest arrangement in which every responsibility has an owner, every dependency points somewhere defensible, every lifetime matches a requirement, and every boundary was paid for by an independent change it isolates. Both features above satisfy that description, and they look nothing like each other — which is the point."
                 },
                 {
                   "type": "callout",

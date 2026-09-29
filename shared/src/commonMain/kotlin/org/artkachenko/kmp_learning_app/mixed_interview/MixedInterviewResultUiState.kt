@@ -15,6 +15,17 @@ internal sealed interface MixedInterviewResultUiState {
     data object NotCompleted : MixedInterviewResultUiState
     data object Error : MixedInterviewResultUiState
 
+    /**
+     * The interview exists, but every Question in it belongs to a Topic the learner's visibility
+     * hides. Not [AttemptNotFound]: it returns unchanged when that content is shown.
+     */
+    data object Unavailable : MixedInterviewResultUiState
+
+    /**
+     * The interview as the current visibility projects it: the score, [topicPerformance] and
+     * [questions] cover visible Questions only, and [hiddenQuestionCount] is how many stored answers
+     * the projection left out.
+     */
     data class Content(
         val attemptId: String,
         val totalQuestions: Int,
@@ -22,6 +33,7 @@ internal sealed interface MixedInterviewResultUiState {
         val percentage: Double,
         val topicPerformance: List<TopicPerformanceUiModel>,
         val questions: List<ReviewQuestionItem>,
+        val hiddenQuestionCount: Int = 0,
     ) : MixedInterviewResultUiState
 }
 

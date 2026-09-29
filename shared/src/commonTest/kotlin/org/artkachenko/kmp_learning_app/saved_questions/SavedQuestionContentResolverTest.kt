@@ -15,6 +15,7 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
 
 internal class SavedQuestionContentResolverTest {
     @Test
@@ -31,7 +32,7 @@ internal class SavedQuestionContentResolverTest {
             ),
         )
 
-        val items = SavedQuestionContentResolver(repository).resolve(saved)
+        val items = SavedQuestionContentResolver(repository).resolve(saved, allVisible)
 
         // Available, missing, and deprecated in the order they were saved: nothing is grouped by
         // resolution outcome, alphabetised, or re-sorted into curriculum order.
@@ -46,7 +47,7 @@ internal class SavedQuestionContentResolverTest {
         val repository = FakeContentRepository(listOf(question("q1")))
 
         val item = assertIs<SavedQuestionItem.Available>(
-            SavedQuestionContentResolver(repository).resolve(listOf(savedQuestion("q1"))).single(),
+            SavedQuestionContentResolver(repository).resolve(listOf(savedQuestion("q1")), allVisible).single(),
         )
 
         assertEquals("q1", item.savedQuestion.questionId)
@@ -73,7 +74,7 @@ internal class SavedQuestionContentResolverTest {
         )
 
         val item = assertIs<SavedQuestionItem.Available>(
-            SavedQuestionContentResolver(repository).resolve(listOf(savedQuestion("q2"))).single(),
+            SavedQuestionContentResolver(repository).resolve(listOf(savedQuestion("q2")), allVisible).single(),
         )
 
         // A saved identity outlives the Question's place in the current catalogue: retired content
@@ -89,7 +90,7 @@ internal class SavedQuestionContentResolverTest {
         val repository = FakeContentRepository(emptyList())
 
         val item = assertIs<SavedQuestionItem.Missing>(
-            SavedQuestionContentResolver(repository).resolve(listOf(saved)).single(),
+            SavedQuestionContentResolver(repository).resolve(listOf(saved), allVisible).single(),
         )
 
         assertEquals(saved, item.savedQuestion)
@@ -108,7 +109,7 @@ internal class SavedQuestionContentResolverTest {
 
         assertFailsWith<IllegalStateException> {
             SavedQuestionContentResolver(repository)
-                .resolve(listOf(savedQuestion("q1"), savedQuestion("q2")))
+                .resolve(listOf(savedQuestion("q1"), savedQuestion("q2")), allVisible)
         }
     }
 
@@ -116,7 +117,7 @@ internal class SavedQuestionContentResolverTest {
     fun anEmptySavedListResolvesToNoItemsWithoutTouchingTheCurriculum() = runTest {
         val repository = FakeContentRepository(emptyList())
 
-        assertEquals(emptyList(), SavedQuestionContentResolver(repository).resolve(emptyList()))
+        assertEquals(emptyList(), SavedQuestionContentResolver(repository).resolve(emptyList(), allVisible))
         assertEquals(0, repository.lookups)
     }
 
@@ -134,6 +135,7 @@ internal class SavedQuestionContentResolverTest {
 
         val items = SavedQuestionContentResolver(repository).resolve(
             listOf(savedQuestion("q3"), savedQuestion("q2"), savedQuestion("q1")),
+            allVisible,
         )
 
         assertEquals(1, repository.lookups)
@@ -141,6 +143,8 @@ internal class SavedQuestionContentResolverTest {
         assertEquals(listOf("q3", "q2", "q1"), items.map { it.questionId })
     }
 }
+
+private val allVisible = CurriculumVisibility(hiddenTopicIds = emptySet())
 
 private fun savedQuestion(questionId: String, savedAt: Long = 1_000): SavedQuestion =
     SavedQuestion(questionId = questionId, savedAtEpochMillis = savedAt)

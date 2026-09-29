@@ -1,11 +1,13 @@
 package org.artkachenko.kmp_learning_app.topic_study.practice_builder
 
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.flow.StateFlow
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
 
 /**
  * Turns what the learner chose to practise into what an assessment can run.
@@ -19,10 +21,16 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
  * It sits beside the builder rather than inside its ViewModel so the resolution rules can be tested
  * without a ViewModel, and so the builder depends on one collaborator instead of on two
  * repositories, only one of which any given target uses.
+ *
+ * Every lookup here is an identity read that resolves hidden content too, so this is also the
+ * builder's visibility authority: a target whose owning Topic the current [visibility] hides is
+ * [PracticeTargetResolution.Unavailable]. Ownership is the target's own — the Topic itself, a
+ * Subtopic's parent Topic, a Unit's home Topic — never an inspection of the scope it would produce.
  */
 internal class PracticeTargetResolver(
     private val curriculumRepository: CurriculumRepository,
     private val learningContentRepository: LearningContentRepository,
+    private val visibility: StateFlow<CurriculumVisibility>,
 ) {
     /**
      * Resolving a Topic or Subtopic target is unchanged behaviour: the scope is already known from
@@ -32,23 +40,41 @@ internal class PracticeTargetResolver(
      *
      * A Learning Unit is the opposite: the document read *is* the resolution, so it is allowed to
      * throw and the caller decides what an unreadable document means on screen.
+     *
+     * Visibility follows the same split. A Topic or Subtopic that resolves under a hidden Topic is
+     * unavailable; one whose display read found nothing, or failed, keeps the existing
+     * missing-label behaviour, because missing metadata is not evidence of a hidden Topic.
      */
-    suspend fun resolve(target: PracticeBuilderTarget): PracticeTargetResolution =
-        when (target) {
-            is PracticeBuilderTarget.Topic -> PracticeTargetResolution.Resolved(
-                name = displayName { curriculumRepository.getTopicById(target.topicId)?.name },
-                scope = AssessmentScope.Topic(target.topicId),
-            )
+    suspend fun resolve(target: PracticeBuilderTarget): PracticeTargetResolution {
+        val visibility = visibility.value
+        return when (target) {
+            is PracticeBuilderTarget.Topic -> {
+                val topic = identity { curriculumRepository.getTopicById(target.topicId) }
+                if (topic != null && !visibility.isTopicVisible(topic.id)) {
+                    PracticeTargetResolution.Unavailable
+                } else {
+                    PracticeTargetResolution.Resolved(
+                        name = topic?.name,
+                        scope = AssessmentScope.Topic(target.topicId),
+                    )
+                }
+            }
 
-            is PracticeBuilderTarget.Subtopic -> PracticeTargetResolution.Resolved(
-                name = displayName {
-                    curriculumRepository.getSubtopicById(target.subtopicId)?.name
-                },
-                scope = AssessmentScope.Subtopic(target.subtopicId),
-            )
+            is PracticeBuilderTarget.Subtopic -> {
+                val subtopic = identity { curriculumRepository.getSubtopicById(target.subtopicId) }
+                if (subtopic != null && !visibility.isTopicVisible(subtopic.topicId)) {
+                    PracticeTargetResolution.Unavailable
+                } else {
+                    PracticeTargetResolution.Resolved(
+                        name = subtopic?.name,
+                        scope = AssessmentScope.Subtopic(target.subtopicId),
+                    )
+                }
+            }
 
-            is PracticeBuilderTarget.LearningUnit -> resolveLearningUnit(target.unitId)
+            is PracticeBuilderTarget.LearningUnit -> resolveLearningUnit(target.unitId, visibility)
         }
+    }
 
     /**
      * `getUnitById` resolves retired material on purpose, so the ACTIVE check is applied here for
@@ -60,9 +86,14 @@ internal class PracticeTargetResolver(
      * is a domain invariant rather than a user-facing outcome: a Unit that currently teaches
      * nothing assessable is a controlled answer, not a crash.
      */
-    private suspend fun resolveLearningUnit(unitId: String): PracticeTargetResolution {
+    private suspend fun resolveLearningUnit(
+        unitId: String,
+        visibility: CurriculumVisibility,
+    ): PracticeTargetResolution {
         val unit = learningContentRepository.getUnitById(unitId)
             ?.takeIf { it.status == ContentStatus.ACTIVE }
+            // Checked before the Unit's concepts are derived, so a hidden Unit never becomes a scope.
+            ?.takeIf { visibility.isTopicVisible(it.topicId) }
             ?: return PracticeTargetResolution.Unavailable
 
         val subtopicIds = unit.activePrimarySubtopicIds()
@@ -76,7 +107,8 @@ internal class PracticeTargetResolver(
         )
     }
 
-    private suspend fun displayName(read: suspend () -> String?): String? =
+    /** A failed display read is a missing label, never a failed resolution; see [resolve]. */
+    private suspend fun <T : Any> identity(read: suspend () -> T?): T? =
         try {
             read()
         } catch (cancellation: CancellationException) {
@@ -126,7 +158,10 @@ internal sealed interface PracticeTargetResolution {
         val scope: AssessmentScope,
     ) : PracticeTargetResolution
 
-    /** The target names nothing that is current study material — a stale or retired Unit. */
+    /**
+     * The target names nothing that is current study material — a stale or retired Unit — or
+     * belongs to a Topic the learner's visibility currently hides.
+     */
     data object Unavailable : PracticeTargetResolution
 
     /** The target resolves, but currently teaches no concept that can be assessed. */

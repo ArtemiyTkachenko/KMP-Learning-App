@@ -11,6 +11,8 @@ import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningLesson
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressState
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
 import org.artkachenko.kmp_learning_app.lesson_study.toUiState
@@ -25,10 +27,13 @@ import org.artkachenko.kmp_learning_app.lesson_study.toUiState
  * remains the right tool for stable historical resolution elsewhere; parent-scoped navigation has
  * the stricter contract.
  *
- * All five conditions are required for normal browsing: the Unit exists, the Unit is ACTIVE, the
- * Lesson exists, the Lesson is ACTIVE, and the Lesson belongs to that Unit. Each failure is the
- * same answer — this is not current study material — so they share one state rather than being
- * distinguished in the UI, which would only leak the document's shape to the learner.
+ * All six conditions are required for normal browsing: the Unit exists, the Unit is ACTIVE, the
+ * Unit's home Topic is visible under the learner's [CurriculumVisibility], the Lesson exists, the
+ * Lesson is ACTIVE, and the Lesson belongs to that Unit. Each failure is the same answer — this is
+ * not current study material — so they share one state rather than being distinguished in the UI,
+ * which would only leak the document's shape to the learner. Visibility is decided by the owning
+ * Unit, so no Lesson prose is read out of a hidden Unit, and previous/next stay safe because the
+ * whole Unit is either visible or unavailable. It is observed while this screen is alive.
  *
  * Reading the Lesson through its Unit is also what makes previous/next derivable at all: the
  * neighbours are the Unit's other ACTIVE Lessons in authored order, which is a fact about this
@@ -45,10 +50,14 @@ internal class LearningLessonViewModel(
     private val lessonId: String,
     private val learningContentRepository: LearningContentRepository,
     private val studyProgressStateHolder: StudyProgressStateHolder,
+    private val visibilityStateHolder: CurriculumVisibilityStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<LearningLessonUiState>(LearningLessonUiState.Loading)
     val uiState: StateFlow<LearningLessonUiState> = _uiState.asStateFlow()
     private var loadJob: Job? = null
+
+    /** The visibility the newest load was made under; see [observeVisibility]. */
+    private var loadVisibility: CurriculumVisibility? = null
 
     /** The document half, held so a study-state emission can re-render without reloading it. */
     private var content: LearningLessonUiState = LearningLessonUiState.Loading
@@ -59,6 +68,7 @@ internal class LearningLessonViewModel(
         require(lessonId.isNotBlank()) { "lessonId must not be blank." }
         observeStudyState()
         load()
+        observeVisibility()
     }
 
     fun retry() {
@@ -90,13 +100,24 @@ internal class LearningLessonViewModel(
         }
     }
 
+    /** As on the Unit overview: a change reloads, the replayed startup value does not. */
+    private fun observeVisibility() {
+        viewModelScope.launch {
+            visibilityStateHolder.visibility.collect { visibility ->
+                if (visibility != loadVisibility) load()
+            }
+        }
+    }
+
     private fun load() {
         loadJob?.cancel()
         content = LearningLessonUiState.Loading
         render()
+        val visibility = visibilityStateHolder.visibility.value
+        loadVisibility = visibility
         loadJob = viewModelScope.launch {
             content = try {
-                loadState()
+                loadState(visibility)
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (_: Throwable) {
@@ -124,9 +145,10 @@ internal class LearningLessonViewModel(
         }
     }
 
-    private suspend fun loadState(): LearningLessonUiState {
+    private suspend fun loadState(visibility: CurriculumVisibility): LearningLessonUiState {
         val unit = learningContentRepository.getUnitById(unitId)
             ?.takeIf { it.status == ContentStatus.ACTIVE }
+            ?.takeIf { visibility.isTopicVisible(it.topicId) }
             ?: return LearningLessonUiState.NotFound
 
         // The reading sequence and the containment check are the same list, resolved once. A

@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.testTag
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_collapse
 import kmp_learning_app.shared.generated.resources.assessment_review_expand
+import kmp_learning_app.shared.generated.resources.assessment_review_hidden_questions
 import kmp_learning_app.shared.generated.resources.assessment_review_missing_question
 import kmp_learning_app.shared.generated.resources.assessment_review_interview_complete
 import kmp_learning_app.shared.generated.resources.assessment_review_practice_complete
@@ -94,6 +95,35 @@ internal fun UnresolvedReviewQuestionsNotice(
         color = AppThemeExtras.semanticColors.partiallyCorrect,
     )
 }
+
+/**
+ * Explains why this result counts fewer Questions than were asked: the learner's content setting
+ * hides some of them.
+ *
+ * The result is projected through the current curriculum visibility, so the score above already
+ * covers only the visible Questions. This is a neutral note about that projection, not a caveat or
+ * a warning — nothing is missing or wrong, and the hidden Questions return with the setting. Emits
+ * nothing at zero.
+ */
+@Composable
+internal fun HiddenReviewQuestionsNotice(
+    hiddenCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    if (hiddenCount <= 0) return
+    Text(
+        text = pluralStringResource(
+            Res.plurals.assessment_review_hidden_questions,
+            hiddenCount,
+            hiddenCount,
+        ),
+        modifier = modifier.testTag(HiddenReviewQuestionsNoticeTag),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+internal const val HiddenReviewQuestionsNoticeTag = "hidden_review_questions_notice"
 
 /**
  * Stable per-Question handle for the save action.

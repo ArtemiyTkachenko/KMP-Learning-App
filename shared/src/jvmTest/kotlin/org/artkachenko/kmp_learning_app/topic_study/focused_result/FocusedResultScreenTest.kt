@@ -88,6 +88,45 @@ internal class FocusedResultScreenTest {
     }
 
     @Test
+    fun aPartiallyProjectedResultCountsItsHiddenQuestions() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                FocusedResultScreen(
+                    state = contentState(questions = listOf(availableQuestion())).copy(
+                        totalQuestions = 1,
+                        hiddenQuestionCount = 1,
+                    ),
+                    onRetry = {}, onBack = {}, onSourceClick = {},
+                    onRepeatPractice = {},
+                )
+            }
+        }
+
+        onNodeWithText("1 Kotlin Multiplatform question is hidden by your learning-content setting.")
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun anUnavailableResultExplainsItselfWithoutRetryOrRetake() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                FocusedResultScreen(
+                    state = FocusedResultUiState.Unavailable,
+                    onRetry = {}, onBack = {}, onSourceClick = {},
+                    onRepeatPractice = {},
+                )
+            }
+        }
+
+        onNodeWithText(
+            "This practice result is not available with the current learning-content settings.",
+        ).assertIsDisplayed()
+        onNodeWithText("Retry").assertDoesNotExist()
+        onNodeWithTag(FocusedResultPracticeAgainTag).assertDoesNotExist()
+    }
+
+    @Test
     fun fullyResolvableReviewHidesTheUnresolvedNotice() = runComposeUiTest {
         setContent {
             MaterialTheme {

@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.assessment_taking
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,13 +19,25 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentStartResult
 import org.artkachenko.kmp_learning_app.assessment.session.CompleteAssessment
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 
+/**
+ * Takes one persisted attempt, Question by Question.
+ *
+ * The learner's curriculum visibility is observed while this screen is alive, because an attempt
+ * route can be parked in another area's stack while Settings hides a Topic. The loader decides
+ * whether an attempt can be shown at all ([AssessmentSessionLoadResult.ContentUnavailable]); a
+ * session already on screen is withdrawn the moment one of its Questions becomes hidden, and loaded
+ * again when it is shown. Nothing about the attempt is written for either transition.
+ */
 internal class AssessmentTakingViewModel(
     private val attemptId: String,
     private val assessmentEngine: AssessmentEngine,
     private val assessmentRepository: AssessmentRepository,
     private val assessmentSessionLoader: AssessmentSessionLoader,
     private val completeAttempt: CompleteAssessment,
+    private val visibilityStateHolder: CurriculumVisibilityStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<AssessmentTakingUiState>(AssessmentTakingUiState.Loading)
     val uiState: StateFlow<AssessmentTakingUiState> = _uiState.asStateFlow()
@@ -32,9 +45,14 @@ internal class AssessmentTakingViewModel(
     private var session: AssessmentSession? = null
     private var currentQuestionIndex = 0
     private var pendingSelectedAnswerIds: Set<String> = emptySet()
+    private var loadJob: Job? = null
+
+    /** The visibility the current state was established under; see [observeVisibility]. */
+    private var shownVisibility: CurriculumVisibility? = null
 
     init {
         loadAssessment()
+        observeVisibility()
     }
 
     fun retry() {
@@ -80,6 +98,9 @@ internal class AssessmentTakingViewModel(
                 assessmentRepository.save(updatedSession.attempt)
                 updatedSession
             }.onSuccess { updatedSession ->
+                // Withdrawn while the write was in flight: the answer is stored, but this session is
+                // no longer the one on screen, so it must not bring hidden content back.
+                if (session !== currentSession) return@onSuccess
                 session = updatedSession
                 if (isFormativePractice()) {
                     _uiState.value = currentState.copy(
@@ -102,6 +123,7 @@ internal class AssessmentTakingViewModel(
                 }
             }.onFailure { failure ->
                 if (failure is CancellationException) throw failure
+                if (session !== currentSession) return@onFailure
                 _uiState.value = currentState.copy(
                     isSubmitting = false,
                     submissionFailed = true,
@@ -148,12 +170,14 @@ internal class AssessmentTakingViewModel(
             // because this coroutine was cancelled between the write and the invalidation. See
             // CompleteAssessment.
             runCatching { completeAttempt(originalSession) }.onSuccess { completedSession ->
+                if (session !== originalSession) return@onSuccess
                 session = completedSession
                 _uiState.value = AssessmentTakingUiState.CompletionSucceeded(
                     attemptId = completedSession.attempt.id,
                 )
             }.onFailure { failure ->
                 if (failure is CancellationException) throw failure
+                if (session !== originalSession) return@onFailure
                 _uiState.value = AssessmentTakingUiState.ReadyToComplete(
                     attemptId = originalSession.attempt.id,
                     totalQuestions = originalSession.questions.size,
@@ -163,14 +187,52 @@ internal class AssessmentTakingViewModel(
         }
     }
 
+    /**
+     * Follows the learner's visibility without re-reading on the StateFlow's replayed value.
+     *
+     * A load in flight is restarted so it cannot land under the old visibility, and an unavailable
+     * attempt is loaded again. A session on screen is judged from the Questions it already holds, so
+     * hiding needs no read: if any is now hidden the session is dropped, never shortened.
+     */
+    private fun observeVisibility() {
+        viewModelScope.launch {
+            visibilityStateHolder.visibility.collect { visibility ->
+                if (visibility == shownVisibility) return@collect
+                when (_uiState.value) {
+                    AssessmentTakingUiState.Loading,
+                    AssessmentTakingUiState.Unavailable,
+                    -> loadAssessment()
+
+                    is AssessmentTakingUiState.Content,
+                    is AssessmentTakingUiState.ReadyToComplete,
+                    -> {
+                        shownVisibility = visibility
+                        val hidesSession = session?.questions
+                            ?.any { !visibility.isTopicVisible(it.topicId) } == true
+                        if (hidesSession) {
+                            session = null
+                            pendingSelectedAnswerIds = emptySet()
+                            _uiState.value = AssessmentTakingUiState.Unavailable
+                        }
+                    }
+
+                    else -> shownVisibility = visibility
+                }
+            }
+        }
+    }
+
     private fun loadAssessment() {
+        loadJob?.cancel()
         _uiState.value = AssessmentTakingUiState.Loading
         session = null
         currentQuestionIndex = 0
         pendingSelectedAnswerIds = emptySet()
+        val visibility = visibilityStateHolder.visibility.value
+        shownVisibility = visibility
 
-        viewModelScope.launch {
-            runCatching { loadExistingAttempt(attemptId) }.onSuccess { state ->
+        loadJob = viewModelScope.launch {
+            runCatching { loadExistingAttempt(attemptId, visibility) }.onSuccess { state ->
                 _uiState.value = state
             }.onFailure { failure ->
                 if (failure is CancellationException) throw failure
@@ -179,12 +241,17 @@ internal class AssessmentTakingViewModel(
         }
     }
 
-    private suspend fun loadExistingAttempt(attemptId: String): AssessmentTakingUiState {
-        val loadedSession = when (val result = assessmentSessionLoader.load(attemptId)) {
+    private suspend fun loadExistingAttempt(
+        attemptId: String,
+        visibility: CurriculumVisibility,
+    ): AssessmentTakingUiState {
+        val loadedSession = when (val result = assessmentSessionLoader.load(attemptId, visibility)) {
             is AssessmentSessionLoadResult.Loaded -> result.session
             AssessmentSessionLoadResult.NotInProgress -> {
                 return AssessmentTakingUiState.CompletionSucceeded(attemptId)
             }
+            // A valid stored attempt that cannot be shown right now, not a failure to retry.
+            AssessmentSessionLoadResult.ContentUnavailable -> return AssessmentTakingUiState.Unavailable
             AssessmentSessionLoadResult.AttemptNotFound,
             is AssessmentSessionLoadResult.MissingQuestion ->
                 error("Unable to load assessment attempt: $result")

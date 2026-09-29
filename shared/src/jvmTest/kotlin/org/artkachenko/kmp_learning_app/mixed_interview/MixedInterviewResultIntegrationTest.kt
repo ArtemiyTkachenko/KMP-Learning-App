@@ -53,9 +53,13 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.Curriculu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.repository.LocalSavedQuestionRepository
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class MixedInterviewResultIntegrationTest {
+    /** Everything visible: these tests predate curriculum visibility and are not about it. */
+    private val visibility = curriculumVisibilityStateHolder(includeKmpContent = true)
+
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
@@ -105,6 +109,7 @@ internal class MixedInterviewResultIntegrationTest {
                     LocalSavedQuestionRepository(database),
                     savedQuestionScope,
                 ),
+                visibilityStateHolder = visibility,
             )
             val state = assertIs<MixedInterviewResultUiState.Content>(
                 withContext(Dispatchers.Default) {
@@ -133,7 +138,7 @@ internal class MixedInterviewResultIntegrationTest {
             assertEquals(created, assessmentRepository.getById(created.id))
 
             val loaded = assertIs<AssessmentSessionLoadResult.Loaded>(
-                AssessmentSessionLoader(assessmentRepository, curriculumRepository).load(created.id),
+                AssessmentSessionLoader(assessmentRepository, curriculumRepository, visibility.visibility).load(created.id),
             ).session
             assertEquals(created, loaded.attempt)
             assertEquals(created.questionAttempts.map { it.questionId }, loaded.questions.map { it.id })

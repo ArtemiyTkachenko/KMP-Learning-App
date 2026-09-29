@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,6 +18,7 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewDestination
@@ -36,6 +38,7 @@ import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailDest
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserDestination
 import org.artkachenko.kmp_learning_app.ui.selection.SelectableContent
 import org.artkachenko.kmp_learning_app.ui.theme.AppearanceTheme
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -64,6 +67,16 @@ private fun AppShell(
     var lessonShowsBottomNavigation by remember(currentRoute) { mutableStateOf(true) }
     val showsBottomNavigation = showsNavigation &&
         (currentRoute !is AppRoute.LearningLesson || lessonShowsBottomNavigation)
+
+    // Back-stack cleanup when curriculum visibility hides content, run for the initial (possibly
+    // restored) stacks and again on every change. The navigator stays content-agnostic: this effect
+    // classifies routes and hands it the ones to prune. It is cleanup, not the safety boundary —
+    // every destination refuses hidden content on its own before this has finished.
+    val visibilityStateHolder: CurriculumVisibilityStateHolder = koinInject()
+    val routeVisibilityResolver: AppRouteVisibilityResolver = koinInject()
+    LaunchedEffect(navigator) {
+        pruneRoutesHiddenBy(visibilityStateHolder.visibility, navigator, routeVisibilityResolver)
+    }
 
     val shellViewModel: AppShellViewModel = koinViewModel()
     // Derived from the shared history cache, so it follows an assessment completing rather than

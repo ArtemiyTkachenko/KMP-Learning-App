@@ -159,4 +159,56 @@ internal class AppNavigatorTest {
             AppRoute.FocusedPracticeAttempt("a"),
         ).forEach { assertFalse(it.showsAreaNavigation(), "$it should hide area navigation") }
     }
+
+    @Test
+    fun pruningRemovesTheFirstInvalidEntryAndEverythingAboveIt() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("t"))
+        navigator.push(AppRoute.LearningUnit("u"))
+        navigator.push(AppRoute.LearningLesson("u", "l"))
+
+        // Only the Unit is invalid, yet the Lesson above it goes too: it was reached through it.
+        navigator.pruneFrom(setOf(AppRoute.LearningUnit("u")))
+
+        assertEquals(listOf<NavKey>(AppRoute.Topics, AppRoute.Topic("t")), navigator.backStack)
+    }
+
+    @Test
+    fun pruningReachesEveryAreaAndNeverTheRoot() {
+        val navigator = navigator()
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        navigator.push(AppRoute.ProgressTopic("t"))
+        navigator.select(AppTopLevelDestination.TOPICS)
+
+        navigator.pruneFrom(setOf(AppRoute.ProgressTopic("t"), AppRoute.Topics))
+
+        assertEquals(listOf<NavKey>(AppRoute.Topics), navigator.backStack)
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        assertEquals(listOf<NavKey>(AppRoute.Progress), navigator.backStack)
+    }
+
+    @Test
+    fun settingsOnTopOfAPrunedStackIsRebasedOnTheRoot() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("t"))
+        navigator.push(AppRoute.Settings)
+
+        navigator.pruneFrom(setOf(AppRoute.Topic("t")))
+
+        assertEquals(listOf<NavKey>(AppRoute.Topics, AppRoute.Settings), navigator.backStack)
+        assertEquals(AppRoute.Settings, navigator.currentRoute)
+    }
+
+    @Test
+    fun detailRoutesListsEveryAreasDetailsWithoutRoots() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("t"))
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+        navigator.push(AppRoute.MixedInterviewResult("a"))
+
+        assertEquals(
+            setOf<AppRoute>(AppRoute.Topic("t"), AppRoute.MixedInterviewResult("a")),
+            navigator.detailRoutes(),
+        )
+    }
 }

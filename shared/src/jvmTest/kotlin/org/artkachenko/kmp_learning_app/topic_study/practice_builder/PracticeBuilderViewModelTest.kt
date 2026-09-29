@@ -40,6 +40,8 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
 import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
 import org.artkachenko.kmp_learning_app.topic_study.testLearningLesson
 import org.artkachenko.kmp_learning_app.topic_study.testLearningUnit
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class PracticeBuilderViewModelTest {
@@ -790,12 +792,14 @@ internal class PracticeBuilderViewModelTest {
         // one of these cases into a resolution error instead of passing silently.
         learningContent: FakeLearningContentRepository =
             FakeLearningContentRepository(failuresRemaining = Int.MAX_VALUE),
+        visibility: CurriculumVisibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
     ): PracticeBuilderViewModel =
         PracticeBuilderViewModel(
             target = target,
             targetResolver = PracticeTargetResolver(
                 curriculumRepository = curriculum,
                 learningContentRepository = learningContent,
+                visibility = visibility.visibility,
             ),
             questionSelector = AssessmentQuestionSelector(
                 curriculumRepository = curriculum,
@@ -805,6 +809,7 @@ internal class PracticeBuilderViewModelTest {
                 randomize = { it },
             ),
             initialSource = initialSource,
+            visibilityStateHolder = visibility,
         )
 
     private fun completedHistoryOf(seenQuestionIds: List<String>): List<TestAttempt> {

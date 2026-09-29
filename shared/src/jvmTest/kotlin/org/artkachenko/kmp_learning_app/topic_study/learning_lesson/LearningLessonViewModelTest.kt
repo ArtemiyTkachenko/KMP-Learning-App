@@ -29,6 +29,7 @@ import org.artkachenko.kmp_learning_app.lesson_study.studyProgressStateHolder
 import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
 import org.artkachenko.kmp_learning_app.topic_study.testLearningLesson
 import org.artkachenko.kmp_learning_app.topic_study.testLearningUnit
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class LearningLessonViewModelTest {
@@ -610,6 +611,7 @@ internal class LearningLessonViewModelTest {
             lessonId = lessonId,
             learningContentRepository = repository,
             studyProgressStateHolder = studyProgressStateHolder,
+            visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
         )
 
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) = runTest {

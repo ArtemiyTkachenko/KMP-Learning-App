@@ -10,6 +10,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.focused_result_attempt_not_found
+import kmp_learning_app.shared.generated.resources.focused_result_unavailable
 import kmp_learning_app.shared.generated.resources.focused_result_error
 import kmp_learning_app.shared.generated.resources.focused_result_loading
 import kmp_learning_app.shared.generated.resources.focused_result_not_completed
@@ -85,6 +86,12 @@ internal fun FocusedResultScreen(
                     )
                     FocusedResultUiState.NotCompleted -> ScreenMessage(
                         message = stringResource(Res.string.focused_result_not_completed),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    // A message without Retry: the attempt exists and nothing failed; the
+                    // learner's content setting hides every Question in it.
+                    FocusedResultUiState.Unavailable -> ScreenMessage(
+                        message = stringResource(Res.string.focused_result_unavailable),
                         modifier = Modifier.fillMaxSize(),
                     )
                     FocusedResultUiState.Error -> ScreenError(
@@ -180,6 +187,7 @@ private fun LazyListScope.outcomeSection(
             retakeActionTestTag = FocusedResultPracticeAgainTag,
             retakeProgressTestTag = FocusedResultCreatingIndicatorTag,
             onPracticeMistakes = onPracticeMistakes,
+            hiddenQuestionCount = state.hiddenQuestionCount,
         )
     }
 }

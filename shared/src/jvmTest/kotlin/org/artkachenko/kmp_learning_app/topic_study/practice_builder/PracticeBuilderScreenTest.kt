@@ -276,7 +276,7 @@ internal class PracticeBuilderScreenTest {
     fun anUnpracticeableTargetDisablesStartWithoutOfferingRetry() = runComposeUiTest {
         setContentWith(state(availability = PracticeAvailability.TargetUnavailable))
 
-        scrollToText("This learning unit is no longer available for practice.").assertIsDisplayed()
+        scrollToText("This content is not available for practice.").assertIsDisplayed()
         scrollToTag(PracticeBuilderStartButtonTag).assertIsNotEnabled()
         onNodeWithTag(PracticeBuilderRetryTag).assertDoesNotExist()
     }

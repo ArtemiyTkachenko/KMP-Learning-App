@@ -34,6 +34,7 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class ProgressTopicViewModelTest {
@@ -362,6 +363,7 @@ private fun topicViewModel(
     ProgressTopicViewModel(
         topicId = topicId,
         learningProgressService = LearningProgressService(context.repository.asCompletedHistory(), context.curriculum),
+        visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
     )
 
 private fun completedAttempt(

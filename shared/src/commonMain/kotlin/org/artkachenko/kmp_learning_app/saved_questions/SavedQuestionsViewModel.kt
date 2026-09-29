@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 
 /**
  * Presents the learner's saved Questions for review.
@@ -20,10 +22,17 @@ import kotlinx.coroutines.launch
  * Content resolution is the only work this ViewModel adds, and it is kept strictly downstream of
  * saved state: the holder decides what is saved and in what order, [contentResolver] decides what
  * each identity currently resolves to, and neither answer is allowed to change the other.
+ *
+ * What is presented also depends on the learner's curriculum visibility, which changes while the
+ * saved list does not. Resolved content is therefore keyed on both — the saved list *and* the
+ * visibility it was resolved under — and a visibility change re-resolves the same saved list without
+ * reading or writing saved state. When every saved Question is hidden the screen is
+ * [SavedQuestionsUiState.Empty], even though the saved table is not.
  */
 internal class SavedQuestionsViewModel(
     private val savedQuestionStateHolder: SavedQuestionStateHolder,
     private val contentResolver: SavedQuestionContentResolver,
+    private val visibilityStateHolder: CurriculumVisibilityStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<SavedQuestionsUiState>(SavedQuestionsUiState.Loading)
     val uiState: StateFlow<SavedQuestionsUiState> = _uiState.asStateFlow()
@@ -40,10 +49,23 @@ internal class SavedQuestionsViewModel(
      */
     private var resolvedFor: List<SavedQuestion>? = null
 
+    /** The visibility [resolvedFor] was resolved under; the other half of the content's identity. */
+    private var resolvedVisibility: CurriculumVisibility? = null
+
+    /** The visibility the newest resolution was requested under, so the replayed value is ignored. */
+    private var requestedVisibility: CurriculumVisibility? = null
+
     init {
         savedQuestionStateHolder.refresh()
         viewModelScope.launch {
             savedQuestionStateHolder.state.collect(::render)
+        }
+        viewModelScope.launch {
+            // Re-rendering the current saved state is enough: a visibility that differs from the one
+            // the content was resolved under no longer matches it, so render re-resolves.
+            visibilityStateHolder.visibility.collect { visibility ->
+                if (visibility != requestedVisibility) render(savedQuestionStateHolder.state.value)
+            }
         }
     }
 
@@ -77,7 +99,9 @@ internal class SavedQuestionsViewModel(
     private fun render(state: SavedQuestionsState) {
         when (state) {
             SavedQuestionsState.Loading ->
-                if (_uiState.value !is SavedQuestionsUiState.Content) {
+                if (_uiState.value !is SavedQuestionsUiState.Content ||
+                    visibilityStateHolder.visibility.value != resolvedVisibility
+                ) {
                     _uiState.value = SavedQuestionsUiState.Loading
                 }
 
@@ -96,12 +120,14 @@ internal class SavedQuestionsViewModel(
                     _uiState.value = SavedQuestionsUiState.Empty
                 }
 
-                state.savedQuestions == resolvedFor -> {
-                    val current = _uiState.value
-                    if (current is SavedQuestionsUiState.Content) {
-                        _uiState.value = current.copy(pendingQuestionIds = state.pendingQuestionIds)
-                    } else {
-                        resolve(state)
+                state.savedQuestions == resolvedFor &&
+                    visibilityStateHolder.visibility.value == resolvedVisibility -> {
+                    when (val current = _uiState.value) {
+                        is SavedQuestionsUiState.Content ->
+                            _uiState.value = current.copy(pendingQuestionIds = state.pendingQuestionIds)
+                        // Settled: every saved Question resolved hidden under this visibility.
+                        SavedQuestionsUiState.Empty -> Unit
+                        else -> resolve(state)
                     }
                 }
 
@@ -110,20 +136,32 @@ internal class SavedQuestionsViewModel(
         }
     }
 
-    /** Keeps whatever content is already on screen while the new list resolves, to avoid a flash. */
+    /**
+     * Keeps whatever content is already on screen while the new list resolves, to avoid a flash —
+     * but only content resolved under the same visibility. Content from another visibility could
+     * include Questions that are now hidden, so it gives way to Loading instead.
+     */
     private fun resolve(state: SavedQuestionsState.Loaded) {
         resolution?.cancel()
-        if (_uiState.value !is SavedQuestionsUiState.Content) {
+        val visibility = visibilityStateHolder.visibility.value
+        if (_uiState.value !is SavedQuestionsUiState.Content || visibility != resolvedVisibility) {
             _uiState.value = SavedQuestionsUiState.Loading
         }
+        requestedVisibility = visibility
         resolution = viewModelScope.launch {
             try {
-                val items = contentResolver.resolve(state.savedQuestions)
+                val items = contentResolver.resolve(state.savedQuestions, visibility)
                 resolvedFor = state.savedQuestions
-                _uiState.value = SavedQuestionsUiState.Content(
-                    items = items,
-                    pendingQuestionIds = state.pendingQuestionIds,
-                )
+                resolvedVisibility = visibility
+                _uiState.value = if (items.isEmpty()) {
+                    // Everything saved is hidden: nothing to browse, though nothing was removed.
+                    SavedQuestionsUiState.Empty
+                } else {
+                    SavedQuestionsUiState.Content(
+                        items = items,
+                        pendingQuestionIds = state.pendingQuestionIds,
+                    )
+                }
             } catch (cancellation: CancellationException) {
                 // This job was superseded — by a newer saved list, or by the list becoming empty.
                 // Publishing anything here would let the replaced resolution have the last word

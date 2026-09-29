@@ -43,6 +43,7 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.saved_questions.savedQuestionStateHolder
@@ -61,9 +62,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             repository,
+            FakeCurriculumRepository(emptyList()),
             AssessmentReviewLoader(curriculum),
             retakeService(repository, questions),
             savedQuestionStateHolder(),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -81,9 +84,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             FakeAssessmentRepository(completedAttempt(listOf("q"), 0, selectedIds = setOf("a", "b"))),
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(listOf(q)),
             retakeService(FakeAssessmentRepository(completedAttempt(listOf("q"), 0)), listOf(q)),
             savedQuestionStateHolder(),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -102,9 +107,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             FakeAssessmentRepository(completedAttempt(listOf("missing", "q"), 1)),
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(listOf(question("q"))),
             retakeService(FakeAssessmentRepository(completedAttempt(listOf("q"), 1)), listOf(question("q"))),
             savedQuestionStateHolder(),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -120,9 +127,11 @@ internal class FocusedResultViewModelTest {
         val missing = FocusedResultViewModel(
             "attempt",
             repo,
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(emptyList()),
             retakeService(repo, emptyList()),
             savedQuestionStateHolder(),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
         assertIs<FocusedResultUiState.AttemptNotFound>(missing.uiState.value)
@@ -134,9 +143,11 @@ internal class FocusedResultViewModelTest {
         val incomplete = FocusedResultViewModel(
             "attempt",
             repo,
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(emptyList()),
             retakeService(repo, emptyList()),
             savedQuestionStateHolder(),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
         assertIs<FocusedResultUiState.NotCompleted>(incomplete.uiState.value)
@@ -151,9 +162,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             repository,
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(listOf(question("q"))),
             retakeService(repository, listOf(question("q"))),
             savedQuestionStateHolder(),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
 
         advanceUntilIdle()
@@ -170,9 +183,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             repository,
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(listOf(question("q"))),
             retakeService(repository, listOf(question("q"))),
             savedQuestionStateHolder(),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
         assertIs<FocusedResultUiState.Error>(viewModel.uiState.value)
@@ -197,9 +212,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             repository,
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(listOf(question)),
             retakeService(repository, listOf(question)),
             savedQuestionStateHolder(),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -236,9 +253,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             repository,
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(listOf(question)),
             retakeService(repository, listOf(question)),
             savedQuestionStateHolder(),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
 
         // Still Loading: the attempt read has not been dispatched yet.
@@ -259,9 +278,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             repository,
+            FakeCurriculumRepository(emptyList()),
             AssessmentReviewLoader(curriculum),
             retakeService(repository, curriculum),
             savedQuestionStateHolder(),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
         curriculum.selectionFailure = CancellationException("cancelled")
@@ -285,9 +306,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             repository,
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(listOf(question("q"))),
             retakeService(repository, listOf(question("q"))),
             savedQuestionStateHolder(savedRepository),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
         val before = assertIs<FocusedResultUiState.Content>(viewModel.uiState.value)
@@ -316,9 +339,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             repository,
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(listOf(question("q"))),
             retakeService(repository, listOf(question("q"))),
             savedQuestionStateHolder(savedRepository),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -338,9 +363,11 @@ internal class FocusedResultViewModelTest {
         val viewModel = FocusedResultViewModel(
             "attempt",
             repository,
+            FakeCurriculumRepository(emptyList()),
             reviewLoader(listOf(question("q"))),
             retakeService(repository, listOf(question("q"))),
             savedQuestionStateHolder(savedRepository),
+            curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 

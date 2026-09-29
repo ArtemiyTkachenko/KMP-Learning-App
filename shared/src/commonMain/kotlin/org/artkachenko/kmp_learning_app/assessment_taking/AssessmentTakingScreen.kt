@@ -73,6 +73,7 @@ import kmp_learning_app.shared.generated.resources.assessment_taking_results_ope
 import kmp_learning_app.shared.generated.resources.assessment_taking_select_all
 import kmp_learning_app.shared.generated.resources.assessment_taking_select_one
 import kmp_learning_app.shared.generated.resources.assessment_taking_start_error
+import kmp_learning_app.shared.generated.resources.assessment_taking_unavailable
 import kmp_learning_app.shared.generated.resources.assessment_taking_submit
 import kmp_learning_app.shared.generated.resources.assessment_taking_submitting
 import org.artkachenko.kmp_learning_app.assessment_review.AnswerOutcome
@@ -166,6 +167,13 @@ internal fun AssessmentTakingScreen(
                     AssessmentTakingUiState.Error -> ScreenError(
                         message = stringResource(Res.string.assessment_taking_start_error),
                         onRetry = onRetry,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    // A message rather than an error: nothing failed, so Retry would promise an
+                    // outcome that repeating the load cannot give. Back is the way out.
+                    AssessmentTakingUiState.Unavailable -> ScreenMessage(
+                        message = stringResource(Res.string.assessment_taking_unavailable),
                         modifier = Modifier.fillMaxSize(),
                     )
 

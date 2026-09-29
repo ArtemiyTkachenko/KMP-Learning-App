@@ -138,6 +138,7 @@
     <string name="mixed_result_title">Interview results</string>
     <string name="mixed_result_loading">Loading interview results</string>
     <string name="mixed_result_attempt_not_found">This interview could not be found.</string>
+    <string name="mixed_result_unavailable">This interview result is not available with the current learning-content settings.</string>
     <string name="mixed_result_not_completed">This interview is not complete yet.</string>
     <string name="mixed_result_error">Interview results could not be loaded.</string>
     <string name="mixed_result_performance_by_topic">Performance by topic</string>
@@ -207,7 +208,7 @@
     </plurals>
     <string name="practice_builder_no_questions">No questions match this setup. Try more levels.</string>
     <string name="practice_builder_error">Available questions could not be checked.</string>
-    <string name="practice_builder_target_unavailable">This learning unit is no longer available for practice.</string>
+    <string name="practice_builder_target_unavailable">This content is not available for practice.</string>
     <string name="practice_builder_no_practiceable_concepts">This learning unit has no practiceable concepts yet.</string>
     <string name="practice_builder_start">Start practice</string>
     <plurals name="practice_builder_start_count">
@@ -234,6 +235,7 @@
     <string name="assessment_taking_answer_save_error">Answer could not be saved. Try again.</string>
     <string name="assessment_taking_no_questions">No practice questions are currently available.</string>
     <string name="assessment_taking_start_error">Practice could not be started.</string>
+    <string name="assessment_taking_unavailable">This assessment is not available with the current learning-content settings.</string>
     <string name="assessment_taking_ready">All questions answered. Ready to finish.</string>
     <string name="assessment_taking_finish">Finish and view results</string>
     <string name="assessment_taking_finishing">Finishing</string>
@@ -242,6 +244,7 @@
     <string name="focused_result_title">Results</string>
     <string name="focused_result_loading">Loading results</string>
     <string name="focused_result_attempt_not_found">This practice session could not be found.</string>
+    <string name="focused_result_unavailable">This practice result is not available with the current learning-content settings.</string>
     <string name="focused_result_not_completed">This practice session is not complete yet.</string>
     <string name="focused_result_error">Results could not be loaded.</string>
     <string name="assessment_review_score_figure">%1$d / %2$d</string>
@@ -263,6 +266,10 @@
     <string name="assessment_review_source">Source: %1$s</string>
     <string name="assessment_review_missing_question">Question %1$s is no longer available.</string>
     <string name="assessment_review_unresolved_questions">%1$d of %2$d questions are no longer available and are not included below.</string>
+    <plurals name="assessment_review_hidden_questions">
+        <item quantity="one">%1$d Kotlin Multiplatform question is hidden by your learning-content setting.</item>
+        <item quantity="other">%1$d Kotlin Multiplatform questions are hidden by your learning-content setting.</item>
+    </plurals>
     <string name="assessment_review_practice_complete">Practice complete</string>
     <string name="assessment_review_interview_complete">Interview complete</string>
     <plurals name="assessment_review_mistakes_retained">

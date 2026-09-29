@@ -49,6 +49,7 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBui
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeTargetResolver
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderTarget
 import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 
 /**
  * E17-05: the seam between a recommendation and the EPIC-16 Practice Builder, over real derivations.
@@ -70,6 +71,9 @@ import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class GuidedLearningPracticePresetIntegrationTest {
+    /** Everything visible: these tests predate curriculum visibility and are not about it. */
+    private val visibility = curriculumVisibilityStateHolder(includeKmpContent = true)
+
     @AfterTest
     fun tearDown() {
         Dispatchers.resetMain()
@@ -218,6 +222,7 @@ internal class GuidedLearningPracticePresetIntegrationTest {
                 // must not read learning content at all: this fails every call to prove it.
                 learningContentRepository =
                     FakeLearningContentRepository(failuresRemaining = Int.MAX_VALUE),
+                visibility = visibility.visibility,
             ),
             questionSelector = AssessmentQuestionSelector(
                 curriculumRepository = curriculum,
@@ -225,6 +230,7 @@ internal class GuidedLearningPracticePresetIntegrationTest {
                 randomize = { it },
             ),
             initialSource = source,
+            visibilityStateHolder = visibility,
         )
     }
 

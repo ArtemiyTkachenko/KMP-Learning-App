@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
-import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 
 /**
@@ -20,13 +20,14 @@ import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
  *
  * The count is derived from the shared history cache rather than counted on every navigation, so it
  * comes from the same read the Progress and Mistakes screens use and updates when an assessment
- * completes rather than when the learner happens to move between areas.
+ * completes — or the curriculum visibility changes — rather than when the learner happens to move
+ * between areas.
  */
 internal class AppShellViewModel(
     private val mistakeReviewService: MistakeReviewService,
-    historyStore: AssessmentHistoryStore,
+    visibleHistory: VisibleAssessmentHistory,
 ) : ViewModel() {
-    val unresolvedMistakeCount: StateFlow<Int> = historyStore.history
+    val unresolvedMistakeCount: StateFlow<Int> = visibleHistory.history
         .map { history ->
             when (history) {
                 is AssessmentHistory.Loaded -> countUnresolved(history.attempts)

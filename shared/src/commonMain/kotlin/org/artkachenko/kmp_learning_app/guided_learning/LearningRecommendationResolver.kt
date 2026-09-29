@@ -41,7 +41,8 @@ internal class LearningRecommendationResolver(
 ) {
     /**
      * @param completedAttempts completed history, newest first, exactly as the caller received it
-     * from `AssessmentHistoryStore`. Not re-sorted: newest-first is the repository's contract.
+     * from `VisibleAssessmentHistory`. Not re-sorted: newest-first is the repository's contract,
+     * and the projection preserves it.
      * @param progress the snapshot derived from that same [completedAttempts].
      */
     suspend fun resolve(

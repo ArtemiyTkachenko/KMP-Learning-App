@@ -36,6 +36,7 @@ import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.Curriculu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
 import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
 import org.artkachenko.kmp_learning_app.getQuestionById
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 
 /**
  * Derived analytics against real persistence and a curriculum that keeps changing underneath it.
@@ -451,7 +452,7 @@ private class AnalyticsUnderTest(
 ) {
     val assessments: AssessmentRepository =
         LocalAssessmentRepository(AssessmentAttemptStore(database))
-    val progress = LearningProgressService(assessments, curriculum)
+    val progress = LearningProgressService(assessments.asCompletedHistory(), curriculum)
 }
 
 private fun analyticsOver(

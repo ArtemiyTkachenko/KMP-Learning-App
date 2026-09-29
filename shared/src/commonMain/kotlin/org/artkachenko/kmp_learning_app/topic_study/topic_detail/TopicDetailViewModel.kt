@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
-import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeDerivation
 import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeOccurrence
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
@@ -55,7 +55,7 @@ internal class TopicDetailViewModel(
     private val curriculumRepository: CurriculumRepository,
     private val learningContentRepository: LearningContentRepository,
     private val learningProgressService: LearningProgressService,
-    private val historyStore: AssessmentHistoryStore,
+    private val visibleHistory: VisibleAssessmentHistory,
     private val studyProgressStateHolder: StudyProgressStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<TopicDetailUiState>(TopicDetailUiState.Loading)
@@ -107,7 +107,7 @@ internal class TopicDetailViewModel(
      * Topic and its study material back.
      */
     fun retry() {
-        historyStore.invalidate()
+        visibleHistory.invalidate()
         studyProgressStateHolder.refresh()
         loadTopic()
     }
@@ -160,7 +160,7 @@ internal class TopicDetailViewModel(
      */
     private fun observeLearningContext() {
         viewModelScope.launch {
-            historyStore.history.collect { history ->
+            visibleHistory.history.collect { history ->
                 learningContexts = when (history) {
                     // Unknown history, not empty history: with nothing derived the summary is
                     // omitted rather than announcing that the Topic has never been studied.

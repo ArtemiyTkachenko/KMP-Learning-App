@@ -9,7 +9,7 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
-import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 
 /**
  * The interview record, separating "not read yet" from "no interviews taken".
@@ -30,13 +30,16 @@ internal sealed interface InterviewHistoryUiState {
  * App-scoped interview record, derived from the shared history cache.
  *
  * Lives outside the ViewModel so returning to the screen shows the record that was already on it
- * rather than rebuilding from nothing; see [AssessmentHistoryStore] for why the cache sits here.
+ * rather than rebuilding from nothing; see
+ * [org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore] for why the cache sits
+ * here. It reads the visible projection, so a mixed interview that included hidden Questions is
+ * scored over its visible ones only, and one with none visible is not listed.
  */
 internal class InterviewHistoryStateHolder(
-    historyStore: AssessmentHistoryStore,
+    visibleHistory: VisibleAssessmentHistory,
     scope: CoroutineScope,
 ) {
-    val state: StateFlow<InterviewHistoryUiState> = historyStore.history
+    val state: StateFlow<InterviewHistoryUiState> = visibleHistory.history
         .map { history ->
             when (history) {
                 AssessmentHistory.Loading -> InterviewHistoryUiState.Loading

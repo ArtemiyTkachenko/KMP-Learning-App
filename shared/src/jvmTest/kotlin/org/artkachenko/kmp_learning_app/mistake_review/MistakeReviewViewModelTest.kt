@@ -42,6 +42,8 @@ import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionReposit
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.artkachenko.kmp_learning_app.saved_questions.savedQuestionStateHolder
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class MistakeReviewViewModelTest {
@@ -98,7 +100,7 @@ internal class MistakeReviewViewModelTest {
         repository.failNextLoad = true
         val scope = testCacheScope()
         val store = testHistoryStore(repository, scope)
-        val state = MistakeReviewStateHolder(vmService(repository), store, scope).state
+        val state = MistakeReviewStateHolder(vmService(repository), store.visibleHistory(scope), scope).state
         advanceUntilIdle()
         assertIs<MistakeReviewUiState.Error>(state.value)
 
@@ -119,10 +121,10 @@ internal class MistakeReviewViewModelTest {
         val store = testHistoryStore(repository, scope)
         val state = MistakeReviewStateHolder(
             MistakeReviewService(
-                repository,
+                repository.asCompletedHistory(),
                 AssessmentReviewLoader(CancelingCurriculumRepository),
             ),
-            store,
+            store.visibleHistory(scope),
             scope,
         ).state
 
@@ -141,7 +143,7 @@ internal class MistakeReviewViewModelTest {
         val store = testHistoryStore(repository, scope)
         val state = MistakeReviewStateHolder(
             vmService(repository),
-            store,
+            store.visibleHistory(scope),
             scope,
             CancelingLearningContentRepository,
         ).state
@@ -161,7 +163,7 @@ internal class MistakeReviewViewModelTest {
         val store = testHistoryStore(repository, scope)
         val state = MistakeReviewStateHolder(
             vmService(repository),
-            store,
+            store.visibleHistory(scope),
             scope,
             FailingLearningContentRepository,
         ).state
@@ -278,10 +280,10 @@ internal class MistakeReviewViewModelTest {
             historyStore = store,
             stateHolder = MistakeReviewStateHolder(
                 mistakeReviewService = MistakeReviewService(
-                    assessmentRepository = repository,
+                    completedHistory = repository.asCompletedHistory(),
                     assessmentReviewLoader = AssessmentReviewLoader(curriculum),
                 ),
-                historyStore = store,
+                visibleHistory = store.visibleHistory(scope),
                 scope = scope,
             ),
             savedQuestionStateHolder = savedQuestionStateHolder(savedRepository),
@@ -296,7 +298,7 @@ internal class MistakeReviewViewModelTest {
         val scope = testCacheScope()
         return MistakeReviewStateHolder(
             mistakeReviewService = vmService(repository),
-            historyStore = testHistoryStore(repository, scope),
+            visibleHistory = testHistoryStore(repository, scope).visibleHistory(scope),
             scope = scope,
         ).state
     }
@@ -314,7 +316,7 @@ private class FailableCurriculumRepository(
 
 private fun vmService(repository: AssessmentRepository): MistakeReviewService =
     MistakeReviewService(
-        assessmentRepository = repository,
+        completedHistory = repository.asCompletedHistory(),
         assessmentReviewLoader = AssessmentReviewLoader(VmCurriculumRepository),
     )
 

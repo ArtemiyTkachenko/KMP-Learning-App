@@ -63,6 +63,11 @@ import org.koin.core.context.stopKoin
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.VisibleCurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.VisibleLearningContentRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 
 /**
  * Every runtime host installs the same three shared modules plus exactly one platform
@@ -96,6 +101,7 @@ internal class SharedHostStartupTest {
                 lessonStudyDataModule,
                 topicStudyPresentationModule,
                 appearanceModule,
+                curriculumVisibilityModule,
                 jvmAppearanceModule,
             )
         }
@@ -105,8 +111,11 @@ internal class SharedHostStartupTest {
 
             assertIs<CurriculumImporter>(koin.get<CurriculumImporter>())
             assertIs<CurriculumDataInitializer>(koin.get<CurriculumDataInitializer>())
-            assertIs<CurriculumRepository>(koin.get<CurriculumRepository>())
-            assertIs<LearningContentRepository>(koin.get<LearningContentRepository>())
+            // The interfaces resolve to the visibility decorators, never to the raw sources.
+            assertIs<VisibleCurriculumRepository>(koin.get<CurriculumRepository>())
+            assertIs<VisibleLearningContentRepository>(koin.get<LearningContentRepository>())
+            assertIs<CurriculumVisibilityStateHolder>(koin.get<CurriculumVisibilityStateHolder>())
+            assertIs<VisibleAssessmentHistory>(koin.get<VisibleAssessmentHistory>())
             assertIs<AssessmentRepository>(koin.get<AssessmentRepository>())
             assertIs<AssessmentQuestionSelector>(koin.get<AssessmentQuestionSelector>())
             assertIs<AssessmentEngine>(koin.get<AssessmentEngine>())
@@ -236,6 +245,7 @@ internal class SharedHostStartupTest {
                             // that forgot it would start under the system theme with no way to
                             // change it. The platform module is the host's own half.
                             appearanceModule,
+                            curriculumVisibilityModule,
                             jvmAppearanceModule,
                         )
                     }.koin

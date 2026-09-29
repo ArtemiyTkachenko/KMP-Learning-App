@@ -61,6 +61,9 @@ import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class TopicStudyPresentationModuleTest {
@@ -74,6 +77,10 @@ internal class TopicStudyPresentationModuleTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val app = koinApplication {
             modules(
+                // First, so the fake repository below replaces its `CurriculumRepository` binding;
+                // its `LearningContentRepository` binding still decorates the real E20 module.
+                curriculumVisibilityModule,
+                kmpContentPreferenceTestModule(includeKmpContent = false),
                 module {
                     single<CurriculumRepository> {
                         FakeCurriculumRepository()
@@ -98,7 +105,7 @@ internal class TopicStudyPresentationModuleTest {
                     // handed the repository and the cache to coordinate itself.
                     single { CompleteAssessment(get(), get(), get()) }
                     single { AssessmentRetakeService(get(), get()) }
-                    single { LearningProgressService(get(), get()) }
+                    single { LearningProgressService(get<VisibleAssessmentHistory>(), get()) }
                     // The presentation module now depends on the app-scoped history cache; the
                     // real one is declared alongside the assessment data module.
                     single { AppCoroutineScope() }

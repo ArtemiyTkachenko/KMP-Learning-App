@@ -48,6 +48,7 @@ import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepositor
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeTargetResolver
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.toPracticeBuilderTarget
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 
 /**
  * E17-05: the seam between a recommendation and the EPIC-16 Practice Builder, over real derivations.
@@ -183,9 +184,9 @@ internal class GuidedLearningPracticePresetIntegrationTest {
         history: AssessmentRepository,
     ): LearningRecommendation? {
         val completedAttempts = history.getCompletedAttempts()
-        val progress = LearningProgressService(history, curriculum).load(completedAttempts)
+        val progress = LearningProgressService(history.asCompletedHistory(), curriculum).load(completedAttempts)
         val mistakeReviewService = MistakeReviewService(
-            assessmentRepository = history,
+            completedHistory = history.asCompletedHistory(),
             assessmentReviewLoader = AssessmentReviewLoader(curriculum),
         )
         val resolver = LearningRecommendationResolver { attempts ->

@@ -55,6 +55,8 @@ import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
 
 /**
  * Reading the shipped Thinking in Compose Unit through the whole app.
@@ -186,6 +188,8 @@ internal class LearningReaderJourneyIntegrationTest {
                                     modules(
                                         listOf(
                                             curriculumDataModule,
+                                            curriculumVisibilityModule,
+                                            kmpContentPreferenceTestModule(includeKmpContent = false),
                                             learningContentModule,
                                             assessmentDataModule,
                                             savedQuestionDataModule,

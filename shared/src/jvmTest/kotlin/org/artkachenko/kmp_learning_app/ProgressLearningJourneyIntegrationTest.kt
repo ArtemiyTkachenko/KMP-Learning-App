@@ -79,6 +79,9 @@ import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 internal class ProgressLearningJourneyIntegrationTest {
@@ -251,7 +254,7 @@ internal class ProgressLearningJourneyIntegrationTest {
             val curriculumRepository = LocalCurriculumRepository(database)
             val repository = LocalAssessmentRepository(AssessmentAttemptStore(database))
             val service = MistakeReviewService(
-                repository,
+                repository.asCompletedHistory(),
                 AssessmentReviewLoader(curriculumRepository),
             )
 
@@ -289,9 +292,9 @@ internal class ProgressLearningJourneyIntegrationTest {
         )
         val assessmentRepository = LocalAssessmentRepository(AssessmentAttemptStore(database))
         historyFixture().forEach { assessmentRepository.save(it) }
-        val progressService = LearningProgressService(assessmentRepository, curriculumRepository)
+        val progressService = LearningProgressService(assessmentRepository.asCompletedHistory(), curriculumRepository)
         val reviewLoader = AssessmentReviewLoader(curriculumRepository)
-        val mistakeService = MistakeReviewService(assessmentRepository, reviewLoader)
+        val mistakeService = MistakeReviewService(assessmentRepository.asCompletedHistory(), reviewLoader)
 
         return TestComponents(
             database = database,
@@ -301,6 +304,8 @@ internal class ProgressLearningJourneyIntegrationTest {
             uriHandler = RecordingUriHandler(),
             modules = listOf(
                 curriculumDataModule,
+                curriculumVisibilityModule,
+                kmpContentPreferenceTestModule(includeKmpContent = false),
                 learningContentModule,
                 assessmentDataModule,
                 savedQuestionDataModule,

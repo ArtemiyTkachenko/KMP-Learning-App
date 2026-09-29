@@ -47,9 +47,10 @@ internal class ContinueStudyingResolver(
     private val curriculumRepository: CurriculumRepository,
 ) {
     /**
-     * @param completedAttempts completed history, newest first, as `AssessmentHistoryStore` and
-     * `AssessmentRepository.getCompletedAttempts` both provide it. This deliberately does not
-     * re-sort: attempt ordering is the repository's contract, not this policy's opinion.
+     * @param completedAttempts completed history, newest first, as `VisibleAssessmentHistory`
+     * provides it. This deliberately does not re-sort: attempt ordering is the repository's
+     * contract, which the projection preserves, not this policy's opinion. A focused attempt whose
+     * Questions are all hidden is absent from that history, so it is never offered here.
      */
     suspend fun resolve(completedAttempts: List<TestAttempt>): ContinueStudyingContext? {
         for (attempt in completedAttempts) {

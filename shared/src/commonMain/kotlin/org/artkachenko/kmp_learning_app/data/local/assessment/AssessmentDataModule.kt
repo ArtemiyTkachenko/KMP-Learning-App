@@ -5,6 +5,7 @@ import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeServic
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment.session.CompleteAssessment
@@ -45,11 +46,13 @@ internal val assessmentDataModule = module {
     single {
         AssessmentQuestionSelector(
             curriculumRepository = get(),
-            // The app-scoped cache rather than the repository: the Practice Builder re-runs
-            // selection after every edit, and a history-derived preflight must not turn each of
-            // those into a history query. The store is also the one place completion invalidates, so
-            // selection sees a just-finished attempt through the same refresh Progress does.
-            completedHistory = get<AssessmentHistoryStore>(),
+            // The visible projection of the app-scoped cache rather than the repository: the
+            // Practice Builder re-runs selection after every edit, and a history-derived preflight
+            // must not turn each of those into a history query. The store underneath is the one
+            // place completion invalidates, so selection sees a just-finished attempt through the
+            // same refresh Progress does — and, being projected, never ranks or selects evidence
+            // from a hidden Topic.
+            completedHistory = get<VisibleAssessmentHistory>(),
             performanceDerivation = get(),
         )
     }
@@ -89,7 +92,8 @@ internal val assessmentDataModule = module {
     }
     single {
         LearningProgressService(
-            assessmentRepository = get(),
+            // The visible projection, so a caller that supplies no attempts cannot bypass it.
+            completedHistory = get<VisibleAssessmentHistory>(),
             curriculumRepository = get(),
             performanceDerivation = get(),
         )

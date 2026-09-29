@@ -28,6 +28,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import org.artkachenko.kmp_learning_app.getQuestionById
+import kotlin.test.assertNull
 
 internal class CurriculumLocalDataPathTest {
     @Test
@@ -207,7 +208,12 @@ internal class CurriculumLocalDataPathTest {
 
                 assertIs<CurriculumImporter>(koin.get<CurriculumImporter>())
                 assertIs<CurriculumDataInitializer>(koin.get<CurriculumDataInitializer>())
-                assertIs<LocalCurriculumRepository>(koin.get<CurriculumRepository>())
+                assertIs<LocalCurriculumRepository>(koin.get<LocalCurriculumRepository>())
+                // The data module binds the raw repository by its concrete type only. The
+                // interface application code reads is bound by `curriculumVisibilityModule`, to
+                // the visibility decorator, so this module alone cannot hand out unfiltered
+                // eligibility reads.
+                assertNull(koin.getOrNull<CurriculumRepository>())
             } finally {
                 app.close()
             }

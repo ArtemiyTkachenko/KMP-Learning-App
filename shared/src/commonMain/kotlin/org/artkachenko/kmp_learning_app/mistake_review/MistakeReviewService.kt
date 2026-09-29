@@ -1,8 +1,8 @@
 package org.artkachenko.kmp_learning_app.mistake_review
 
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
+import org.artkachenko.kmp_learning_app.assessment.history.CompletedAssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeDerivation
-import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewOccurrence
 
@@ -13,9 +13,14 @@ import org.artkachenko.kmp_learning_app.assessment_review.ReviewOccurrence
  * correctly later resolves it automatically and nothing needs to be persisted. This is deliberately
  * different from the occurrence-based aggregation in `LearningProgressService`, which counts every
  * occurrence rather than only the latest one.
+ *
+ * History comes from the caller or from [completedHistory], which the application binds to the
+ * visible history projection. A hidden Topic's answers are therefore absent before the latest
+ * occurrence is chosen, so they neither appear as mistakes nor decide whether a visible Question's
+ * latest occurrence was wrong — and this service needs no visibility logic of its own.
  */
 internal class MistakeReviewService(
-    private val assessmentRepository: AssessmentRepository,
+    private val completedHistory: CompletedAssessmentHistory,
     private val assessmentReviewLoader: AssessmentReviewLoader,
 ) {
     /**
@@ -44,8 +49,8 @@ internal class MistakeReviewService(
      * How many Questions are unresolved, without reconstructing any review content.
      *
      * [completedAttempts] lets a caller that already holds newest-first completed history reuse it
-     * rather than making the repository read it again — the progress dashboard would otherwise read
-     * and rebuild the whole history a third time on every resume.
+     * rather than reading it again — the progress dashboard would otherwise read and rebuild the
+     * whole history a third time on every resume.
      */
     suspend fun countUnresolved(completedAttempts: List<TestAttempt>? = null): Int =
         unresolvedOccurrences(completedAttempts).size
@@ -53,9 +58,9 @@ internal class MistakeReviewService(
     private suspend fun unresolvedOccurrences(
         completedAttempts: List<TestAttempt>? = null,
     ) = UnresolvedMistakeDerivation.derive(
-        // getCompletedAttempts() is contractually completed-only and already ordered newest first
+        // Completed history is contractually completed-only and already ordered newest first
         // (completedAt DESC, startedAt DESC, id ASC). The shared derivation consumes that order as
         // given and defensively excludes any non-completed attempt supplied by a caller.
-        completedAttempts ?: assessmentRepository.getCompletedAttempts(),
+        completedAttempts ?: completedHistory.completedAttempts(),
     )
 }

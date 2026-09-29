@@ -37,6 +37,7 @@ import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSettingsT
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
 
 /**
  * Settings reached through the real shell, from the surface a learner actually taps.
@@ -165,6 +166,7 @@ internal class SettingsNavigationIntegrationTest {
                             lessonStudyDataModule,
                             topicStudyPresentationModule,
                             appearanceModule,
+                            curriculumVisibilityModule,
                         )
                     }.koin
 

@@ -64,6 +64,8 @@ import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultView
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultUiState
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.getQuestionById
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
 
 /**
  * The Saved Questions lifecycle across the boundaries no single-layer test owns: a real curriculum
@@ -357,10 +359,10 @@ internal class SavedQuestionLifecycleIntegrationTest {
                 historyStore = historyStore,
                 stateHolder = MistakeReviewStateHolder(
                     mistakeReviewService = MistakeReviewService(
-                        assessmentRepository = assessmentRepository,
+                        completedHistory = assessmentRepository.asCompletedHistory(),
                         assessmentReviewLoader = reviewLoader,
                     ),
-                    historyStore = historyStore,
+                    visibleHistory = historyStore.visibleHistory(scope),
                     scope = scope,
                 ),
                 savedQuestionStateHolder = holder,

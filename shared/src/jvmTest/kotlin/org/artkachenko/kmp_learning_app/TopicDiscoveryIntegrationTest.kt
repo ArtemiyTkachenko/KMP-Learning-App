@@ -63,6 +63,8 @@ import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
 
 /**
  * EPIC-13 spread the discovery experience across four owners: the shell's inset and navigation
@@ -447,6 +449,8 @@ internal class TopicDiscoveryIntegrationTest {
                                 modules(
                                     listOf(
                                         curriculumDataModule,
+                                        curriculumVisibilityModule,
+                                        kmpContentPreferenceTestModule(includeKmpContent = false),
                                         learningContentModule,
                                         assessmentDataModule,
                                         savedQuestionDataModule,

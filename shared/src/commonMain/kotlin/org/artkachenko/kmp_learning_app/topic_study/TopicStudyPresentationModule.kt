@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.topic_study
 
 import org.artkachenko.kmp_learning_app.AppShellViewModel
 import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewStateHolder
 import org.artkachenko.kmp_learning_app.mixed_interview.InterviewHistoryStateHolder
 import org.artkachenko.kmp_learning_app.progress.ProgressStateHolder
@@ -42,7 +43,8 @@ internal val topicStudyPresentationModule = module {
         // AssessmentReviewLoader is already registered here, so the mistake queue joins the same
         // module rather than introducing another one or moving the loader across a boundary.
         MistakeReviewService(
-            assessmentRepository = get(),
+            // The visible projection, so a caller that supplies no attempts cannot bypass it.
+            completedHistory = get<VisibleAssessmentHistory>(),
             assessmentReviewLoader = get(),
         )
     }
@@ -64,14 +66,14 @@ internal val topicStudyPresentationModule = module {
     }
     single {
         InterviewHistoryStateHolder(
-            historyStore = get(),
+            visibleHistory = get(),
             scope = get<AppCoroutineScope>(),
         )
     }
     single {
         MistakeReviewStateHolder(
             mistakeReviewService = get(),
-            historyStore = get(),
+            visibleHistory = get(),
             scope = get<AppCoroutineScope>(),
             learningContentRepository = get(),
         )
@@ -108,14 +110,14 @@ internal val topicStudyPresentationModule = module {
             learningProgressService = get(),
             curriculumRepository = get(),
             mistakeReviewService = get(),
-            historyStore = get(),
+            visibleHistory = get(),
             scope = get<AppCoroutineScope>(),
         )
     }
     viewModel {
         AppShellViewModel(
             mistakeReviewService = get(),
-            historyStore = get(),
+            visibleHistory = get(),
         )
     }
     viewModel {
@@ -153,7 +155,7 @@ internal val topicStudyPresentationModule = module {
             // document for itself.
             learningContentRepository = get(),
             learningProgressService = get(),
-            historyStore = get(),
+            visibleHistory = get(),
             continueStudyingResolver = get(),
             learningRecommendationResolver = get(),
             // The same app-scoped projection the three Learn destinations observe. Continue Learning
@@ -183,7 +185,7 @@ internal val topicStudyPresentationModule = module {
             // one validated document rather than from two reads that could disagree.
             learningContentRepository = get(),
             learningProgressService = get(),
-            historyStore = get(),
+            visibleHistory = get(),
             studyProgressStateHolder = get(),
         )
     }

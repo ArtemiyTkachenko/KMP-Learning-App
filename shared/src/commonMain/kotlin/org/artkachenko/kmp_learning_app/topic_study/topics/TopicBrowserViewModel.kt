@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
-import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
@@ -63,7 +63,7 @@ internal class TopicBrowserViewModel(
     private val curriculumRepository: CurriculumRepository,
     private val learningContentRepository: LearningContentRepository,
     private val learningProgressService: LearningProgressService,
-    private val historyStore: AssessmentHistoryStore,
+    private val visibleHistory: VisibleAssessmentHistory,
     private val continueStudyingResolver: ContinueStudyingResolver,
     private val learningRecommendationResolver: LearningRecommendationResolver,
     private val studyProgressStateHolder: StudyProgressStateHolder,
@@ -113,7 +113,7 @@ internal class TopicBrowserViewModel(
      * Content, history, and study state stay independent reads; this only triggers all of them.
      */
     fun retry() {
-        historyStore.invalidate()
+        visibleHistory.invalidate()
         studyProgressStateHolder.refresh()
         loadCatalog()
     }
@@ -164,7 +164,7 @@ internal class TopicBrowserViewModel(
      */
     private fun observeLearningContext() {
         viewModelScope.launch {
-            historyStore.history.collect { history ->
+            visibleHistory.history.collect { history ->
                 val attempts = (history as? AssessmentHistory.Loaded)?.attempts
                 // A failed derivation is treated exactly like history that has not arrived: the
                 // catalog stays browsable and loses only its decoration. No derivation can turn

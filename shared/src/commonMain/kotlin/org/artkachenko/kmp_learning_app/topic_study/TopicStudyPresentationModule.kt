@@ -162,6 +162,9 @@ internal val topicStudyPresentationModule = module {
             // has to agree with the studied indicators shown deeper in the stack, and this screen is
             // usually still alive beneath them when a Lesson is marked.
             studyProgressStateHolder = get(),
+            // Observed so the catalogue is read again when Settings changes what is shown; this
+            // screen stays alive beneath Settings.
+            visibilityStateHolder = get(),
         )
     }
     viewModel {
@@ -187,6 +190,7 @@ internal val topicStudyPresentationModule = module {
             learningProgressService = get(),
             visibleHistory = get(),
             studyProgressStateHolder = get(),
+            visibilityStateHolder = get(),
         )
     }
     viewModel { parameters ->

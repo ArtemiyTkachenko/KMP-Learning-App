@@ -155,7 +155,9 @@ design.
 
 ## Appearance Preference
 
-The one user setting, reached from the Settings destination inside the Learn stack. It is
+One of the two user settings, reached from the Settings destination inside the Learn stack
+(the other is the Kotlin Multiplatform content switch; see the
+[KMP content-separation audit](../quality/kmp-content-separation-audit.md)). It is
 documented with the rest of the theme in
 [Material Design 3](material-design.md) and its ownership in
 [architecture overview](../architecture/overview.md).

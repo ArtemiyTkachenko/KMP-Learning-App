@@ -176,8 +176,8 @@ the shell cannot disagree about light or dark, and nesting it is idempotent.
 Persistence is the smallest thing that works on all five configured targets: a two-method
 `AppPreferenceStorage` over each platform's own small key-value store. No Room migration,
 no settings framework, and no new dependency — the storage key `appearance.theme` and the
-`light`/`dark` tokens are defined once, in common code. The Settings UI shows a single
-switch reflecting the *effective* theme; there is no UI action for returning to automatic
+`light`/`dark` tokens are defined once, in common code. The Settings UI shows the theme as a
+single switch reflecting the *effective* theme; there is no UI action for returning to automatic
 mode, which is why nothing writes `System` back.
 
 ## Curriculum Content Model

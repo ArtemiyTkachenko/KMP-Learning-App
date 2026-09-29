@@ -1,5 +1,7 @@
 package org.artkachenko.kmp_learning_app.topic_study.topics
 
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumSection
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
@@ -15,12 +17,18 @@ internal sealed interface TopicBrowserUiState {
      * say in Loading, Empty, or Error.
      */
     data class Content(
-        val topics: List<TopicBrowserItemUiModel>,
+        /**
+         * The browsing catalogue, already grouped: sections in presentation order, each holding its
+         * Topics in repository order, and no section without a Topic. The screen renders these as
+         * given and never decides which Topic belongs where.
+         */
+        val sections: List<TopicBrowserSection>,
         val searchableSubtopics: List<SubtopicSearchResult> = emptyList(),
         val query: String = "",
         /**
-         * The same enriched rows as [topics], filtered: a Topic match is the same Topic, so it
-         * carries the same marker and the same learning context rather than a second derivation.
+         * The same enriched rows as [sections], filtered into one flat list: search is not sectioned,
+         * and a Topic match is the same Topic, so it carries the same marker and the same learning
+         * context rather than a second derivation.
          */
         val topicMatches: List<TopicBrowserItemUiModel> = emptyList(),
         val subtopicMatches: List<SubtopicSearchResult> = emptyList(),
@@ -67,6 +75,32 @@ internal sealed interface TopicBrowserUiState {
     data object Empty : TopicBrowserUiState
 
     data object Error : TopicBrowserUiState
+}
+
+/**
+ * One heading of the browsing catalogue and the Topics under it.
+ *
+ * [kind] names the section; the screen maps it to a localized heading. [topics] is never empty —
+ * [toBrowserSections] omits a section with nothing in it rather than presenting an empty heading.
+ */
+internal data class TopicBrowserSection(
+    val kind: CurriculumSection,
+    val topics: List<TopicBrowserItemUiModel>,
+)
+
+/**
+ * Groups visible Topic rows by [CurriculumVisibility.sectionOf], in section declaration order,
+ * keeping repository order inside each section and omitting empty sections.
+ *
+ * Grouping only. Which Topics are here at all was decided by the visible repository before this
+ * list was built, so a hidden Kotlin Multiplatform Topic leaves no section behind without any check
+ * of the learner's preference.
+ */
+internal fun List<TopicBrowserItemUiModel>.toBrowserSections(): List<TopicBrowserSection> {
+    val bySection = groupBy { CurriculumVisibility.sectionOf(it.topicId) }
+    return CurriculumSection.entries.mapNotNull { kind ->
+        bySection[kind]?.let { topics -> TopicBrowserSection(kind = kind, topics = topics) }
+    }
 }
 
 /**

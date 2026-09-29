@@ -148,7 +148,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(
                             topicItem("topic_a", "Topic A"),
                             topicItem("topic_b", "Topic B"),
@@ -172,7 +172,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("topic_a", "Topic A")),
                     ),
                     onTopicClick = {},
@@ -194,7 +194,7 @@ internal class TopicBrowserScreenTest {
             MaterialTheme {
                 val prefix = if (query == "first") "First" else "Second"
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = emptyList(),
                         query = query,
                         topicMatches = List(30) { index ->
@@ -222,7 +222,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(
                             topicItem("compose", "Compose Overview"),
                             topicItem("android", "Android UI"),
@@ -264,7 +264,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("topic_a", "Topic A")),
                         query = "nonsense",
                     ),
@@ -286,7 +286,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("architecture", "Architecture")),
                         query = "viewmodel",
                         subtopicMatches = listOf(
@@ -317,7 +317,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(
                             topicItem("networking", "Networking & Serialization"),
                             topicItem("security", "Security, Privacy & Permissions"),
@@ -342,7 +342,7 @@ internal class TopicBrowserScreenTest {
             MaterialTheme {
                 Box(Modifier.size(320.dp, 640.dp)) {
                     TopicBrowserScreen(
-                        state = TopicBrowserUiState.Content(
+                        state = browsingContent(
                             topics = listOf(
                                 topicItem("kmp", "Kotlin Multiplatform & Compose Multiplatform"),
                             ),
@@ -363,7 +363,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("networking", "Networking & Serialization")),
                         query = "http",
                         topicMatches = listOf(
@@ -397,7 +397,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("networking", "Networking & Serialization")),
                         query = "compose",
                         topicMatches = listOf(
@@ -445,7 +445,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(
                             topicItem(
                                 "kotlin",
@@ -483,7 +483,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(
                             topicItem("topic_a", "Topic A", learningContext(0, 14)),
                         ),
@@ -510,7 +510,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(
                             topicItem("topic_a", "Topic A", learningContext(0, 8, accuracy = 62.0)),
                         ),
@@ -531,7 +531,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(
                             // Weak by the domain's verdict.
                             topicItem("weak", "Weak Topic", learningContext(6, 20, 41.0, isWeak = true)),
@@ -563,7 +563,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(match),
                         query = "networking",
                         topicMatches = listOf(match),
@@ -596,7 +596,7 @@ internal class TopicBrowserScreenTest {
             MaterialTheme {
                 Box(Modifier.size(320.dp, 640.dp)) {
                     TopicBrowserScreen(
-                        state = TopicBrowserUiState.Content(
+                        state = browsingContent(
                             topics = listOf(
                                 topicItem(
                                     "architecture",
@@ -630,7 +630,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         continueStudying = ContinueStudyingContext(
                             target = ContinueStudyingTarget.Topic("kotlin", "coroutines"),
@@ -657,7 +657,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         continueStudying = ContinueStudyingContext(
                             target = ContinueStudyingTarget.Practice(
@@ -687,7 +687,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         continueStudying = ContinueStudyingContext(target, "Coroutines", "Kotlin"),
                     ),
@@ -712,7 +712,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                     ),
                     onTopicClick = {},
@@ -731,7 +731,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         query = "kotlin",
                         topicMatches = listOf(topicItem("kotlin", "Kotlin")),
@@ -758,7 +758,7 @@ internal class TopicBrowserScreenTest {
             MaterialTheme {
                 Box(Modifier.size(320.dp, 640.dp)) {
                     TopicBrowserScreen(
-                        state = TopicBrowserUiState.Content(
+                        state = browsingContent(
                             topics = listOf(
                                 topicItem(
                                     "architecture",
@@ -793,7 +793,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                     ),
                     onTopicClick = {},
@@ -812,7 +812,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         recommendedNext = RecommendedNextUiModel(
                             target = LearningRecommendationTarget.Topics,
@@ -839,7 +839,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         recommendedNext = RecommendedNextUiModel(
                             target = LearningRecommendationTarget.MistakeReview,
@@ -861,7 +861,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         recommendedNext = RecommendedNextUiModel(
                             target = LearningRecommendationTarget.MistakeReview,
@@ -882,7 +882,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         recommendedNext = RecommendedNextUiModel(
                             target = weakAreaPractice(),
@@ -909,7 +909,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         recommendedNext = RecommendedNextUiModel(
                             target = weakAreaPractice(),
@@ -937,7 +937,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         recommendedNext = RecommendedNextUiModel(
                             target = unseenPractice(),
@@ -963,7 +963,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         recommendedNext = RecommendedNextUiModel(
                             target = unseenPractice(),
@@ -990,7 +990,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         recommendedNext = RecommendedNextUiModel(
                             target = target,
@@ -1021,7 +1021,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         query = "kotlin",
                         topicMatches = listOf(topicItem("kotlin", "Kotlin")),
@@ -1049,7 +1049,7 @@ internal class TopicBrowserScreenTest {
             MaterialTheme {
                 Box(Modifier.size(320.dp, 640.dp)) {
                     TopicBrowserScreen(
-                        state = TopicBrowserUiState.Content(
+                        state = browsingContent(
                             topics = listOf(
                                 topicItem(
                                     "architecture",
@@ -1094,7 +1094,7 @@ internal class TopicBrowserScreenTest {
             setContent {
                 MaterialTheme {
                     TopicBrowserScreen(
-                        state = TopicBrowserUiState.Content(
+                        state = browsingContent(
                             topics = listOf(topicItem("kotlin", "Kotlin")),
                         ),
                         onTopicClick = {},
@@ -1127,7 +1127,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         continueStudying = ContinueStudyingContext(
                             target = ContinueStudyingTarget.Topic("kotlin"),
@@ -1163,7 +1163,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         continueLearning = ContinueLearningUiModel.Next(
                             target = ContinueLearningTarget("unit", "lesson"),
@@ -1189,7 +1189,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                     ),
                     onTopicClick = {},
@@ -1218,7 +1218,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                     ),
                     onTopicClick = {},
@@ -1248,7 +1248,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                     ),
                     onTopicClick = {},
@@ -1270,7 +1270,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         query = "kotlin",
                         topicMatches = listOf(topicItem("kotlin", "Kotlin")),
@@ -1294,7 +1294,7 @@ internal class TopicBrowserScreenTest {
             MaterialTheme {
                 Box(Modifier.size(320.dp, 640.dp)) {
                     TopicBrowserScreen(
-                        state = TopicBrowserUiState.Content(
+                        state = browsingContent(
                             topics = listOf(
                                 topicItem(
                                     "architecture",
@@ -1337,7 +1337,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("topic_stable_id", "Topic Name")),
                     ),
                     onTopicClick = { topicId ->
@@ -1416,7 +1416,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(
                             topicItem("android_ui", "UI — Views & Jetpack Compose", learningUnitCount = 1),
                         ),
@@ -1435,7 +1435,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin", learningUnitCount = 3)),
                     ),
                     onTopicClick = {},
@@ -1455,7 +1455,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin", learningUnitCount = 0)),
                     ),
                     onTopicClick = { clicked = it },
@@ -1478,7 +1478,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin", learningUnitCount = null)),
                     ),
                     onTopicClick = {},
@@ -1496,7 +1496,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(
                             topicItem("android_ui", "UI — Views & Jetpack Compose", learningUnitCount = 1),
                         ),
@@ -1541,7 +1541,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         continueLearning = ContinueLearningUiModel.Next(
                             target = ContinueLearningTarget("unit_compose", "lesson_recomposition"),
@@ -1570,7 +1570,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         continueLearning = ContinueLearningUiModel.Next(
                             target = target,
@@ -1602,7 +1602,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         continueLearning = ContinueLearningUiModel.Complete,
                     ),
@@ -1624,7 +1624,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                     ),
                     onTopicClick = {},
@@ -1643,7 +1643,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         query = "kotlin",
                         topicMatches = listOf(topicItem("kotlin", "Kotlin")),
@@ -1676,7 +1676,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         continueStudying = ContinueStudyingContext(
                             target = ContinueStudyingTarget.Topic("kotlin"),
@@ -1722,7 +1722,7 @@ internal class TopicBrowserScreenTest {
             MaterialTheme {
                 Box(Modifier.size(320.dp, 640.dp)) {
                     TopicBrowserScreen(
-                        state = TopicBrowserUiState.Content(
+                        state = browsingContent(
                             topics = listOf(topicItem("kotlin", "Kotlin")),
                             continueLearning = ContinueLearningUiModel.Next(
                                 target = ContinueLearningTarget("unit_compose", "lesson_recomposition"),
@@ -1757,7 +1757,7 @@ internal class TopicBrowserScreenTest {
             MaterialTheme {
                 Box(Modifier.size(360.dp, 400.dp)) {
                     TopicBrowserScreen(
-                        state = TopicBrowserUiState.Content(
+                        state = browsingContent(
                             topics = List(20) { index ->
                                 topicItem("topic_$index", "Topic $index")
                             },
@@ -1802,7 +1802,7 @@ internal class TopicBrowserScreenTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
-                    state = TopicBrowserUiState.Content(
+                    state = browsingContent(
                         topics = listOf(topicItem("compose", "Browsing Compose")),
                         query = query,
                         topicMatches = when (query) {

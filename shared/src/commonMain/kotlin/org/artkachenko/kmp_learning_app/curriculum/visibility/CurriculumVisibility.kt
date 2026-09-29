@@ -25,10 +25,22 @@ internal data class CurriculumVisibility(val hiddenTopicIds: Set<String>) {
          * The Topic that holds Kotlin Multiplatform material.
          *
          * The only place application code names it: Topic membership is the whole classification,
-         * so no Question, Unit or screen carries a KMP flag of its own, and nothing else compares a
-         * Topic ID with this value.
+         * so no Question, Unit or screen carries a KMP flag of its own, and nothing outside this
+         * companion compares a Topic ID with this value.
          */
         private const val KotlinMultiplatformTopicId: String = "kmp"
+
+        /**
+         * The section [topicId] is presented in: the Kotlin Multiplatform Topic in its own, every
+         * other Topic in Android Engineering. Uses the same constant as [from], so the Topic that is
+         * optional and the Topic that is grouped apart cannot drift apart.
+         */
+        fun sectionOf(topicId: String): CurriculumSection =
+            if (topicId == KotlinMultiplatformTopicId) {
+                CurriculumSection.KotlinMultiplatform
+            } else {
+                CurriculumSection.AndroidEngineering
+            }
 
         /** The visibility the learner's Kotlin Multiplatform preference implies. */
         fun from(includeKmpContent: Boolean): CurriculumVisibility =

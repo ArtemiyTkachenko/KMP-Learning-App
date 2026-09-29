@@ -1,13 +1,23 @@
 package org.artkachenko.kmp_learning_app.settings
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsToggleable
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -16,6 +26,7 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.product.ProductMetadata
 
 @OptIn(ExperimentalTestApi::class)
@@ -25,7 +36,7 @@ internal class SettingsScreenTest {
     fun theAppearanceSectionOffersOneLabelledThemeSwitch() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                SettingsScreen(isDarkTheme = false, onDarkThemeChange = {}, onBack = {})
+                TestSettingsScreen(isDarkTheme = false, onDarkThemeChange = {}, onBack = {})
             }
         }
 
@@ -41,7 +52,7 @@ internal class SettingsScreenTest {
     fun theSwitchReflectsTheEffectiveTheme() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                SettingsScreen(isDarkTheme = true, onDarkThemeChange = {}, onBack = {})
+                TestSettingsScreen(isDarkTheme = true, onDarkThemeChange = {}, onBack = {})
             }
         }
 
@@ -52,7 +63,7 @@ internal class SettingsScreenTest {
     fun theSwitchIsOffWhenTheAppIsLight() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                SettingsScreen(isDarkTheme = false, onDarkThemeChange = {}, onBack = {})
+                TestSettingsScreen(isDarkTheme = false, onDarkThemeChange = {}, onBack = {})
             }
         }
 
@@ -68,7 +79,7 @@ internal class SettingsScreenTest {
         val requested = mutableListOf<Boolean>()
         setContent {
             MaterialTheme {
-                SettingsScreen(
+                TestSettingsScreen(
                     isDarkTheme = false,
                     onDarkThemeChange = { requested += it },
                     onBack = {},
@@ -86,7 +97,7 @@ internal class SettingsScreenTest {
         val requested = mutableListOf<Boolean>()
         setContent {
             MaterialTheme {
-                SettingsScreen(
+                TestSettingsScreen(
                     isDarkTheme = true,
                     onDarkThemeChange = { requested += it },
                     onBack = {},
@@ -103,7 +114,7 @@ internal class SettingsScreenTest {
     fun theRowPublishesSwitchSemanticsRatherThanAPlainClick() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                SettingsScreen(isDarkTheme = true, onDarkThemeChange = {}, onBack = {})
+                TestSettingsScreen(isDarkTheme = true, onDarkThemeChange = {}, onBack = {})
             }
         }
 
@@ -121,7 +132,7 @@ internal class SettingsScreenTest {
     fun theAboutSectionNamesTheProductAndItsCanonicalVersion() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                SettingsScreen(isDarkTheme = false, onDarkThemeChange = {}, onBack = {})
+                TestSettingsScreen(isDarkTheme = false, onDarkThemeChange = {}, onBack = {})
             }
         }
 
@@ -137,7 +148,7 @@ internal class SettingsScreenTest {
         var backs = 0
         setContent {
             MaterialTheme {
-                SettingsScreen(isDarkTheme = false, onDarkThemeChange = {}, onBack = { backs += 1 })
+                TestSettingsScreen(isDarkTheme = false, onDarkThemeChange = {}, onBack = { backs += 1 })
             }
         }
 
@@ -147,24 +158,144 @@ internal class SettingsScreenTest {
         assertEquals(1, backs)
     }
 
-    /**
-     * The scope is two sections. This is the guard against Settings quietly becoming a preference
-     * framework: nothing here is a placeholder for an account, a language or a notifications
-     * screen, and a later change that adds one has to change this test deliberately.
-     */
     @Test
-    fun theScreenCarriesTheTwoSectionsAndNoSpeculativeOnes() = runComposeUiTest {
+    fun theLearningContentSectionOffersOneLabelledKmpSwitch() = runComposeUiTest {
         setContent {
             MaterialTheme {
-                SettingsScreen(isDarkTheme = false, onDarkThemeChange = {}, onBack = {})
+                TestSettingsScreen()
             }
         }
 
-        onNodeWithText("Appearance").assertIsDisplayed()
-        onNodeWithText("About").assertIsDisplayed()
+        onNodeWithText("Learning content").assertIsDisplayed()
+        onNodeWithText("Include Kotlin Multiplatform content").assertIsDisplayed()
+        onNodeWithText("Show Kotlin Multiplatform topics, lessons, and practice questions.")
+            .assertIsDisplayed()
+        onNodeWithTag(SettingsKmpContentSwitchTag)
+            .assertIsToggleable()
+            .assertHeightIsAtLeast(MinimumTouchTarget)
+    }
+
+    /** No effective state here: the switch shows the stored choice exactly. */
+    @Test
+    fun theKmpSwitchShowsTheChoiceItIsGiven() = runComposeUiTest {
+        var include by mutableStateOf(false)
+        setContent {
+            MaterialTheme {
+                TestSettingsScreen(includeKmpContent = include)
+            }
+        }
+
+        onNodeWithTag(SettingsKmpContentSwitchTag).assertIsOff()
+        include = true
+        onNodeWithTag(SettingsKmpContentSwitchTag).assertIsOn()
+    }
+
+    @Test
+    fun movingTheKmpSwitchReportsTheRequestedValueInBothDirections() = runComposeUiTest {
+        val requested = mutableListOf<Boolean>()
+        var include by mutableStateOf(false)
+        setContent {
+            MaterialTheme {
+                TestSettingsScreen(
+                    includeKmpContent = include,
+                    onIncludeKmpContentChange = { requested += it },
+                )
+            }
+        }
+
+        onNodeWithTag(SettingsKmpContentSwitchTag).performClick()
+        include = true
+        waitForIdle()
+        onNodeWithTag(SettingsKmpContentSwitchTag).performClick()
+
+        assertEquals(listOf(true, false), requested)
+    }
+
+    /**
+     * One toggleable node carrying the label and the state, rather than a clickable row beside an
+     * independently toggleable switch.
+     */
+    @Test
+    fun theKmpRowPublishesOneSwitchNode() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TestSettingsScreen(includeKmpContent = true)
+            }
+        }
+
+        onNodeWithTag(SettingsKmpContentSwitchTag)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.On))
+        // Exactly two toggleable nodes on the whole screen: one per setting, no inner switches.
+        assertEquals(2, onAllNodes(isToggleable()).fetchSemanticsNodes().size)
+    }
+
+    /** Each switch reports only to its own callback. */
+    @Test
+    fun theTwoSwitchesAreIndependent() = runComposeUiTest {
+        val theme = mutableListOf<Boolean>()
+        val kmp = mutableListOf<Boolean>()
+        setContent {
+            MaterialTheme {
+                TestSettingsScreen(
+                    onDarkThemeChange = { theme += it },
+                    onIncludeKmpContentChange = { kmp += it },
+                )
+            }
+        }
+
+        onNodeWithTag(SettingsDarkThemeSwitchTag).performClick()
+        assertEquals(listOf(true), theme)
+        assertTrue(kmp.isEmpty())
+
+        onNodeWithTag(SettingsKmpContentSwitchTag).performClick()
+        assertEquals(listOf(true), theme)
+        assertEquals(listOf(true), kmp)
+    }
+
+    /**
+     * The scope is three sections: appearance, the curriculum the app teaches, and what this build
+     * is. This is the guard against Settings quietly becoming a preference framework: nothing here
+     * is a placeholder for an account, a language or a notifications screen, and a later change
+     * that adds one has to change this test deliberately.
+     */
+    @Test
+    fun theScreenCarriesTheThreeSectionsInOrderAndNoSpeculativeOnes() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TestSettingsScreen()
+            }
+        }
+
+        val headings = listOf("Appearance", "Learning content", "About").map { title ->
+            onNodeWithText(title).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+        }
+        assertEquals(headings.sorted(), headings)
         listOf("Account", "Profile", "Language", "Notifications", "Licences", "Feedback")
             .forEach { onNodeWithText(it).assertDoesNotExist() }
+        // The KMP row belongs to Learning content, not to Appearance.
+        val kmpTop = onNodeWithTag(SettingsKmpContentSwitchTag).fetchSemanticsNode().boundsInRoot.top
+        assertTrue(kmpTop > headings[1] && kmpTop < headings[2])
+        assertEquals(1, onAllNodesWithText("Dark theme").fetchSemanticsNodes().size)
     }
+}
+
+/** The screen with every value defaulted, so each test states only what it is about. */
+@Composable
+private fun TestSettingsScreen(
+    isDarkTheme: Boolean = false,
+    onDarkThemeChange: (Boolean) -> Unit = {},
+    includeKmpContent: Boolean = false,
+    onIncludeKmpContentChange: (Boolean) -> Unit = {},
+    onBack: () -> Unit = {},
+) {
+    SettingsScreen(
+        isDarkTheme = isDarkTheme,
+        onDarkThemeChange = onDarkThemeChange,
+        includeKmpContent = includeKmpContent,
+        onIncludeKmpContentChange = onIncludeKmpContentChange,
+        onBack = onBack,
+    )
 }
 
 /** The Material minimum touch target. */

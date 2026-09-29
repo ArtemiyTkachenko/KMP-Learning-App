@@ -347,8 +347,8 @@ are marked where they appear.
 
 ### How it behaves
 
-- **A settings row is one toggle, not a row containing one.** The appearance row in
-  Settings takes `Modifier.toggleable(role = Role.Switch)` and gives its `Switch`
+- **A settings row is one toggle, not a row containing one.** Each switch row in
+  Settings (dark theme, Kotlin Multiplatform content) takes `Modifier.toggleable(role = Role.Switch)` and gives its `Switch`
   `onCheckedChange = null`, so the whole two-line row is the target and the accessible node
   — one switch to announce, not a clickable row beside a separate switch.
 - **A toggle looks like a state, not a command.** The saved-Question control is a bookmark

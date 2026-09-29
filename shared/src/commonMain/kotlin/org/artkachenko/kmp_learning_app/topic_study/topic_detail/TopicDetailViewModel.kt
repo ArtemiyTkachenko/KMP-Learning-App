@@ -17,6 +17,8 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressDerivation
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressState
@@ -31,7 +33,9 @@ import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
  *
  * - the [curriculum] is the primary capability and the only one that can produce Loading, NotFound,
  *   or Error. It decides whether the Topic exists — and, through its question count alone, whether
- *   the Topic can be practised;
+ *   the Topic can be practised. It is read through the visible repository and read again when the
+ *   learner's curriculum visibility changes, so a Topic that has just been hidden becomes NotFound
+ *   and comes back when it is shown again;
  * - [learningUnits] is authored study material from a different publisher-owned source. It has its
  *   own loading and failure states inside [TopicDetailUiState.Content] because an unreadable
  *   learning document must not take away a practiceable Topic, and a Topic that is still resolving
@@ -57,6 +61,7 @@ internal class TopicDetailViewModel(
     private val learningProgressService: LearningProgressService,
     private val visibleHistory: VisibleAssessmentHistory,
     private val studyProgressStateHolder: StudyProgressStateHolder,
+    private val visibilityStateHolder: CurriculumVisibilityStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<TopicDetailUiState>(TopicDetailUiState.Loading)
     val uiState: StateFlow<TopicDetailUiState> = _uiState.asStateFlow()
@@ -65,6 +70,8 @@ internal class TopicDetailViewModel(
     private var learningUnits: TopicLearningUnitsUiState = TopicLearningUnitsUiState.Loading
     /** Identifies the newest load, so a slower earlier one cannot write over it. */
     private var loadGeneration: Int = 0
+    /** The visibility the newest load was made under; see [observeVisibility]. */
+    private var loadVisibility: CurriculumVisibility? = null
     private var learningContexts: LearningContextIndex? = null
     /**
      * Every stable Question ID the learner currently owes an answer to, across the whole history —
@@ -92,6 +99,7 @@ internal class TopicDetailViewModel(
         observeLearningContext()
         observeStudyState()
         loadTopic()
+        observeVisibility()
     }
 
     /**
@@ -134,6 +142,30 @@ internal class TopicDetailViewModel(
             ?.subtopics
             ?.firstOrNull { it.subtopic.id == subtopicId }
             ?.let { item -> AssessmentScope.Subtopic(item.subtopic.id) }
+
+    /**
+     * Reloads the Topic when the learner shows or hides optional content.
+     *
+     * The same reload [retry] performs for the curriculum and the Units, through the visible
+     * repositories and under the same [loadGeneration] contract, so a read made under the old
+     * visibility can never land after one made under the new. Whether this Topic is still shown is
+     * the repository's answer, not this screen's: a hidden Topic simply stops resolving and the
+     * screen becomes its existing NotFound.
+     *
+     * The initial value a `StateFlow` hands a new collector is the visibility [loadTopic] has just
+     * requested under, so comparing against [loadVisibility] keeps it from becoming a second startup
+     * read. History is not invalidated: the visible projection re-emits on a visibility change by
+     * itself, and nothing in the database changed.
+     */
+    private fun observeVisibility() {
+        viewModelScope.launch {
+            visibilityStateHolder.visibility.collect { visibility ->
+                if (visibility == loadVisibility) return@collect
+                studyProgressStateHolder.refresh()
+                loadTopic()
+            }
+        }
+    }
 
     /**
      * Follows the app-scoped study projection for the same reason the history cache is followed:
@@ -204,6 +236,7 @@ internal class TopicDetailViewModel(
      */
     private fun loadTopic() {
         val generation = ++loadGeneration
+        loadVisibility = visibilityStateHolder.visibility.value
         curriculum = TopicCurriculum.Loading
         // The previous read described a Topic that is being loaded again, so study material drops
         // back to unknown rather than being shown against whatever arrives next.

@@ -20,6 +20,8 @@ import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertNotEquals
+import org.artkachenko.kmp_learning_app.topic_study.topics.allTopics
+import org.artkachenko.kmp_learning_app.topic_study.topics.browsingContent
 import org.artkachenko.kmp_learning_app.topic_study.topics.SubtopicSearchResult
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserItemUiModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
@@ -239,7 +241,7 @@ private const val SubtopicName = "Compose snapshot state"
  * The three learning states a Topic card has to keep apart in either palette: observed, weak, and
  * unstudied. Coverage stays neutral in all three; only accuracy and the weak badge are semantic.
  */
-private val BrowsingState = TopicBrowserUiState.Content(
+private val BrowsingState = browsingContent(
     topics = listOf(
         TopicBrowserItemUiModel(
             topicId = UiTopicId,
@@ -268,7 +270,7 @@ private val BrowsingState = TopicBrowserUiState.Content(
 
 private val SearchState = BrowsingState.copy(
     query = "compose",
-    topicMatches = listOf(BrowsingState.topics[1]),
+    topicMatches = listOf(BrowsingState.allTopics[1]),
     subtopicMatches = listOf(
         SubtopicSearchResult(
             subtopicId = "compose_state",

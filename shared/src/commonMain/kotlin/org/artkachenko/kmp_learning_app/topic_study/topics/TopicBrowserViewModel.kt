@@ -14,6 +14,8 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendation
@@ -33,9 +35,12 @@ import org.artkachenko.kmp_learning_app.ui.LearningContextIndex
  * The inputs are held apart on purpose, because they fail and change independently:
  *
  * - the [catalog] is the primary capability and the only one that can produce Loading, Empty, or
- *   Error. Browsing, searching, and opening a Topic must keep working when analytics do not;
- * - the [query] belongs to the learner, so it lives outside both loads. A history refresh rebuilds
- *   the rows underneath an active search without disturbing what was typed;
+ *   Error. Browsing, searching, and opening a Topic must keep working when analytics do not. It is
+ *   read through the visible repositories and read again whenever the learner's curriculum
+ *   visibility changes, because this screen outlives the Settings entry pushed above it;
+ * - the [query] belongs to the learner, so it lives outside both loads. A history refresh or a
+ *   visibility reload rebuilds the rows underneath an active search without disturbing what was
+ *   typed;
  * - [learningContexts], [recommendedNext], and [continueStudying] are optional enrichment derived
  *   from the shared history cache. Until a derivation succeeds they stay null, and the screen
  *   simply omits them: unknown history is not empty history, and must never render as "not studied
@@ -67,6 +72,7 @@ internal class TopicBrowserViewModel(
     private val continueStudyingResolver: ContinueStudyingResolver,
     private val learningRecommendationResolver: LearningRecommendationResolver,
     private val studyProgressStateHolder: StudyProgressStateHolder,
+    private val visibilityStateHolder: CurriculumVisibilityStateHolder,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<TopicBrowserUiState>(TopicBrowserUiState.Loading)
     val uiState: StateFlow<TopicBrowserUiState> = _uiState.asStateFlow()
@@ -74,6 +80,8 @@ internal class TopicBrowserViewModel(
     private var catalog: TopicCatalog = TopicCatalog.Loading
     /** Identifies the newest catalogue request, so a slower earlier one cannot write over it. */
     private var catalogGeneration: Int = 0
+    /** The visibility the newest catalogue request was made under; see [observeVisibility]. */
+    private var catalogVisibility: CurriculumVisibility? = null
     private var query: String = ""
     /**
      * Active Learning Units per Topic, or `null` while unknown. `null` and an entry of `0` are
@@ -98,6 +106,7 @@ internal class TopicBrowserViewModel(
         observeLearningContext()
         observeStudyState()
         loadCatalog()
+        observeVisibility()
     }
 
     /**
@@ -132,6 +141,35 @@ internal class TopicBrowserViewModel(
             studyProgressStateHolder.state.collect { state ->
                 studyState = state
                 render()
+            }
+        }
+    }
+
+    /**
+     * Reads the catalogue again when the learner shows or hides optional content.
+     *
+     * The visible repositories are the authority on what is shown, so this re-reads through them
+     * rather than filtering the cached catalogue: the Topic rows, the searchable Subtopics, the Unit
+     * counts and the authored sequence Continue Learning walks all come back from the new
+     * visibility together, under the same [catalogGeneration] contract as any other load, so a
+     * slower read made under the old visibility cannot land on top of the new one.
+     *
+     * A `StateFlow` hands a new collector its current value, which is the visibility [loadCatalog]
+     * has just requested under. Comparing against [catalogVisibility] rather than dropping the first
+     * emission keeps that from becoming a second startup read without missing a change that happens
+     * before this collector starts.
+     *
+     * The study record is refreshed so Learn surfaces re-evaluate the persisted record against the
+     * Units now visible; nothing in it is filtered or removed. History needs nothing here: the
+     * visible projection already re-emits on a visibility change, and the database has not changed,
+     * so invalidating it would only repeat a read.
+     */
+    private fun observeVisibility() {
+        viewModelScope.launch {
+            visibilityStateHolder.visibility.collect { visibility ->
+                if (visibility == catalogVisibility) return@collect
+                studyProgressStateHolder.refresh()
+                loadCatalog()
             }
         }
     }
@@ -213,12 +251,13 @@ internal class TopicBrowserViewModel(
      * browsable while availability is still unknown. Learning content never gets a loading state,
      * an error state, or a say in whether the screen can be used.
      *
-     * [catalogGeneration] exists because `retry()` can be pressed while a load is still running.
-     * Only the newest request may write, so a slower earlier load — catalogue or enrichment —
-     * cannot land on top of a newer one.
+     * [catalogGeneration] exists because `retry()` can be pressed, or the learner's visibility can
+     * change, while a load is still running. Only the newest request may write, so a slower earlier
+     * load — catalogue or enrichment — cannot land on top of a newer one.
      */
     private fun loadCatalog() {
         val generation = ++catalogGeneration
+        catalogVisibility = visibilityStateHolder.visibility.value
         catalog = TopicCatalog.Loading
         // The previous catalogue's availability describes Topics that are being reloaded, so it is
         // dropped back to unknown rather than shown against whatever arrives next. The authored
@@ -393,7 +432,7 @@ private fun TopicCatalog.Loaded.toContent(
     val tokens = query.searchTokens()
     if (tokens.isEmpty()) {
         return TopicBrowserUiState.Content(
-            topics = items,
+            sections = items.toBrowserSections(),
             searchableSubtopics = searchableSubtopics,
             query = query,
             // All three guided surfaces belong to browsing, so they are attached here and nowhere
@@ -405,11 +444,12 @@ private fun TopicCatalog.Loaded.toContent(
         )
     }
     return TopicBrowserUiState.Content(
-        topics = items,
+        sections = items.toBrowserSections(),
         searchableSubtopics = searchableSubtopics,
         query = query,
-        // Matching reads Topic and Subtopic names only. Learning context is display metadata, so a
-        // query of "weak" or "76%" still finds curriculum by name or nothing at all.
+        // Flat, not sectioned: search answers "where is this?", and a section heading is not a
+        // result. Matching reads Topic and Subtopic names only. Learning context is display
+        // metadata, so a query of "weak" or "76%" still finds curriculum by name or nothing at all.
         topicMatches = items.filter { it.topicName.matchesAll(tokens) },
         subtopicMatches = searchableSubtopics.filter { it.subtopicName.matchesAll(tokens) },
     )

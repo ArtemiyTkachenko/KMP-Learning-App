@@ -25,6 +25,20 @@ routing model — is in
 objectives, depth layers and editorial decisions; that document holds what the review had
 to settle.
 
+**KMP content separation.** The shipped Lessons have since been split along the core/KMP
+boundary recorded in [`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md). `lesson_viewmodel_lifetime_and_persistence` now teaches the
+Activity, Fragment and navigation-entry owners, and `lesson_owner_scoped_work` teaches
+AndroidX `viewModelScope` without the per-target Main fallback; their multi-host material
+moved to **Shared ViewModels, Host-Owned Lifetimes** in **Shared ViewModels and Host Lifecycles** (`unit_kmp_shared_viewmodels_and_host_lifecycles`, home Topic `kmp`, authored after every core Unit).
+`lesson_viewmodel_lifetime_and_persistence` and `lesson_state_holder_responsibility` dropped
+supporting `kmp_lifecycle_viewmodel`. `lesson_policy_and_framework_detail` dropped
+supporting `kmp_architecture` and its multiplatform paragraph, which now argues reuse
+instead; that paragraph did not become a KMP Lesson, because the one sentence of it that
+mattered already lives in **One Graph, Several Platforms**. Incidental multiplatform
+wording in `lesson_when_a_domain_layer_earns_its_place`, `lesson_mvvm_observed_state` and
+`lesson_choosing_the_owner_by_lifetime` was removed. Entries below that describe
+multiplatform material record the original plan; the current mappings are in [`learning-question-coverage.md`](learning-question-coverage.md).
+
 ## The Learner This Subject Is Written For
 
 The reader has already worked through the shipped Compose and Coroutines and Flow Units.

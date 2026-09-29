@@ -66,6 +66,7 @@ internal class BundledLearningCurriculumTest {
                 "unit_koin_containers_definitions_and_scopes",
                 "unit_choosing_a_dependency_injection_strategy",
                 // Android Engineering Lab is Android-first: KMP Units follow every core Unit.
+                "unit_kmp_shared_viewmodels_and_host_lifecycles",
                 "unit_koin_and_dependency_injection_in_kmp",
             ),
             units().map { it.id },
@@ -103,6 +104,7 @@ internal class BundledLearningCurriculumTest {
                 "Hilt: Android Lifecycle-Aware Dagger",
                 "Koin: Containers, Definitions and Scopes",
                 "Choosing a Dependency Injection Strategy",
+                "Shared ViewModels and Host Lifecycles",
                 "Koin and Dependency Injection in KMP",
             ),
             units().map { it.title },
@@ -143,10 +145,11 @@ internal class BundledLearningCurriculumTest {
                 "dependency_injection",
                 "dependency_injection",
                 "kmp",
+                "kmp",
             ),
             units().map { it.topicId },
         )
-        assertEquals(136, units().sumOf { it.lessons.size })
+        assertEquals(138, units().sumOf { it.lessons.size })
 
         units().forEach { unit ->
             assertEquals(ContentStatus.ACTIVE, unit.status, unit.id)
@@ -717,6 +720,22 @@ internal class BundledLearningCurriculumTest {
 
         assertEquals(
             listOf(
+                "lesson_kmp_viewmodel_owners_across_hosts",
+                "lesson_kmp_lifecycle_collection_across_hosts",
+            ),
+            unit("unit_kmp_shared_viewmodels_and_host_lifecycles").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "Shared ViewModels, Host-Owned Lifetimes",
+                "Lifecycle-Aware Collection on Each Host",
+            ),
+            unit("unit_kmp_shared_viewmodels_and_host_lifecycles").lessons.map { it.title },
+        )
+
+        assertEquals(
+            listOf(
                 "lesson_one_graph_across_platforms",
                 "lesson_choosing_di_for_a_shared_graph",
             ),
@@ -812,9 +831,8 @@ internal class BundledLearningCurriculumTest {
             unit("unit_production_screen_state_and_udf").lessons.map { it.primarySubtopicIds },
         )
 
-        // Unit 8 applies one Compose concept at four depths. Flow, lifecycle and KMP
-        // concepts are prerequisites and platform context, so Unit practice remains
-        // exactly `compose_state` until E25-08 authors its missing Questions.
+        // Unit 8 applies one Compose concept at four depths. Flow and lifecycle concepts are
+        // prerequisites and platform context, so Unit practice remains exactly `compose_state`.
         assertEquals(
             List(4) { listOf("compose_state") },
             unit("unit_observable_state_collection").lessons.map { it.primarySubtopicIds },
@@ -1125,6 +1143,14 @@ internal class BundledLearningCurriculumTest {
 
         assertEquals(
             listOf(
+                listOf("kmp_lifecycle_viewmodel"),
+                listOf("compose_multiplatform"),
+            ),
+            unit("unit_kmp_shared_viewmodels_and_host_lifecycles").lessons.map { it.primarySubtopicIds },
+        )
+
+        assertEquals(
+            listOf(
                 listOf("koin_kmp"),
                 listOf("kmp_library_selection"),
             ),
@@ -1162,12 +1188,7 @@ internal class BundledLearningCurriculumTest {
                     "kotlin_data_classes",
                     "compose_stability",
                 ),
-                listOf(
-                    "state_ownership",
-                    "viewmodel_lifecycle",
-                    "kmp_lifecycle_viewmodel",
-                    "configuration_changes",
-                ),
+                listOf("state_ownership", "viewmodel_lifecycle", "configuration_changes"),
             ),
             unit("unit_production_screen_state_and_udf").lessons.map { it.supportingSubtopicIds },
         )
@@ -1185,12 +1206,7 @@ internal class BundledLearningCurriculumTest {
                     "coroutine_cancellation",
                     "lifecycle_coroutines",
                 ),
-                listOf(
-                    "lifecycle_aware_apis",
-                    "kmp_lifecycle_viewmodel",
-                    "compose_multiplatform",
-                    "flow_sharing",
-                ),
+                listOf("lifecycle_aware_apis", "activity_lifecycle", "flow_sharing"),
             ),
             unit("unit_observable_state_collection").lessons.map { it.supportingSubtopicIds },
         )
@@ -1619,19 +1635,8 @@ internal class BundledLearningCurriculumTest {
         // None of them may broaden the Unit's practice, which the integration test asserts.
         assertEquals(
             listOf(
-                listOf(
-                    "compose_state_hoisting",
-                    "viewmodel_lifecycle",
-                    "kmp_lifecycle_viewmodel",
-                    "separation_of_concerns",
-                ),
-                listOf(
-                    "viewmodel_lifecycle",
-                    "configuration_changes",
-                    "process_death",
-                    "saved_state",
-                    "kmp_lifecycle_viewmodel",
-                ),
+                listOf("compose_state_hoisting", "viewmodel_lifecycle", "separation_of_concerns"),
+                listOf("viewmodel_lifecycle", "configuration_changes", "process_death", "saved_state"),
                 listOf("kotlin_sealed_types", "error_modeling", "compose_stability", "compose_state"),
                 listOf("state_ownership", "compose_udf", "stateflow"),
                 listOf(
@@ -1849,19 +1854,18 @@ internal class BundledLearningCurriculumTest {
 
     @Test
     fun domainLogicUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
-        // Nine concepts are supporting-only across this Unit and four of them are the ones a
+        // Eight concepts are supporting-only across this Unit and three of them are the ones a
         // careless promotion would damage most. `solid` is supporting-only across the whole
         // epic by design, so `architecture_solid_dependency_substitution` reaches no Unit's
         // practice; `service_locator_vs_di` and `android_modules` belong to the dependency-
-        // injection and modularization curricula, which this Unit names and does not teach;
-        // and `kmp_architecture` is one bounded sentence about what the policy/detail split
-        // makes shareable. Promoting any of them would claim practice coverage for material
-        // this Unit deliberately does not carry.
+        // injection and modularization curricula, which this Unit names and does not teach.
+        // Promoting any of them would claim practice coverage for material this Unit
+        // deliberately does not carry.
         assertEquals(
             listOf(
                 listOf("layered_architecture", "architecture_tradeoffs", "separation_of_concerns"),
                 listOf("repository_pattern", "architecture_tradeoffs", "state_ownership"),
-                listOf("clean_architecture", "layered_architecture", "kmp_architecture"),
+                listOf("clean_architecture", "layered_architecture"),
                 listOf("solid", "clean_architecture", "repository_pattern", "service_locator_vs_di"),
                 listOf("layered_architecture", "use_cases", "dependency_direction", "android_modules"),
             ),
@@ -2953,6 +2957,113 @@ internal class BundledLearningCurriculumTest {
             .toSet()
         unit.lessons.forEach { lesson ->
             assertTrue(lesson.primarySubtopicIds.all { it in kmpSubtopics }, lesson.id)
+        }
+    }
+
+    @Test
+    fun kmpUnitsFollowEveryCoreUnitWithTheLifecycleUnitFirst() = runTest {
+        val all = units()
+
+        assertEquals(
+            listOf("unit_kmp_shared_viewmodels_and_host_lifecycles", "unit_koin_and_dependency_injection_in_kmp"),
+            all.takeLast(2).map { it.id },
+        )
+        assertTrue(all.dropLast(2).none { it.topicId == "kmp" })
+        assertEquals(2, all.count { it.topicId == "kmp" })
+        assertEquals(4, all.filter { it.topicId == "kmp" }.sumOf { it.lessons.size })
+    }
+
+    @Test
+    fun kmpLifecycleUnitPractisesOnlyKmpConceptsAndLinksBackToTheCoreLessons() = runTest {
+        val unit = unit("unit_kmp_shared_viewmodels_and_host_lifecycles")
+
+        assertEquals("kmp", unit.topicId)
+        assertEquals("Shared ViewModels and Host Lifecycles", unit.title)
+        assertEquals(
+            listOf(
+                listOf("viewmodel_lifecycle", "saved_state", "coroutine_dispatchers"),
+                listOf("kmp_lifecycle_viewmodel", "lifecycle_aware_apis", "flow_sharing"),
+            ),
+            unit.lessons.map { it.supportingSubtopicIds },
+        )
+
+        // A KMP-home Lesson practises only KMP concepts; the Android concepts it extends stay
+        // supporting, so they cannot pull core Questions into this Unit's practice.
+        val kmpSubtopics = BundledCurriculumSource.load().subtopics
+            .filter { it.topicId == "kmp" }
+            .map { it.id }
+            .toSet()
+        unit.lessons.forEach { lesson ->
+            assertTrue(lesson.primarySubtopicIds.all { it in kmpSubtopics }, lesson.id)
+            assertTrue(lesson.primarySubtopicIds.none { it in lesson.supportingSubtopicIds }, lesson.id)
+        }
+
+        val lessons = unit.lessons.associateBy { it.id }
+        assertEquals(
+            listOf(
+                "lesson_remember_saveable",
+                "lesson_screen_state_owner_boundary",
+                "lesson_dispatchers",
+                "lesson_viewmodel_lifetime_and_persistence",
+                "lesson_owner_scoped_work",
+            ),
+            lessons.getValue("lesson_kmp_viewmodel_owners_across_hosts").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_lifecycle_aware_collection",
+                "lesson_sharing_cold_flows",
+                "lesson_kmp_viewmodel_owners_across_hosts",
+            ),
+            lessons.getValue("lesson_kmp_lifecycle_collection_across_hosts").relatedLessonIds,
+        )
+
+        // KMP Lessons link backward to the core Lessons they extend, never forward.
+        val order = units().flatMap { it.lessons.map { lesson -> lesson.id } }
+        unit.lessons.forEach { lesson ->
+            lesson.relatedLessonIds.forEach { related ->
+                assertTrue(order.indexOf(related) < order.indexOf(lesson.id), "${lesson.id} -> $related")
+            }
+        }
+    }
+
+    @Test
+    fun coreLessonsTheLifecycleUnitWasExtractedFromCarryNoKmpMappingsOrLinks() = runTest {
+        val kmpSubtopics = BundledCurriculumSource.load().subtopics
+            .filter { it.topicId == "kmp" }
+            .map { it.id }
+            .toSet()
+        val kmpLessons = units().filter { it.topicId == "kmp" }.flatMap { it.lessons }.map { it.id }.toSet()
+        val rewritten = setOf(
+            "lesson_remember_saveable",
+            "lesson_screen_state_owner_boundary",
+            "lesson_lifecycle_aware_collection",
+            "lesson_dispatchers",
+            "lesson_viewmodel_lifetime_and_persistence",
+            "lesson_owner_scoped_work",
+            "lesson_stability_and_skipping",
+            "lesson_launched_effect",
+            "lesson_flow_adapter_or_compose_producer",
+            "lesson_with_context_and_main_safety",
+            "lesson_sequential_and_concurrent_work",
+            "lesson_exception_propagation",
+            "lesson_shared_state_and_coordination",
+            "lesson_state_flow",
+            "lesson_state_holder_responsibility",
+            "lesson_when_a_domain_layer_earns_its_place",
+            "lesson_policy_and_framework_detail",
+            "lesson_mvvm_observed_state",
+            "lesson_choosing_the_owner_by_lifetime",
+        )
+        val lessons = units().filter { it.topicId != "kmp" }.flatMap { it.lessons }.filter { it.id in rewritten }
+
+        assertEquals(rewritten, lessons.map { it.id }.toSet())
+        lessons.forEach { lesson ->
+            assertTrue(
+                (lesson.primarySubtopicIds + lesson.supportingSubtopicIds).none { it in kmpSubtopics },
+                lesson.id,
+            )
+            assertTrue(lesson.relatedLessonIds.none { it in kmpLessons }, lesson.id)
         }
     }
 

@@ -27,6 +27,14 @@ taxonomy entry, changes no production curriculum JSON, and proposes no change to
 repository's own architecture. Every identity proposed here lives in documentation until
 the authoring issue that ships it.
 
+### Later change: KMP content separation
+
+This document is the historical record of E26 and is not rewritten. After E26 closed,
+[`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md) removed supporting `kmp_lifecycle_viewmodel` from L2.1 and L2.2 and supporting
+`kmp_architecture` from L4.3, and moved the multi-host ViewModel-owner and `viewModelScope`
+material of L2.2 and L2.5 to **Shared ViewModels and Host Lifecycles** (`unit_kmp_shared_viewmodels_and_host_lifecycles`, home Topic `kmp`, authored after every core Unit). Mappings and multiplatform findings quoted below are
+therefore as of E26; the current routing is in [`learning-question-coverage.md`](learning-question-coverage.md).
+
 ## Scope confirmation
 
 The merged epic assumes six instructional Units. **The six-Unit structure is unchanged.**

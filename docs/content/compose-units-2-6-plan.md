@@ -19,6 +19,15 @@ in [Blueprint changes](#blueprint-changes-made-by-this-review).
 **Review date: 2026-09-08.** Everything in [Source freshness](#source-freshness-and-technical-assumptions)
 was checked on that date against the versions this repository is configured with.
 
+### Later change: KMP content separation
+
+This document is the historical record of E23 and is not rewritten. The Compose Multiplatform
+saved-state decision recorded below for `lesson_remember_saveable` has since been reversed by
+[`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md): the shipped Lesson states Android's saved-state guarantee only, and the note on what
+other hosts restore moved to **Shared ViewModels, Host-Owned Lifetimes** in **Shared ViewModels and Host Lifecycles** (`unit_kmp_shared_viewmodels_and_host_lifecycles`, home Topic `kmp`, authored after every core Unit).
+`lesson_stability_and_skipping` now names the Compose runtime (1.11.2) in its toolchain
+statement rather than Compose Multiplatform.
+
 ## Scope confirmation
 
 The agreed scope holds: **five Units, 18 Lessons**, exactly as the blueprint plans them. The

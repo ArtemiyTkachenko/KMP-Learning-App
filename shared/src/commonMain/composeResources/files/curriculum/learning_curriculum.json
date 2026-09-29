@@ -806,7 +806,7 @@
                 {
                   "type": "callout",
                   "kind": "NOTE",
-                  "text": "The saved-state guarantee described here is Android's, and it is documented precisely. A Compose Multiplatform application may also ship on desktop, iOS and web, where Compose Multiplatform documents lifecycle states and events but no equivalent statement about what a host restores. Treat `rememberSaveable` as participation in a host-provided saved-state mechanism whose Android behaviour is specified and whose behaviour elsewhere is not something to rely on. The part that holds everywhere — and the part an interview is asking about — is the ladder itself: re-execution, leaving the Composition, UI recreation, process recreation."
+                  "text": "On Android, the guarantee comes from the platform's saved-state machinery. `rememberSaveable` registers its value with the composition's saveable-state registry, which Compose UI backs with the `SavedStateRegistry` of the host's saved-state owner — the `Activity`, or a navigation entry that provides its own — so the value is written into the `Bundle` the system hands back on recreation. The part an interview is asking about is the ladder itself: re-execution, leaving the Composition, UI recreation, process recreation."
                 }
               ]
             },
@@ -939,8 +939,8 @@
               "url": "https://developer.android.com/develop/ui/compose/state"
             },
             {
-              "title": "Compose Multiplatform lifecycle",
-              "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html"
+              "title": "SavedStateRegistry",
+              "url": "https://developer.android.com/reference/androidx/savedstate/SavedStateRegistry"
             }
           ],
           "status": "ACTIVE"
@@ -2410,7 +2410,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Any concrete prediction about skipping depends on the compiler, so an observation should state its toolchain rather than inherit assumptions from older writing. The observations below hold for Kotlin 2.4.10 with the Compose compiler plugin versioned with it, Compose Multiplatform 1.11.1, and default compiler options."
+                  "text": "Any concrete prediction about skipping depends on the compiler, so an observation should state its toolchain rather than inherit assumptions from older writing. The observations below hold for Kotlin 2.4.10 with the Compose compiler plugin versioned with it, the Compose runtime 1.11.2, and default compiler options."
                 },
                 {
                   "type": "paragraph",
@@ -4075,14 +4075,13 @@
         {
           "id": "lesson_screen_state_owner_boundary",
           "title": "Moving State Outside the Composition: Owner vs Lifetime",
-          "summary": "Moving screen state outside the Composition changes who owns it; it does not itself make the state persistent. What survives depends on the new owner's actual lifetime, shown here with entry-scoped ViewModels in a multiplatform Navigation 3 example, and persistence after that owner is gone needs a separate mechanism.",
+          "summary": "Moving screen state outside the Composition changes who owns it; it does not itself make the state persistent. What survives depends on the new owner's actual lifetime, shown here with entry-scoped ViewModels in a Navigation 3 example, and persistence after that owner is gone needs a separate mechanism.",
           "primarySubtopicIds": [
             "compose_state_hoisting"
           ],
           "supportingSubtopicIds": [
             "state_ownership",
             "viewmodel_lifecycle",
-            "kmp_lifecycle_viewmodel",
             "configuration_changes"
           ],
           "sections": [
@@ -4139,7 +4138,7 @@
                 {
                   "type": "callout",
                   "kind": "KEY_TAKEAWAY",
-                  "text": "\"Outside the Composition\" tells you who no longer owns the state. It does not by itself tell you how long the new owner lives. Ask which host owns it, when that host releases it, and whether a different persistence mechanism is required."
+                  "text": "\"Outside the Composition\" tells you who no longer owns the state. It does not by itself tell you how long the new owner lives. Ask which owner holds it, when that owner is released, and whether a different persistence mechanism is required."
                 }
               ]
             },
@@ -4148,7 +4147,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Consider a Compose Multiplatform application whose shared `NavDisplay` installs a saveable-state entry decorator followed by the lifecycle ViewModel entry decorator. Each relevant Navigation 3 back-stack entry therefore receives its own `ViewModelStore`. Screen ViewModels are obtained at that destination, remain while their entry remains on the back stack, and are cleared when the entry is removed."
+                  "text": "Consider an Android application whose `NavDisplay` installs a saveable-state entry decorator followed by the lifecycle ViewModel entry decorator. Each relevant Navigation 3 back-stack entry therefore receives its own `ViewModelStore`. Screen ViewModels are obtained at that destination, remain while their entry remains on the back stack, and are cleared when the entry is removed."
                 },
                 {
                   "type": "code",
@@ -4161,7 +4160,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Compose Multiplatform provides lifecycle and ViewModel APIs in common code, but the host still supplies the ownership lifetime. Android configuration recreation is one platform-specific case. Desktop, iOS and web hosts do not acquire an Android rotation guarantee merely because the shared owner class is called `ViewModel`; reason from the owner supplied by the actual host."
+                  "text": "The owner is a choice, and Android makes the choice visible. Obtain the same ViewModel against the `Activity` instead of the entry and it is retained across configuration recreation, because the Activity hands its store to the recreated instance, and it then stays until the Activity finishes, whatever happens to the entry. Obtained against the entry, it is also retained across configuration recreation, because the entry and its store survive it, but it ends when the entry is popped. The two owners agree about rotation and disagree about navigation, which is why an answer has to name the owner."
                 },
                 {
                   "type": "paragraph",
@@ -4192,7 +4191,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "For each event, trace the real lifetime: recomposition leaves the outside owner untouched; Android configuration recreation can retain a ViewModel through its store; a retained back-stack entry retains its entry owner; removing that entry clears it; process death destroys in-memory state unless another mechanism reconstructs it. Then state which fact is general and which belongs to the current host."
+                  "text": "For each event, trace the real lifetime: recomposition leaves the outside owner untouched; Android configuration recreation can retain a ViewModel through its store; a retained back-stack entry retains its entry owner; removing that entry clears it; process death destroys in-memory state unless another mechanism reconstructs it. Then state which fact is general and which is a guarantee of the Android owner in question."
                 }
               ]
             }
@@ -4209,8 +4208,8 @@
               "url": "https://developer.android.com/develop/ui/compose/state-hoisting"
             },
             {
-              "title": "Multiplatform ViewModel",
-              "url": "https://kotlinlang.org/docs/multiplatform/compose-viewmodel.html"
+              "title": "ViewModel overview",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
             },
             {
               "title": "Save and manage navigation state",
@@ -4230,7 +4229,7 @@
       "id": "unit_observable_state_collection",
       "topicId": "android_ui",
       "title": "Observable State Collection and Lifecycle",
-      "summary": "A screen-level owner can expose a perfectly useful Flow or StateFlow and still not give Compose anything it can observe directly. Collection converts that stream into Compose State; what matters in production is how to convert it, what the collection costs while it runs, and when it should pause as each Android, desktop, iOS or web host changes activity.",
+      "summary": "A screen-level owner can expose a perfectly useful Flow or StateFlow and still not give Compose anything it can observe directly. Collection converts that stream into Compose State; what matters in production is how to convert it, what the collection costs while it runs, and when it should pause as the screen's lifecycle owner changes state.",
       "lessons": [
         {
           "id": "lesson_external_state_in_compose",
@@ -4595,14 +4594,13 @@
         {
           "id": "lesson_lifecycle_aware_collection",
           "title": "Lifecycle-Aware Collection and the Lifecycle a Screen Actually Has",
-          "summary": "A composable can remain in Composition while its host is not active enough to justify upstream collection. collectAsStateWithLifecycle adds lifecycle as an independent gate, and its default STARTED behavior depends on how each Android, desktop, iOS and web host maps window, scene or page activity onto lifecycle states.",
+          "summary": "A composable can remain in Composition while its lifecycle owner is not active enough to justify upstream collection. collectAsStateWithLifecycle adds lifecycle as an independent gate, and its default STARTED threshold is a threshold on lifecycle states, not on visibility or focus: backgrounding the app stops collection, while a paused or unfocused screen keeps it running.",
           "primarySubtopicIds": [
             "compose_state"
           ],
           "supportingSubtopicIds": [
             "lifecycle_aware_apis",
-            "kmp_lifecycle_viewmodel",
-            "compose_multiplatform",
+            "activity_lifecycle",
             "flow_sharing"
           ],
           "sections": [
@@ -4611,7 +4609,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Composition lifetime and host lifecycle answer different questions. A conversion may still be in Composition while its host window, scene or page is no longer active enough to justify database observation, polling or repeated transformations. Ordinary `collectAsState` has only the composition gate. Lifecycle-aware conversion adds a policy for pausing upstream collection without requiring the composition itself to disappear."
+                  "text": "Composition lifetime and host lifecycle answer different questions. A conversion may still be in Composition while its screen is no longer active enough — the app has gone to the background, for example — to justify database observation, polling or repeated transformations. Ordinary `collectAsState` has only the composition gate. Lifecycle-aware conversion adds a policy for pausing upstream collection without requiring the composition itself to disappear."
                 },
                 {
                   "type": "code",
@@ -4641,7 +4639,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The StateFlow overload uses the stream's current `value` initially. The plain Flow overload requires `initialValue`, just as plain `collectAsState` does. Overloads can also take an explicit `LifecycleOwner` or `Lifecycle`; the default owner is usually the portable screen-level choice because the host provides it through the composition."
+                  "text": "The StateFlow overload uses the stream's current `value` initially. The plain Flow overload requires `initialValue`, just as plain `collectAsState` does. Overloads can also take an explicit `LifecycleOwner` or `Lifecycle`; the default owner is usually the right screen-level choice because it is whatever owner the composition provides at that point: the `Activity` at the root, or a navigation destination's own owner inside a destination."
                 },
                 {
                   "type": "callout",
@@ -4655,50 +4653,56 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "`collectAsStateWithLifecycle` is not Android-only. The dependency `org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.11.0-beta01` can be declared in `commonMain`, where it resolves to the AndroidX multiplatform implementation in package `androidx.lifecycle.compose`, so destination composables can import it from shared code. The API is common; the lifecycle that drives it is supplied by the actual platform host."
+                  "text": "On Android, the default owner is the `Activity` at the root of the composition, or, inside a Navigation 3 destination, the entry-scoped `LifecycleOwner` that `NavDisplay` provides. Whether collection runs then depends on which lifecycle state a real event produces, because `STARTED` is a threshold on states, not on what the user can see:"
                 },
                 {
                   "type": "comparison",
                   "headers": [
-                    "Target",
-                    "How the host maps activity",
+                    "What happens on Android",
+                    "Resulting lifecycle state",
                     "Default STARTED result"
                   ],
                   "rows": [
                     [
-                      "Android",
-                      "The relevant Activity, Fragment or navigation-entry LifecycleOwner supplies state",
-                      "Collection is active at STARTED or RESUMED and stops when that owner falls below STARTED"
+                      "The user presses Home, or another Activity covers the whole screen",
+                      "`ON_STOP`: the Activity is no longer visible and falls to `CREATED`",
+                      "Below the threshold: collection stops, and restarts at `ON_START` when the Activity is visible again"
                     ],
                     [
-                      "Desktop",
-                      "Visible and focused maps to RESUMED; visible but unfocused to STARTED; minimized or detached to CREATED; disposal to DESTROYED",
-                      "Losing focus alone keeps collection active; minimizing stops it"
+                      "A semi-transparent Activity, such as one styled as a dialog, opens on top",
+                      "`ON_PAUSE`: the covered Activity is still partly visible and falls from `RESUMED` to `STARTED`",
+                      "Still at the threshold: collection continues"
                     ],
                     [
-                      "iOS",
-                      "Appeared, foreground and active maps to RESUMED; appeared and foreground but inactive to STARTED; background or not appeared to CREATED",
-                      "An inactive foreground scene keeps collection active; backgrounding stops it"
+                      "Another app gains focus in multi-window mode",
+                      "Android 10 and higher keep every visible multi-window Activity `RESUMED` (multi-resume); Android 9 and lower pause the unfocused ones to `STARTED`",
+                      "At or above the threshold either way: collection continues"
                     ],
                     [
-                      "Web",
-                      "Focus resumes, blur pauses to STARTED, and a hidden page stops; the documented normal host model skips CREATED and does not reach DESTROYED",
-                      "A visible but blurred page keeps collection active; hiding the tab stops it"
+                      "A configuration change, such as rotation, recreates the Activity",
+                      "The old Activity reaches `DESTROYED` and its composition is disposed; a new Activity and composition replace them",
+                      "The old collection ends with its composition and the new one starts collecting; a `StateFlow` held by a retained ViewModel supplies its current value at once"
+                    ],
+                    [
+                      "A Navigation 3 destination is mid-transition or covered by an overlay such as a dialog",
+                      "`NavDisplay` caps the entry's lifecycle at `STARTED`",
+                      "Still at the threshold: collection continues"
+                    ],
+                    [
+                      "A Navigation 3 entry is popped and is still animating out",
+                      "The entry's lifecycle is capped at `CREATED`",
+                      "Below the threshold: collection stops before the destination leaves Composition"
                     ]
                   ]
                 },
                 {
                   "type": "paragraph",
-                  "text": "The portable model is not to memorize four event tables. `STARTED` expresses one common threshold, but each platform decides how window, scene or page activity maps onto lifecycle states. Therefore common API availability does not imply identical user-action behavior. Given a bug report such as \"collection continues when the desktop window loses focus\", inspect the host mapping before assuming the API failed: an unfocused visible desktop window is still STARTED in the Compose Multiplatform 1.11.1 desktop host."
-                },
-                {
-                  "type": "paragraph",
-                  "text": "For desktop, JetBrains also notes that lifecycle coroutine scopes rely on `Dispatchers.Main.immediate`, which needs a Main dispatcher implementation. A desktop application that declares `kotlinx-coroutines-swing` supplies one. Without it, those lifecycle coroutine scopes have no Main dispatcher to run on."
+                  "text": "Two rows surprise people. A paused screen still collects, because `ON_PAUSE` lowers the state only to `STARTED`, and that default is deliberate: a partly visible screen should keep showing current data. And on Android 10 and higher an app that loses focus in multi-window mode is not paused at all; focus loss is reported through `onTopResumedActivityChanged`, not as a lifecycle event, so even `minActiveState = RESUMED` would not stop collection there. Given a bug report such as \"collection continues while another app has focus\", inspect the owner's lifecycle state before assuming the API failed."
                 },
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "\"Always use `collectAsStateWithLifecycle` because it is safer\" skips the actual decision. Continuous collection can be the requirement, and some sources are cheap. Choose lifecycle-aware conversion when upstream should pause below a host-activity threshold; choose plain conversion when composition lifetime is the intended policy."
+                  "text": "\"Always use `collectAsStateWithLifecycle` because it is safer\" skips the actual decision. Continuous collection can be the requirement, and some sources are cheap. Choose lifecycle-aware conversion when upstream should pause below a lifecycle threshold; choose plain conversion when composition lifetime is the intended policy."
                 }
               ]
             },
@@ -4715,12 +4719,12 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The overloads, defaults and host mappings described here are those of lifecycle-runtime-compose 2.11.0-beta01 and the Compose Multiplatform 1.11.1 hosts, with Compose runtime 1.11.2. The lifecycle artifact is beta, so its API and the host mappings may change in later releases; when a version changes, check the host's current mapping before relying on this table."
+                  "text": "The overloads and defaults described here are those of lifecycle-runtime-compose 2.11.0-beta01 with Compose runtime 1.11.2. The lifecycle artifact is beta, so its API may change in later releases. The Activity transitions in the comparison are Android platform behaviour, and the entry caps are the ones Navigation 3 documents for its destinations."
                 },
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Given a target, current host state and collection API, answer in order: is the call still in Composition; which LifecycleOwner is relevant; what state does this host map the user action to; is that state at least the threshold; and who owns upstream production after this collector stops?"
+                  "text": "Given an Android event and a collection API, answer in order: is the call still in Composition; which LifecycleOwner is relevant — the Activity or a navigation entry; what lifecycle state does the event produce; is that state at least the threshold; and who owns upstream production after this collector stops?"
                 }
               ]
             }
@@ -4732,8 +4736,16 @@
           ],
           "sources": [
             {
-              "title": "Lifecycle in Compose Multiplatform",
-              "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html"
+              "title": "The activity lifecycle",
+              "url": "https://developer.android.com/guide/components/activities/activity-lifecycle"
+            },
+            {
+              "title": "Support multi-window mode",
+              "url": "https://developer.android.com/develop/ui/compose/layouts/adaptive/support-multi-window-mode"
+            },
+            {
+              "title": "Navigation 3: destination lifecycle",
+              "url": "https://developer.android.com/guide/navigation/navigation-3/basics#destination-lifecycle"
             },
             {
               "title": "Lifecycle-aware Flow collection for Compose",
@@ -4970,7 +4982,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "In Compose runtime 1.11.2, the coroutine context comes from the Composition's applying context, and the runtime launches and cancels the remembered effect through that context. Which dispatcher that is depends on the host: it is not a universal promise that every Compose Multiplatform effect runs on the Android main thread."
+                  "text": "In Compose runtime 1.11.2, the coroutine context comes from the Composition's applying context, and the runtime launches and cancels the remembered effect through that context. On Android, a composition hosted in a window gets its Recomposer from Compose UI, which runs recomposition and composition effects on `AndroidUiDispatcher.CurrentThread` for the window's UI thread — the main thread for an Activity. Effect code therefore starts on the main thread, and blocking or CPU-heavy work inside it still needs `withContext`."
                 },
                 {
                   "type": "paragraph",
@@ -6153,7 +6165,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Read the block as four steps in order: register the callback; remain alive for as long as the Composition owns this producer; assign `value` as callbacks arrive so the UI re-reads; and unregister when the producer is disposed. It is the state-producer form of owning a callback subscription, and it is available in the common source set of the Compose runtime, so it is not an Android-only mechanism."
+                  "text": "Read the block as four steps in order: register the callback; remain alive for as long as the Composition owns this producer; assign `value` as callbacks arrive so the UI re-reads; and unregister when the producer is disposed. It is the state-producer form of owning a callback subscription."
                 },
                 {
                   "type": "callout",
@@ -7932,7 +7944,7 @@
         {
           "id": "lesson_dispatchers",
           "title": "Dispatchers and Where Code Actually Runs",
-          "summary": "A dispatcher is an execution policy chosen from the work: CPU computation, a blocking call, or UI access. That decision is portable while each target's implementation is not, and on the JVM switching between IO and Default need not change the physical thread.",
+          "summary": "A dispatcher is an execution policy chosen from the work: CPU computation, a blocking call, or UI access. On Android and the JVM, switching between IO and Default changes the policy but need not change the physical thread, and supplying the dispatcher from outside keeps the choice replaceable in tests.",
           "primarySubtopicIds": [
             "coroutine_dispatchers"
           ],
@@ -7969,7 +7981,7 @@
                     ],
                     [
                       "Blocking filesystem, JDBC-style database or legacy network calls",
-                      "Dispatchers.IO on Android/JVM; check the target elsewhere",
+                      "Dispatchers.IO",
                       "The call holds a thread while waiting. The blocking-work policy can accommodate more occupied workers."
                     ],
                     [
@@ -7981,7 +7993,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Default is the general choice for CPU-intensive work. On JVM and Native its documented default thread maximum follows the CPU core count, with a minimum of two. A standard launch or async supplies Default when its combined context has no dispatcher or other ContinuationInterceptor. That fallback does not override a dispatcher already inherited from a scope. A child of a Main scope therefore does not silently receive Default."
+                  "text": "Default is the general choice for CPU-intensive work. On the JVM its documented default thread maximum follows the CPU core count, with a minimum of two. A standard launch or async supplies Default when its combined context has no dispatcher or other ContinuationInterceptor. That fallback does not override a dispatcher already inherited from a scope. A child of a Main scope therefore does not silently receive Default."
                 },
                 {
                   "type": "paragraph",
@@ -8042,36 +8054,16 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The portable abstraction is a CoroutineDispatcher. Its platform realization is not portable. A Kotlin Multiplatform project may build Android, Desktop/JVM, iOS, JS and Wasm/JS, so the JVM pool description above must not be generalized to all five. Main is declared in common code, but that declaration alone does not guarantee a usable platform implementation."
+                  "text": "On Android the three policies have concrete realizations. `Dispatchers.Main` is the main-thread dispatcher supplied by kotlinx-coroutines-android, and `Dispatchers.Main.immediate` skips the extra dispatch when the caller is already on the main thread. `Default` and `IO` are the JVM dispatchers described above, with the shared threads and elastic IO limit that go with them. Android changes none of the workload reasoning; it names the thread the UI policy means."
                 },
                 {
-                  "type": "comparison",
-                  "headers": [
-                    "Target",
-                    "Relevant realization"
-                  ],
-                  "rows": [
-                    [
-                      "Android",
-                      "Main uses the Android main-thread dispatcher supplied by kotlinx-coroutines-android. IO/Default follow the JVM behavior described above."
-                    ],
-                    [
-                      "Desktop/JVM",
-                      "Main needs a UI integration at runtime, such as kotlinx-coroutines-swing for the Swing event dispatch thread."
-                    ],
-                    [
-                      "iOS / Darwin Native",
-                      "Main uses Darwin's main queue. Default and IO exist, but Native IO has a different implementation; JVM thread-sharing and system-property claims are not Native guarantees."
-                    ],
-                    [
-                      "JS and Wasm/JS browser",
-                      "In kotlinx-coroutines 1.11.0 the shared implementation delegates Main to Default, with immediate support. These dispatchers schedule through the browser execution environment; choosing Default does not create parallel CPU workers. IO is not an API available across these targets."
-                    ]
-                  ]
+                  "type": "code",
+                  "code": "class ArchiveImporter(\n    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,\n    private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,\n) {\n    suspend fun import(file: File): ArchiveIndex {\n        val bytes = withContext(ioDispatcher) { file.readBytes() }\n        return withContext(defaultDispatcher) { buildIndex(bytes) }\n    }\n}\n\n// In a test, both policies run on the test's scheduler:\n// ArchiveImporter(testDispatcher, testDispatcher)",
+                  "language": "kotlin"
                 },
                 {
                   "type": "paragraph",
-                  "text": "A shared function can accept a dispatcher appropriate to its work, leaving the platform assembly to supply the actual implementation. That keeps a JVM file-reading example from becoming a false commonMain recipe. Injection also makes execution choices controllable in tests. It does not follow that a supplied dispatcher can manufacture background CPU execution on a single browser thread."
+                  "text": "Hard-coding `Dispatchers.IO` inside a function fixes the policy where nobody can replace it. Taking the dispatcher as a parameter keeps the decision in one place, lets production assembly pass the real dispatcher, and lets a test pass a `TestDispatcher` so the work runs under the test's virtual-time scheduler — the Android coroutine-testing guidance recommends injecting dispatchers for exactly this reason. `Main` is the one that cannot always be injected, because APIs such as `viewModelScope` use it internally. Local unit tests run on the JVM without Android's main thread, so they replace it with `Dispatchers.setMain`."
                 },
                 {
                   "type": "paragraph",
@@ -8081,10 +8073,10 @@
                   "type": "bullet_list",
                   "items": [
                     "Default fits substantial CPU computation.",
-                    "IO fits blocking IO, on targets that provide it.",
+                    "IO fits blocking IO.",
                     "The UI dispatcher is for UI access and short coordination.",
                     "The effective dispatcher, the thread that ran a segment and the useful parallelism are three separate facts.",
-                    "Target availability and resource limits decide whether a pool explanation carries over to another target."
+                    "On Android, Main is the main-thread dispatcher; supplying IO and Default from outside keeps them replaceable in tests."
                   ]
                 },
                 {
@@ -8108,7 +8100,7 @@
               "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-i-o.html"
             },
             {
-              "title": "Dispatchers.Main: platform implementations (1.11.0)",
+              "title": "Dispatchers.Main (1.11.0)",
               "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-main.html"
             },
             {
@@ -8116,16 +8108,12 @@
               "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-coroutine-dispatcher/limited-parallelism.html"
             },
             {
-              "title": "JS and Wasm shared dispatchers, version 1.11.0",
-              "url": "https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/1.11.0/kotlinx-coroutines-core/jsAndWasmShared/src/Dispatchers.kt"
-            },
-            {
-              "title": "Native dispatchers, version 1.11.0",
-              "url": "https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/1.11.0/kotlinx-coroutines-core/native/src/Dispatchers.kt"
-            },
-            {
               "title": "Coroutines on Android: main-safety",
               "url": "https://developer.android.com/kotlin/coroutines/coroutines-adv"
+            },
+            {
+              "title": "Testing Kotlin coroutines on Android",
+              "url": "https://developer.android.com/kotlin/coroutines/test"
             }
           ],
           "status": "ACTIVE"
@@ -8179,7 +8167,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Here is a common way to wrap a legacy blocking dependency in a repository. Both the dependency and the blocking dispatcher are supplied from outside, so the shared declaration does not assume Dispatchers.IO exists on every target."
+                  "text": "Here is a common way to wrap a legacy blocking dependency in a repository. Both the dependency and the blocking dispatcher are supplied from outside, so tests can substitute them."
                 },
                 {
                   "type": "code",
@@ -8239,7 +8227,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Accepting a dispatcher makes the policy explicit and replaceable, including for testing. The design question is smaller: can the implementation make its main-safety contract true on the target where it runs? On a browser target, supplying Default does not magically offload a large CPU calculation to another thread; that platform constraint needs a platform-appropriate solution."
+                  "text": "Accepting a dispatcher makes the policy explicit and replaceable, including for testing. The design question is smaller: can the implementation make its main-safety contract true? Supplying a dispatcher does not make a blocking call non-blocking; it decides which thread the call blocks, and the contract holds only if that thread is not the one the caller needs to keep free."
                 },
                 {
                   "type": "bullet_list",
@@ -8397,7 +8385,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Classify a run using what it actually does. Two independent suspended network requests on a single browser execution thread can be concurrent without parallel Kotlin CPU execution. Two substantial transformations running simultaneously on different Default workers can be both concurrent and parallel. The sequential overview function is neither concurrent nor parallel with respect to its two loads, even though unrelated work elsewhere in the application may overlap it."
+                  "text": "Classify a run using what it actually does. Two independent network requests started from the Android main thread, or from any single-threaded dispatcher, can be concurrent without parallel Kotlin CPU execution: each suspends while it waits, and the one thread runs their short CPU segments in turn. Two substantial transformations running simultaneously on different Default workers can be both concurrent and parallel. The sequential overview function is neither concurrent nor parallel with respect to its two loads, even though unrelated work elsewhere in the application may overlap it."
                 },
                 {
                   "type": "paragraph",
@@ -8910,7 +8898,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "One detail matters when several children fail. The rule is that the first exception wins: it is the one that gets handled, and the ones that follow are attached to it as suppressed exceptions. Scope that second half to the platform before relying on it. The guide notes that the suppression mechanism currently works on Java 1.7 and above, and that the JS and Native restrictions are temporary — so on the JVM a log reporting only the first failure's message is telling a partial story and the suppressed list holds the rest, while on JS and Native there is no guarantee the rest will be found there."
+                  "text": "One detail matters when several children fail. The rule is that the first exception wins: it is the one that gets handled, and the ones that follow are attached to it as suppressed exceptions. On the JVM and Android they are reachable through `Throwable.suppressed`, so a log reporting only the first failure's message is telling a partial story, and the suppressed list holds the rest."
                 },
                 {
                   "type": "callout",
@@ -8937,7 +8925,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "When none of those applies, the exception has no propagation path, and only then is the handler in that coroutine's context invoked. The common cases with no path are a launch on a scope that has no Job, and a child launched directly in a supervisorScope or under a SupervisorJob (see **`SupervisorJob`, `supervisorScope` and the Limits of Isolation**). If no handler is present the runtime falls back to a platform-specific last-resort behaviour, which differs per target and is not something a multiplatform application should depend on."
+                  "text": "When none of those applies, the exception has no propagation path, and only then is the handler in that coroutine's context invoked. The common cases with no path are a launch on a scope that has no Job, and a child launched directly in a supervisorScope or under a SupervisorJob (see **`SupervisorJob`, `supervisorScope` and the Limits of Isolation**). If no handler is present the runtime falls back to its last-resort behaviour: on the JVM and Android the exception goes to any handlers registered through `ServiceLoader` and then to the current thread's uncaught-exception handler, and an unhandled exception crashes an Android app."
                 },
                 {
                   "type": "code",
@@ -8967,7 +8955,7 @@
                     "A non-cancellation failure cancels the parent, which cancels the siblings, and completes with that exception.",
                     "launch propagates automatically; async represents the failure in its Deferred, where await() observes it.",
                     "A dropped Deferred still fails its parent under ordinary Job rules.",
-                    "The first exception wins; on the JVM the later ones arrive as suppressed exceptions, which JS and Native do not currently guarantee.",
+                    "The first exception wins; the later ones arrive as suppressed exceptions on it.",
                     "CoroutineExceptionHandler applies only to a failure with no propagation path, never to async, and never to an ordinary child."
                   ]
                 },
@@ -9208,7 +9196,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "What makes it possible is genuine multi-threaded execution, which is a platform property rather than a coroutine property. On the JVM, Android and Native, Dispatchers.Default really does run coroutines on several threads at once, so the race above is real. On JS and Wasm the runtime is single-threaded, so the same code cannot interleave that way — which is a reason to be careful about where an example is claimed to apply, not a reason to write shared mutable state and hope."
+                  "text": "What makes it possible is genuine multi-threaded execution, which is a property of the dispatcher rather than of coroutines. On Android and the JVM, Dispatchers.Default really does run coroutines on several threads at once, so the race above is real. Run the same loop on one thread, such as the Android main thread, and increments with no suspension point between them cannot interleave — which is the idea confinement builds on, not a reason to write shared mutable state and hope."
                 },
                 {
                   "type": "paragraph",
@@ -9226,7 +9214,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "An atomic fits when the state is one value and the update can be expressed as a single atomic operation. Kotlin's common atomics live in kotlin.concurrent.atomics and are available from commonMain on Kotlin 2.4.10, behind an opt-in: the API is still marked @ExperimentalAtomicApi, so a usage needs @OptIn or the matching compiler argument. Note also what the API documentation says about targets — on JS and Wasm the implementation is trivial and not thread-safe, because those platforms do not support multi-threading."
+                  "text": "An atomic fits when the state is one value and the update can be expressed as a single atomic operation. On Android and the JVM there are two families: `java.util.concurrent.atomic`, such as `AtomicInteger`, and Kotlin's own `kotlin.concurrent.atomics`, whose `AtomicInt` is represented on the JVM by an `AtomicInteger`. The Kotlin API is still marked @ExperimentalAtomicApi on Kotlin 2.4.10, so a usage needs @OptIn or the matching compiler argument; the Java classes need no opt-in."
                 },
                 {
                   "type": "code",
@@ -9306,7 +9294,7 @@
                   "items": [
                     "A race needs concurrency and shared mutable state; removing either removes the race.",
                     "Read-modify-write is not atomic, and volatile fixes visibility rather than atomicity.",
-                    "Common atomics exist in kotlin.concurrent.atomics behind an experimental opt-in, and are trivial on single-threaded targets.",
+                    "Atomics exist in java.util.concurrent.atomic and, behind an experimental opt-in, in kotlin.concurrent.atomics.",
                     "An atomic protects one value; a Mutex protects an invariant across several steps.",
                     "Confinement means serialised execution rather than encapsulation, and it is coarse-grained or it is slow.",
                     "Mutex.lock() suspends rather than blocking, and withLock releases through failure and cancellation."
@@ -11307,7 +11295,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Finally, `StateFlow` is a plain Kotlin Multiplatform type; nothing in it knows about a UI, a lifecycle or a ViewModel."
+                  "text": "Finally, `StateFlow` is a plain kotlinx.coroutines type; nothing in it knows about a UI, a lifecycle or a ViewModel."
                 },
                 {
                   "type": "callout",
@@ -12807,7 +12795,6 @@
           "supportingSubtopicIds": [
             "compose_state_hoisting",
             "viewmodel_lifecycle",
-            "kmp_lifecycle_viewmodel",
             "separation_of_concerns"
           ],
           "sections": [
@@ -12895,7 +12882,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The fourth row is where a state holder that is not a `ViewModel` shows up. Picture an application where a borrowed-items count appears on several destinations. Its holder is a plain class in shared code holding exactly the responsibility named above — a current value published for the UI, one place it changes, results read back from a store — with no framework base class anywhere. It exists because its state is shared by those destinations and has to survive one of them being destroyed, which is a lifetime requirement no screen-level owner can satisfy. The class is a consequence of the lifetime, not the other way round."
+                  "text": "The fourth row is where a state holder that is not a `ViewModel` shows up. Picture an application where a borrowed-items count appears on several destinations. Its holder is a plain class holding exactly the responsibility named above — a current value published for the UI, one place it changes, results read back from a store — with no framework base class anywhere. It exists because its state is shared by those destinations and has to survive one of them being destroyed, which is a lifetime requirement no screen-level owner can satisfy. The class is a consequence of the lifetime, not the other way round."
                 },
                 {
                   "type": "paragraph",
@@ -12919,7 +12906,7 @@
                   "items": [
                     "A composable, a `View`, or any other UI instance.",
                     "A rendering decision: a colour, a dimension, a layout choice, a scroll offset that only means something while a particular UI exists.",
-                    "An `Activity`, a `UIViewController` or any other host object it could outlive.",
+                    "An `Activity`, a `Fragment` or any other host object it could outlive.",
                     "A framework `Context` retained so that the holder can format the text it puts in the state."
                   ]
                 },
@@ -12998,7 +12985,7 @@
         {
           "id": "lesson_viewmodel_lifetime_and_persistence",
           "title": "The ViewModel Owner: Lifetime Is Not Persistence",
-          "summary": "A ViewModel decides nothing about what it survives. It is stored in a ViewModelStore, that store belongs to an owner a host supplies, and the owner's lifetime is the ViewModel's lifetime. Walking one screen through six events by naming the owner each time separates three ideas that are routinely collapsed into one: who may change a value, when its owner disappears, and how the value comes back afterwards.",
+          "summary": "A ViewModel decides nothing about what it survives. It is stored in a ViewModelStore, that store belongs to an owner — an Activity, a Fragment or a navigation entry — and the owner's lifetime is the ViewModel's lifetime. Walking one screen through six events by naming the owner each time separates three ideas that are routinely collapsed into one: who may change a value, when its owner disappears, and how the value comes back afterwards.",
           "primarySubtopicIds": [
             "state_ownership"
           ],
@@ -13006,8 +12993,7 @@
             "viewmodel_lifecycle",
             "configuration_changes",
             "process_death",
-            "saved_state",
-            "kmp_lifecycle_viewmodel"
+            "saved_state"
           ],
           "sections": [
             {
@@ -13023,7 +13009,7 @@
                 },
                 {
                   "type": "code",
-                  "code": "LoansViewModel\n      is stored in ->  ViewModelStore          (a map of ViewModels, keyed)\n      which belongs to ->  ViewModelStoreOwner (an Activity, a back-stack entry, a host-supplied object)\n      whose lifetime decides ->  when the store is cleared\n\nViewModelStore.clear()  ->  every stored ViewModel is cleared  ->  its state is gone",
+                  "code": "LoansViewModel\n      is stored in ->  ViewModelStore          (a map of ViewModels, keyed)\n      which belongs to ->  ViewModelStoreOwner (an Activity, a Fragment, a back-stack entry)\n      whose lifetime decides ->  when the store is cleared\n\nViewModelStore.clear()  ->  every stored ViewModel is cleared  ->  its state is gone",
                   "language": "text"
                 },
                 {
@@ -13071,9 +13057,9 @@
                     ],
                     [
                       "Android re-creates the UI for a configuration change",
-                      "The Android host's owner, re-created for the new configuration",
-                      "Yes — the host is required to hand the new instance the previous store",
-                      "Survives, because the host retained the store. This is the host's guarantee, not the class's"
+                      "The Activity or Fragment, re-created for the new configuration",
+                      "Yes — the owner is required to hand the new instance the previous store",
+                      "Survives, because the owner retained the store. This is the owner's guarantee, not the class's"
                     ],
                     [
                       "The reader navigates forward and this destination stays on the back stack",
@@ -13101,25 +13087,24 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "**Which owner exists is a property of the host, not of shared code.** This matters because in a Compose Multiplatform project the `ViewModel` class genuinely can be shared code: the `androidx.lifecycle:lifecycle-viewmodel` sources behind the `org.jetbrains.androidx.lifecycle` artifacts put `ViewModel`, `ViewModelStore` and `ViewModelStoreOwner` in `commonMain` at **2.11.0-beta01**, so every ViewModel in such a project can live in shared code. Sharing the class does not share the lifetime, and the hosts differ:"
+                  "text": "**Which owner holds the store is decided where the ViewModel is obtained, not by the class.** The same `LoansViewModel` class can be stored by three different Android owners, and each gives it a different lifetime:"
                 },
                 {
                   "type": "bullet_list",
                   "items": [
-                    "**Android.** Jetpack Compose finds the `ViewModelStoreOwner` the `Activity` provides, and that host retains the store through configuration recreation. This is the rung that produces the familiar \"survives rotation\" sentence — and it is true of this host, not of the class.",
-                    "**Desktop.** Compose Multiplatform supplies a common `ViewModelStoreOwner` implementation, so shared code gets an owner without the Android host.",
-                    "**iOS.** JetBrains' multiplatform documentation states that \"there is no built-in `ViewModelStoreOwner`, so the ViewModel's lifecycle must be tied to SwiftUI manually\". The lifetime is whatever the integration makes it.",
-                    "**Navigation entries.** The same documentation is explicit that \"when using ViewModels with Navigation 3 in common code, ViewModels are not automatically scoped to navigation entries by default\". Entry scoping is something an application installs."
+                    "**Activity.** An `Activity` is a `ViewModelStoreOwner` that retains its store through configuration recreation and clears it when it finishes. A ViewModel obtained against it lives as long as everything the Activity shows. This is where the familiar \"survives rotation\" sentence comes from — and it is true of this owner, not of the class.",
+                    "**Fragment.** A `Fragment` is its own `ViewModelStoreOwner`. Its store is also retained across configuration recreation, and it is cleared when the Fragment detaches permanently rather than when the Activity finishes.",
+                    "**Navigation back-stack entry.** A back-stack entry becomes an owner only when the application installs entry scoping. The entry's store then lives while the entry is on the back stack, survives configuration recreation with it, and is cleared when the entry is removed."
                   ]
                 },
                 {
                   "type": "paragraph",
-                  "text": "An application installs it explicitly. Passing `rememberSaveableStateHolderNavEntryDecorator()` and then `rememberViewModelStoreNavEntryDecorator()` to a `NavDisplay` is what gives each back-stack entry its own `ViewModelStore`. That is why rungs four and five in the table have different answers once it is installed: navigating forward leaves the entry alive and therefore its store, while popping the entry destroys it and therefore clears the store. Neither answer would follow from the shared class by itself, and an application that did not install the decorator would get different ones."
+                  "text": "An application installs it explicitly. Passing `rememberSaveableStateHolderNavEntryDecorator()` and then `rememberViewModelStoreNavEntryDecorator()` to a `NavDisplay` is what gives each back-stack entry its own `ViewModelStore`. That is why rungs four and five in the table have different answers once it is installed: navigating forward leaves the entry alive and therefore its store, while popping the entry destroys it and therefore clears the store. Neither answer would follow from the class by itself, and an application that did not install the decorator would get different ones."
                 },
                 {
                   "type": "callout",
                   "kind": "COMMON_MISTAKE",
-                  "text": "\"The ViewModel survives configuration changes\" is a sentence about one host that gets repeated as a sentence about a class. In a codebase whose ViewModels are shared across Android, desktop and iOS, it is true on one target, supplied by a common implementation on another, and manual on a third. Name the host and the owner, then answer."
+                  "text": "\"The ViewModel survives configuration changes\" is a sentence about an owner that gets repeated as a sentence about a class. It is true of an Activity-scoped, a Fragment-scoped and an entry-scoped ViewModel on rotation, and those same three give three different answers when the reader navigates back or the Activity finishes. Name the owner, then answer."
                 }
               ]
             },
@@ -13157,7 +13142,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Moving state into a ViewModel changes the second row. It does not touch the third. A ViewModel can hold a value in memory across events that destroy and re-create the UI, and that is genuinely useful — it is why a half-filled renewal form is still half-filled after a rotation on Android. But the value is in memory, in the process, and the process is the outer bound on all of it. Kill the process and the whole chain is gone: no owner, no store, no object, no value. **In-memory retention across a host's recreation is not persistence, and the two are separated by exactly one event.**"
+                  "text": "Moving state into a ViewModel changes the second row. It does not touch the third. A ViewModel can hold a value in memory across events that destroy and re-create the UI, and that is genuinely useful — it is why a half-filled renewal form is still half-filled after a rotation on Android. But the value is in memory, in the process, and the process is the outer bound on all of it. Kill the process and the whole chain is gone: no owner, no store, no object, no value. **In-memory retention across an owner's recreation is not persistence, and the two are separated by exactly one event.**"
                 },
                 {
                   "type": "paragraph",
@@ -13170,7 +13155,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "\"Does a ViewModel survive X?\" is never answerable as asked. Answer it in three moves: name the owner that holds the store, say whether that owner survives X on the host in question, and then say whether surviving X is the same thing as the value being durable. Doing that for configuration recreation and for process death in the same breath — retained for one, gone for the other, and persistence is a different mechanism entirely — is the whole answer."
+                  "text": "\"Does a ViewModel survive X?\" is never answerable as asked. Answer it in three moves: name the owner that holds the store, say whether that owner survives X, and then say whether surviving X is the same thing as the value being durable. Doing that for configuration recreation and for process death in the same breath — retained for one, gone for the other, and persistence is a different mechanism entirely — is the whole answer."
                 }
               ]
             }
@@ -13190,8 +13175,8 @@
               "url": "https://developer.android.com/reference/androidx/lifecycle/ViewModelStore"
             },
             {
-              "title": "Compose Multiplatform: ViewModel",
-              "url": "https://kotlinlang.org/docs/multiplatform/compose-viewmodel.html"
+              "title": "Save and manage navigation state",
+              "url": "https://developer.android.com/guide/navigation/navigation-3/save-state"
             }
           ],
           "status": "ACTIVE"
@@ -13627,19 +13612,19 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "`viewModelScope` is the concrete instance of owner-scoped work for a `ViewModel`, and it is often described as more than it is. In the `androidx.lifecycle` sources behind the `org.jetbrains.androidx.lifecycle` artifacts at **2.11.0-beta01**, it is a `commonMain` extension property on `ViewModel` that lazily creates one scope, registers it with the ViewModel as a closeable resource, and hands back the same instance afterwards. Three facts follow from how it is built:"
+                  "text": "`viewModelScope` is the concrete instance of owner-scoped work for a `ViewModel`, and it is often described as more than it is. In AndroidX Lifecycle **2.11.0-beta01** it is an extension property on `ViewModel` that lazily creates one scope, registers it with the ViewModel as a closeable resource, and hands back the same instance afterwards. Three facts follow from how it is built:"
                 },
                 {
                   "type": "bullet_list",
                   "items": [
                     "Its context is a `SupervisorJob`, so one failing operation does not cancel its siblings.",
-                    "It attempts `Dispatchers.Main.immediate`, and where the main dispatcher is unavailable — the source names Native environments and JVM desktop environments such as Swing — it falls back to an empty context, so the coroutine runs in the caller's context instead. **It is not true that `viewModelScope` always runs on the main dispatcher.** Supplying `kotlinx-coroutines-swing` to a desktop application is what makes a main dispatcher available on that target.",
+                    "Its dispatcher is `Dispatchers.Main.immediate`, so on Android work launched there runs on the main thread, starting without an extra dispatch when the caller is already on it. Choosing the main thread does not make the work main-safe: a blocking or CPU-heavy step inside it still needs `withContext`. And because the dispatcher is built in rather than supplied, local unit tests, which run on the JVM without Android's main thread, replace it with `Dispatchers.setMain`.",
                     "It is registered under a key, so clearing the ViewModel closes it, and closing it cancels its context. Cancellation is not a separate arrangement someone has to remember; it is what being owned means."
                   ]
                 },
                 {
                   "type": "paragraph",
-                  "text": "The dispatcher detail matters on each target, but the architectural content of `viewModelScope` is its first and third properties: it is a scope whose lifetime is exactly one owner's, and the owner's clearing is what ends it. Everything else is implementation."
+                  "text": "The dispatcher detail matters for main-safety and for tests, but the architectural content of `viewModelScope` is its first and third properties: it is a scope whose lifetime is exactly one owner's, and the owner's clearing is what ends it. Everything else is implementation."
                 },
                 {
                   "type": "paragraph",
@@ -13726,7 +13711,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Asked where you launch coroutines in a ViewModel, do not answer with `viewModelScope` and stop. Answer with the test — the work belongs to the owner's scope exactly when it stops mattering once the owner is gone — then give one operation on each side of it, and say for the second one that the requirement makes the screen owner the wrong owner. Adding that `viewModelScope` uses a `SupervisorJob` and attempts the main dispatcher, rather than guaranteeing it on every target, is the detail that shows you have read it rather than inherited it."
+                  "text": "Asked where you launch coroutines in a ViewModel, do not answer with `viewModelScope` and stop. Answer with the test — the work belongs to the owner's scope exactly when it stops mattering once the owner is gone — then give one operation on each side of it, and say for the second one that the requirement makes the screen owner the wrong owner. Adding that `viewModelScope` uses a `SupervisorJob` and `Dispatchers.Main.immediate` — which chooses the main thread without making blocking work safe there — is the detail that shows you have read it rather than inherited it."
                 }
               ]
             }
@@ -13743,12 +13728,12 @@
               "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
             },
             {
-              "title": "Compose Multiplatform: ViewModel",
-              "url": "https://kotlinlang.org/docs/multiplatform/compose-viewmodel.html"
+              "title": "Use Kotlin coroutines with lifecycle-aware components",
+              "url": "https://developer.android.com/topic/libraries/architecture/coroutines"
             },
             {
-              "title": "Compose Multiplatform: Lifecycle",
-              "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html"
+              "title": "Testing Kotlin coroutines on Android",
+              "url": "https://developer.android.com/kotlin/coroutines/test"
             }
           ],
           "status": "ACTIVE"
@@ -14876,7 +14861,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Two distinctions keep the decision clean. A domain layer is a **logical** statement about responsibility and dependency direction; a Gradle module is a **physical** build unit, and neither implies the other — a domain layer can live in packages beside the code that uses it, a `:domain` module can contain nothing but forwarding functions, and code shared across platforms in a multiplatform project is shared code rather than automatically a domain layer. And \"domain\" here means application and business policy — the operations and rules that are neither presentation nor storage — not Domain-Driven Design, whose aggregates, value objects and bounded contexts do not change this decision."
+                  "text": "Two distinctions keep the decision clean. A domain layer is a **logical** statement about responsibility and dependency direction; a Gradle module is a **physical** build unit, and neither implies the other — a domain layer can live in packages beside the code that uses it, and a `:domain` module can contain nothing but forwarding functions. And \"domain\" here means application and business policy — the operations and rules that are neither presentation nor storage — not Domain-Driven Design, whose aggregates, value objects and bounded contexts do not change this decision."
                 },
                 {
                   "type": "paragraph",
@@ -15133,8 +15118,7 @@
           ],
           "supportingSubtopicIds": [
             "clean_architecture",
-            "layered_architecture",
-            "kmp_architecture"
+            "layered_architecture"
           ],
           "sections": [
             {
@@ -15183,7 +15167,7 @@
                   "type": "bullet_list",
                   "items": [
                     "**A transport change becomes a policy change.** `Response` is the HTTP client's type. Replace the client, or move this call behind a cache that answers locally, and every caller of `submitReturn` is edited — for a reason that has nothing to do with what returning an item means.",
-                    "**A platform type restricts where the rule can live.** `android.net.Uri` requires the Android SDK, so this operation cannot be compiled for a desktop or iOS target of the same application even though the rule itself — a return needs a receipt and a loan identifier — has no platform in it.",
+                    "**A platform type restricts where the rule can live.** `android.net.Uri` requires the Android SDK, so this operation cannot be compiled in a plain Kotlin/JVM module, or exercised without Android infrastructure, even though the rule itself — a return needs a receipt and a loan identifier — has no platform in it.",
                     "**The rule is now written in somebody else's words.** A caller reading the signature learns about URIs and HTTP responses, and learns nothing about what outcomes a return can have. The application has no vocabulary of its own for one of its own operations."
                   ]
                 },
@@ -15263,7 +15247,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "The same reasoning explains why this split is unusually visible in a multiplatform codebase. Framework-independent policy is the strongest candidate for shared code, because it is the part that names nothing platform-specific — Kotlin's own multiplatform guidance describes the common source set as being for \"sharing the common business logic that applies to all platforms\". The direction of that sentence is the important part. Sharing is a *consequence* of the policy and detail split rather than a reason to perform it, and the reverse claim — that everything in a domain layer belongs in common code — does not follow: what can be shared is decided by the dependencies a piece of code actually has and by what the product requires on each target."
+                  "text": "The same reasoning explains what the split makes reusable. Framework-independent policy is the part a second screen, a feature module, a background worker or a test can call without bringing the framework along, because it names nothing they would have to supply. The direction is the important part. Reuse is a *consequence* of the policy and detail split rather than a reason to perform it, and the reverse claim — that everything in a domain layer can be reused anywhere — does not follow: what can be reused is decided by the dependencies a piece of code actually has."
                 },
                 {
                   "type": "paragraph",
@@ -15294,10 +15278,6 @@
             {
               "title": "Domain layer",
               "url": "https://developer.android.com/topic/architecture/domain-layer"
-            },
-            {
-              "title": "Share code on platforms",
-              "url": "https://kotlinlang.org/docs/multiplatform/multiplatform-share-on-platforms.html"
             }
           ],
           "status": "ACTIVE"
@@ -16149,7 +16129,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "A related point of precision: \"the owner does not reference the view\" says nothing about what survives what. Whether a particular owner outlives a particular UI instance is decided by whatever holds that owner, and on a multiplatform target by whichever host supplies that holder. The dependency direction and the lifetime are separate facts. MVVM settles the first and says nothing at all about the second, and an answer that conflates them will not survive a follow-up question."
+                  "text": "A related point of precision: \"the owner does not reference the view\" says nothing about what survives what. Whether a particular owner outlives a particular UI instance is decided by whatever holds that owner. The dependency direction and the lifetime are separate facts. MVVM settles the first and says nothing at all about the second, and an answer that conflates them will not survive a follow-up question."
                 },
                 {
                   "type": "paragraph",
@@ -17048,7 +17028,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Be careful with what is said about the screen-level owner itself, because the convenient shorthand is false. A ViewModel does not have a lifetime of its own; it has the lifetime of its `ViewModelStoreOwner`, and the documentation is explicit that it \"remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears\", naming an activity finishing, a navigation entry being removed from the back stack and a composable leaving the composition as three different endings. \"The ViewModel survives the screen\" compresses that into a claim that is true of some hosts and not others. **Naming the owner is what makes a lifetime answer checkable.** For those endings host by host, see **The ViewModel Owner: Lifetime Is Not Persistence**."
+                  "text": "Be careful with what is said about the screen-level owner itself, because the convenient shorthand is false. A ViewModel does not have a lifetime of its own; it has the lifetime of its `ViewModelStoreOwner`, and the documentation is explicit that it \"remains in memory until the `ViewModelStoreOwner` to which it is scoped disappears\", naming an activity finishing, a navigation entry being removed from the back stack and a composable leaving the composition as three different endings. \"The ViewModel survives the screen\" compresses that into a claim that is true of some owners and not others. **Naming the owner is what makes a lifetime answer checkable.** For those endings owner by owner, see **The ViewModel Owner: Lifetime Is Not Persistence**."
                 },
                 {
                   "type": "paragraph",
@@ -21575,6 +21555,326 @@
               ]
             }
           ]
+        }
+      ]
+    },
+    {
+      "id": "unit_kmp_shared_viewmodels_and_host_lifecycles",
+      "topicId": "kmp",
+      "title": "Shared ViewModels and Host Lifecycles",
+      "summary": "Compose Multiplatform lets ViewModels, viewModelScope and lifecycle-aware collection be written once in common code, but lifetime is not shared with them. Each host supplies the owner that stores and clears a ViewModel, the saved-state mechanism, the Main dispatcher, and the mapping from its own window, scene or page activity onto lifecycle states.",
+      "status": "ACTIVE",
+      "lessons": [
+        {
+          "id": "lesson_kmp_viewmodel_owners_across_hosts",
+          "title": "Shared ViewModels, Host-Owned Lifetimes",
+          "summary": "In a Compose Multiplatform project the ViewModel class, its store and viewModelScope can live in common code, but the owner that stores and clears each ViewModel, the saved-state mechanism and the Main dispatcher its scope runs on are supplied by the platform host. Sharing the class shares none of them.",
+          "primarySubtopicIds": [
+            "kmp_lifecycle_viewmodel"
+          ],
+          "supportingSubtopicIds": [
+            "viewmodel_lifecycle",
+            "saved_state",
+            "coroutine_dispatchers"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A Kotlin Multiplatform project can put its ViewModels in shared code. The `androidx.lifecycle:lifecycle-viewmodel` sources behind the `org.jetbrains.androidx.lifecycle` artifacts put `ViewModel`, `ViewModelStore`, `ViewModelStoreOwner` and `viewModelScope` in `commonMain` at **2.11.0-beta01**, so one `LoansViewModel` class can serve Android, desktop and iOS. That is genuinely useful, and it invites a false conclusion: that the lifetime was shared along with the class."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "It was not, because a ViewModel never had a lifetime of its own. It lives in a `ViewModelStore`, the store belongs to a `ViewModelStoreOwner`, and the owner's lifetime is the ViewModel's. Sharing the class moves the first link of that chain into common code. The owner — and with it every answer about what the ViewModel survives — is still supplied by whichever host runs the shared UI."
+                },
+                {
+                  "type": "code",
+                  "code": "commonMain   LoansViewModel, ViewModelStore, ViewModelStoreOwner, viewModelScope\n                 (shared: the class and the clearing hook)\n                        |\neach host    which owner stores the ViewModel, and when that owner is cleared\n                 (not shared: the lifetime)",
+                  "language": "text"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Host",
+                    "Who supplies the ViewModelStoreOwner",
+                    "What that means for lifetime"
+                  ],
+                  "rows": [
+                    [
+                      "Android",
+                      "The `Activity`, a `Fragment` or a navigation entry, exactly as in an Android-only app",
+                      "The Android owner retains its store through configuration recreation; the familiar rotation guarantee is this host's, not the class's"
+                    ],
+                    [
+                      "Desktop",
+                      "No Activity or Fragment exists; the owner is whatever the desktop host provides, or one the application or a navigation library installs",
+                      "The lifetime is that owner's; none of Android's configuration-recreation guarantees applies"
+                    ],
+                    [
+                      "iOS",
+                      "No built-in owner: JetBrains' documentation states that \"there is no built-in `ViewModelStoreOwner`, so the ViewModel's lifecycle must be tied to SwiftUI manually\"",
+                      "The lifetime is whatever the integration code makes it, including when the store is cleared"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Sharing a ViewModel class shares code, not lifetime. The owner that stores the ViewModel and clears it is supplied by each host, so a survival question has to name the host and its owner before it can be answered."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "**Entry scoping is installed, not inherited.** JetBrains' documentation is explicit that \"when using ViewModels with Navigation 3 in common code, ViewModels are not automatically scoped to navigation entries by default\"; without the decorators, each ViewModel stays tied to the `Activity` on Android even after the user has navigated away. A shared `NavDisplay` gets entry-scoped owners only when the application passes the saveable-state decorator followed by the ViewModel store decorator:"
+                },
+                {
+                  "type": "code",
+                  "code": "NavDisplay(\n    backStack = backStack,\n    entryDecorators = listOf(\n        rememberSaveableStateHolderNavEntryDecorator(),\n        rememberViewModelStoreNavEntryDecorator(),\n    ),\n    entryProvider = entryProvider {\n        entry<QuestionLibraryRoute> {\n            QuestionLibraryDestination()\n        }\n    },\n)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Installed in common code, that gives each back-stack entry its own store on the hosts that run the shared `NavDisplay`. What those stores survive beyond navigation is still the host's answer: on Android they are retained across configuration recreation along with the Activity's own store, which is an Android guarantee rather than a property of the shared decorator."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**Saved state is a host facility too.** `rememberSaveable` can be called from common code, but what is restored, and after which event, is the host's saved-state mechanism. Android specifies it precisely: values go into the `Bundle` the system hands back after configuration or process recreation. Compose Multiplatform documents lifecycle states and events for desktop, iOS and web but makes no equivalent statement about what those hosts restore, so shared code should treat saved state as participation in a host mechanism whose Android behaviour is specified and whose behaviour elsewhere is not something to rely on."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "**`viewModelScope` runs on the host's Main dispatcher, if there is one.** In the same 2.11.0-beta01 sources, the scope combines a `SupervisorJob` with `Dispatchers.Main.immediate`. Where no Main dispatcher is available — the source names Native environments such as Linux and JVM desktop environments such as Swing — it falls back to an empty context, so launched work runs in the caller's context instead. **It is not true that `viewModelScope` always runs on the main thread.** JetBrains' documentation notes that `Dispatchers.Main.immediate` might be unavailable on desktop by default; a desktop application that declares `kotlinx-coroutines-swing` supplies a Main dispatcher for the Swing event dispatch thread, and with it `viewModelScope` runs where UI code expects."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "\"The ViewModel survives configuration changes\" is a sentence about one host that gets repeated as a sentence about a class. In a codebase whose ViewModels are shared across Android, desktop and iOS, the owner is Android's on one target, whatever the desktop host provides on another, and wired by hand on a third. Name the host and the owner, then answer."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The Main-dispatcher dependency is one case of a general rule. `CoroutineDispatcher` is a portable abstraction, but its realization is per target, and `Dispatchers.Main` is declared in common code without that declaration guaranteeing a usable implementation. A project that builds Android, Desktop/JVM, iOS, JS and Wasm/JS shares one set of dispatcher names and several sets of behaviour, so a JVM thread-pool description must not be generalized to all of them:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Target",
+                    "Relevant realization"
+                  ],
+                  "rows": [
+                    [
+                      "Android",
+                      "Main uses the Android main-thread dispatcher supplied by kotlinx-coroutines-android. IO/Default follow the JVM behavior described above."
+                    ],
+                    [
+                      "Desktop/JVM",
+                      "Main needs a UI integration at runtime, such as kotlinx-coroutines-swing for the Swing event dispatch thread."
+                    ],
+                    [
+                      "iOS / Darwin Native",
+                      "Main uses Darwin's main queue. Default and IO exist, but Native IO has a different implementation; JVM thread-sharing and system-property claims are not Native guarantees."
+                    ],
+                    [
+                      "JS and Wasm/JS browser",
+                      "In kotlinx-coroutines 1.11.0 the shared implementation delegates Main to Default, with immediate support. These dispatchers schedule through the browser execution environment; choosing Default does not create parallel CPU workers. IO is not an API available across these targets."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A shared function can accept a dispatcher appropriate to its work and leave the platform assembly to supply the actual implementation. That keeps a JVM file-reading example from becoming a false `commonMain` recipe, since `Dispatchers.IO` is not an API available across the JS and Wasm targets, and it keeps execution controllable in tests. It does not follow that a supplied dispatcher can manufacture background CPU execution on a single browser thread."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Put together, a shared ViewModel's behaviour on each host is the product of three host-supplied facts: which owner stores it and when that owner is cleared, what the host's saved-state mechanism restores, and which Main dispatcher, if any, its scope runs on. None of the three is visible in the class, so a review that reads only the class cannot answer a lifetime question about it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Asked what a shared ViewModel still needs from each platform, answer with the owner: the class, `viewModelScope` and the clearing hook are common, while the `ViewModelStoreOwner` that creates and clears it belongs to the host — an Activity, Fragment or navigation entry on Android, and integration code on iOS. Then add the two host facts that follow the owner: saved state is the host's mechanism, and `viewModelScope` needs a Main dispatcher the host provides."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_remember_saveable",
+            "lesson_screen_state_owner_boundary",
+            "lesson_dispatchers",
+            "lesson_viewmodel_lifetime_and_persistence",
+            "lesson_owner_scoped_work"
+          ],
+          "sources": [
+            {
+              "title": "Compose Multiplatform: ViewModel",
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-viewmodel.html"
+            },
+            {
+              "title": "ViewModel in Kotlin Multiplatform",
+              "url": "https://developer.android.com/kotlin/multiplatform/viewmodel"
+            },
+            {
+              "title": "viewModelScope construction source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/lifecycle/lifecycle-viewmodel/src/commonMain/kotlin/androidx/lifecycle/viewmodel/internal/CloseableCoroutineScope.kt"
+            },
+            {
+              "title": "Dispatchers.Main (1.11.0)",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-main.html"
+            },
+            {
+              "title": "JS and Wasm shared dispatchers, version 1.11.0",
+              "url": "https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/1.11.0/kotlinx-coroutines-core/jsAndWasmShared/src/Dispatchers.kt"
+            },
+            {
+              "title": "Native dispatchers, version 1.11.0",
+              "url": "https://raw.githubusercontent.com/Kotlin/kotlinx.coroutines/1.11.0/kotlinx-coroutines-core/native/src/Dispatchers.kt"
+            },
+            {
+              "title": "Lifecycle in Compose Multiplatform",
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_kmp_lifecycle_collection_across_hosts",
+          "title": "Lifecycle-Aware Collection on Each Host",
+          "summary": "collectAsStateWithLifecycle can be called from common code, but the lifecycle that drives it is supplied by each Compose Multiplatform host, and the hosts map window, scene and page activity onto lifecycle states differently. The same STARTED threshold therefore stops collection on different user actions on Android, desktop, iOS and web.",
+          "primarySubtopicIds": [
+            "compose_multiplatform"
+          ],
+          "supportingSubtopicIds": [
+            "kmp_lifecycle_viewmodel",
+            "lifecycle_aware_apis",
+            "flow_sharing"
+          ],
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Compose Multiplatform shares composables and their state model across platforms. What each platform keeps is the host that runs them — an `Activity` on Android, a `UIViewController` created by `ComposeUIViewController` on iOS, a window on desktop, a page in the browser — and with the host comes the lifecycle. That matters for any API whose behaviour is defined in lifecycle states."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`collectAsStateWithLifecycle` is one. It has two gates: the conversion must still be in Composition, and its `LifecycleOwner` must be at least `minActiveState`, which defaults to `STARTED`. The API is not Android-only. The dependency `org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:2.11.0-beta01` can be declared in `commonMain`, where it resolves to the AndroidX multiplatform implementation in package `androidx.lifecycle.compose`, so destination composables can import it from shared code. The API is common; the lifecycle that drives its second gate is supplied by the actual platform host."
+                },
+                {
+                  "type": "code",
+                  "code": "// commonMain\n@Composable\nfun QuestionScreen(owner: QuestionScreenOwner) {\n    // One call, four hosts: each decides when this lifecycle is at least STARTED.\n    val screenState by owner.state.collectAsStateWithLifecycle()\n\n    QuestionContent(\n        state = screenState,\n        onRetry = owner::retry,\n    )\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Common API availability does not imply identical behaviour. `STARTED` is one shared threshold, but whether a user action crosses it is decided by how the running host maps its window, scene or page activity onto lifecycle states."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The host mappings differ in exactly the places that matter for a `STARTED` threshold:"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Target",
+                    "How the host maps activity",
+                    "Default STARTED result"
+                  ],
+                  "rows": [
+                    [
+                      "Android",
+                      "The relevant Activity, Fragment or navigation-entry LifecycleOwner supplies state",
+                      "Collection is active at STARTED or RESUMED and stops when that owner falls below STARTED"
+                    ],
+                    [
+                      "Desktop",
+                      "Visible and focused maps to RESUMED; visible but unfocused to STARTED; minimized or detached to CREATED; disposal to DESTROYED",
+                      "Losing focus alone keeps collection active; minimizing stops it"
+                    ],
+                    [
+                      "iOS",
+                      "Appeared, foreground and active maps to RESUMED; appeared and foreground but inactive to STARTED; background or not appeared to CREATED",
+                      "An inactive foreground scene keeps collection active; backgrounding stops it"
+                    ],
+                    [
+                      "Web",
+                      "Focus resumes, blur pauses to STARTED, and a hidden page stops; the documented normal host model skips CREATED and does not reach DESTROYED",
+                      "A visible but blurred page keeps collection active; hiding the tab stops it"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The portable model is not to memorize four event tables. `STARTED` expresses one common threshold, but each platform decides how window, scene or page activity maps onto lifecycle states. Given a bug report such as \"collection continues when the desktop window loses focus\", inspect the host mapping before assuming the API failed: in the Compose Multiplatform 1.11.1 desktop host, focus loss is `ON_PAUSE`, which leaves an unfocused visible window `STARTED`, while minimising it is `ON_STOP`, which drops it to `CREATED` and stops the collection."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For desktop, JetBrains also notes that lifecycle coroutine scopes rely on `Dispatchers.Main.immediate`, which needs a Main dispatcher implementation. A desktop application that declares `kotlinx-coroutines-swing` supplies one. Without it, those lifecycle coroutine scopes have no Main dispatcher to run on."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Carrying Android's event behaviour to the other hosts: \"backgrounding stops collection, so hiding the window must too\". The threshold rule carries over; the event mapping does not. Check what the host dispatches for the user action before predicting whether collection stops."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Stopping the collector still settles nothing about the producer. When a host drops the lifecycle below the threshold, this subscriber is removed; a shared upstream keeps following its own scope and `SharingStarted` policy, exactly as on Android. What differs per host is only which user action removes the subscriber, so a resource budget reasoned out for Android — \"with `WhileSubscribed`, the query stops once the app is backgrounded\" — has to be re-derived for a desktop window that is merely unfocused, where no subscriber is removed at all."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The host mappings described here are those of the Compose Multiplatform 1.11.1 hosts with lifecycle-runtime-compose 2.11.0-beta01. The lifecycle artifact is beta, so its API and the host mappings may change in later releases; the table is a statement about these versions rather than about the API."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Given a target, current host state and collection API, answer in order: is the call still in Composition; which LifecycleOwner is relevant; what state does this host map the user action to; is that state at least the threshold; and who owns upstream production after this collector stops?"
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_lifecycle_aware_collection",
+            "lesson_sharing_cold_flows",
+            "lesson_kmp_viewmodel_owners_across_hosts"
+          ],
+          "sources": [
+            {
+              "title": "Lifecycle in Compose Multiplatform",
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-lifecycle.html"
+            },
+            {
+              "title": "Compose Multiplatform and Jetpack Compose",
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-multiplatform-and-jetpack-compose.html"
+            },
+            {
+              "title": "Integration with the SwiftUI framework",
+              "url": "https://kotlinlang.org/docs/multiplatform/compose-swiftui-integration.html"
+            },
+            {
+              "title": "Lifecycle runtime Compose Flow extensions source",
+              "url": "https://github.com/androidx/androidx/blob/androidx-main/lifecycle/lifecycle-runtime-compose/src/commonMain/kotlin/androidx/lifecycle/compose/FlowExt.kt"
+            }
+          ],
+          "status": "ACTIVE"
         }
       ]
     },

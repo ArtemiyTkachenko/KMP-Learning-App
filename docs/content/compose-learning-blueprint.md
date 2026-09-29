@@ -21,6 +21,17 @@ current epic boundaries; the former Units 9–14 are now 13–18. The reconcilia
 evidence behind it, and the confirmed authoring plan for Units 7–12 are in
 [`compose-units-7-12-plan.md`](compose-units-7-12-plan.md).
 
+**KMP content separation.** The shipped Compose Lessons have since been split along the
+core/KMP boundary recorded in [`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md). Three Lessons this blueprint planned with
+multiplatform material now teach Android only: `lesson_remember_saveable` states Android's
+saved-state guarantee without the Compose Multiplatform host callout;
+`lesson_screen_state_owner_boundary` uses an Android `NavDisplay` example and dropped
+supporting `kmp_lifecycle_viewmodel`; and `lesson_lifecycle_aware_collection` compares
+Android lifecycle events instead of four host mappings, replacing supporting
+`kmp_lifecycle_viewmodel` and `compose_multiplatform` with `activity_lifecycle`. The
+per-host material moved to **Shared ViewModels and Host Lifecycles** (`unit_kmp_shared_viewmodels_and_host_lifecycles`, home Topic `kmp`, authored after every core Unit). Entries below that still describe multiplatform
+material record the original plan; the current mappings are in [`learning-question-coverage.md`](learning-question-coverage.md).
+
 ## How to Read This Blueprint
 
 Every planned Lesson records:

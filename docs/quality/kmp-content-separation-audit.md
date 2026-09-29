@@ -1,8 +1,10 @@
 # KMP Content-Separation Audit
 
 Audit and plan for making Kotlin Multiplatform / Compose Multiplatform material an optional,
-separately hideable part of the curriculum. This document is planning only: no curriculum
-JSON, application code, schema or UI was changed by it.
+separately hideable part of the curriculum. This document is the plan: no curriculum JSON,
+application code, schema or UI was changed by it. Progress against the
+[Migration Order](#migration-order) is recorded under
+[Implementation status](#implementation-status).
 
 - **Baseline:** local `HEAD` = `origin/main` at `6cc8452` (Quality improvements #436).
 - **Inputs read:** `initial_curriculum.json` (17 Topics, 361 Subtopics, 478 Questions: 437
@@ -569,6 +571,46 @@ after it.
 This differs from the brief's sequence in two ways. The brief's "downstream filtering" and
 "metrics projection" steps collapse into step 5, because the decorators and the projection
 *are* the downstream filtering. Tests ship with each PR instead of at the end.
+
+### Implementation status
+
+| Step | State |
+| --- | --- |
+| 1. Question-bank migration | Done (#438). |
+| 2. Learning migration, DI part | Done (#439). |
+| 3. Learning migration, Compose / Coroutines / Architecture part | Done — see below. |
+| 4–8 | Not started. |
+
+Step 3 shipped Unit K1 as planned, with its two Lessons. The curriculum now has **32 Units
+and 138 Lessons**; the two `kmp` Units (K1, then K2) hold 4 Lessons and follow every core
+Unit. The proposed third KMP Unit was not created. Every extraction and incidental rewrite in
+the Learning Migration Table was applied, plus one incidental mention the table missed:
+`lesson_state_holder_responsibility` listed `UIViewController` among host objects, and now
+lists `Fragment`. `lesson_lifecycle_aware_collection` gained supporting `activity_lifecycle`,
+because its replacement section teaches Activity lifecycle transitions.
+
+Claims marked **(verify)** that primary sources did not support as proposed:
+
+- **Multi-window focus loss.** The proposed row "multi-window focus lost → `STARTED`" holds
+  only on Android 9 and lower. Android 10 and higher keep every visible multi-window Activity
+  `RESUMED` (multi-resume) and report focus through `onTopResumedActivityChanged`. The Lesson
+  states both. Collection continues either way, so the core Question's answer is unaffected.
+- **`viewModelScope` fallback in a JVM unit test.** Not stated. The Android testing
+  documentation says local unit tests replace `Main` with `Dispatchers.setMain`, so the
+  Lesson states that instead of claiming what the lifecycle source falls back to on Android.
+- **Navigation-entry lifecycle.** Stated from the Navigation 3 destination-lifecycle
+  documentation: an entry is capped at `STARTED` mid-transition or under an overlay, and at
+  `CREATED` once popped and animating out.
+- **Desktop `ViewModelStoreOwner`.** The source Lesson said Compose Multiplatform supplies "a
+  common `ViewModelStoreOwner` implementation" on desktop. The JetBrains ViewModel page does
+  not say so, and the lifecycle source resolves it through a host-default key. The KMP
+  Lesson narrows this to "whatever the desktop host provides, or one the application or a
+  navigation library installs".
+- Supported as proposed: `LaunchedEffect` runs on `AndroidUiDispatcher.CurrentThread` from
+  the window Recomposer; the uncaught-exception path goes through `ServiceLoader` handlers
+  and then the thread's handler, and crashes an Android app; suppressed exceptions (the
+  current coroutines guide no longer carries a JDK 7 caveat); `AtomicInt` is experimental and
+  represented on the JVM by `AtomicInteger`.
 
 ## Validation Plan
 

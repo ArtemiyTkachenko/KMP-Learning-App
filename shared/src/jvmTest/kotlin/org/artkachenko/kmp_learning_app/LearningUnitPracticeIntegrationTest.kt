@@ -322,30 +322,34 @@ internal class LearningUnitPracticeIntegrationTest {
                 }
             }
             // KMP Units are authored after every core Unit, so exhausting dependency injection
-            // hands over to the KMP Unit rather than to Complete.
+            // hands over to the KMP Units rather than to Complete.
             val kmpUnits = BundledLearningContentRepository().getActiveUnitsByTopic("kmp")
-            assertEquals(listOf("unit_koin_and_dependency_injection_in_kmp"), kmpUnits.map { it.id })
-            assertEquals(listOf(2), kmpUnits.map { it.lessons.size })
-            val kmpUnit = kmpUnits.single()
-            val kmpParent = unit(kmpUnit.id)
-            kmpUnit.lessons.forEachIndexed { index, lesson ->
-                awaitNext(kmpUnit.id, lesson.id)
-                val kmpReader = lesson(kmpUnit.id, lesson.id)
-                kmpReader.uiState.await { state ->
-                    state is LearningLessonUiState.Content &&
-                        (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
-                }
-                kmpReader.toggleStudied()
-                kmpReader.uiState.await { state ->
-                    state is LearningLessonUiState.Content &&
-                        (state.studyState as? StudyProgressUiState.Available)?.value?.let {
-                            it.isStudied && !it.isPending
-                        } == true
-                }
-                kmpParent.uiState.await { state ->
-                    state is LearningUnitUiState.Content &&
-                        (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
-                        StudyProgressSummary.Progress(index + 1, kmpUnit.lessons.size)
+            assertEquals(
+                listOf("unit_kmp_shared_viewmodels_and_host_lifecycles", "unit_koin_and_dependency_injection_in_kmp"),
+                kmpUnits.map { it.id },
+            )
+            assertEquals(listOf(2, 2), kmpUnits.map { it.lessons.size })
+            kmpUnits.forEach { kmpUnit ->
+                val kmpParent = unit(kmpUnit.id)
+                kmpUnit.lessons.forEachIndexed { index, lesson ->
+                    awaitNext(kmpUnit.id, lesson.id)
+                    val kmpReader = lesson(kmpUnit.id, lesson.id)
+                    kmpReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
+                    }
+                    kmpReader.toggleStudied()
+                    kmpReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                                it.isStudied && !it.isPending
+                            } == true
+                    }
+                    kmpParent.uiState.await { state ->
+                        state is LearningUnitUiState.Content &&
+                            (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                            StudyProgressSummary.Progress(index + 1, kmpUnit.lessons.size)
+                    }
                 }
             }
             browser.uiState.await { state ->
@@ -393,9 +397,9 @@ internal class LearningUnitPracticeIntegrationTest {
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
-            // architecture Units, 33 in the six dependency-injection Units and 2 in the KMP Unit,
-            // less the one that was just un-studied.
-            assertEquals(135, rebuilt.getStudiedLessons().size)
+            // architecture Units, 33 in the six dependency-injection Units and 4 in the two KMP
+            // Units, less the one that was just un-studied.
+            assertEquals(137, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -416,8 +420,8 @@ internal class LearningUnitPracticeIntegrationTest {
                 "unit_identity_keys_and_stability" to (setOf("compose_identity_keys", "compose_stability") to 6),
                 "unit_derived_state_and_expensive_work" to (setOf("compose_derived_state") to 3),
                 "unit_snapshot_fundamentals" to (setOf("compose_snapshot_system") to 4),
-                // E25-03, then E25-08. All four Lessons apply `compose_state`; Flow, lifecycle
-                // and KMP concepts remain supporting context. E25-08 closed GAP-U8-A and the
+                // E25-03, then E25-08. All four Lessons apply `compose_state`; Flow and
+                // lifecycle concepts remain supporting context. E25-08 closed GAP-U8-A and the
                 // combined GAP-U8-B/GAP-U8-C, so the three E23 Compose-state Questions are now
                 // joined by two that assess this Unit's own conversion and lifetime reasoning.
                 "unit_observable_state_collection" to (setOf("compose_state") to 5),
@@ -882,7 +886,7 @@ internal class LearningUnitPracticeIntegrationTest {
                 ).all { it in questionIds },
             )
 
-            // The five lifecycle, Compose and coroutine bridges this Unit leans on are the ones
+            // The four lifecycle and saved-state bridges this Unit leans on are the ones
             // most likely to be promoted by mistake, because each has ACTIVE Questions of its
             // own. None of them may reach this Unit's practice.
             val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
@@ -892,7 +896,6 @@ internal class LearningUnitPracticeIntegrationTest {
                     "configuration_changes",
                     "process_death",
                     "saved_state",
-                    "kmp_lifecycle_viewmodel",
                 ).all { it in supportingOnly },
             )
             assertTrue(questions.none { it.subtopicId in supportingOnly })
@@ -1066,7 +1069,7 @@ internal class LearningUnitPracticeIntegrationTest {
                 foundations intersect questionIds,
             )
 
-            // Nine supporting-only concepts, holding ACTIVE Questions of their own, broaden
+            // Eight supporting-only concepts, holding ACTIVE Questions of their own, broaden
             // nothing. `solid` is the one that matters: it is supporting-only across every
             // E26 Unit, so its Question reaches no Unit's practice at all, which is intended
             // rather than an oversight.
@@ -1076,7 +1079,6 @@ internal class LearningUnitPracticeIntegrationTest {
                     "solid",
                     "service_locator_vs_di",
                     "android_modules",
-                    "kmp_architecture",
                     "repository_pattern",
                     "layered_architecture",
                     "architecture_tradeoffs",
@@ -1711,6 +1713,55 @@ internal class LearningUnitPracticeIntegrationTest {
             assertEquals(concepts, questions.map { it.subtopicId }.toSet())
 
             val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertEquals(0, attemptCount())
+        }
+
+    /**
+     * The KMP lifecycle Unit was assembled from host-specific material extracted from Android
+     * Lessons. Its practice is exactly its two KMP primaries; the Android ViewModel, saved-state,
+     * dispatcher, lifecycle and sharing concepts it extends are supporting and must not pull
+     * their core Questions in.
+     */
+    @Test
+    fun theKmpLifecycleUnitPractisesOnlyItsTwoKmpConcepts() =
+        runUnitPracticeTest {
+            val unitId = "unit_kmp_shared_viewmodels_and_host_lifecycles"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(3, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf("kmp_lifecycle_viewmodel", "compose_multiplatform")
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            assertEquals(
+                setOf(
+                    "kmp_shared_viewmodel_owner_platform",
+                    "kmp_desktop_window_lifecycle_collection_threshold",
+                    "kmp_compose_multiplatform_vs_jetpack",
+                ),
+                questions.map { it.id }.toSet(),
+            )
+            assertEquals(3, questions.size)
+            assertEquals(
+                mapOf(QuestionLevel.FOUNDATION to 1, QuestionLevel.APPLIED to 2),
+                questions.groupingBy { it.level }.eachCount(),
+            )
+            assertTrue(questions.all { it.topicId == "kmp" })
+
+            val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+            assertEquals(
+                setOf("viewmodel_lifecycle", "saved_state", "coroutine_dispatchers", "lifecycle_aware_apis", "flow_sharing"),
+                supportingOnly,
+            )
             assertTrue(questions.none { it.subtopicId in supportingOnly })
             assertEquals(0, attemptCount())
         }

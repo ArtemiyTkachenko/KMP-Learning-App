@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `3f35c2defd1f0012b53b0d6deb6f807e48a1a0ffec4f2d1b25b12dc66fdc7dea` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `45dff8e001a56fd635c28f1393ddfca19b67f540542712ab5b72b972961c7894` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `74cf2ce05c1394d0f9aa9ee1a08b1e8b7c377b899215f2b9aacf3eb059f02af2` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,13 +68,13 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 30 |
-| Active lessons in those units | 135 |
-| Distinct primary subtopics | 74 |
+| Active learning units | 31 |
+| Active lessons in those units | 136 |
+| Distinct primary subtopics | 75 |
 | Distinct supporting subtopics | 117 |
-| Unique active questions reached through primary mappings | 168 |
-| Primary subtopics with at least one active question | 73 |
-| Primary subtopics with no active question | 1 |
+| Unique active questions reached through primary mappings | 172 |
+| Primary subtopics with at least one active question | 75 |
+| Primary subtopics with no active question | 0 |
 | Active questions in the bank | 439 |
 | Deprecated questions excluded from this report | 41 |
 
@@ -119,8 +119,9 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Object Graphs, Lifetimes and Scopes (`unit_object_graphs_lifetimes_and_scopes`) | 6 | 2 | 1 | 4 | 0 | 5 |
 | Dagger: Compile-Time Object Graphs (`unit_dagger_compile_time_object_graphs`) | 7 | 7 | 6 | 5 | 0 | 11 |
 | Hilt: Android Lifecycle-Aware Dagger (`unit_hilt_android_lifecycle_integration`) | 6 | 5 | 3 | 6 | 0 | 9 |
-| Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | 5 | 5 | 1 | 4 | 0 | 5 |
+| Koin: Containers, Definitions and Scopes (`unit_koin_containers_definitions_and_scopes`) | 4 | 4 | 1 | 4 | 0 | 5 |
 | Choosing a Dependency Injection Strategy (`unit_choosing_a_dependency_injection_strategy`) | 4 | 2 | 0 | 2 | 0 | 2 |
+| Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | 2 | 2 | 1 | 2 | 1 | 4 |
 
 ## Unit and lesson detail
 
@@ -2574,7 +2575,7 @@ Supporting context — not primary coverage:
 | `di_framework_tradeoffs` — DI framework trade-offs | 1 | `dependency_injection` — Dependency Injection |
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 
-### Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`)
+### Koin: Containers, Definitions and Scopes (`unit_koin_containers_definitions_and_scopes`)
 
 Home topic: `dependency_injection` — Dependency Injection.
 
@@ -2603,7 +2604,6 @@ Supporting context — not primary coverage:
 | `dependency_graphs` — Dependency graphs | 3 | `dependency_injection` — Dependency Injection |
 | `koin_definitions` — single/factory definitions | 2 | `dependency_injection` — Dependency Injection |
 | `di_framework_tradeoffs` — DI framework trade-offs | 1 | `dependency_injection` — Dependency Injection |
-| `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 
 #### Definitions, and the Reuse Requirement Behind Them (`lesson_koin_definitions_and_reuse`)
 
@@ -2654,28 +2654,8 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `koin_definitions` — single/factory definitions | 2 | `dependency_injection` — Dependency Injection |
 | `service_locator_vs_di` — Service locator vs dependency injection | 2 | `dependency_injection` — Dependency Injection |
-| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
-
-#### One Graph, Several Platforms (`lesson_one_graph_across_platforms`)
-
-Primary concepts:
-
-| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
-|---|---:|---:|---:|---:|---|
-| `koin_multiplatform` — Koin and Kotlin Multiplatform | 0 | 0 | 0 | 0 | — |
-
-Supporting context — not primary coverage:
-
-| Supporting subtopic | Active questions | Owning topic |
-|---|---:|---|
-| `koin_fundamentals` — Koin fundamentals | 1 | `dependency_injection` — Dependency Injection |
-| `expect_actual` — expect/actual | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
-| `platform_implementations` — Platform-specific implementations | 0 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
-| `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
-| `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
-| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
 
 ### Choosing a Dependency Injection Strategy (`unit_choosing_a_dependency_injection_strategy`)
 
@@ -2740,9 +2720,8 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
 | `hilt_vs_dagger` — Hilt vs raw Dagger | 1 | `dependency_injection` — Dependency Injection |
-| `koin_multiplatform` — Koin and Kotlin Multiplatform | 0 | `dependency_injection` — Dependency Injection |
+| `koin_fundamentals` — Koin fundamentals | 1 | `dependency_injection` — Dependency Injection |
 | `dagger_components` — Components and subcomponents | 3 | `dependency_injection` — Dependency Injection |
-| `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 
 #### The Smallest Sufficient Strategy (`lesson_the_smallest_sufficient_strategy`)
 
@@ -2763,6 +2742,55 @@ Supporting context — not primary coverage:
 | `di_fundamentals` — Dependency injection fundamentals | 2 | `dependency_injection` — Dependency Injection |
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
 
+### Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`)
+
+Home topic: `kmp` — Kotlin Multiplatform & Compose Multiplatform.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `kmp_android_library_not_multiplatform` |
+| APPLIED | 2 | `koin_multiplatform_common_module`, `koin_shared_and_platform_binding_split` |
+| ADVANCED | 1 | `di_strategy_smallest_sufficient_choice` |
+
+#### One Graph, Several Platforms (`lesson_one_graph_across_platforms`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `koin_kmp` — Koin in KMP | 0 | 2 | 0 | 2 | `koin_multiplatform_common_module`, `koin_shared_and_platform_binding_split` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `koin_fundamentals` — Koin fundamentals | 1 | `dependency_injection` — Dependency Injection |
+| `expect_actual` — expect/actual | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `platform_implementations` — Platform-specific implementations | 0 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `composition_root` — Composition root | 1 | `dependency_injection` — Dependency Injection |
+| `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
+
+#### Choosing a Strategy for a Shared Graph (`lesson_choosing_di_for_a_shared_graph`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kmp_library_selection` — Evaluating KMP library compatibility | 1 | 0 | 1 | 2 | `di_strategy_smallest_sufficient_choice`, `kmp_android_library_not_multiplatform` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `koin_kmp` — Koin in KMP | 2 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `di_framework_tradeoffs` — DI framework trade-offs | 1 | `dependency_injection` — Dependency Injection |
+| `manual_di` — Manual dependency injection | 1 | `dependency_injection` — Dependency Injection |
+| `hilt_vs_dagger` — Hilt vs raw Dagger | 1 | `dependency_injection` — Dependency Injection |
+
 ## Primary assessment gaps
 
 Primary concepts of active lessons that currently have no active question.
@@ -2773,9 +2801,7 @@ subtopic taxonomy is deliberately finer-grained than the bank — see
 from subtopics that are empty on purpose. This report surfaces the gap; whether it
 matters is editorial judgement.
 
-| Primary subtopic | Owning topic |
-|---|---|
-| `koin_multiplatform` — Koin and Kotlin Multiplatform | `dependency_injection` — Dependency Injection |
+Every primary concept of every active lesson has at least one active question.
 
 ## Semantic review reminder
 

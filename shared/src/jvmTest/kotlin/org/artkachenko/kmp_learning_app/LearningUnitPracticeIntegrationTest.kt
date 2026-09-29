@@ -266,7 +266,8 @@ internal class LearningUnitPracticeIntegrationTest {
             // the architecture Units leads into the dependency-injection Units, not to Complete.
             // E27-03 added the second of those Units, E27-04 the third, E27-05 the fourth and
             // E27-06 the fifth and E27-07 the sixth. The traversal walks all six without a
-            // production special case.
+            // production special case. The KMP content separation later moved the Koin Unit's four
+            // core Lessons into their own core Unit and re-homed the KMP Unit after every core Unit.
             val diUnits = BundledLearningContentRepository().getActiveUnitsByTopic("dependency_injection")
             assertEquals(
                 listOf(
@@ -274,16 +275,16 @@ internal class LearningUnitPracticeIntegrationTest {
                     "unit_object_graphs_lifetimes_and_scopes",
                     "unit_dagger_compile_time_object_graphs",
                     "unit_hilt_android_lifecycle_integration",
-                    "unit_koin_and_dependency_injection_in_kmp",
+                    "unit_koin_containers_definitions_and_scopes",
                     "unit_choosing_a_dependency_injection_strategy",
                 ),
                 diUnits.map { it.id },
             )
             // The Unit plan derives these counts from separately learnable decisions rather than
             // assigning a quota: six generic foundations, six graph decisions, seven Dagger
-            // encodings, six Android/Hilt decisions, five Koin/KMP decisions, then four
+            // encodings, six Android/Hilt decisions, four core Koin decisions, then four
             // strategy decisions that synthesize the earlier Units.
-            assertEquals(listOf(6, 6, 7, 6, 5, 4), diUnits.map { it.lessons.size })
+            assertEquals(listOf(6, 6, 7, 6, 4, 4), diUnits.map { it.lessons.size })
             val diTopic = topic("dependency_injection")
             val diParents = diUnits.associate { it.id to unit(it.id) }
             val diLessonCount = diUnits.sumOf { it.lessons.size }
@@ -318,6 +319,33 @@ internal class LearningUnitPracticeIntegrationTest {
                             (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
                             StudyProgressSummary.Progress(index + 1, diUnit.lessons.size)
                     }
+                }
+            }
+            // KMP Units are authored after every core Unit, so exhausting dependency injection
+            // hands over to the KMP Unit rather than to Complete.
+            val kmpUnits = BundledLearningContentRepository().getActiveUnitsByTopic("kmp")
+            assertEquals(listOf("unit_koin_and_dependency_injection_in_kmp"), kmpUnits.map { it.id })
+            assertEquals(listOf(2), kmpUnits.map { it.lessons.size })
+            val kmpUnit = kmpUnits.single()
+            val kmpParent = unit(kmpUnit.id)
+            kmpUnit.lessons.forEachIndexed { index, lesson ->
+                awaitNext(kmpUnit.id, lesson.id)
+                val kmpReader = lesson(kmpUnit.id, lesson.id)
+                kmpReader.uiState.await { state ->
+                    state is LearningLessonUiState.Content &&
+                        (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
+                }
+                kmpReader.toggleStudied()
+                kmpReader.uiState.await { state ->
+                    state is LearningLessonUiState.Content &&
+                        (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                            it.isStudied && !it.isPending
+                        } == true
+                }
+                kmpParent.uiState.await { state ->
+                    state is LearningUnitUiState.Content &&
+                        (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                        StudyProgressSummary.Progress(index + 1, kmpUnit.lessons.size)
                 }
             }
             browser.uiState.await { state ->
@@ -365,9 +393,9 @@ internal class LearningUnitPracticeIntegrationTest {
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
-            // architecture Units and 34 in the six dependency-injection Units, less the one that
-            // was just un-studied.
-            assertEquals(134, rebuilt.getStudiedLessons().size)
+            // architecture Units, 33 in the six dependency-injection Units and 2 in the KMP Unit,
+            // less the one that was just un-studied.
+            assertEquals(135, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -1635,14 +1663,14 @@ internal class LearningUnitPracticeIntegrationTest {
         }
 
     /**
-     * E27-08, narrowed by the KMP content-separation question migration: the two Koin-in-KMP
-     * Questions moved to `kmp/koin_kmp`, so the still-primary `koin_multiplatform` Lesson reaches
-     * no Question until the learning migration re-homes it.
+     * E27-08, re-scoped by the KMP content separation: the core Koin Unit keeps the four core
+     * Koin concepts and every core Koin Question, while the Koin-in-KMP concepts moved to the
+     * KMP Unit.
      */
     @Test
-    fun theKoinUnitPractisesOnlyItsFivePrimaryConcepts() =
+    fun theCoreKoinUnitPractisesOnlyItsFourPrimaryConcepts() =
         runUnitPracticeTest {
-            val unitId = "unit_koin_and_dependency_injection_in_kmp"
+            val unitId = "unit_koin_containers_definitions_and_scopes"
             val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
             val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
             val settled = builder.settled()
@@ -1659,7 +1687,6 @@ internal class LearningUnitPracticeIntegrationTest {
                 "koin_definitions",
                 "koin_scopes",
                 "koin_viewmodels",
-                "koin_multiplatform",
             )
             assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
 
@@ -1681,10 +1708,51 @@ internal class LearningUnitPracticeIntegrationTest {
                 questions.groupingBy { it.level }.eachCount(),
             )
 
-            assertEquals(concepts - "koin_multiplatform", questions.map { it.subtopicId }.toSet())
+            assertEquals(concepts, questions.map { it.subtopicId }.toSet())
 
             val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
             assertTrue(questions.none { it.subtopicId in supportingOnly })
+            assertEquals(0, attemptCount())
+        }
+
+    /**
+     * The KMP content separation re-homed the Koin-in-KMP Unit under `kmp`, so its practice
+     * reaches the KMP Questions the question migration moved there.
+     */
+    @Test
+    fun theKmpKoinUnitPractisesOnlyItsTwoKmpConcepts() =
+        runUnitPracticeTest {
+            val unitId = "unit_koin_and_dependency_injection_in_kmp"
+            val unit = assertNotNull(BundledLearningContentRepository().getUnitById(unitId))
+            val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+            val settled = builder.settled()
+
+            assertEquals(unit.title, settled.scope.name)
+            val available = assertIs<PracticeAvailability.Available>(settled.availability)
+            assertEquals(4, available.eligibleQuestionCount)
+            builder.selectQuestionCount(available.eligibleQuestionCount)
+            builder.settled()
+
+            val config = builder.start()
+            val concepts = setOf("koin_kmp", "kmp_library_selection")
+            assertEquals(AssessmentScope.Subtopics(concepts), config.scope)
+
+            val questions = selectedQuestions(config)
+            assertEquals(
+                setOf(
+                    "koin_multiplatform_common_module",
+                    "koin_shared_and_platform_binding_split",
+                    "di_strategy_smallest_sufficient_choice",
+                    "kmp_android_library_not_multiplatform",
+                ),
+                questions.map { it.id }.toSet(),
+            )
+            assertEquals(4, questions.size)
+            assertEquals(
+                mapOf(QuestionLevel.FOUNDATION to 1, QuestionLevel.APPLIED to 2, QuestionLevel.ADVANCED to 1),
+                questions.groupingBy { it.level }.eachCount(),
+            )
+            assertTrue(questions.all { it.topicId == "kmp" })
             assertEquals(0, attemptCount())
         }
 

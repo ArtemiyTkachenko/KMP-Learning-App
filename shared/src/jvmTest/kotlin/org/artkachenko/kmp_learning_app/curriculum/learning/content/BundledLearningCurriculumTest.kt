@@ -63,8 +63,10 @@ internal class BundledLearningCurriculumTest {
                 "unit_object_graphs_lifetimes_and_scopes",
                 "unit_dagger_compile_time_object_graphs",
                 "unit_hilt_android_lifecycle_integration",
-                "unit_koin_and_dependency_injection_in_kmp",
+                "unit_koin_containers_definitions_and_scopes",
                 "unit_choosing_a_dependency_injection_strategy",
+                // Android Engineering Lab is Android-first: KMP Units follow every core Unit.
+                "unit_koin_and_dependency_injection_in_kmp",
             ),
             units().map { it.id },
         )
@@ -99,14 +101,15 @@ internal class BundledLearningCurriculumTest {
                 "Object Graphs, Lifetimes and Scopes",
                 "Dagger: Compile-Time Object Graphs",
                 "Hilt: Android Lifecycle-Aware Dagger",
-                "Koin and Dependency Injection in KMP",
+                "Koin: Containers, Definitions and Scopes",
                 "Choosing a Dependency Injection Strategy",
+                "Koin and Dependency Injection in KMP",
             ),
             units().map { it.title },
         )
 
         // A Unit's home Topic decides where it is browsed, so it is asserted per Unit
-        // rather than as one value: the document now spans four home Topics.
+        // rather than as one value: the document now spans five home Topics.
         assertEquals(
             listOf(
                 "android_ui",
@@ -139,9 +142,11 @@ internal class BundledLearningCurriculumTest {
                 "dependency_injection",
                 "dependency_injection",
                 "dependency_injection",
+                "kmp",
             ),
             units().map { it.topicId },
         )
+        assertEquals(136, units().sumOf { it.lessons.size })
 
         units().forEach { unit ->
             assertEquals(ContentStatus.ACTIVE, unit.status, unit.id)
@@ -676,9 +681,8 @@ internal class BundledLearningCurriculumTest {
                 "lesson_koin_definitions_and_reuse",
                 "lesson_koin_scopes_and_their_owners",
                 "lesson_resolving_viewmodels_at_the_boundary",
-                "lesson_one_graph_across_platforms",
             ),
-            unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.id },
+            unit("unit_koin_containers_definitions_and_scopes").lessons.map { it.id },
         )
 
         assertEquals(
@@ -687,9 +691,8 @@ internal class BundledLearningCurriculumTest {
                 "Definitions, and the Reuse Requirement Behind Them",
                 "Scopes, and the Owner That Has to Stay Alive",
                 "Resolving a ViewModel at the Boundary",
-                "One Graph, Several Platforms",
             ),
-            unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.title },
+            unit("unit_koin_containers_definitions_and_scopes").lessons.map { it.title },
         )
 
         assertEquals(
@@ -710,6 +713,22 @@ internal class BundledLearningCurriculumTest {
                 "The Smallest Sufficient Strategy",
             ),
             unit("unit_choosing_a_dependency_injection_strategy").lessons.map { it.title },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_one_graph_across_platforms",
+                "lesson_choosing_di_for_a_shared_graph",
+            ),
+            unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "One Graph, Several Platforms",
+                "Choosing a Strategy for a Shared Graph",
+            ),
+            unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.title },
         )
     }
 
@@ -1090,9 +1109,8 @@ internal class BundledLearningCurriculumTest {
                 listOf("koin_definitions"),
                 listOf("koin_scopes"),
                 listOf("koin_viewmodels"),
-                listOf("koin_multiplatform"),
             ),
-            unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.primarySubtopicIds },
+            unit("unit_koin_containers_definitions_and_scopes").lessons.map { it.primarySubtopicIds },
         )
 
         assertEquals(
@@ -1103,6 +1121,14 @@ internal class BundledLearningCurriculumTest {
                 listOf("manual_di", "di_framework_tradeoffs"),
             ),
             unit("unit_choosing_a_dependency_injection_strategy").lessons.map { it.primarySubtopicIds },
+        )
+
+        assertEquals(
+            listOf(
+                listOf("koin_kmp"),
+                listOf("kmp_library_selection"),
+            ),
+            unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.primarySubtopicIds },
         )
     }
 
@@ -2855,7 +2881,7 @@ internal class BundledLearningCurriculumTest {
 
     @Test
     fun koinUnitKeepsItsPlannedBridgesOutOfPrimaryPractice() = runTest {
-        val unit = unit("unit_koin_and_dependency_injection_in_kmp")
+        val unit = unit("unit_koin_containers_definitions_and_scopes")
 
         assertEquals(
             listOf(
@@ -2864,7 +2890,6 @@ internal class BundledLearningCurriculumTest {
                     "dependency_graphs",
                     "koin_definitions",
                     "di_framework_tradeoffs",
-                    "kmp_architecture",
                 ),
                 listOf(
                     "koin_fundamentals",
@@ -2877,17 +2902,8 @@ internal class BundledLearningCurriculumTest {
                 listOf(
                     "koin_definitions",
                     "service_locator_vs_di",
-                    "kmp_lifecycle_viewmodel",
                     "viewmodel_lifecycle",
                     "state_ownership",
-                ),
-                listOf(
-                    "koin_fundamentals",
-                    "expect_actual",
-                    "platform_implementations",
-                    "kmp_architecture",
-                    "composition_root",
-                    "interface_boundaries",
                 ),
             ),
             unit.lessons.map { it.supportingSubtopicIds },
@@ -2900,7 +2916,6 @@ internal class BundledLearningCurriculumTest {
                 "koin_definitions",
                 "koin_scopes",
                 "koin_viewmodels",
-                "koin_multiplatform",
             ),
             primary,
         )
@@ -2910,8 +2925,62 @@ internal class BundledLearningCurriculumTest {
     }
 
     @Test
+    fun kmpKoinUnitPractisesOnlyKmpConceptsAndBridgesToTheCoreOnes() = runTest {
+        val unit = unit("unit_koin_and_dependency_injection_in_kmp")
+
+        assertEquals(
+            listOf(
+                listOf(
+                    "koin_fundamentals",
+                    "expect_actual",
+                    "platform_implementations",
+                    "kmp_architecture",
+                    "composition_root",
+                    "interface_boundaries",
+                ),
+                listOf("koin_kmp", "di_framework_tradeoffs", "manual_di", "hilt_vs_dagger"),
+            ),
+            unit.lessons.map { it.supportingSubtopicIds },
+        )
+        unit.lessons.forEach { lesson ->
+            assertTrue(lesson.primarySubtopicIds.none { it in lesson.supportingSubtopicIds }, lesson.id)
+        }
+
+        // A KMP-home Lesson practises only KMP concepts; general DI concepts stay supporting.
+        val kmpSubtopics = BundledCurriculumSource.load().subtopics
+            .filter { it.topicId == "kmp" }
+            .map { it.id }
+            .toSet()
+        unit.lessons.forEach { lesson ->
+            assertTrue(lesson.primarySubtopicIds.all { it in kmpSubtopics }, lesson.id)
+        }
+    }
+
+    @Test
+    fun coreDependencyInjectionUnitsCarryNoKmpMappingsOrLinks() = runTest {
+        // The DI area is separated; the curriculum-wide rule waits for the remaining extractions.
+        val kmpSubtopics = BundledCurriculumSource.load().subtopics
+            .filter { it.topicId == "kmp" }
+            .map { it.id }
+            .toSet() + "koin_multiplatform"
+        val kmpLessons = units().filter { it.topicId == "kmp" }.flatMap { it.lessons }.map { it.id }.toSet()
+
+        units().filter { it.topicId == "dependency_injection" }.flatMap { it.lessons }.forEach { lesson ->
+            assertTrue(
+                (lesson.primarySubtopicIds + lesson.supportingSubtopicIds).none { it in kmpSubtopics },
+                lesson.id,
+            )
+            assertTrue(lesson.relatedLessonIds.none { it in kmpLessons }, lesson.id)
+        }
+        assertEquals("kmp", units().last().topicId)
+    }
+
+    @Test
     fun koinUnitLinksOnlyToShippedPrerequisites() = runTest {
-        val lessons = unit("unit_koin_and_dependency_injection_in_kmp").lessons.associateBy { it.id }
+        val lessons = (
+            unit("unit_koin_containers_definitions_and_scopes").lessons +
+                unit("unit_koin_and_dependency_injection_in_kmp").lessons
+            ).associateBy { it.id }
 
         assertEquals(
             listOf("lesson_one_place_that_knows_how_to_build", "lesson_from_one_dependency_to_a_graph"),
@@ -2947,8 +3016,18 @@ internal class BundledLearningCurriculumTest {
                 "lesson_one_place_that_knows_how_to_build",
                 "lesson_when_an_interface_is_a_boundary",
                 "lesson_dependency_inversion_in_practice",
+                "lesson_the_koin_container_and_its_modules",
             ),
             lessons.getValue("lesson_one_graph_across_platforms").relatedLessonIds,
+        )
+        assertEquals(
+            listOf(
+                "lesson_one_graph_across_platforms",
+                "lesson_what_a_container_actually_buys",
+                "lesson_three_projects_three_answers",
+                "lesson_the_smallest_sufficient_strategy",
+            ),
+            lessons.getValue("lesson_choosing_di_for_a_shared_graph").relatedLessonIds,
         )
 
         val order = units().flatMap { it.lessons.map { lesson -> lesson.id } }
@@ -2961,9 +3040,11 @@ internal class BundledLearningCurriculumTest {
 
     @Test
     fun koinUnitProtectsModernCapabilitiesAndProjectAgnosticExamples() = runTest {
-        val unit = unit("unit_koin_and_dependency_injection_in_kmp")
+        val core = unit("unit_koin_containers_definitions_and_scopes")
+        val kmp = unit("unit_koin_and_dependency_injection_in_kmp")
+        val lessons = core.lessons + kmp.lessons
 
-        fun textOf(lessonId: String): String = unit.lessons
+        fun textOf(lessonId: String): String = lessons
             .single { it.id == lessonId }
             .sections
             .flatMap { it.blocks }
@@ -2977,7 +3058,7 @@ internal class BundledLearningCurriculumTest {
                 }
             }
 
-        unit.lessons.forEach { lesson ->
+        lessons.forEach { lesson ->
             assertEquals(
                 listOf("CORE", "PRACTICAL", "SENIOR"),
                 lesson.sections.map { it.depth.name },
@@ -2991,6 +3072,11 @@ internal class BundledLearningCurriculumTest {
         assertTrue(container.contains("classic Kotlin DSL"))
         assertTrue(container.contains("annotations and a Compiler Plugin DSL"))
         assertTrue(container.contains("the example above does not enable them"))
+        assertTrue(container.contains("androidContext(this@OrdersApp)"))
+        assertTrue(container.contains("not a Gradle module"))
+        // The multi-host startup belongs to the KMP graph Lesson, not to core Koin.
+        listOf("commonMain", "desktopPlatformModule", "iosPlatformModule", "source set", "multiplatform")
+            .forEach { token -> assertFalse(container.contains(token, ignoreCase = true), token) }
 
         val definitions = textOf("lesson_koin_definitions_and_reuse")
         assertTrue(definitions.contains("There is no Kotlin `object`"))
@@ -3013,9 +3099,20 @@ internal class BundledLearningCurriculumTest {
             "webPlatformModule",
             "interface SettingsStorage",
             "expect val platformModule",
+            "fun startAndroidApp",
+            "parametersOf",
         ).forEach { claim -> assertTrue(multiplatform.contains(claim), claim) }
 
-        val allText = unit.lessons.joinToString(" ") { textOf(it.id) }
+        val strategy = textOf("lesson_choosing_di_for_a_shared_graph")
+        listOf(
+            "Builds the graph in shared code?",
+            "**Manual DI remains valid**",
+            "**Koin is a candidate, not a conclusion**",
+            "'KMP, so Koin'",
+            "Revisit trigger",
+        ).forEach { claim -> assertTrue(strategy.contains(claim), claim) }
+
+        val allText = lessons.joinToString(" ") { textOf(it.id) }
         listOf("build.gradle", "plugins {", "koin-ksp-compiler", "@Singleton", "@KoinViewModel")
             .forEach { token -> assertFalse(allText.contains(token), token) }
 
@@ -3056,9 +3153,8 @@ internal class BundledLearningCurriculumTest {
                 listOf(
                     "manual_di",
                     "hilt_vs_dagger",
-                    "koin_multiplatform",
+                    "koin_fundamentals",
                     "dagger_components",
-                    "kmp_architecture",
                 ),
                 listOf(
                     "composition_root",
@@ -3104,7 +3200,7 @@ internal class BundledLearningCurriculumTest {
         assertEquals(
             listOf(
                 "lesson_hilt_or_hand_written_dagger",
-                "lesson_one_graph_across_platforms",
+                "lesson_the_koin_container_and_its_modules",
                 "lesson_when_wiring_it_yourself_is_enough",
             ),
             lessons.getValue("lesson_three_projects_three_answers").relatedLessonIds,
@@ -3151,8 +3247,8 @@ internal class BundledLearningCurriculumTest {
             "Manual constructor wiring",
             "Project B: a growing Android-only application",
             "Hilt, because the predefined Android ownership model",
-            "Project C: a Kotlin Multiplatform application",
-            "Koin classic DSL",
+            "Project C: an Android application already running Koin",
+            "Keep Koin and adopt the verification its version supports",
         ).forEach { claim -> assertTrue(scenarios.contains(claim), claim) }
 
         val validation = textOf("lesson_when_should_a_graph_error_surface")

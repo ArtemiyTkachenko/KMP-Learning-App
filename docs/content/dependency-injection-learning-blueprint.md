@@ -19,6 +19,15 @@ Scope: 6 Learning Units, 34 planned Lessons, plus explicit Reference and Exclude
 a misconception matrix, a terminology register, and a record of concepts the current
 assessment taxonomy cannot express.
 
+**KMP content separation.** The shipped structure has since been split along the core/KMP
+boundary recorded in [`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md).
+Unit 5 now holds only core Koin, under a new Unit identity; the multiplatform Lesson moved to
+a seventh Unit, **Koin and Dependency Injection in KMP**, which keeps the original Koin Unit
+identity, has home Topic `kmp`, and is authored after every core Unit. That Unit also gained
+a strategy Lesson assembled from the KMP material formerly threaded through Unit 6. The
+dependency-injection Topic therefore ships 6 Units and 33 Lessons, and the KMP Unit ships 2
+more. The sections below describe the current structure.
+
 The confirmed authoring plan — stable identities, the taxonomy inventory, prerequisites,
 the semantic Question review, the repository and framework findings, and the practice
 routing model — is in
@@ -105,8 +114,9 @@ A second question runs underneath the first and closes the subject in Unit 6:
 2. Object Graphs, Lifetimes and Scopes
 3. Dagger: Compile-Time Object Graphs
 4. Hilt: Android Lifecycle-Aware Dagger
-5. Koin and Dependency Injection in KMP
+5. Koin: Containers, Definitions and Scopes
 6. Choosing a Dependency Injection Strategy
+7. Koin and Dependency Injection in KMP — home Topic `kmp`, authored after every core Unit
 
 The order encodes conceptual dependencies, not convenience, and it is deliberately **not**
 the order in which a working Android engineer first meets the material:
@@ -125,12 +135,18 @@ the order in which a working Android engineer first meets the material:
   injection and which are Hilt's opinions, which is precisely the confusion that produces
   "Hilt is a different DI system from Dagger".
 - **Hilt (4) before Koin (5).** Unit 4 ends with a graph whose lifetimes are decided by a
-  platform's own component hierarchy. Unit 5 then removes the platform: a multiplatform
-  graph has to answer the same lifetime questions with no Android component tree to inherit
-  them from, which is what makes the comparison in Unit 6 real rather than stylistic.
-- **Selection (6) last.** The comparison only becomes honest once all four encodings have
-  been seen doing the same job. Placed earlier it degrades into a feature table, and a
-  feature table is how framework arguments are won by whoever speaks first.
+  platform's own component hierarchy. Unit 5 then expresses the same decisions in a
+  container that supplies no component tree: its scopes have owners only because the
+  application names them, which is what makes the comparison in Unit 6 real rather than
+  stylistic.
+- **Selection (6) last among the core Units.** The comparison only becomes honest once all
+  four encodings have been seen doing the same job. Placed earlier it degrades into a
+  feature table, and a feature table is how framework arguments are won by whoever speaks
+  first.
+- **KMP (7) after everything else.** Android Engineering Lab is Android-first and KMP is
+  supplementary. The multiplatform Unit reuses every core decision — composition root,
+  definitions, reuse, the strategy method — and adds one constraint: the shared graph must
+  be buildable in code that compiles for every target.
 
 The sequence deliberately does **not** open with an annotation, a DSL keyword or a diagram
 of a container. All three are where most readers first meet the subject, and all three
@@ -840,18 +856,18 @@ application uses it, and no Hilt dependency, plugin or processor is added to any
 
 ---
 
-## Unit 5 — Koin and Dependency Injection in KMP
+## Unit 5 — Koin: Containers, Definitions and Scopes
 
-**Purpose:** teach a container that is declared in ordinary Kotlin and therefore works from
-common multiplatform code, and use a real multiplatform graph as the worked case study.
+Stable identity: `unit_koin_containers_definitions_and_scopes` (home Topic
+`dependency_injection`). The four Lessons keep the stable identities they shipped with.
+
+**Purpose:** teach a container that is declared in ordinary Kotlin, started from the
+Android `Application` composition root, and used to encode reuse and lifetime decisions the
+earlier Units already made.
 **Prerequisites:** Units 1–2 entire; Unit 3 for the vocabulary of bindings and graphs; the
-shipped multiplatform ViewModel material, which supplies the fact that the owner is
-platform-supplied.
+shipped ViewModel material, which supplies the fact that the owner is platform-supplied.
 
-**The worked case study is a real codebase.** Per Rule 11 of the authoring contract it is
-presented as *an* application rather than as this one: the structure, the module names, the
-host startup functions and the ViewModel definitions are real and are named, and the prose
-never makes the learning app itself the subject.
+Worked examples are invented Android applications, per Rule 11 of the authoring contract.
 
 #### L5.1 — The Container, and the Modules That Fill It
 
@@ -862,20 +878,21 @@ never makes the learning app itself the subject.
   modules is the composition root of L1.4, written as a declaration rather than as a sequence
   of constructor calls; the container's own lifetime is the lifetime that bounds everything
   it retains.
-- **Practical:** a startup function that assembles several modules, read as the one place
-  that knows how every implementation is built; modules grouped by concern, with the honest
+- **Practical:** an `Application.onCreate` that starts Koin with `androidContext` and
+  several modules, read as the one place that knows how every implementation is built;
+  consumers that never start or configure the container; Gradle modules and Koin modules as
+  separate decisions; modules grouped by concern, with the honest
   note that this is an organisational choice and not an architectural rule; the composition
   step that lets one module include others; and a bounded, accurate statement of how
   definitions may be declared in current Koin — the classic Kotlin DSL, annotations, and a
   compiler plugin that generates the DSL and verifies the configuration at compile time —
-  together with the statement that the worked case study uses the classic DSL.
-- **Senior:** why the whole graph being ordinary Kotlin is the property everything else in
-  this Unit follows from: it compiles wherever Kotlin compiles, which is what makes a
-  multiplatform graph possible at all, and it is also why the classic DSL's mistakes are
-  found when a definition is resolved.
+  together with the statement that the worked example uses the classic DSL.
+- **Senior:** what a container cannot decide, and why a classic-DSL graph's configuration
+  mistakes are found by resolution or by an explicit verification mechanism unless a
+  compiler-assisted mechanism is enabled.
 - **Primary:** `koin_fundamentals`
 - **Supporting:** `composition_root`, `dependency_graphs`, `koin_definitions`,
-  `di_framework_tradeoffs`, `kmp_architecture` (kmp)
+  `di_framework_tradeoffs`
 - **Notes:** **Teach** container, module and startup as the composition root. **Bounded
   Reference** for the annotation and compiler-plugin capability: it exists, it changes when
   errors are found, and this curriculum teaches neither its setup nor its annotations —
@@ -944,53 +961,22 @@ never makes the learning app itself the subject.
   constructs and the owner decides the lifetime; a runtime value is passed as a parameter at
   the resolution site, which is L2.4's distinction encoded.
 - **Practical:** a destination resolving a ViewModel with no parameters and another passing a
-  route-supplied identifier, read from a real multiplatform graph; the parameters read
+  route-supplied identifier; the parameters read
   positionally when two identifiers share a type, which is exactly L2.5's ambiguity arriving
   in a place the reader now recognises; and the boundary judgement worked, using real
   resolution sites — a destination composable resolving a completed object graph is an
   integration boundary, a theme wrapper tolerating an absent container is infrastructure, and
   a domain class calling into the container would be the service-locator shape L1.5 rejected.
 - **Senior:** why "the container created it" and "the container owns it" are different
-  claims, and why the second is false here: the store owner supplied by the host is what
-  clears the ViewModel, which is the multiplatform fact the shipped curriculum already
-  established.
+  claims, and why the second is false here: the store owner in scope at the call site —
+  an Activity, a Fragment or a navigation entry — is what clears the ViewModel.
 - **Primary:** `koin_viewmodels`
 - **Supporting:** `koin_definitions`, `service_locator_vs_di`,
-  `kmp_lifecycle_viewmodel` (kmp), `viewmodel_lifecycle` (lifecycle_navigation),
-  `state_ownership` (architecture)
-- **Notes:** **Bridge** to the shipped multiplatform ViewModel material rather than
+  `viewmodel_lifecycle` (lifecycle_navigation), `state_ownership` (architecture)
+- **Notes:** **Bridge** to the shipped ViewModel ownership material rather than
   re-teaching ownership. **Exclude** navigation APIs and back-stack mechanics.
   **Exclude** Compose runtime mechanics; the resolution call is shown, the Compose
   curriculum owns everything around it.
-
-#### L5.5 — One Graph, Several Platforms
-
-- **Objective:** split a graph into definitions that belong in shared code and definitions
-  each platform must supply, and describe how each host assembles the whole.
-- **Core:** shared code can declare every definition whose construction is platform-agnostic;
-  what cannot be shared is anything constructed from a platform's own APIs; the shared code
-  therefore declares the abstraction and each platform supplies a module binding it; and each
-  host has its own composition root that assembles the shared modules together with its own.
-- **Practical:** the real case study read end to end — a preference-storage abstraction
-  declared in shared code with a store and a state holder built on it, and four platform
-  modules binding four different implementations to it, one per host; the four startup
-  functions listed side by side, differing only in the platform modules they add and in what
-  the platform needs to hand the graph; a database binding split the same way; and the
-  explicit statement of what this demonstrates — that one shared graph plus per-platform
-  bindings is a workable arrangement — and of what it does not, since it is one small
-  local-first application with no networking and no second implementation of anything.
-- **Senior:** why a container declared in ordinary Kotlin is a candidate here at all while
-  an annotation processor emitting platform-specific code is not, stated as a property of the
-  tools rather than as a ranking, and why that single fact does more to decide framework
-  choice on a multiplatform project than any other axis in Unit 6.
-- **Primary:** `koin_multiplatform`
-- **Supporting:** `koin_fundamentals`, `expect_actual` (kmp),
-  `platform_implementations` (kmp), `kmp_architecture` (kmp), `composition_root`,
-  `interface_boundaries` (architecture)
-- **Notes:** **Bridge** only: the interface-plus-platform-module pattern is shown because the
-  graph needs it. **Exclude** source-set design, `expect`/`actual` mechanics, native interop
-  and iOS integration architecture — E33's entire subject. **Exclude** any proposal to change
-  the case study's graph; observations about it are recorded, not acted on.
 
 ---
 
@@ -998,7 +984,9 @@ never makes the learning app itself the subject.
 
 **Purpose:** decide, from stated requirements, which of the four strategies a project should
 use — including the answer that it should add nothing.
-**Prerequisites:** Units 1–5 entire. This Unit introduces no new mechanism.
+**Prerequisites:** Units 1–5 entire. This Unit introduces no new mechanism. It is a core
+Android Unit: no worked project uses Kotlin Multiplatform as a requirement, and the KMP
+strategy decision is Unit 7's.
 
 #### L6.1 — What a Container Actually Buys
 
@@ -1007,7 +995,7 @@ use — including the answer that it should add nothing.
 - **Core:** every axis is phrased the same way — a requirement makes a property useful, and a
   strategy supplies that property at a cost; the axes worth reasoning about are graph size and
   rate of change, how much assembly code a human writes, when a graph error is detected,
-  lifecycle integration with a platform, target platforms, build cost, how much the tool
+  lifecycle integration with a platform, where each strategy can be used, build cost, how much the tool
   decides by convention, how observable the graph is when debugging, team familiarity, and
   the cost of changing later.
 - **Practical:** the four strategies laid against those axes with the consequence named in
@@ -1061,17 +1049,15 @@ use — including the answer that it should add nothing.
   a problem the project does not have; a growing Android-only application with
   platform-created owners, several screen-level owners, lifecycle-bound lifetimes and a graph
   that changes weekly, where a generated, lifecycle-aware graph starts paying and both the
-  convention and a hand-written structure are weighed; and a multiplatform application with
-  shared repositories, shared state holders and shared ViewModels plus per-platform bindings,
-  where a container declared in ordinary Kotlin is a candidate and an annotation processor
-  emitting platform-specific code is not — stated as a constraint the project has, not as a
-  ranking of libraries.
+  convention and a hand-written structure are weighed; and an Android application already
+  running a working Koin graph across feature modules, with definitions loaded at runtime for
+  optional features and a new requirement for earlier detection of missing definitions, where
+  keeping Koin and adopting the verification its version supports is smaller than migrating.
 - **Senior:** the fourth scenario the reader is asked to construct themselves — the one where
   the obvious answer is wrong — and the interview habit it teaches, which is to ask what the
   project looks like before answering which framework is best.
 - **Primary:** `di_framework_tradeoffs`
-- **Supporting:** `manual_di`, `hilt_vs_dagger`, `koin_multiplatform`, `dagger_components`,
-  `kmp_architecture` (kmp)
+- **Supporting:** `manual_di`, `hilt_vs_dagger`, `koin_fundamentals`, `dagger_components`
 - **Notes:** **Teach** the method by application. **Exclude** any scenario engineered so that
   a predetermined answer wins, and any scenario whose graph is inflated to force a framework.
 
@@ -1099,6 +1085,67 @@ use — including the answer that it should add nothing.
 - **Notes:** **Bridge** to `lesson_smallest_sufficient_architecture`, which already teaches
   proportionality; this Lesson applies it to one new decision and cites rather than repeats.
   **Exclude** organisational change management and tooling-adoption process.
+
+---
+
+## Unit 7 — Koin and Dependency Injection in KMP
+
+Stable identity: `unit_koin_and_dependency_injection_in_kmp` (home Topic `kmp`). It keeps
+the original Koin Unit identity because its identity and title already name KMP, so a stale
+route to it resolves to KMP material.
+
+**Purpose:** show how a dependency graph is split between shared code and host bindings, and
+how the DI strategy is chosen when the graph must be shared across targets.
+**Prerequisites:** Units 5 and 6; the core Unit supplies Koin's container, modules and
+definitions, and the strategy Unit supplies the decision method this Unit applies.
+
+#### L7.1 — One Graph, Several Platforms
+
+- **Objective:** split a graph into definitions that belong in shared code and definitions
+  each platform must supply, and describe how each host assembles the whole.
+- **Core:** shared code can declare every definition whose construction is platform-agnostic;
+  what cannot be shared is anything constructed from a platform's own APIs; the shared code
+  therefore declares the abstraction and each platform supplies a module binding it; and each
+  host has its own composition root that assembles the shared modules together with its own.
+- **Practical:** a preference-storage abstraction declared in shared code with a store and a
+  state holder built on it, and four platform modules binding four implementations, one per
+  host; host startup functions combining one shared module list with each platform module,
+  and Koin's `initKoin` plus `expect val platformModule` arrangement as an alternative; a
+  database binding split the same way; the placement mistakes — constructing platform
+  implementations in common code, duplicating shared construction per host, and registering
+  route input in the graph; and what the example does not demonstrate.
+- **Senior:** why a container declared in ordinary Kotlin is a candidate here at all while
+  an annotation processor emitting platform-specific code is not, stated as a property of the
+  tools rather than as a ranking.
+- **Primary:** `koin_kmp` (kmp)
+- **Supporting:** `koin_fundamentals`, `expect_actual` (kmp),
+  `platform_implementations` (kmp), `kmp_architecture` (kmp), `composition_root`,
+  `interface_boundaries` (architecture)
+- **Notes:** **Bridge** only: the interface-plus-platform-module pattern is shown because the
+  graph needs it. **Exclude** source-set design, `expect`/`actual` mechanics, native interop
+  and iOS integration architecture.
+
+#### L7.2 — Choosing a Strategy for a Shared Graph
+
+- **Objective:** given a graph shared across several targets, choose the smallest
+  construction strategy that satisfies the actual requirements, and name what would reopen
+  the decision.
+- **Core:** target compatibility as a filter applied first — `commonMain` compiles for every
+  target, so the construction mechanism must too; the filter applied to manual DI, Koin,
+  Dagger and Hilt with a reason for each exclusion; manual DI remains valid; Koin is a
+  candidate, not a conclusion.
+- **Practical:** a four-host project with a large, frequently changing shared graph traced
+  to Koin; the same project with a six-object stable graph traced to manual DI; existing
+  investment and a new verification requirement met in place rather than by migration; the
+  "KMP, so Koin" mistake.
+- **Senior:** the precise scope of the Hilt and Dagger exclusions, including a second,
+  Android-only graph as a deliberate option; target support per artifact and version;
+  migration asymmetry and a change of targets as a revisit trigger.
+- **Primary:** `kmp_library_selection` (kmp)
+- **Supporting:** `koin_kmp` (kmp), `di_framework_tradeoffs`, `manual_di`, `hilt_vs_dagger`
+- **Notes:** **Teach** the capability filter and the requirement-driven comparison after it.
+  **Exclude** any "Koin is best for KMP" conclusion and any library-by-library target
+  catalogue beyond what the decision needs.
 
 ---
 
@@ -1137,7 +1184,7 @@ instead.
 | 24 | "A container owns the ViewModel's lifetime because it constructed it." | L4.4, L5.4 | Separate construction from store ownership, and name the host that clears it |
 | 25 | "Koin is inherently runtime-only." | L5.1, L6.2 | Name the mechanism the project uses and say when its configuration is checked |
 | 26 | "Hilt is always the right Android choice." | L4.6, L6.3 | State the requirement that makes the convention valuable, and one a project could have that it does not fit |
-| 27 | "Koin is always the right multiplatform choice." | L5.5, L6.3 | State the constraint that makes it a candidate, and the costs that constraint does not remove |
+| 27 | "Koin is always the right multiplatform choice." | L7.1, L7.2 | State the constraint that makes it a candidate, and the costs that constraint does not remove |
 | 28 | "Manual dependency injection is only for toy applications." | L1.6, L6.4 | Name the conditions under which hand-wiring is sufficient, and the specific change that would end them |
 | 29 | "The graph should hold every value a class needs." | L2.4, L4.4, L5.4 | Separate a graph dependency from a runtime input by asking whether the value exists before the request |
 | 30 | "A missing binding is a configuration problem." | L2.5, L2.6 | Read the ambiguity or the gap as information about the design, and fix the edge rather than the settings |
@@ -1225,7 +1272,7 @@ adding a Lesson.
 | Gradle module structure, convention plugins, feature-module wiring | E29's subject; a framework module is not a build module and this curriculum says so twice |
 | Test doubles, mocking libraries, fakes, test component replacement, Hilt test modules, Koin test APIs | E31's subject; substitution is taught as a consequence of explicit requirements and no Lesson shows a test |
 | Unit-test strategy and architecture testing | E31's subject |
-| Kotlin Multiplatform source-set design, `expect`/`actual` mechanics, native interop, iOS integration architecture | E33's subject; Unit 5 uses only the platform-binding pattern its graph needs |
+| Kotlin Multiplatform source-set design, `expect`/`actual` mechanics, native interop, iOS integration architecture | E33's subject; Unit 7 uses only the platform-binding pattern its graph needs |
 | Activity and Fragment lifecycle callbacks, navigation APIs, back-stack mechanics, the saved-state API surface | Owned by the lifecycle and navigation curriculum; Unit 4 uses their lifetime conclusions |
 | `ViewModel` lifetime and clearing as a subject | Owned by the architecture and lifecycle curricula; Units 4 and 5 apply the conclusion and cite it |
 | Dagger Producers, gRPC integrations, `dagger.android`, Dagger SPI | Specialised or legacy surfaces with no interview signal for this profile |
@@ -1252,10 +1299,10 @@ visible to E27-08 and to that later decision without blocking authoring.
 | Where framework resolution is acceptable — the integration boundary | `service_locator_vs_di` | Semantically correct: the Subtopic is the comparison, and the boundary qualification is the half of the comparison the bank currently omits. |
 | Koin's current declaration mechanisms and when each is checked | `koin_fundamentals` | Correct, and deliberately bounded — assessing which mechanism a release ships would be product trivia rather than reasoning. |
 | Choosing a strategy from stated project requirements | `di_framework_tradeoffs` | Exactly what the Subtopic is named for, and it holds no ACTIVE Question, which is the epic's largest single assessment gap. |
-| Koin in Kotlin Multiplatform | `koin_multiplatform` (dependency_injection) | **A second Subtopic, `koin_kmp`, exists in the `kmp` Topic with the same meaning and no Questions.** E27 uses the `dependency_injection` one because its Units home there. The duplication is recorded as a cross-topic guard, not resolved: removing or merging a Subtopic is a question-bank change. |
+| Koin in Kotlin Multiplatform | `koin_kmp` (kmp) | Resolved by the KMP content separation: the question migration deprecated the duplicate `koin_multiplatform` (dependency_injection) and moved its Questions to `koin_kmp`, which L7.1 now teaches as primary. |
 
-**No `dependency_injection` Subtopic is left unmapped.** All 25 are primary in at least one
-Lesson, which is the shape a purpose-built taxonomy should have and is the difference from
+**No ACTIVE `dependency_injection` Subtopic is left unmapped.** All 24 are primary in at
+least one Lesson (the 25th, `koin_multiplatform`, is DEPRECATED), which is the shape a purpose-built taxonomy should have and is the difference from
 the `architecture` Topic, where `solid` was deliberately supporting-only. The complete
 inventory, with statuses, Question counts and the Teach decision for each, is in the plan's
 [taxonomy inventory](dependency-injection-units-1-6-plan.md#part-1--complete-dependency-injection-taxonomy-inventory).
@@ -1326,6 +1373,8 @@ verifies and closes the epic.
 
 The six-Unit structure the merged backlog assumes is **unchanged**, for the reasons recorded
 in the plan's [scope confirmation](dependency-injection-units-1-6-plan.md#scope-confirmation).
+The later KMP content separation added Unit 7 by splitting the original Koin Unit; see
+[Purpose](#purpose).
 
 When authoring reveals that a Lesson boundary was wrong, update this file in the same change
 rather than letting the map and the material drift.

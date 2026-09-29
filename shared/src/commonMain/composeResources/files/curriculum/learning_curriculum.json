@@ -4594,7 +4594,7 @@
         {
           "id": "lesson_lifecycle_aware_collection",
           "title": "Lifecycle-Aware Collection and the Lifecycle a Screen Actually Has",
-          "summary": "A composable can remain in Composition while its lifecycle owner is not active enough to justify upstream collection. collectAsStateWithLifecycle adds lifecycle as an independent gate, and its default STARTED threshold is a threshold on lifecycle states, not on visibility or focus: backgrounding the app stops collection, while a paused or unfocused screen keeps it running.",
+          "summary": "A composable can remain in Composition while its lifecycle owner is not active enough to justify upstream collection. collectAsStateWithLifecycle adds lifecycle as an independent gate, and its default STARTED threshold is a threshold on lifecycle states, not on visibility or focus: backgrounding the app or fully covering the screen stops collection, while a screen that is still visible but paused or unfocused keeps it running.",
           "primarySubtopicIds": [
             "compose_state"
           ],
@@ -21562,13 +21562,13 @@
       "id": "unit_kmp_shared_viewmodels_and_host_lifecycles",
       "topicId": "kmp",
       "title": "Shared ViewModels and Host Lifecycles",
-      "summary": "Compose Multiplatform lets ViewModels, viewModelScope and lifecycle-aware collection be written once in common code, but lifetime is not shared with them. Each host supplies the owner that stores and clears a ViewModel, the saved-state mechanism, the Main dispatcher, and the mapping from its own window, scene or page activity onto lifecycle states.",
+      "summary": "Compose Multiplatform lets ViewModels, viewModelScope and lifecycle-aware collection be written once in common code, but lifetime is not shared with them. Each host supplies the owner that stores and clears a ViewModel, the saved-state mechanism, a Main dispatcher if it has one, and the mapping from its own window, scene or page activity onto lifecycle states.",
       "status": "ACTIVE",
       "lessons": [
         {
           "id": "lesson_kmp_viewmodel_owners_across_hosts",
           "title": "Shared ViewModels, Host-Owned Lifetimes",
-          "summary": "In a Compose Multiplatform project the ViewModel class, its store and viewModelScope can live in common code, but the owner that stores and clears each ViewModel, the saved-state mechanism and the Main dispatcher its scope runs on are supplied by the platform host. Sharing the class shares none of them.",
+          "summary": "In a Compose Multiplatform project the ViewModel class, its store and viewModelScope can live in common code, but the owner that stores and clears each ViewModel and the saved-state mechanism are supplied by the platform host, and viewModelScope runs on the host's Main dispatcher only where one is available, falling back to the caller's context where it is not. Sharing the class shares none of them.",
           "primarySubtopicIds": [
             "kmp_lifecycle_viewmodel"
           ],
@@ -21700,7 +21700,7 @@
                 {
                   "type": "callout",
                   "kind": "INTERVIEW_FOCUS",
-                  "text": "Asked what a shared ViewModel still needs from each platform, answer with the owner: the class, `viewModelScope` and the clearing hook are common, while the `ViewModelStoreOwner` that creates and clears it belongs to the host — an Activity, Fragment or navigation entry on Android, and integration code on iOS. Then add the two host facts that follow the owner: saved state is the host's mechanism, and `viewModelScope` needs a Main dispatcher the host provides."
+                  "text": "Asked what a shared ViewModel still needs from each platform, answer with the owner: the class, `viewModelScope` and the clearing hook are common, while the `ViewModelStoreOwner` that creates and clears it belongs to the host — an Activity, Fragment or navigation entry on Android, and integration code on iOS. Then add the two host facts that follow the owner: saved state is the host's mechanism, and `viewModelScope` runs on a Main dispatcher only where the host provides one, falling back to the caller's context elsewhere."
                 }
               ]
             }

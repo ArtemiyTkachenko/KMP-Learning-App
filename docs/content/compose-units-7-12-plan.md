@@ -29,6 +29,21 @@ absorbed, what moved, and what was handed to the architecture curriculum.
 was checked on that date against the versions this repository is configured with, by reading
 the resolved artifacts' sources and by running throwaway probes on this project's JVM target.
 
+### Later change: KMP content separation
+
+This document is the historical record of E25 and is not rewritten. After E25 closed,
+[`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md) moved the host-specific material out of four Lessons planned here:
+`lesson_screen_state_owner_boundary` (supporting `kmp_lifecycle_viewmodel` removed; Android
+`NavDisplay` example), `lesson_lifecycle_aware_collection` (supporting
+`kmp_lifecycle_viewmodel` and `compose_multiplatform` replaced by `activity_lifecycle`; an
+Android lifecycle comparison replaces the four host mappings) and `lesson_launched_effect`
+(the host/dispatcher caveat now states Android's `AndroidUiDispatcher` context), and
+`lesson_flow_adapter_or_compose_producer` no longer says the producer is available from the
+common source set. The Unit 8
+summary now speaks of the screen's lifecycle owner rather than Android, desktop, iOS and web
+hosts. The host material is in **Shared ViewModels and Host Lifecycles** (`unit_kmp_shared_viewmodels_and_host_lifecycles`, home Topic `kmp`, authored after every core Unit). Mappings quoted below are therefore as of E25; the
+current routing is in [`learning-question-coverage.md`](learning-question-coverage.md).
+
 ## Scope confirmation
 
 The merged epic assumes six instructional Units. **The six-Unit structure is unchanged.**

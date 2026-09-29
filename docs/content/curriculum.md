@@ -674,6 +674,16 @@ Scope: Kotlin Multiplatform and Compose Multiplatform fundamentals,
 architecture, shared/platform boundaries, lifecycle/navigation, resources, and
 ecosystem trade-offs.
 
+`kmp` is also the core/KMP content boundary: KMP-specific Questions and learning Units live
+under this Topic, and every other Topic's content is complete without it (see
+[`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md)). Two
+learning Units have home Topic `kmp`, both authored after every core Unit:
+
+| Unit | Lessons (primary Subtopic) |
+| --- | --- |
+| Shared ViewModels and Host Lifecycles (`unit_kmp_shared_viewmodels_and_host_lifecycles`) | Shared ViewModels, Host-Owned Lifetimes (`kmp_lifecycle_viewmodel`); Lifecycle-Aware Collection on Each Host (`compose_multiplatform`) |
+| Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | One Graph, Several Platforms (`koin_kmp`); Choosing a Strategy for a Shared Graph (`kmp_library_selection`) |
+
 ### Fundamentals
 
 | Subtopic ID | Display Name |

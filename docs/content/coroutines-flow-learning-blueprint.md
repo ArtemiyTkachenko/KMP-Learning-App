@@ -22,6 +22,17 @@ Question review and the version-sensitive claims — is in
 holds objectives, depth layers and editorial decisions; that document holds what the
 review had to settle.
 
+**KMP content separation.** The shipped Lessons have since been split along the core/KMP
+boundary recorded in [`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md). `lesson_dispatchers` now teaches Android `Dispatchers.Main`,
+JVM `Default` and `IO`, and injecting dispatchers for tests; its per-target realization
+table moved to **Shared ViewModels, Host-Owned Lifetimes** in **Shared ViewModels and Host Lifecycles** (`unit_kmp_shared_viewmodels_and_host_lifecycles`, home Topic `kmp`, authored after every core Unit). The JS, Wasm,
+Native and browser asides in `lesson_with_context_and_main_safety`,
+`lesson_sequential_and_concurrent_work`, `lesson_exception_propagation` and
+`lesson_shared_state_and_coordination` were rewritten as Android and JVM statements, and
+`lesson_state_flow` calls `StateFlow` a kotlinx.coroutines type. No Primary or Supporting
+mapping in this Topic changed. Entries below that call for a KMP caveat record the original
+plan.
+
 ## How to Read This Blueprint
 
 Every planned Lesson records:

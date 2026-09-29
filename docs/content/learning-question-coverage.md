@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `45dff8e001a56fd635c28f1393ddfca19b67f540542712ab5b72b972961c7894` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `a3318e7e582c3a0c502af4db03211a451d7ad37c6545632b283bc9ef0e9754f4` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `74cf2ce05c1394d0f9aa9ee1a08b1e8b7c377b899215f2b9aacf3eb059f02af2` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -68,12 +68,12 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 31 |
-| Active lessons in those units | 136 |
-| Distinct primary subtopics | 75 |
-| Distinct supporting subtopics | 117 |
-| Unique active questions reached through primary mappings | 172 |
-| Primary subtopics with at least one active question | 75 |
+| Active learning units | 32 |
+| Active lessons in those units | 138 |
+| Distinct primary subtopics | 77 |
+| Distinct supporting subtopics | 116 |
+| Unique active questions reached through primary mappings | 175 |
+| Primary subtopics with at least one active question | 77 |
 | Primary subtopics with no active question | 0 |
 | Active questions in the bank | 439 |
 | Deprecated questions excluded from this report | 41 |
@@ -121,6 +121,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Hilt: Android Lifecycle-Aware Dagger (`unit_hilt_android_lifecycle_integration`) | 6 | 5 | 3 | 6 | 0 | 9 |
 | Koin: Containers, Definitions and Scopes (`unit_koin_containers_definitions_and_scopes`) | 4 | 4 | 1 | 4 | 0 | 5 |
 | Choosing a Dependency Injection Strategy (`unit_choosing_a_dependency_injection_strategy`) | 4 | 2 | 0 | 2 | 0 | 2 |
+| Shared ViewModels and Host Lifecycles (`unit_kmp_shared_viewmodels_and_host_lifecycles`) | 2 | 2 | 1 | 2 | 0 | 3 |
 | Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | 2 | 2 | 1 | 2 | 1 | 4 |
 
 ## Unit and lesson detail
@@ -608,7 +609,6 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
-| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 | `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 
 ### Observable State Collection and Lifecycle (`unit_observable_state_collection`)
@@ -686,8 +686,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `lifecycle_aware_apis` — Lifecycle-aware APIs | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
-| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
-| `compose_multiplatform` — Compose Multiplatform fundamentals | 2 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `activity_lifecycle` — Activity lifecycle | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `flow_sharing` — stateIn, shareIn, and sharing policies | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ### Effect Lifecycle and LaunchedEffect (`unit_effect_lifecycle_and_launched_effect`)
@@ -1653,7 +1652,6 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `compose_state_hoisting` — State hoisting | 3 | `android_ui` — UI — Views & Jetpack Compose |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
-| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 | `separation_of_concerns` — Separation of concerns | 3 | `architecture` — Application Architecture & Design Principles |
 
 #### The ViewModel Owner: Lifetime Is Not Persistence (`lesson_viewmodel_lifetime_and_persistence`)
@@ -1672,7 +1670,6 @@ Supporting context — not primary coverage:
 | `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `process_death` — Process death and recreation | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
-| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 
 #### Modelling the Current UI State (`lesson_modelling_ui_state`)
 
@@ -1881,7 +1878,6 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `clean_architecture` — Clean Architecture | 2 | `architecture` — Application Architecture & Design Principles |
 | `layered_architecture` — Layered architecture | 2 | `architecture` — Application Architecture & Design Principles |
-| `kmp_architecture` — KMP architecture | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
 
 #### Who Defines the Abstraction? (`lesson_dependency_inversion_in_practice`)
 
@@ -2741,6 +2737,51 @@ Supporting context — not primary coverage:
 | `architecture_tradeoffs` — Architecture trade-offs and avoiding over-engineering | 2 | `architecture` — Application Architecture & Design Principles |
 | `di_fundamentals` — Dependency injection fundamentals | 2 | `dependency_injection` — Dependency Injection |
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
+
+### Shared ViewModels and Host Lifecycles (`unit_kmp_shared_viewmodels_and_host_lifecycles`)
+
+Home topic: `kmp` — Kotlin Multiplatform & Compose Multiplatform.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 1 | `kmp_compose_multiplatform_vs_jetpack` |
+| APPLIED | 2 | `kmp_desktop_window_lifecycle_collection_threshold`, `kmp_shared_viewmodel_owner_platform` |
+| ADVANCED | 0 | — |
+
+#### Shared ViewModels, Host-Owned Lifetimes (`lesson_kmp_viewmodel_owners_across_hosts`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 0 | 1 | 0 | 1 | `kmp_shared_viewmodel_owner_platform` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `coroutine_dispatchers` — Dispatchers | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+#### Lifecycle-Aware Collection on Each Host (`lesson_kmp_lifecycle_collection_across_hosts`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `compose_multiplatform` — Compose Multiplatform fundamentals | 1 | 1 | 0 | 2 | `kmp_compose_multiplatform_vs_jetpack`, `kmp_desktop_window_lifecycle_collection_threshold` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kmp_lifecycle_viewmodel` — Multiplatform Lifecycle/ViewModel | 1 | `kmp` — Kotlin Multiplatform & Compose Multiplatform |
+| `lifecycle_aware_apis` — Lifecycle-aware APIs | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `flow_sharing` — stateIn, shareIn, and sharing policies | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ### Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`)
 

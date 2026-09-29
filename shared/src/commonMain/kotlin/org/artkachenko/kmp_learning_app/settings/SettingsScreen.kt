@@ -28,6 +28,9 @@ import kmp_learning_app.shared.generated.resources.settings_about_version
 import kmp_learning_app.shared.generated.resources.settings_appearance_title
 import kmp_learning_app.shared.generated.resources.settings_dark_theme_label
 import kmp_learning_app.shared.generated.resources.settings_dark_theme_supporting
+import kmp_learning_app.shared.generated.resources.settings_kmp_content_label
+import kmp_learning_app.shared.generated.resources.settings_kmp_content_supporting
+import kmp_learning_app.shared.generated.resources.settings_learning_content_title
 import kmp_learning_app.shared.generated.resources.settings_title
 import org.artkachenko.kmp_learning_app.product.ProductMetadata
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
@@ -42,23 +45,29 @@ import org.artkachenko.kmp_learning_app.ui.theme.appListContentPadding
 import org.jetbrains.compose.resources.stringResource
 
 internal const val SettingsDarkThemeSwitchTag = "settings_dark_theme_switch"
+internal const val SettingsKmpContentSwitchTag = "settings_kmp_content_switch"
 internal const val SettingsAboutTag = "settings_about"
 
 /**
- * Application settings: how the app looks, and what this build of it is.
+ * Application settings: how the app looks, which curriculum it teaches, and what this build of it is.
  *
- * Deliberately two sections and nothing else. There is no account, no language, no notifications,
- * and no preference framework waiting for its second entry — the product has exactly one setting,
- * and a screen that pretends otherwise would be scaffolding rather than a feature.
+ * Deliberately three sections and nothing else. There is no account, no language, no notifications,
+ * and no preference framework: the product has two settings, each a switch written out here, and a
+ * screen that pretended otherwise would be scaffolding rather than a feature. Neither preference
+ * belongs to this screen — both are app-scoped holders that outlive it — so it only shows and
+ * forwards them.
  *
  * [isDarkTheme] is the *effective* theme, not the stored preference, which is what lets one switch
  * stand in for a three-state preference: a learner who has never opened this screen sees the switch
  * already reflecting their operating system, and moving it records the explicit choice.
+ * [includeKmpContent] is the stored choice itself, which defaults to off.
  */
 @Composable
 internal fun SettingsScreen(
     isDarkTheme: Boolean,
     onDarkThemeChange: (Boolean) -> Unit,
+    includeKmpContent: Boolean,
+    onIncludeKmpContentChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -72,7 +81,7 @@ internal fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    // Vertical only: the appearance row below is its own interactive surface and
+                    // Vertical only: each switch row below is its own interactive surface and
                     // carries the horizontal margin itself, so its state layer spans the pane.
                     .padding(appListContentPadding()),
             ) {
@@ -83,10 +92,25 @@ internal fun SettingsScreen(
                     // ordinary top gap rather than a section break from nothing.
                     topPadding = AppSpacing.Related,
                 )
-                DarkThemeRow(
-                    isDarkTheme = isDarkTheme,
-                    onDarkThemeChange = onDarkThemeChange,
+                SettingsSwitchRow(
+                    label = stringResource(Res.string.settings_dark_theme_label),
+                    supportingText = stringResource(Res.string.settings_dark_theme_supporting),
+                    checked = isDarkTheme,
+                    onCheckedChange = onDarkThemeChange,
                     margin = margin,
+                    testTag = SettingsDarkThemeSwitchTag,
+                )
+                SectionHeading(
+                    text = stringResource(Res.string.settings_learning_content_title),
+                    modifier = Modifier.padding(horizontal = margin),
+                )
+                SettingsSwitchRow(
+                    label = stringResource(Res.string.settings_kmp_content_label),
+                    supportingText = stringResource(Res.string.settings_kmp_content_supporting),
+                    checked = includeKmpContent,
+                    onCheckedChange = onIncludeKmpContentChange,
+                    margin = margin,
+                    testTag = SettingsKmpContentSwitchTag,
                 )
                 SectionHeading(
                     text = stringResource(Res.string.settings_about_title),
@@ -99,28 +123,34 @@ internal fun SettingsScreen(
 }
 
 /**
- * The appearance control: a row that is one toggle, not a row containing a toggle.
+ * One setting: a two-line row that is one toggle, not a row containing a toggle.
  *
  * The `Switch` takes `onCheckedChange = null`, which makes the row the single interactive and
  * accessible node. That is what gives assistive technology one switch to announce instead of a
  * clickable row beside a separate switch, and what makes the whole two-line row the touch target
  * rather than the 52dp thumb.
+ *
+ * Shared by the two switches on this screen and nothing more: it takes the text and the state
+ * directly, with no setting identity or model behind it.
  */
 @Composable
-private fun DarkThemeRow(
-    isDarkTheme: Boolean,
-    onDarkThemeChange: (Boolean) -> Unit,
+private fun SettingsSwitchRow(
+    label: String,
+    supportingText: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
     margin: Dp,
+    testTag: String,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .toggleable(
-                value = isDarkTheme,
-                onValueChange = onDarkThemeChange,
+                value = checked,
+                onValueChange = onCheckedChange,
                 role = Role.Switch,
             )
-            .testTag(SettingsDarkThemeSwitchTag)
+            .testTag(testTag)
             // Inside the toggleable, so the state layer spans the pane rather than stopping at
             // the text. See the list rules in docs/development/material-design.md.
             .padding(horizontal = margin, vertical = AppSpacing.Comfortable),
@@ -128,18 +158,18 @@ private fun DarkThemeRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(Res.string.settings_dark_theme_label),
+                text = label,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
-                text = stringResource(Res.string.settings_dark_theme_supporting),
+                text = supportingText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Spacer(modifier = Modifier.width(AppSpacing.Comfortable))
-        Switch(checked = isDarkTheme, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
@@ -179,6 +209,12 @@ private fun AboutProduct(modifier: Modifier = Modifier) {
 @Composable
 private fun SettingsScreenPreview() {
     AppTheme {
-        SettingsScreen(isDarkTheme = true, onDarkThemeChange = {}, onBack = {})
+        SettingsScreen(
+            isDarkTheme = true,
+            onDarkThemeChange = {},
+            includeKmpContent = false,
+            onIncludeKmpContentChange = {},
+            onBack = {},
+        )
     }
 }

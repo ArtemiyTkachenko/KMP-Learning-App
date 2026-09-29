@@ -28,6 +28,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.artkachenko.kmp_learning_app.topic_study.topics.browsingContent
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserItemUiModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserScreen
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserUiState
@@ -261,7 +262,7 @@ internal class AppNavigationBarTest {
                     ) { padding ->
                         Box(Modifier.fillMaxSize().padding(padding)) {
                             TopicBrowserScreen(
-                                state = TopicBrowserUiState.Content(
+                                state = browsingContent(
                                     topics = List(20) { index ->
                                         TopicBrowserItemUiModel(
                                             topicId = "topic_$index",

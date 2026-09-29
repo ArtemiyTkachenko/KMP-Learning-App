@@ -26,8 +26,9 @@ import org.koin.dsl.module
 internal val curriculumVisibilityModule = module {
     single { KmpContentPreferenceStore(storage = get()) }
     single {
-        // App-scoped: both decorators, the history projection, and later the screens and the
-        // navigator must all observe one visibility, and it has to outlive every destination.
+        // App-scoped: both decorators, the history projection, the Settings switch and the screens
+        // that re-read on a change must all observe one visibility, and it has to outlive every
+        // destination.
         CurriculumVisibilityStateHolder(store = get())
     }
     single<CurriculumRepository> {

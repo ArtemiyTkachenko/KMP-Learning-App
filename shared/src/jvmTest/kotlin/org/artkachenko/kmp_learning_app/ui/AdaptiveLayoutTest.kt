@@ -47,6 +47,7 @@ import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLess
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonReadingColumnTag
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonScreen
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonUiState
+import org.artkachenko.kmp_learning_app.topic_study.topics.browsingContent
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserNoResultsTag
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserScreen
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserUiState
@@ -349,7 +350,7 @@ internal class AdaptiveLayoutTest {
             AppTheme {
                 Box(Modifier.size(400.dp, 900.dp)) {
                     TopicBrowserScreen(
-                        state = TopicBrowserUiState.Content(
+                        state = browsingContent(
                             topics = emptyList(),
                             query = "monads",
                         ),

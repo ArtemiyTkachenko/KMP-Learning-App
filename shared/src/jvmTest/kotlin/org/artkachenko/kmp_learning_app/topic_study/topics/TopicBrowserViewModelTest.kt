@@ -42,6 +42,8 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.content.BundledLearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
@@ -98,11 +100,11 @@ internal class TopicBrowserViewModelTest {
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
         assertEquals(
             listOf("topic_b", "topic_a"),
-            state.topics.map(TopicBrowserItemUiModel::topicId),
+            state.allTopics.map(TopicBrowserItemUiModel::topicId),
         )
         assertEquals(
             listOf("Topic B", "Topic A"),
-            state.topics.map(TopicBrowserItemUiModel::topicName),
+            state.allTopics.map(TopicBrowserItemUiModel::topicName),
         )
         assertEquals(
             listOf("subtopic_b2", "subtopic_b1", "subtopic_a"),
@@ -197,7 +199,7 @@ internal class TopicBrowserViewModelTest {
     @Test
     fun blankAndClearedQueriesRestoreNormalBrowsingWithoutExpandingSubtopics() = runViewModelTest {
         val viewModel = loadedViewModel()
-        val originalTopics = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).topics
+        val originalTopics = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).allTopics
 
         viewModel.onSearchQueryChange("compose")
         assertTrue(
@@ -206,13 +208,13 @@ internal class TopicBrowserViewModelTest {
 
         viewModel.onSearchQueryChange("   ")
         val whitespace = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(originalTopics, whitespace.topics)
+        assertEquals(originalTopics, whitespace.allTopics)
         assertTrue(whitespace.topicMatches.isEmpty())
         assertTrue(whitespace.subtopicMatches.isEmpty())
 
         viewModel.onSearchQueryChange("")
         val cleared = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(originalTopics, cleared.topics)
+        assertEquals(originalTopics, cleared.allTopics)
         assertTrue(cleared.topicMatches.isEmpty())
         assertTrue(cleared.subtopicMatches.isEmpty())
     }
@@ -401,10 +403,10 @@ internal class TopicBrowserViewModelTest {
         advanceUntilIdle()
 
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(3, state.topics.size)
+        assertEquals(3, state.allTopics.size)
         // No context at all, rather than an empty one: unknown history must not render as
         // "not studied yet", which is a claim about the learner.
-        assertTrue(state.topics.all { it.learningContext == null })
+        assertTrue(state.allTopics.all { it.learningContext == null })
         assertNull(state.continueStudying)
         // Search still works against the loaded catalog.
         viewModel.onSearchQueryChange("compose")
@@ -422,8 +424,8 @@ internal class TopicBrowserViewModelTest {
 
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
         // An optional statistic must not take down curriculum browsing.
-        assertEquals(3, state.topics.size)
-        assertTrue(state.topics.all { it.learningContext == null })
+        assertEquals(3, state.allTopics.size)
+        assertTrue(state.allTopics.all { it.learningContext == null })
     }
 
     @Test
@@ -487,6 +489,7 @@ internal class TopicBrowserViewModelTest {
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
             studyProgressStateHolder = studyProgressStateHolder(),
+            visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -545,7 +548,7 @@ internal class TopicBrowserViewModelTest {
         viewModel.onSearchQueryChange("")
 
         val complete = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertTrue(complete.topics.all { it.learningContext != null })
+        assertTrue(complete.allTopics.all { it.learningContext != null })
         assertNotNull(complete.continueStudying)
     }
 
@@ -565,7 +568,7 @@ internal class TopicBrowserViewModelTest {
         advanceUntilIdle()
 
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertTrue(state.topics.all { it.learningContext == null })
+        assertTrue(state.allTopics.all { it.learningContext == null })
         assertNull(state.recommendedNext)
         assertNull(state.continueStudying)
     }
@@ -576,7 +579,7 @@ internal class TopicBrowserViewModelTest {
         advanceUntilIdle()
 
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(3, state.topics.size)
+        assertEquals(3, state.allTopics.size)
         assertNull(state.continueStudying)
     }
 
@@ -595,7 +598,7 @@ internal class TopicBrowserViewModelTest {
         // Catalogue behaviour is untouched by the addition.
         assertEquals(
             listOf("compose", "compose_architecture", "architecture"),
-            state.topics.map(TopicBrowserItemUiModel::topicId),
+            state.allTopics.map(TopicBrowserItemUiModel::topicId),
         )
     }
 
@@ -605,7 +608,7 @@ internal class TopicBrowserViewModelTest {
         advanceUntilIdle()
 
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(3, state.topics.size)
+        assertEquals(3, state.allTopics.size)
         // Unknown history is not empty history, and neither may be presented as a study context.
         assertNull(state.continueStudying)
     }
@@ -623,7 +626,7 @@ internal class TopicBrowserViewModelTest {
 
         // Continue Studying is enrichment: its failure must not become the screen's Error state.
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(3, state.topics.size)
+        assertEquals(3, state.allTopics.size)
         assertNull(state.continueStudying)
     }
 
@@ -669,6 +672,7 @@ internal class TopicBrowserViewModelTest {
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
             studyProgressStateHolder = studyProgressStateHolder(),
+            visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -722,7 +726,7 @@ internal class TopicBrowserViewModelTest {
         // And the catalogue is untouched by the failure.
         assertEquals(
             3,
-            assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).topics.size,
+            assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).allTopics.size,
         )
     }
 
@@ -834,7 +838,7 @@ internal class TopicBrowserViewModelTest {
         // Topics remain exactly as browsable as before.
         assertEquals(
             3,
-            assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).topics.size,
+            assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value).allTopics.size,
         )
     }
 
@@ -846,7 +850,7 @@ internal class TopicBrowserViewModelTest {
         advanceUntilIdle()
 
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertNotNull(state.topics.first().learningContext)
+        assertNotNull(state.allTopics.first().learningContext)
         assertNotNull(state.recommendedNext)
         // Topic rows and the recommendation share one LearningProgressSnapshot. The derivation
         // reads the ACTIVE bank exactly once, so a second load would show as a second read — and
@@ -871,8 +875,8 @@ internal class TopicBrowserViewModelTest {
         // Optional enrichment, so its failure costs only itself: not the catalogue, not the
         // learning context, and not the other guided surface.
         assertNull(state.recommendedNext)
-        assertEquals(3, state.topics.size)
-        assertNotNull(state.topics.first().learningContext)
+        assertEquals(3, state.allTopics.size)
+        assertNotNull(state.allTopics.first().learningContext)
         assertEquals(ContinueStudyingTarget.Topic("compose"), assertNotNull(state.continueStudying).target)
     }
 
@@ -917,6 +921,7 @@ internal class TopicBrowserViewModelTest {
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
             studyProgressStateHolder = studyProgressStateHolder(),
+            visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -1128,8 +1133,8 @@ internal class TopicBrowserViewModelTest {
         // The premise, from the rows this screen already shows: real accuracy, and nothing left
         // unseen anywhere in the current curriculum.
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(3, state.topics.size)
-        state.topics.forEach { row ->
+        assertEquals(3, state.allTopics.size)
+        state.allTopics.forEach { row ->
             val context = assertNotNull(row.learningContext, "${row.topicId} has no learning context")
             assertNotNull(context.accuracyPercentage, "${row.topicId} has no history")
             assertFalse(context.hasUnseenQuestions, "${row.topicId} still has unseen questions")
@@ -1156,7 +1161,7 @@ internal class TopicBrowserViewModelTest {
         // Catalogue order is the curriculum's, and enrichment must not reorder or drop a row.
         assertEquals(
             listOf("compose", "compose_architecture", "architecture"),
-            state.topics.map(TopicBrowserItemUiModel::topicId),
+            state.allTopics.map(TopicBrowserItemUiModel::topicId),
         )
         assertEquals(1, topic(viewModel, "compose").learningUnitCount)
         assertEquals(2, topic(viewModel, "architecture").learningUnitCount)
@@ -1190,8 +1195,8 @@ internal class TopicBrowserViewModelTest {
         )
 
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(3, state.topics.size)
-        state.topics.forEach { row ->
+        assertEquals(3, state.allTopics.size)
+        state.allTopics.forEach { row ->
             assertNull(
                 row.learningUnitCount,
                 "${row.topicId} reported availability from an unreadable curriculum",
@@ -1215,7 +1220,7 @@ internal class TopicBrowserViewModelTest {
         // The assessment curriculum is the authoritative catalogue: the rows, the search corpus,
         // and every history-derived surface survive an unreadable learning document intact.
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(3, state.topics.size)
+        assertEquals(3, state.allTopics.size)
         assertNotNull(topic(viewModel, "compose").learningContext)
         assertNotNull(recommendedNext(viewModel))
 
@@ -1271,8 +1276,8 @@ internal class TopicBrowserViewModelTest {
         advanceUntilIdle()
 
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(3, state.topics.size)
-        assertNull(state.topics.first().learningUnitCount)
+        assertEquals(3, state.allTopics.size)
+        assertNull(state.allTopics.first().learningUnitCount)
 
         learningContent.release(listOf(learningUnit("unit_compose_1", "compose")))
         advanceUntilIdle()
@@ -1457,7 +1462,7 @@ internal class TopicBrowserViewModelTest {
             // And the screen loses nothing else: rows, availability, search, and both
             // assessment-derived guided surfaces are exactly as they were.
             val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-            assertEquals(3, state.topics.size)
+            assertEquals(3, state.allTopics.size)
             assertNotNull(topic(viewModel, "compose").learningContext)
             assertEquals(2, topic(viewModel, "compose").learningUnitCount)
             assertNotNull(recommendedNext(viewModel))
@@ -1484,7 +1489,7 @@ internal class TopicBrowserViewModelTest {
 
         assertNull(continueLearning(viewModel))
         val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-        assertEquals(3, state.topics.size)
+        assertEquals(3, state.allTopics.size)
         assertNotNull(recommendedNext(viewModel))
     }
 
@@ -1631,7 +1636,7 @@ internal class TopicBrowserViewModelTest {
         topicId: String,
     ): TopicBrowserItemUiModel =
         assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
-            .topics
+            .allTopics
             .first { it.topicId == topicId }
 
     private suspend fun TestScope.loadedViewModel(
@@ -1655,6 +1660,7 @@ internal class TopicBrowserViewModelTest {
             recommendationResolver(repository, history),
         learningContent: LearningContentRepository = FakeLearningContentRepository(),
         studyProgress: StudyProgressStateHolder = studyProgressStateHolder(),
+        visibility: CurriculumVisibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
     ): TopicBrowserViewModel =
         TopicBrowserViewModel(
             curriculumRepository = repository,
@@ -1665,6 +1671,7 @@ internal class TopicBrowserViewModelTest {
             continueStudyingResolver = continueStudyingResolver,
             learningRecommendationResolver = learningRecommendationResolver,
             studyProgressStateHolder = studyProgress,
+            visibilityStateHolder = visibility,
         )
 
     /**

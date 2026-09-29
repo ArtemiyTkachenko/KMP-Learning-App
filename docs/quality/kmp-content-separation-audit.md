@@ -479,7 +479,9 @@ framework, and the brief does not need one.
   because it `combine`s the visibility state. The holder also triggers
   `AssessmentHistoryStore.invalidate()` and `StudyProgressStateHolder.refresh()`, so every
   history- and study-derived surface recomputes. Screen ViewModels that cached a catalogue
-  (Topic Browser, Topic Detail) observe `visibility` and reload.
+  (Topic Browser, Topic Detail) observe `visibility` and reload. *(Superseded in part: the
+  raw history is not invalidated, and the study refresh is requested by the two reloading
+  ViewModels rather than the holder — see [Step 6](#step-6-settings-switch-sections-and-live-propagation).)*
 
 ## History and Metrics Semantics
 
@@ -581,7 +583,8 @@ This differs from the brief's sequence in two ways. The brief's "downstream filt
 | 3. Learning migration, Compose / Coroutines / Architecture part | Done (#440) — see below. |
 | 4. Content-boundary invariants and leak test | Done — see [Step 4](#step-4-where-the-invariants-live). |
 | 5. Visibility core | Done — see [Step 5](#step-5-visibility-core). |
-| 6–8 | Not started. |
+| 6. Topic Browser sectioning + Settings switch + change propagation | Done — see [Step 6](#step-6-settings-switch-sections-and-live-propagation). |
+| 7–8 | Not started. |
 
 Step 3 shipped Unit K1 as planned, with its two Lessons. The curriculum now has **32 Units
 and 138 Lessons**; the two `kmp` Units (K1, then K2) hold 4 Lessons and follow every core
@@ -734,6 +737,95 @@ and Questions.
   set to OFF. The exceptions are `LearningUnitPracticeIntegrationTest` and
   `LearningProductionContentJourneyTest`, which pin every shipped Unit, KMP ones included, and
   run with it ON.
+
+### Step 6: Settings switch, sections and live propagation
+
+The learner can now change the preference, and the screens that cache ACTIVE reads follow it
+live. Learning Unit, Lesson, Practice Builder, Topic progress and result screens are unchanged;
+their hidden-content guards are Step 7.
+
+| Piece | Name and location (`shared/src/commonMain/.../kmp_learning_app/`) |
+| --- | --- |
+| Section classification | `CurriculumSection { AndroidEngineering, KotlinMultiplatform }` in `curriculum/visibility/CurriculumSection.kt`; `CurriculumVisibility.sectionOf(topicId)` in the same companion as `from`, reusing its private `"kmp"` constant. Declaration order is presentation order. |
+| Sectioned UI state | `TopicBrowserUiState.Content.sections: List<TopicBrowserSection>` replaces `topics`. `TopicBrowserSection(kind, topics)` and the grouping function `List<TopicBrowserItemUiModel>.toBrowserSections()` live in `topic_study/topics/TopicBrowserUiState.kt`: section order, repository order inside a section, empty sections omitted. Search (`topicMatches`, `subtopicMatches`) stays flat. |
+| Headings | `catalogueSection` renders one `SectionHeading` per section: `topic_browser_section_android_engineering` ("Android Engineering"), `topic_browser_section_kotlin_multiplatform` ("Kotlin Multiplatform"). Decision D-3 adopted: the Android heading shows even when it is the only section. "Topics" / "Subtopics" remain search-result headings only. |
+| Settings switch | `SettingsDestination` resolves `AppearanceStateHolder` and `CurriculumVisibilityStateHolder` (no ViewModel). `SettingsScreen` has three sections — Appearance, Learning content, About. The new row is "Include Kotlin Multiplatform content" / "Show Kotlin Multiplatform topics, lessons, and practice questions.", tag `SettingsKmpContentSwitchTag`, and calls `setIncludeKmpContent` directly. Both switches share a private `SettingsSwitchRow` (whole-row `toggleable(role = Role.Switch)`, `Switch(onCheckedChange = null)`). |
+| Topic Browser observation | `TopicBrowserViewModel` takes `visibilityStateHolder`. `observeVisibility()` collects `visibility`; a value different from `catalogVisibility` (recorded by every `loadCatalog()`) calls `StudyProgressStateHolder.refresh()` and `loadCatalog()`. |
+| Topic Detail observation | `TopicDetailViewModel` takes `visibilityStateHolder`; the same shape against `loadVisibility` and `loadTopic()`. A hidden Topic becomes the existing `TopicDetailUiState.NotFound` and returns to `Content` when shown again. |
+
+**Reloading.** Both screens re-read through the visible repositories rather than filtering
+their cached lists, so Topic rows, searchable Subtopics, Unit counts, the authored Unit
+sequence behind Continue Learning, and Topic Detail's Questions and Units all come from the
+new visibility together. The reload is the existing load path, so the existing
+`catalogGeneration` / `loadGeneration` contract discards a slower read made under the old
+visibility. The query is ViewModel state outside the catalogue, so it survives the reload
+and is matched against the newly visible catalogue.
+
+**No duplicate startup read.** A `StateFlow` hands a new collector its current value. The
+ViewModels compare each emission with the visibility their newest load was requested under,
+instead of `drop(1)`, so the replayed value is ignored without risking a missed change that
+lands before the collector starts.
+
+**History is not invalidated.** `VisibleAssessmentHistory` already combines raw history
+with visibility and re-emits on a change, so Progress, the mistake badge and Mistake Review,
+interview history, and the history-derived Topic Browser and Topic Detail enrichment update
+from that emission. The database has not changed, so Step 6 does **not** call
+`AssessmentHistoryStore.invalidate()`; the existing calls for assessment completion and
+retry are unchanged. Only cached ACTIVE curriculum and learning reads needed an explicit
+reload.
+
+**Guidance from the old visibility is withheld.** The catalogue reload and the history
+re-projection finish in no fixed order. Hiding KMP makes the projection read Question
+metadata, so the Android-only catalogue can land first while Recommended Next, Continue
+Studying and the row learning context still describe KMP-visible history — for example, a
+Continue Studying shortcut into `kmp`. `VisibleAssessmentHistory.snapshots` therefore
+publishes each projection with the visibility it was made under (`VisibleHistorySnapshot`;
+`history` is the same flow with the visibility dropped, so the projection still runs once).
+`TopicBrowserViewModel` records that visibility with its enrichment and renders the
+enrichment only while it equals the catalogue's visibility, treating a mismatch as history
+not yet arrived. The fields are not cleared when the reload starts, because a projection for
+the new visibility may already have been derived by then. Topic Detail needs no gate: its
+enrichment is scoped to its own Topic, which is either unaffected or `NotFound`.
+
+**Study state.** Each reload asks the shared `StudyProgressStateHolder` to `refresh()`. It
+reads the full persisted record; nothing is filtered, cleared or unmarked. The visible Units
+decide what participates in a derivation, so a KMP Lesson studied while shown is still
+studied after a hide-and-show round trip. Concurrent refreshes from both screens are
+serialised by the holder's read mutex.
+
+**Deviations from the plan.**
+
+- The plan had the holder invalidate raw history. Step 5's combined projection made that
+  redundant, and doing it would re-read the attempt table for no change.
+- The plan had the holder refresh study state. The two reloading ViewModels request it
+  instead, so `curriculum/visibility/` does not depend on the Learn presentation layer.
+- A visibility reload reuses the load path, so it passes through `Loading` briefly. The
+  screen is beneath Settings when that happens, so the learner does not see it.
+
+**Tests (all `jvmTest`).**
+
+- `TopicBrowserVisibilityTest`: section order and repository order, no empty KMP section,
+  OFF → ON and ON → OFF on one ViewModel, query preservation, a single startup read,
+  Continue Learning over the visible sequence, a studied KMP Lesson surviving a round
+  trip, no raw history read on a change, the old-visibility race, and guidance from the old
+  projection withheld while the new one is still resolving.
+- `TopicBrowserVisibilityIntegrationTest`: the production graph over the bundled
+  curriculum, one live ViewModel — KMP section, search and Unit count appear and disappear,
+  and Continue Learning reaches KMP only after every core Lesson.
+- `TopicDetailVisibilityTest`: a single startup load, a core Topic re-read on each change,
+  a KMP Topic going `NotFound` and back, no raw history read, and the race.
+- `TopicBrowserSectionsScreenTest`: headings, heading semantics, order, D-3, clickable rows,
+  flat search groups, guidance above the catalogue, and a long KMP name on a compact width.
+- `SettingsScreenTest`: the Learning content section and row, switch semantics and touch
+  target, both states and both directions, independent callbacks, and the three-section
+  guard against placeholder sections.
+- `SettingsNavigationIntegrationTest`: the destination over in-memory storage (OFF by
+  default, `"on"` / `"off"` persisted, the theme switch independent), and the live
+  Learn → Settings → Back round trip. That test types a KMP-only query before opening
+  Settings. The query is still in the field on return, which a new Topic Browser could not
+  show, and its KMP result appears (then disappears after the second round trip).
+- Existing tests take the sectioned state through the test helper `browsingContent(...)`
+  and read rows through `allTopics` (`TopicBrowserTestStates.kt`).
 
 ## Validation Plan
 

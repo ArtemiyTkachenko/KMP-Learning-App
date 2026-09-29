@@ -81,9 +81,12 @@ import kmp_learning_app.shared.generated.resources.topic_browser_search_no_resul
 import kmp_learning_app.shared.generated.resources.topic_browser_search_clear
 import kmp_learning_app.shared.generated.resources.topic_browser_search_subtopics
 import kmp_learning_app.shared.generated.resources.topic_browser_search_topics
+import kmp_learning_app.shared.generated.resources.topic_browser_section_android_engineering
+import kmp_learning_app.shared.generated.resources.topic_browser_section_kotlin_multiplatform
 import kmp_learning_app.shared.generated.resources.topic_browser_subtitle
 import kmp_learning_app.shared.generated.resources.topic_browser_title
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumSection
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingContext
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRationale
@@ -235,7 +238,7 @@ internal fun TopicBrowserScreen(
                     )
                     is TopicBrowserUiState.Content -> when {
                         current.query.isBlank() -> TopicList(
-                            topics = current.topics,
+                            sections = current.sections,
                             onTopicClick = onTopicClick,
                             // Absent unless the state carries them, which it never does while a
                             // query is active: both cards belong to browsing, not to search results.
@@ -431,7 +434,7 @@ private fun TopicSearchField(
  */
 @Composable
 private fun TopicList(
-    topics: List<TopicBrowserItemUiModel>,
+    sections: List<TopicBrowserSection>,
     onTopicClick: (String) -> Unit,
     recommendedNext: RecommendedNextUiModel?,
     onRecommendedNextClick: (LearningRecommendationTarget) -> Unit,
@@ -486,7 +489,7 @@ private fun TopicList(
                     ),
                     verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
                 ) {
-                    catalogueSection(topics = topics, onTopicClick = onTopicClick)
+                    catalogueSection(sections = sections, onTopicClick = onTopicClick)
                 }
             },
         )
@@ -505,7 +508,7 @@ private fun TopicList(
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
         guidance()
-        catalogueSection(topics = topics, onTopicClick = onTopicClick)
+        catalogueSection(sections = sections, onTopicClick = onTopicClick)
     }
 }
 
@@ -613,29 +616,48 @@ private fun LazyListScope.guidanceSection(
     }
 }
 
-/** The curriculum itself. */
+/**
+ * The curriculum itself, one heading per section in the order the state gives them.
+ *
+ * The state has already grouped the Topics and dropped any empty section, so this only renders.
+ * Android Engineering keeps its heading even when it is the only section: the label names what the
+ * catalogue is, and it should not start meaning something different when optional content is shown.
+ */
 private fun LazyListScope.catalogueSection(
-    topics: List<TopicBrowserItemUiModel>,
+    sections: List<TopicBrowserSection>,
     onTopicClick: (String) -> Unit,
 ) {
-    item(key = "topics_heading") {
-        SectionHeading(
-            text = stringResource(Res.string.topic_browser_search_topics),
-            // The heading introduces the catalogue in both layouts. In the expanded one it is the
-            // first thing in its pane, so it needs no separation from a section above it.
-            topPadding = AppSpacing.Grouped,
-        )
-    }
-    items(
-        items = topics,
-        key = { it.topicId },
-    ) { topic ->
-        TopicRow(
-            topic = topic,
-            onTopicClick = onTopicClick,
-        )
+    sections.forEachIndexed { index, section ->
+        item(key = "section_heading:${section.kind.name}") {
+            SectionHeading(
+                text = section.kind.title(),
+                // The first heading introduces the catalogue in both layouts. In the expanded one it
+                // is the first thing in its pane, so it needs no separation from a section above it;
+                // a later one is a section break and takes the ordinary section spacing.
+                topPadding = if (index == 0) AppSpacing.Grouped else AppSpacing.Section,
+            )
+        }
+        items(
+            items = section.topics,
+            key = { it.topicId },
+        ) { topic ->
+            TopicRow(
+                topic = topic,
+                onTopicClick = onTopicClick,
+            )
+        }
     }
 }
+
+@Composable
+private fun CurriculumSection.title(): String = stringResource(
+    when (this) {
+        CurriculumSection.AndroidEngineering ->
+            Res.string.topic_browser_section_android_engineering
+        CurriculumSection.KotlinMultiplatform ->
+            Res.string.topic_browser_section_kotlin_multiplatform
+    },
+)
 
 /**
  * The catalogue takes the larger share of an expanded window: the guidance is supplementary, and
@@ -1273,7 +1295,7 @@ private fun TopicBrowserScreenPreview() {
                 // Real curriculum IDs so the preview shows the authored markers, and the three
                 // learning states the card has to keep distinguishable. The availability counts
                 // match the authored learning curriculum: only android_ui publishes a Unit today.
-                topics = listOf(
+                sections = listOf(
                     TopicBrowserItemUiModel(
                         topicId = "android_platform",
                         topicName = "Android Platform & Application Model",
@@ -1310,7 +1332,7 @@ private fun TopicBrowserScreenPreview() {
                         ),
                         learningUnitCount = 0,
                     ),
-                ),
+                ).toBrowserSections(),
             ),
             onTopicClick = {},
             onSubtopicClick = { _, _ -> },

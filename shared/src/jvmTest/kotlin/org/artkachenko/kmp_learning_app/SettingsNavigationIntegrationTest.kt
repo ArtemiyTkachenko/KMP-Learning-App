@@ -34,6 +34,27 @@ import org.artkachenko.kmp_learning_app.settings.appearanceModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserHeaderTag
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSettingsTag
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.performTextInput
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlinx.coroutines.runBlocking
+import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
+import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
+import org.artkachenko.kmp_learning_app.settings.KmpContentPreferenceStore
+import org.artkachenko.kmp_learning_app.settings.SettingsKmpContentSwitchTag
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserNoResultsTag
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
+import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewportTag
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
@@ -86,7 +107,8 @@ internal class SettingsNavigationIntegrationTest {
 
     @Test
     fun theSwitchShowsTheStoredChoiceAndChangingItUpdatesTheApplicationPreference() =
-        runSettingsTest(stored = ThemePreference.Light) { holder ->
+        runSettingsTest(stored = ThemePreference.Light) { graph ->
+            val holder = graph.appearance
             onNodeWithTag(TopicBrowserSettingsTag).performClick()
             waitForIdle()
 
@@ -103,7 +125,8 @@ internal class SettingsNavigationIntegrationTest {
      */
     @Test
     fun theChoiceOutlivesTheSettingsEntryThatMadeIt() =
-        runSettingsTest(stored = ThemePreference.Light) { holder ->
+        runSettingsTest(stored = ThemePreference.Light) { graph ->
+            val holder = graph.appearance
             onNodeWithTag(TopicBrowserSettingsTag).performClick()
             waitForIdle()
             onNodeWithTag(SettingsDarkThemeSwitchTag).performClick()
@@ -118,6 +141,103 @@ internal class SettingsNavigationIntegrationTest {
             assertEquals(ThemePreference.Dark, holder.preference.value)
         }
 
+    /**
+     * The Kotlin Multiplatform switch through the real destination: a fresh install shows it off, and
+     * each move reaches the app-scoped holder and is persisted as an explicit token. The theme is a
+     * separate preference and does not move with it.
+     */
+    @Test
+    fun theKmpSwitchChangesAndPersistsTheApplicationVisibility() =
+        runSettingsTest(stored = ThemePreference.Light) { graph ->
+            onNodeWithTag(TopicBrowserSettingsTag).performClick()
+            waitForIdle()
+
+            assertNull(graph.storage.read(KmpContentPreferenceStore.Key))
+            onNodeWithTag(SettingsKmpContentSwitchTag).assertIsOff().performClick()
+            waitForIdle()
+            assertTrue(graph.visibility.includeKmpContent.value)
+            assertEquals(KmpContentPreferenceStore.OnToken, graph.storage.read(KmpContentPreferenceStore.Key))
+            onNodeWithTag(SettingsKmpContentSwitchTag).assertIsOn()
+
+            onNodeWithTag(SettingsKmpContentSwitchTag).performClick()
+            waitForIdle()
+            assertFalse(graph.visibility.includeKmpContent.value)
+            assertEquals(KmpContentPreferenceStore.OffToken, graph.storage.read(KmpContentPreferenceStore.Key))
+            onNodeWithTag(SettingsKmpContentSwitchTag).assertIsOff()
+
+            // The appearance holder still drives only its own switch.
+            assertEquals(ThemePreference.Light, graph.appearance.preference.value)
+            onNodeWithTag(SettingsDarkThemeSwitchTag).assertIsOff().performClick()
+            waitForIdle()
+            assertEquals(ThemePreference.Dark, graph.appearance.preference.value)
+            assertFalse(graph.visibility.includeKmpContent.value)
+            onNodeWithTag(SettingsKmpContentSwitchTag).assertIsOff()
+        }
+
+    /**
+     * The learner's actual path: Learn is alive underneath Settings, the switch moves, and Back finds
+     * the same Learn screen already showing the new catalogue.
+     *
+     * The query typed before opening Settings is still in the field afterwards, which a newly created
+     * Topic Browser could not show; the KMP results under it prove the retained screen re-read the
+     * curriculum. Nothing is reset or re-imported between the two round trips.
+     */
+    @Test
+    fun theLiveLearnScreenFollowsTheSwitchAcrossSettingsRoundTrips() =
+        runSettingsTest(importCurriculum = true) { graph ->
+            waitUntil(timeoutMillis = AwaitTimeoutMillis) { exists(AndroidSectionHeading) }
+            onNodeWithText(AndroidSectionHeading).assertIsDisplayed()
+            assertFalse(exists(KmpSectionHeading))
+
+            onNodeWithTag(TopicBrowserSearchFieldTag).performTextInput(KmpOnlyQuery)
+            waitForIdle()
+            onNodeWithTag(TopicBrowserNoResultsTag).assertIsDisplayed()
+
+            toggleKmpInSettings()
+            assertTrue(graph.visibility.includeKmpContent.value)
+
+            waitUntil(timeoutMillis = AwaitTimeoutMillis) { exists(KmpOnlySubtopicName) }
+            onNodeWithTag(TopicBrowserSearchFieldTag).assert(hasText(KmpOnlyQuery))
+            onNodeWithContentDescription("Clear search").performClick()
+            waitForIdle()
+            scrollCatalogueToEnd()
+            onNodeWithText(KmpSectionHeading).assertIsDisplayed()
+
+            toggleKmpInSettings()
+            assertFalse(graph.visibility.includeKmpContent.value)
+
+            // Back on the same scrolled list, now read under the new visibility.
+            waitUntil(timeoutMillis = AwaitTimeoutMillis) { catalogueIsShown() && !exists(KmpSectionHeading) }
+            scrollCatalogueToEnd()
+            // The end of the catalogue is on screen, and it no longer holds a KMP section.
+            assertFalse(exists(KmpSectionHeading))
+            onNodeWithTag(TopicBrowserSearchFieldTag).performTextInput(KmpOnlyQuery)
+            waitForIdle()
+            onNodeWithTag(TopicBrowserNoResultsTag).assertIsDisplayed()
+        }
+
+    private fun ComposeUiTest.toggleKmpInSettings() {
+        onNodeWithTag(TopicBrowserSettingsTag).performClick()
+        waitForIdle()
+        onNodeWithTag(SettingsKmpContentSwitchTag).performClick()
+        waitForIdle()
+        onNodeWithContentDescription("Back").performClick()
+        waitForIdle()
+    }
+
+    private fun ComposeUiTest.catalogueIsShown(): Boolean =
+        onAllNodes(BrowseList).fetchSemanticsNodes().isNotEmpty()
+
+    /** Scrolls the browse list as far as it goes, so its last items are composed and on screen. */
+    private fun ComposeUiTest.scrollCatalogueToEnd() {
+        onNode(BrowseList)
+            .performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy -> scrollBy(0f, 100_000f) }
+        waitForIdle()
+    }
+
+    private fun ComposeUiTest.exists(text: String): Boolean =
+        onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
+
     @Test
     fun theAboutSectionReportsTheCanonicalProductIdentity() = runSettingsTest { _ ->
         onNodeWithTag(TopicBrowserSettingsTag).performClick()
@@ -128,16 +248,24 @@ internal class SettingsNavigationIntegrationTest {
             .assertIsDisplayed()
     }
 
+    /** The app-scoped preferences a test observes, and the durable storage behind both. */
+    private class SettingsTestGraph(
+        val appearance: AppearanceStateHolder,
+        val visibility: CurriculumVisibilityStateHolder,
+        val storage: AppPreferenceStorage,
+    )
+
     /**
-     * Boots the real application over an empty in-memory database.
+     * Boots the real application over an in-memory database.
      *
-     * No curriculum is imported: this exercises the Learn header and the Settings destination, and
-     * the header is present whatever the catalogue holds. `TopicDiscoveryIntegrationTest` is where
-     * catalogue content is fixtured.
+     * By default no curriculum is imported: most of these tests exercise the Learn header and the
+     * Settings destination, and the header is present whatever the catalogue holds.
+     * [importCurriculum] loads the bundled curriculum for a test about what the catalogue shows.
      */
     private fun runSettingsTest(
         stored: ThemePreference = ThemePreference.System,
-        block: suspend ComposeUiTest.(AppearanceStateHolder) -> Unit,
+        importCurriculum: Boolean = false,
+        block: suspend ComposeUiTest.(SettingsTestGraph) -> Unit,
     ) {
         synchronized(appIntegrationMainDispatcherLock) {
             stopKoin()
@@ -150,6 +278,12 @@ internal class SettingsNavigationIntegrationTest {
                     val database = Room.inMemoryDatabaseBuilder<CurriculumDatabase>()
                         .setDriver(BundledSQLiteDriver())
                         .build()
+                    if (importCurriculum) {
+                        runBlocking {
+                            CurriculumImporter(database, loadCurriculum = { BundledCurriculumSource.load() })
+                                .importCurriculum()
+                        }
+                    }
                     val storage = MapPreferenceStorage()
                     ThemePreferenceStore(storage).write(stored)
 
@@ -173,7 +307,13 @@ internal class SettingsNavigationIntegrationTest {
                     setContent { App() }
                     waitForIdle()
 
-                    block(koin.get<AppearanceStateHolder>())
+                    block(
+                        SettingsTestGraph(
+                            appearance = koin.get(),
+                            visibility = koin.get(),
+                            storage = storage,
+                        ),
+                    )
                 }
             } finally {
                 stopKoin()
@@ -181,6 +321,16 @@ internal class SettingsNavigationIntegrationTest {
         }
     }
 }
+
+private const val AndroidSectionHeading = "Android Engineering"
+private const val KmpSectionHeading = "Kotlin Multiplatform"
+
+/** A shipped KMP Subtopic whose full name matches nothing in the core curriculum. */
+private const val KmpOnlySubtopicName = "Koin in KMP"
+private const val KmpOnlyQuery = KmpOnlySubtopicName
+
+private const val AwaitTimeoutMillis = 10_000L
+private val BrowseList = hasScrollAction() and hasAnyAncestor(hasTestTag(TopicBrowserViewportTag))
 
 /** In-memory durable storage, so the test never reads or writes the developer's own preference. */
 private class MapPreferenceStorage : AppPreferenceStorage {

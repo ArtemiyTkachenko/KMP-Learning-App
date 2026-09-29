@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.assessment.history
 
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -44,8 +45,8 @@ internal class VisibleAssessmentHistory(
      *
      * It keeps [AssessmentHistoryStore.history]'s contract: every settled refresh is re-announced
      * even when it equals the previous one, because consumers derive from this over a curriculum
-     * that can fail independently, and a retry must be able to make them derive again. So this is a
-     * replaying [SharedFlow], not a `StateFlow` that would swallow an equal emission, and `combine`
+     * that can fail independently, and a retry must be able to make them derive again. So this reads
+     * a replaying [SharedFlow], not a `StateFlow` that would swallow an equal emission, and `combine`
      * forwards every upstream emission rather than only distinct ones.
      *
      * A projection that cannot resolve Question metadata publishes [AssessmentHistory.Failed]
@@ -53,8 +54,21 @@ internal class VisibleAssessmentHistory(
      * projection, which could belong to a different visibility. Invalidating the raw store is the
      * retry, exactly as it is for an unreadable attempt table.
      */
-    val history: SharedFlow<AssessmentHistory> = combine(rawHistory.history, visibility, ::Pair)
-        .map { (raw, current) -> project(raw, current) }
+    val history: Flow<AssessmentHistory>
+        get() = snapshots.map { snapshot -> snapshot.history }
+
+    /**
+     * [history] together with the visibility each projection was made under.
+     *
+     * For an observer that also caches curriculum reads, which a visibility change reloads
+     * separately: the two finish in no fixed order, so such an observer must be able to tell a
+     * projection made under the old visibility from one made under the new, rather than show
+     * guidance derived from content that is no longer visible beside a catalogue that already
+     * hides it. [history] is this flow with the visibility dropped, so the projection runs once
+     * per change whichever of the two is observed.
+     */
+    val snapshots: SharedFlow<VisibleHistorySnapshot> = combine(rawHistory.history, visibility, ::Pair)
+        .map { (raw, current) -> VisibleHistorySnapshot(project(raw, current), current) }
         .shareIn(scope, SharingStarted.Eagerly, replay = 1)
 
     /**
@@ -96,6 +110,12 @@ internal class VisibleAssessmentHistory(
             }
         }
 }
+
+/** One projected history and the visibility it was projected under. */
+internal data class VisibleHistorySnapshot(
+    val history: AssessmentHistory,
+    val visibility: CurriculumVisibility,
+)
 
 /**
  * The one rule that turns stored completed attempts into visible ones.

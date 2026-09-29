@@ -42,6 +42,8 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.LearningLesson
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.lesson_study.FakeLessonStudyRepository
 import org.artkachenko.kmp_learning_app.lesson_study.StudiedLesson
@@ -283,6 +285,7 @@ internal class TopicDetailViewModelTest {
             learningProgressService = LearningProgressService(history.asCompletedHistory(), curriculum),
             visibleHistory = store.visibleHistory(CoroutineScope(currentDispatcher())),
             studyProgressStateHolder = studyProgressStateHolder(),
+            visibilityStateHolder = curriculumVisibilityStateHolder(),
         )
         advanceUntilIdle()
         assertEquals(
@@ -743,6 +746,7 @@ internal class TopicDetailViewModelTest {
                 learningProgressService = LearningProgressService(history.asCompletedHistory(), curriculum),
                 visibleHistory = store.visibleHistory(CoroutineScope(currentDispatcher())),
                 studyProgressStateHolder = studyProgressStateHolder(),
+                visibilityStateHolder = curriculumVisibilityStateHolder(),
             )
             advanceUntilIdle()
 
@@ -949,6 +953,7 @@ internal class TopicDetailViewModelTest {
         history: AssessmentRepository = EmptyHistoryRepository,
         learningContent: LearningContentRepository = FakeLearningContentRepository(),
         studyProgressStateHolder: StudyProgressStateHolder = studyProgressStateHolder(),
+        visibility: CurriculumVisibilityStateHolder = curriculumVisibilityStateHolder(),
     ): TopicDetailViewModel =
         TopicDetailViewModel(
             topicId = topicId,
@@ -958,6 +963,7 @@ internal class TopicDetailViewModelTest {
             visibleHistory = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
                 .visibleHistory(CoroutineScope(currentDispatcher())),
             studyProgressStateHolder = studyProgressStateHolder,
+            visibilityStateHolder = visibility,
         )
 
     private fun TestScope.currentDispatcher() = StandardTestDispatcher(testScheduler)

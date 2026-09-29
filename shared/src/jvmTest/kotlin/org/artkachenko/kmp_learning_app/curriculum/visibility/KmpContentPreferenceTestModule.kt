@@ -18,3 +18,16 @@ internal fun kmpContentPreferenceTestModule(includeKmpContent: Boolean): Module 
         InMemoryAppPreferenceStorage().also { KmpContentPreferenceStore(it).write(includeKmpContent) }
     }
 }
+
+/**
+ * A production [CurriculumVisibilityStateHolder] over in-memory storage, starting from an explicit
+ * choice, for a ViewModel test that needs the holder without a Koin graph.
+ */
+internal fun curriculumVisibilityStateHolder(
+    includeKmpContent: Boolean = false,
+): CurriculumVisibilityStateHolder =
+    CurriculumVisibilityStateHolder(
+        KmpContentPreferenceStore(
+            InMemoryAppPreferenceStorage().also { KmpContentPreferenceStore(it).write(includeKmpContent) },
+        ),
+    )

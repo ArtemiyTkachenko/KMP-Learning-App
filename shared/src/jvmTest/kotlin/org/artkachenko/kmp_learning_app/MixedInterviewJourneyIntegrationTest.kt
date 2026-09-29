@@ -70,6 +70,8 @@ import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 internal class MixedInterviewJourneyIntegrationTest {
@@ -309,6 +311,8 @@ internal class MixedInterviewJourneyIntegrationTest {
             createdAttemptIds = createdAttemptIds,
             modules = listOf(
                 curriculumDataModule,
+                curriculumVisibilityModule,
+                kmpContentPreferenceTestModule(includeKmpContent = false),
                 learningContentModule,
                 assessmentDataModule,
                 savedQuestionDataModule,

@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
-import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
@@ -35,21 +35,22 @@ internal class ProgressStateHolder(
     private val learningProgressService: LearningProgressService,
     private val curriculumRepository: CurriculumRepository,
     private val mistakeReviewService: MistakeReviewService,
-    historyStore: AssessmentHistoryStore,
+    visibleHistory: VisibleAssessmentHistory,
     scope: CoroutineScope,
 ) {
     /**
      * Re-derives on every settled refresh of the shared history, not only on a history that
-     * changed.
+     * changed, and on every visibility change. It reads the visible projection, so a hidden Topic's
+     * answers are absent from every figure on the dashboard.
      *
-     * That is [AssessmentHistoryStore.history]'s contract, and this dashboard depends on the whole
+     * That is [VisibleAssessmentHistory.history]'s contract, and this dashboard depends on the whole
      * of it: the two failures it can show come from different places. An unreadable attempt table
      * is recovered by re-reading it, and a derivation that failed over history which read perfectly
      * well — an unavailable curriculum — is recovered only by running the derivation again. One
-     * [AssessmentHistoryStore.invalidate] reaches both, because the store re-announces the cached
+     * [VisibleAssessmentHistory.invalidate] reaches both, because the store re-announces the cached
      * history whether or not the re-read changed it.
      */
-    val state: StateFlow<ProgressUiState> = historyStore.history
+    val state: StateFlow<ProgressUiState> = visibleHistory.history
         .map { history ->
             when (history) {
                 AssessmentHistory.Loading -> ProgressUiState.Loading

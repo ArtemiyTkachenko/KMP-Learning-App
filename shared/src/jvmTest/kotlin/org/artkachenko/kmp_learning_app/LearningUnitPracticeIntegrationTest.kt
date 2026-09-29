@@ -78,6 +78,8 @@ import org.koin.core.Koin
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
 
 /**
  * E21-06: the shipped Learning Unit practised through the production graph.
@@ -2058,6 +2060,10 @@ private fun runUnitPracticeTest(block: suspend UnitPracticeGraph.() -> Unit) = r
     val app = koinApplication {
         modules(
             curriculumDataModule,
+            curriculumVisibilityModule,
+            // The full authored curriculum: every shipped Unit's practice pool is pinned here, the
+            // optional Kotlin Multiplatform Units included, so KMP content is switched on.
+            kmpContentPreferenceTestModule(includeKmpContent = true),
             learningContentModule,
             assessmentDataModule,
             savedQuestionDataModule,

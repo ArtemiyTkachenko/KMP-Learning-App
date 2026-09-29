@@ -47,6 +47,8 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 internal class MistakeReviewDestinationTest {
@@ -166,14 +168,14 @@ private fun destinationViewModel(
 ): MistakeReviewViewModel =
     run {
         val service = MistakeReviewService(
-            assessmentRepository = repository,
+            completedHistory = repository.asCompletedHistory(),
             assessmentReviewLoader = AssessmentReviewLoader(DestinationCurriculumRepository),
         )
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val store = AssessmentHistoryStore(repository, scope)
         MistakeReviewViewModel(
             historyStore = store,
-            stateHolder = MistakeReviewStateHolder(service, store, scope),
+            stateHolder = MistakeReviewStateHolder(service, store.visibleHistory(scope), scope),
             savedQuestionStateHolder = SavedQuestionStateHolder(
                 FakeSavedQuestionRepository(),
                 scope,

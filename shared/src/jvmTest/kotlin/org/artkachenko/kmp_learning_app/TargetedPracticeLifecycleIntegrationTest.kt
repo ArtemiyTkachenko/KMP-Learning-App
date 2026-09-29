@@ -76,6 +76,8 @@ import org.koin.core.Koin
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
 
 /**
  * E16-06: targeted practice verified across the boundaries its own layers cannot see.
@@ -564,6 +566,8 @@ private fun runPracticeTest(block: suspend PracticeGraph.() -> Unit) = runTest {
     val app = koinApplication {
         modules(
             curriculumDataModule,
+            curriculumVisibilityModule,
+            kmpContentPreferenceTestModule(includeKmpContent = false),
             learningContentModule,
             assessmentDataModule,
             savedQuestionDataModule,

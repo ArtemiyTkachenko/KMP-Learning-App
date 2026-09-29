@@ -42,6 +42,9 @@ import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressServic
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import org.artkachenko.kmp_learning_app.getQuestionById
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.VisibleCurriculumRepository
 
 internal class AssessmentEngineIntegrationTest {
     @Test
@@ -344,6 +347,8 @@ internal class AssessmentEngineIntegrationTest {
                         single<CurriculumDatabase> { database }
                     },
                     curriculumDataModule,
+                    curriculumVisibilityModule,
+                    kmpContentPreferenceTestModule(includeKmpContent = false),
                     assessmentDataModule,
                 )
             }
@@ -351,7 +356,7 @@ internal class AssessmentEngineIntegrationTest {
             try {
                 val koin = app.koin
 
-                assertIs<CurriculumRepository>(koin.get<CurriculumRepository>())
+                assertIs<VisibleCurriculumRepository>(koin.get<CurriculumRepository>())
                 assertIs<CurriculumDataInitializer>(koin.get<CurriculumDataInitializer>())
                 assertIs<AssessmentQuestionSelector>(koin.get<AssessmentQuestionSelector>())
                 assertIs<AssessmentEngine>(koin.get<AssessmentEngine>())

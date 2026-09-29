@@ -93,6 +93,8 @@ import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
 
 /**
  * E21-07: the shipped Learn experience, read and practised through the whole running application.
@@ -732,6 +734,10 @@ private fun runProductionJourneyTest(
                                 modules(
                                     listOf(
                                         curriculumDataModule,
+                                        curriculumVisibilityModule,
+                                        // The full authored curriculum: these journeys walk every shipped Unit, the optional
+                                        // Kotlin Multiplatform Units included, so KMP content is switched on.
+                                        kmpContentPreferenceTestModule(includeKmpContent = true),
                                         learningContentModule,
                                         assessmentDataModule,
                                         savedQuestionDataModule,

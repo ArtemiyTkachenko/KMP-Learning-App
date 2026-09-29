@@ -50,6 +50,8 @@ import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressUiState
 import org.artkachenko.kmp_learning_app.lesson_study.TopicStudyProgress
 import org.artkachenko.kmp_learning_app.lesson_study.studyProgressStateHolder
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class TopicDetailViewModelTest {
@@ -278,8 +280,8 @@ internal class TopicDetailViewModelTest {
             learningContentRepository = FakeLearningContentRepository(
                 failure = IllegalStateException("learning content unavailable"),
             ),
-            learningProgressService = LearningProgressService(history, curriculum),
-            historyStore = store,
+            learningProgressService = LearningProgressService(history.asCompletedHistory(), curriculum),
+            visibleHistory = store.visibleHistory(CoroutineScope(currentDispatcher())),
             studyProgressStateHolder = studyProgressStateHolder(),
         )
         advanceUntilIdle()
@@ -738,8 +740,8 @@ internal class TopicDetailViewModelTest {
                 topicId = topic.id,
                 curriculumRepository = curriculum,
                 learningContentRepository = FakeLearningContentRepository(),
-                learningProgressService = LearningProgressService(history, curriculum),
-                historyStore = store,
+                learningProgressService = LearningProgressService(history.asCompletedHistory(), curriculum),
+                visibleHistory = store.visibleHistory(CoroutineScope(currentDispatcher())),
                 studyProgressStateHolder = studyProgressStateHolder(),
             )
             advanceUntilIdle()
@@ -952,8 +954,9 @@ internal class TopicDetailViewModelTest {
             topicId = topicId,
             curriculumRepository = curriculum,
             learningContentRepository = learningContent,
-            learningProgressService = LearningProgressService(history, curriculum),
-            historyStore = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher())),
+            learningProgressService = LearningProgressService(history.asCompletedHistory(), curriculum),
+            visibleHistory = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
+                .visibleHistory(CoroutineScope(currentDispatcher())),
             studyProgressStateHolder = studyProgressStateHolder,
         )
 

@@ -60,6 +60,8 @@ import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
 import org.artkachenko.kmp_learning_app.lesson_study.studyProgressStateHolder
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class TopicBrowserViewModelTest {
@@ -480,8 +482,8 @@ internal class TopicBrowserViewModelTest {
         val viewModel = TopicBrowserViewModel(
             curriculumRepository = repository,
             learningContentRepository = FakeLearningContentRepository(),
-            learningProgressService = LearningProgressService(history, repository),
-            historyStore = store,
+            learningProgressService = LearningProgressService(history.asCompletedHistory(), repository),
+            visibleHistory = store.visibleHistory(CoroutineScope(currentDispatcher())),
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
             studyProgressStateHolder = studyProgressStateHolder(),
@@ -662,8 +664,8 @@ internal class TopicBrowserViewModelTest {
         val viewModel = TopicBrowserViewModel(
             curriculumRepository = repository,
             learningContentRepository = FakeLearningContentRepository(),
-            learningProgressService = LearningProgressService(history, repository),
-            historyStore = store,
+            learningProgressService = LearningProgressService(history.asCompletedHistory(), repository),
+            visibleHistory = store.visibleHistory(CoroutineScope(currentDispatcher())),
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
             studyProgressStateHolder = studyProgressStateHolder(),
@@ -910,8 +912,8 @@ internal class TopicBrowserViewModelTest {
         val viewModel = TopicBrowserViewModel(
             curriculumRepository = repository,
             learningContentRepository = FakeLearningContentRepository(),
-            learningProgressService = LearningProgressService(history, repository),
-            historyStore = store,
+            learningProgressService = LearningProgressService(history.asCompletedHistory(), repository),
+            visibleHistory = store.visibleHistory(CoroutineScope(currentDispatcher())),
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
             studyProgressStateHolder = studyProgressStateHolder(),
@@ -1059,7 +1061,7 @@ internal class TopicBrowserViewModelTest {
 
         // The premise, read from the same derivation the recommendation consumes rather than
         // assumed: this history really does produce a weak area, and it names retired content.
-        val weakAreas = LearningProgressService(history, repository).load().weakAreas
+        val weakAreas = LearningProgressService(history.asCompletedHistory(), repository).load().weakAreas
         assertTrue(
             weakAreas.any {
                 it is WeakArea.Subtopic && it.performance.subtopicId == "retired_subtopic"
@@ -1657,8 +1659,9 @@ internal class TopicBrowserViewModelTest {
         TopicBrowserViewModel(
             curriculumRepository = repository,
             learningContentRepository = learningContent,
-            learningProgressService = LearningProgressService(history, repository),
-            historyStore = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher())),
+            learningProgressService = LearningProgressService(history.asCompletedHistory(), repository),
+            visibleHistory = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
+                .visibleHistory(CoroutineScope(currentDispatcher())),
             continueStudyingResolver = continueStudyingResolver,
             learningRecommendationResolver = learningRecommendationResolver,
             studyProgressStateHolder = studyProgress,
@@ -1673,7 +1676,7 @@ internal class TopicBrowserViewModelTest {
         history: AssessmentRepository,
     ): LearningRecommendationResolver {
         val mistakeReviewService = MistakeReviewService(
-            assessmentRepository = history,
+            completedHistory = history.asCompletedHistory(),
             assessmentReviewLoader = AssessmentReviewLoader(repository),
         )
         return LearningRecommendationResolver { completedAttempts ->

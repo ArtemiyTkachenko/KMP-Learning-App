@@ -30,6 +30,7 @@ import org.artkachenko.kmp_learning_app.learning_progress.TopicCoverage
 import org.artkachenko.kmp_learning_app.learning_progress.TopicPerformance
 import org.artkachenko.kmp_learning_app.learning_progress.WeakArea
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 
 /**
  * The integration around [LearningRecommendationPolicy], not the policy itself.
@@ -295,7 +296,7 @@ internal class LearningRecommendationResolverTest {
          */
         val SharedMistakeSemantics = UnresolvedMistakeCounter { completedAttempts ->
             MistakeReviewService(
-                assessmentRepository = UnreadableAssessmentRepository,
+                completedHistory = UnreadableAssessmentRepository.asCompletedHistory(),
                 assessmentReviewLoader = AssessmentReviewLoader(UnusedCurriculumRepository),
             ).countUnresolved(completedAttempts)
         }

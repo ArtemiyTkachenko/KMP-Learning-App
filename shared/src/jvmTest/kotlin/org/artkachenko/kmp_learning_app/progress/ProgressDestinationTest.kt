@@ -42,6 +42,8 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 internal class ProgressDestinationTest {
@@ -167,10 +169,10 @@ private fun harness(repository: AssessmentRepository): ProgressHarness {
             ProgressViewModel(
             historyStore = store,
             stateHolder = ProgressStateHolder(
-                learningProgressService = LearningProgressService(repository, curriculum),
+                learningProgressService = LearningProgressService(repository.asCompletedHistory(), curriculum),
                 curriculumRepository = curriculum,
-                mistakeReviewService = MistakeReviewService(repository, AssessmentReviewLoader(curriculum)),
-                historyStore = store,
+                mistakeReviewService = MistakeReviewService(repository.asCompletedHistory(), AssessmentReviewLoader(curriculum)),
+                visibleHistory = store.visibleHistory(scope),
                 scope = scope,
             ),
             ),

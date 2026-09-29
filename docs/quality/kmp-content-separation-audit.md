@@ -580,7 +580,8 @@ This differs from the brief's sequence in two ways. The brief's "downstream filt
 | 2. Learning migration, DI part | Done (#439). |
 | 3. Learning migration, Compose / Coroutines / Architecture part | Done (#440) — see below. |
 | 4. Content-boundary invariants and leak test | Done — see [Step 4](#step-4-where-the-invariants-live). |
-| 5–8 | Not started. |
+| 5. Visibility core | Done — see [Step 5](#step-5-visibility-core). |
+| 6–8 | Not started. |
 
 Step 3 shipped Unit K1 as planned, with its two Lessons. The curriculum now has **32 Units
 and 138 Lessons**; the two `kmp` Units (K1, then K2) hold 4 Lessons and follow every core
@@ -652,6 +653,87 @@ violation with its Unit, Lesson, Question and block, so an author can fix them i
   `SUBTOPIC_TOPIC_MISMATCH` for any Question whose Subtopic belongs to another Topic, and
   `InitialCurriculumSmokeTest` asserts the bundled curriculum validates cleanly. That is why
   Question visibility can use `question.topicId` alone; no KMP-specific Question rule exists.
+
+### Step 5: visibility core
+
+The runtime boundary now exists and every domain derivation reads through it. The Settings switch
+is not exposed yet, so with the production default the app runs with Kotlin Multiplatform content
+hidden and no control to show it until Step 6.
+
+| Piece | Name and location (`shared/src/commonMain/.../kmp_learning_app/`) |
+| --- | --- |
+| Visibility value | `CurriculumVisibility` in `curriculum/visibility/`. `hiddenTopicIds`, `isTopicVisible(topicId)`, and `from(includeKmpContent)`, the only production code that names `"kmp"`. |
+| Preference store | `KmpContentPreferenceStore` in `settings/`, over the existing `AppPreferenceStorage`. Key `content.include_kmp`; writes `"on"` and `"off"` explicitly; absent or unrecognised reads as OFF. |
+| State holder | `CurriculumVisibilityStateHolder` in `curriculum/visibility/`. `includeKmpContent` and `visibility` StateFlows, `setIncludeKmpContent`; reads synchronously in the constructor and writes synchronously on every call. |
+| Curriculum decorator | `VisibleCurriculumRepository` in `curriculum/visibility/`. Filters every `getActive*` read by the Question's or Subtopic's Topic, short-circuits a hidden Topic's Subtopic read, and passes `getTopicById`, `getSubtopicById` and `getQuestionsByIds` through. Explicit overrides, no `by`. |
+| Learning decorator | `VisibleLearningContentRepository` in `curriculum/visibility/`. Filters `getActiveUnits` and `getActiveUnitsByTopic` by `unit.topicId`, keeping authored order; `getUnitById` and `getLessonById` pass through. |
+| History projection | `VisibleAssessmentHistory` in `assessment/history/`, downstream of the unchanged `AssessmentHistoryStore`. The rule itself is `VisibleHistoryProjection.visibleAttempts`, which both the observable `history` and the one-shot `completedAttempts()` call. |
+| DI | `curriculumVisibilityModule` in `curriculum/visibility/`, installed by all four hosts next to `appearanceModule`. |
+| Service fallbacks | `LearningProgressService` and `MistakeReviewService` now take `CompletedAssessmentHistory` instead of `AssessmentRepository`, which neither uses any more. The application binds both to the projection. |
+
+**DI shape.** `curriculumDataModule` binds `LocalCurriculumRepository` and `learningContentModule`
+binds `BundledLearningContentRepository` by their concrete types only. `curriculumVisibilityModule`
+binds the `CurriculumRepository` and `LearningContentRepository` interfaces to the decorators
+wrapping them, plus the store, the holder and `VisibleAssessmentHistory`. This differs from the
+plan above, which bound the decorator inside `curriculumDataModule`. Binding the interfaces in one
+place means a graph without the visibility module fails to resolve them, instead of silently
+handing out unfiltered eligibility. It also keeps the data module free of the preference.
+`AssessmentQuestionSelector` and `LearningProgressService` receive `VisibleAssessmentHistory` in
+`assessmentDataModule`; `MistakeReviewService` receives it in `topicStudyPresentationModule`.
+`CurriculumImporter` is unchanged.
+
+**History readers moved to the projection:** `ProgressStateHolder`, `MistakeReviewStateHolder`,
+`InterviewHistoryStateHolder`, `AppShellViewModel`, and two readers the plan did not list,
+`TopicBrowserViewModel` and `TopicDetailViewModel` (learning context, Recommended Next and Continue
+Studying). The last two also retry through the projection. `VisibleAssessmentHistory.invalidate()`
+only invalidates the raw store, so neither class can reach the raw `history`. `ProgressViewModel`,
+`MistakeReviewViewModel` and `CompleteAssessment` still hold the raw store, only to invalidate it.
+
+**Projection semantics**, decided where the plan was silent:
+
+- An attempt with nothing hidden is returned as the same instance. An attempt with nothing
+  visible is dropped. A trimmed attempt keeps its ID, configuration, status, timestamps and
+  answer order. Its score is recomputed from persisted `Answered.isCorrect`, never from the
+  current answer key.
+- Classification uses the Question's *current* Topic, resolved in one batched
+  `getQuestionsByIds` for the whole history. Nothing is resolved while nothing is hidden.
+- **A Question ID that no longer resolves is kept.** Visibility hides content *known* to belong
+  to a hidden Topic; missing metadata is not that evidence, and dropping it would turn a
+  curriculum gap into lost history.
+- If Question metadata cannot be read, the observable projection publishes
+  `AssessmentHistory.Failed`. Publishing the unprojected attempts could show hidden content, and
+  keeping an older projection could belong to another visibility. Invalidating the raw store is
+  the retry. The one-shot read throws.
+- The observable projection is `combine(raw history, visibility)` shared with `replay = 1`, not a
+  `StateFlow`. It re-emits on a visibility change and on every settled raw refresh, including an
+  unchanged one, so the store's "a settled refresh is an event" contract survives.
+
+**Change propagation.** A visibility change re-projects history without invalidating the raw
+store, so every history-derived app-scoped surface updates on its own. The plan's other
+propagation steps are Step 6: refreshing `StudyProgressStateHolder` and re-reading catalogues
+cached by the Topic Browser and Topic Detail ViewModels. Fresh reads already see filtered Units
+and Questions.
+
+**Tests.**
+
+- `commonTest`: `KmpContentPreferenceTest` (store and holder), `VisibleCurriculumRepositoryTest`
+  (every ACTIVE method family, both states, identity pass-through, order and instance identity),
+  `VisibleHistoryProjectionTest` (core, KMP-only, mixed, ordering, persisted correctness,
+  batching, unresolved IDs, re-homed Questions) and `VisibilityDerivationTest`. The last covers
+  progress, both service fallbacks, selection by every source, D-1 round-robin and a no-write
+  round trip.
+- `jvmTest`: `VisibleAssessmentHistoryTest` (reactivity to both inputs, unchanged-refresh
+  re-announcement, failures) and `VisibleLearningContentRepositoryTest` over the shipped document.
+  Also `CurriculumVisibilityIntegrationTest` (production graph over the bundled curriculum:
+  default-hidden mixed selection, D-1, and a round trip that updates Progress and the interview
+  record while attempt, saved and study records stay equal), a badge test in
+  `AppShellViewModelTest`, and a shared-file test in `JvmAppPreferenceStorageTest`.
+- `DesktopLocalDataPathTest` now pins the production default: 16 of 17 Topics visible, `kmp`
+  still resolvable by ID.
+- Existing integration graphs install `curriculumVisibilityModule` with an in-memory preference
+  set to OFF. The exceptions are `LearningUnitPracticeIntegrationTest` and
+  `LearningProductionContentJourneyTest`, which pin every shipped Unit, KMP ones included, and
+  run with it ON.
 
 ## Validation Plan
 

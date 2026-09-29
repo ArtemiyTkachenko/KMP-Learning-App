@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
-import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewQuestionItem
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
@@ -23,20 +23,21 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningC
  */
 internal class MistakeReviewStateHolder(
     private val mistakeReviewService: MistakeReviewService,
-    historyStore: AssessmentHistoryStore,
+    visibleHistory: VisibleAssessmentHistory,
     scope: CoroutineScope,
     private val learningContentRepository: LearningContentRepository? = null,
 ) {
     /**
      * Re-derives the queue on every settled refresh of the shared history, which is what makes one
-     * [AssessmentHistoryStore.invalidate] recover both failures this screen can show.
+     * [VisibleAssessmentHistory.invalidate] recover both failures this screen can show, and on
+     * every visibility change: the queue is derived from the visible projection only.
      *
      * Re-reading the attempt table recovers an unreadable one. It also recovers a queue derivation
      * that failed over history which read perfectly well — an unavailable curriculum while
      * reconstructing review content — because the store re-announces the cached history once the
      * re-read settles whether or not the attempts changed.
      */
-    val state: StateFlow<MistakeReviewUiState> = historyStore.history
+    val state: StateFlow<MistakeReviewUiState> = visibleHistory.history
         .map { history ->
             when (history) {
                 AssessmentHistory.Loading -> MistakeReviewUiState.Loading

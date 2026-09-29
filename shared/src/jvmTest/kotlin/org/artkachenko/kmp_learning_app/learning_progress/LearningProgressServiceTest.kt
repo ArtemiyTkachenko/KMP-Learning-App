@@ -29,6 +29,7 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 
 internal class LearningProgressServiceTest {
     @Test
@@ -967,7 +968,7 @@ private class TestContext(
 ) {
     private val assessment = FakeAssessmentRepository(attempts)
     val curriculum = FakeCurriculumRepository(questions, topics, subtopics)
-    val service = LearningProgressService(assessment, curriculum)
+    val service = LearningProgressService(assessment.asCompletedHistory(), curriculum)
 }
 
 private class FakeAssessmentRepository(

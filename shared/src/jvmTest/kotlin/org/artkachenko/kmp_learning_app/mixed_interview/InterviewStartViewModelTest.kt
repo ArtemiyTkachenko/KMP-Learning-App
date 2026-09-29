@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import org.artkachenko.kmp_learning_app.assessment.history.testCacheScope
 import org.artkachenko.kmp_learning_app.assessment.history.testHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
+import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
 
 internal class InterviewStartViewModelTest {
     private val dispatcher = StandardTestDispatcher()
@@ -121,7 +122,7 @@ internal class InterviewStartViewModelTest {
      */
     private fun interviewState(repository: AssessmentRepository): StateFlow<InterviewHistoryUiState> {
         val scope = testCacheScope()
-        return InterviewHistoryStateHolder(testHistoryStore(repository, scope), scope).state
+        return InterviewHistoryStateHolder(testHistoryStore(repository, scope).visibleHistory(scope), scope).state
     }
 
 }

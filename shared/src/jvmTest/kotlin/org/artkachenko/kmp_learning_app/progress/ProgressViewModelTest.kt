@@ -39,6 +39,8 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class ProgressViewModelTest {
@@ -606,10 +608,10 @@ private class TestContext(
         ProgressViewModel(
             historyStore = store,
             stateHolder = ProgressStateHolder(
-                learningProgressService = LearningProgressService(assessment, curriculum),
+                learningProgressService = LearningProgressService(assessment.asCompletedHistory(), curriculum),
                 curriculumRepository = curriculum,
-                mistakeReviewService = MistakeReviewService(assessment, AssessmentReviewLoader(curriculum)),
-                historyStore = store,
+                mistakeReviewService = MistakeReviewService(assessment.asCompletedHistory(), AssessmentReviewLoader(curriculum)),
+                visibleHistory = store.visibleHistory(scope),
                 scope = scope,
             ),
         )

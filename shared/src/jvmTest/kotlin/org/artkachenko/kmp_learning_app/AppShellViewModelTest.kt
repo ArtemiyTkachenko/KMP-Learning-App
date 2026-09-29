@@ -30,6 +30,11 @@ import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
+import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
+import org.artkachenko.kmp_learning_app.curriculum.visibility.FixtureCurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.VisibilityFixture
 
 /**
  * The navigation badge: the one number the shell shows from every area, and the only state the
@@ -70,6 +75,43 @@ internal class AppShellViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, viewModel.unresolvedMistakeCount.value)
+    }
+
+    /**
+     * The badge follows curriculum visibility: a hidden Topic's mistakes are not counted, and they
+     * come back when it is shown — with the attempt table read once and never re-read or written.
+     */
+    @Test
+    fun theBadgeCountsOnlyVisibleMistakesAndFollowsAVisibilityChange() = runShellTest {
+        val repository = FakeAssessmentRepository(
+            listOf(
+                completedAttempt(
+                    id = "attempt_1",
+                    completedAtSeconds = 60,
+                    answers = listOf("a1" to false, "k1" to false, "k2" to false, "c1" to true),
+                ),
+            ),
+        )
+        val visibility = VisibilityFixture.visibility(includeKmpContent = false)
+        val store = testHistoryStore(repository, testCacheScope())
+        val viewModel = AppShellViewModel(
+            mistakeReviewService = MistakeReviewService(
+                completedHistory = repository.asCompletedHistory(),
+                assessmentReviewLoader = AssessmentReviewLoader(UnreadCurriculumRepository),
+            ),
+            visibleHistory = store.visibleHistory(testCacheScope(), FixtureCurriculumRepository(), visibility),
+        )
+        advanceUntilIdle()
+        assertEquals(1, viewModel.unresolvedMistakeCount.value)
+
+        visibility.value = CurriculumVisibility.from(includeKmpContent = true)
+        advanceUntilIdle()
+        assertEquals(3, viewModel.unresolvedMistakeCount.value)
+
+        visibility.value = CurriculumVisibility.from(includeKmpContent = false)
+        advanceUntilIdle()
+        assertEquals(1, viewModel.unresolvedMistakeCount.value)
+        assertEquals(1, repository.reads)
     }
 
     /** Before the first read settles there is nothing to say, and no badge says it. */
@@ -195,13 +237,13 @@ internal class AppShellViewModelTest {
     ): AppShellViewModel =
         AppShellViewModel(
             mistakeReviewService = MistakeReviewService(
-                assessmentRepository = repository,
+                completedHistory = repository.asCompletedHistory(),
                 // The badge counts occurrences and never reconstructs review content, so a
                 // repository that refuses every read is the assertion: reaching for a Question
                 // here would fail the test rather than quietly cost a curriculum round trip.
                 assessmentReviewLoader = AssessmentReviewLoader(UnreadCurriculumRepository),
             ),
-            historyStore = store,
+            visibleHistory = store.visibleHistory(testCacheScope()),
         )
 
     private fun runShellTest(block: suspend TestScope.() -> Unit) = runTest {

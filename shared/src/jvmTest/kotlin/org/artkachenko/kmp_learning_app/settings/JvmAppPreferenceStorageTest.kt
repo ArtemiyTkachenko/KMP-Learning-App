@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.koin.dsl.koinApplication
 
 /**
@@ -62,6 +63,48 @@ internal class JvmAppPreferenceStorageTest {
 
             assertEquals("kept", storage.read("unrelated.key"))
             assertEquals(ThemePreference.Light, ThemePreferenceStore(storage).read())
+        }
+    }
+
+    /**
+     * The KMP content preference shares the one preferences file with the appearance preference
+     * and anything else stored there: it survives a restart, and neither preference erases the
+     * other or an unrelated key.
+     */
+    @Test
+    fun theKmpContentPreferenceSharesTheFileAndSurvivesARestart() {
+        withTemporaryHome { home ->
+            val storage = koinApplication { modules(jvmAppearanceModule) }
+                .koin
+                .get<AppPreferenceStorage>()
+            storage.write("unrelated.key", "kept")
+            AppearanceStateHolder(ThemePreferenceStore(storage)).setDarkTheme(true)
+
+            CurriculumVisibilityStateHolder(KmpContentPreferenceStore(storage)).setIncludeKmpContent(true)
+
+            val appDirectory = home.resolve(".kmp-learning-app")
+            assertEquals(
+                listOf("preferences.properties"),
+                appDirectory.list()?.sorted(),
+                "The preference must use the existing preferences file, not a second one",
+            )
+            val contents = appDirectory.resolve("preferences.properties").readText()
+            assertTrue(contents.contains("${KmpContentPreferenceStore.Key}=on"), contents)
+            assertTrue(contents.contains("${ThemePreferenceStore.Key}=dark"), contents)
+
+            val restarted = koinApplication { modules(jvmAppearanceModule) }
+                .koin
+                .get<AppPreferenceStorage>()
+            val holder = CurriculumVisibilityStateHolder(KmpContentPreferenceStore(restarted))
+            assertTrue(holder.includeKmpContent.value)
+            assertEquals(ThemePreference.Dark, ThemePreferenceStore(restarted).read())
+            assertEquals("kept", restarted.read("unrelated.key"))
+
+            // Turning it off is stored as a value, and still leaves the other keys alone.
+            holder.setIncludeKmpContent(false)
+            assertEquals(KmpContentPreferenceStore.OffToken, restarted.read(KmpContentPreferenceStore.Key))
+            assertEquals(ThemePreference.Dark, ThemePreferenceStore(restarted).read())
+            assertEquals("kept", restarted.read("unrelated.key"))
         }
     }
 

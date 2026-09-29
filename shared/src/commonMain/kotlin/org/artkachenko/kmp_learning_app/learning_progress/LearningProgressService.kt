@@ -4,13 +4,21 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentStatus
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
+import org.artkachenko.kmp_learning_app.assessment.history.CompletedAssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.QuestionExposure
-import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 
+/**
+ * Learning progress over completed history and the ACTIVE curriculum.
+ *
+ * Neither input knows about optional content, and neither does this service: the application binds
+ * [completedHistory] to the visible history projection and [curriculumRepository] to the visible
+ * curriculum, so hidden Topics fall out of every figure here — accuracy, weak areas, recent
+ * performance and both sides of coverage — without a condition of its own.
+ */
 internal class LearningProgressService(
-    private val assessmentRepository: AssessmentRepository,
+    private val completedHistory: CompletedAssessmentHistory,
     private val curriculumRepository: CurriculumRepository,
     private val performanceDerivation: LearningPerformanceDerivation =
         LearningPerformanceDerivation(curriculumRepository),
@@ -18,11 +26,12 @@ internal class LearningProgressService(
     /**
      * [completedAttempts] lets a caller that already holds newest-first completed history reuse it,
      * as [MistakeReviewService] does, so the shared cache is read once per derivation rather than
-     * once per consumer.
+     * once per consumer. Without it, [completedHistory] supplies the attempts — never the raw
+     * repository, which would bypass the visibility projection.
      */
     suspend fun load(completedAttempts: List<TestAttempt>? = null): LearningProgressSnapshot {
         val completedAttempts =
-            (completedAttempts ?: assessmentRepository.getCompletedAttempts())
+            (completedAttempts ?: completedHistory.completedAttempts())
                 .filter { it.status == AssessmentStatus.COMPLETED }
         val answeredQuestionCount = completedAttempts.sumOf { requireNotNull(it.score).totalQuestions }
         val correctAnswerCount = completedAttempts.sumOf { requireNotNull(it.score).correctAnswers }

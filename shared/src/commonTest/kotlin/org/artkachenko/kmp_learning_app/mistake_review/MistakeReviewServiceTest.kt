@@ -25,6 +25,7 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 
 /**
  * The queue is derived from the LATEST completed occurrence of each stable Question ID. Attempts
@@ -241,11 +242,11 @@ internal class MistakeReviewServiceTest {
     fun reviewContentIsLoadedOnlyForUnresolvedQuestions() = runTest {
         val curriculum = RecordingCurriculumRepository(defaultQuestions())
         val service = MistakeReviewService(
-            assessmentRepository = HistoryRepository(
+            completedHistory = HistoryRepository(
                 listOf(
                     attempt("a1", "2026-08-29T10:00:00Z", "q1" to false, "q2" to true, "q3" to true),
                 ),
-            ),
+            ).asCompletedHistory(),
             assessmentReviewLoader = AssessmentReviewLoader(curriculum),
         )
 
@@ -266,12 +267,12 @@ internal class MistakeReviewServiceTest {
     fun theWholeQueueIsResolvedInOneHistoricalRead() = runTest {
         val curriculum = RecordingCurriculumRepository(defaultQuestions())
         val service = MistakeReviewService(
-            assessmentRepository = HistoryRepository(
+            completedHistory = HistoryRepository(
                 listOf(
                     attempt("newest", "2026-08-29T12:00:00Z", "q1" to false, "q2" to false),
                     attempt("oldest", "2026-08-29T10:00:00Z", "q3" to false, "q1" to true),
                 ),
-            ),
+            ).asCompletedHistory(),
             assessmentReviewLoader = AssessmentReviewLoader(curriculum),
         )
 
@@ -308,12 +309,12 @@ internal class MistakeReviewServiceTest {
     fun countUnresolvedAgreesWithTheQueueWithoutLoadingReviewContent() = runTest {
         val curriculum = RecordingCurriculumRepository(defaultQuestions())
         val service = MistakeReviewService(
-            assessmentRepository = HistoryRepository(
+            completedHistory = HistoryRepository(
                 listOf(
                     attempt("newest", "2026-08-29T12:00:00Z", "q1" to false, "q2" to true),
                     attempt("oldest", "2026-08-29T10:00:00Z", "q3" to false),
                 ),
-            ),
+            ).asCompletedHistory(),
             assessmentReviewLoader = AssessmentReviewLoader(curriculum),
         )
 
@@ -329,7 +330,7 @@ internal class MistakeReviewServiceTest {
             listOf(attempt("a1", "2026-08-29T10:00:00Z", "q1" to false)),
         )
         val service = MistakeReviewService(
-            assessmentRepository = repository,
+            completedHistory = repository.asCompletedHistory(),
             assessmentReviewLoader = AssessmentReviewLoader(
                 RecordingCurriculumRepository(defaultQuestions()),
             ),
@@ -352,7 +353,7 @@ internal class MistakeReviewServiceTest {
                 attempt("oldest", "2026-08-29T10:00:00Z", "q1" to false),
             ),
         )
-        val service = MistakeReviewService(repository, AssessmentReviewLoader(RecordingCurriculumRepository(defaultQuestions())))
+        val service = MistakeReviewService(repository.asCompletedHistory(), AssessmentReviewLoader(RecordingCurriculumRepository(defaultQuestions())))
 
         assertEquals(listOf("q2", "q1"), service.load().map { it.questionId })
         assertTrue(repository.readCount == 1, "History should be read once per load.")
@@ -364,7 +365,7 @@ private fun service(
     questions: List<Question> = defaultQuestions(),
 ): MistakeReviewService =
     MistakeReviewService(
-        assessmentRepository = HistoryRepository(attempts),
+        completedHistory = HistoryRepository(attempts).asCompletedHistory(),
         assessmentReviewLoader = AssessmentReviewLoader(RecordingCurriculumRepository(questions)),
     )
 

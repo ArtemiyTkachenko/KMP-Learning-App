@@ -489,7 +489,7 @@ internal class TopicBrowserViewModelTest {
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
             studyProgressStateHolder = studyProgressStateHolder(),
-            visibilityStateHolder = curriculumVisibilityStateHolder(),
+            visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -672,7 +672,7 @@ internal class TopicBrowserViewModelTest {
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
             studyProgressStateHolder = studyProgressStateHolder(),
-            visibilityStateHolder = curriculumVisibilityStateHolder(),
+            visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -921,7 +921,7 @@ internal class TopicBrowserViewModelTest {
             continueStudyingResolver = ContinueStudyingResolver(repository),
             learningRecommendationResolver = recommendationResolver(repository, history),
             studyProgressStateHolder = studyProgressStateHolder(),
-            visibilityStateHolder = curriculumVisibilityStateHolder(),
+            visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
         )
         advanceUntilIdle()
 
@@ -1660,7 +1660,7 @@ internal class TopicBrowserViewModelTest {
             recommendationResolver(repository, history),
         learningContent: LearningContentRepository = FakeLearningContentRepository(),
         studyProgress: StudyProgressStateHolder = studyProgressStateHolder(),
-        visibility: CurriculumVisibilityStateHolder = curriculumVisibilityStateHolder(),
+        visibility: CurriculumVisibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
     ): TopicBrowserViewModel =
         TopicBrowserViewModel(
             curriculumRepository = repository,

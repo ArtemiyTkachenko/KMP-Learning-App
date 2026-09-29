@@ -101,6 +101,12 @@ internal class TopicBrowserViewModel(
     private var learningContexts: LearningContextIndex? = null
     private var continueStudying: ContinueStudyingContext? = null
     private var recommendedNext: LearningRecommendation? = null
+    /**
+     * The visibility the history behind [learningContexts], [recommendedNext] and [continueStudying]
+     * was projected under. They are rendered only beside a catalogue loaded under the same one; see
+     * [guidanceMatchesCatalog].
+     */
+    private var enrichmentVisibility: CurriculumVisibility? = null
 
     init {
         observeLearningContext()
@@ -202,7 +208,8 @@ internal class TopicBrowserViewModel(
      */
     private fun observeLearningContext() {
         viewModelScope.launch {
-            visibleHistory.history.collect { history ->
+            visibleHistory.snapshots.collect { snapshot ->
+                val history = snapshot.history
                 val attempts = (history as? AssessmentHistory.Loaded)?.attempts
                 // A failed derivation is treated exactly like history that has not arrived: the
                 // catalog stays browsable and loses only its decoration. No derivation can turn
@@ -228,6 +235,7 @@ internal class TopicBrowserViewModel(
                 learningContexts = nextLearningContexts
                 recommendedNext = nextRecommendedNext
                 continueStudying = nextContinueStudying
+                enrichmentVisibility = snapshot.visibility
                 render()
             }
         }
@@ -330,6 +338,7 @@ internal class TopicBrowserViewModel(
     }
 
     private fun render() {
+        val guidanceIsCurrent = guidanceMatchesCatalog()
         _uiState.value = when (val catalog = catalog) {
             TopicCatalog.Loading -> TopicBrowserUiState.Loading
             TopicCatalog.Empty -> TopicBrowserUiState.Empty
@@ -337,13 +346,26 @@ internal class TopicBrowserViewModel(
             is TopicCatalog.Loaded -> catalog.toContent(
                 query = query,
                 learningUnitCounts = learningUnitCounts,
-                learningContexts = learningContexts,
-                continueStudying = continueStudying,
-                recommendedNext = recommendedNext,
+                learningContexts = learningContexts.takeIf { guidanceIsCurrent },
+                continueStudying = continueStudying.takeIf { guidanceIsCurrent },
+                recommendedNext = recommendedNext.takeIf { guidanceIsCurrent },
                 continueLearning = continueLearning(),
             )
         }
     }
+
+    /**
+     * Whether the history-derived enrichment describes the same visibility as the catalogue.
+     *
+     * A visibility change reloads the catalogue here and re-projects history in
+     * [VisibleAssessmentHistory], and either may finish first. Until the projection for the new
+     * visibility has been derived, the enrichment still describes the old one — after hiding Kotlin
+     * Multiplatform it can name a `kmp` recommendation or Continue Studying target that the
+     * catalogue no longer lists. It is withheld until the two agree, which the screen already renders
+     * as history that has not arrived, rather than cleared: clearing on the change could erase a
+     * projection for the new visibility that had already been derived.
+     */
+    private fun guidanceMatchesCatalog(): Boolean = enrichmentVisibility == catalogVisibility
 
     /**
      * Resolves the next Lesson from the two current inputs, or nothing when either is unknown.

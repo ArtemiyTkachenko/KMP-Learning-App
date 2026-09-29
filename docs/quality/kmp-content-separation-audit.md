@@ -774,6 +774,19 @@ from that emission. The database has not changed, so Step 6 does **not** call
 retry are unchanged. Only cached ACTIVE curriculum and learning reads needed an explicit
 reload.
 
+**Guidance from the old visibility is withheld.** The catalogue reload and the history
+re-projection finish in no fixed order. Hiding KMP makes the projection read Question
+metadata, so the Android-only catalogue can land first while Recommended Next, Continue
+Studying and the row learning context still describe KMP-visible history — for example, a
+Continue Studying shortcut into `kmp`. `VisibleAssessmentHistory.snapshots` therefore
+publishes each projection with the visibility it was made under (`VisibleHistorySnapshot`;
+`history` is the same flow with the visibility dropped, so the projection still runs once).
+`TopicBrowserViewModel` records that visibility with its enrichment and renders the
+enrichment only while it equals the catalogue's visibility, treating a mismatch as history
+not yet arrived. The fields are not cleared when the reload starts, because a projection for
+the new visibility may already have been derived by then. Topic Detail needs no gate: its
+enrichment is scoped to its own Topic, which is either unaffected or `NotFound`.
+
 **Study state.** Each reload asks the shared `StudyProgressStateHolder` to `refresh()`. It
 reads the full persisted record; nothing is filtered, cleared or unmarked. The visible Units
 decide what participates in a derivation, so a KMP Lesson studied while shown is still
@@ -794,7 +807,8 @@ serialised by the holder's read mutex.
 - `TopicBrowserVisibilityTest`: section order and repository order, no empty KMP section,
   OFF → ON and ON → OFF on one ViewModel, query preservation, a single startup read,
   Continue Learning over the visible sequence, a studied KMP Lesson surviving a round
-  trip, no raw history read on a change, and the old-visibility race.
+  trip, no raw history read on a change, the old-visibility race, and guidance from the old
+  projection withheld while the new one is still resolving.
 - `TopicBrowserVisibilityIntegrationTest`: the production graph over the bundled
   curriculum, one live ViewModel — KMP section, search and Unit count appear and disappear,
   and Continue Learning reaches KMP only after every core Lesson.

@@ -4,6 +4,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -33,7 +34,11 @@ import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumSection
 import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.curriculum.visibility.VisibleCurriculumRepository
 import org.artkachenko.kmp_learning_app.curriculum.visibility.VisibleLearningContentRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.completedAttempt
 import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
+import org.artkachenko.kmp_learning_app.curriculum.visibility.focusedOn
+import org.artkachenko.kmp_learning_app.curriculum.visibility.question
+import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingTarget
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationResolver
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
@@ -255,6 +260,52 @@ internal class TopicBrowserVisibilityTest {
         assertEquals(2, content.allTopics.single { it.topicId == "kmp" }.learningUnitCount)
     }
 
+    /**
+     * Hiding KMP reloads the catalogue and re-projects history independently. When the catalogue
+     * wins, the guidance derived from the KMP-visible history must not be shown beside it — here a
+     * Continue Studying shortcut back into the `kmp` Topic — until the new projection arrives.
+     */
+    @Test
+    fun guidanceFromTheOldVisibilityIsWithheldUntilHistoryIsReprojected() = runVisibilityTest {
+        val fixture = fixture(
+            includeKmpContent = true,
+            attempts = listOf(
+                completedAttempt(
+                    "kmp_run",
+                    completedAtSeconds = 2_000,
+                    "k1" to true,
+                    config = focusedOn(Topics[1], questionCount = 1),
+                ),
+                completedAttempt(
+                    "di_run",
+                    completedAtSeconds = 1_000,
+                    "d1" to true,
+                    config = focusedOn(Topics[0], questionCount = 1),
+                ),
+            ),
+        )
+        advanceUntilIdle()
+        assertEquals(ContinueStudyingTarget.Topic("kmp"), content(fixture).continueStudying?.target)
+
+        // The projection's Question lookup stalls; the catalogue read does not.
+        val projection = CompletableDeferred<Unit>()
+        fixture.curriculum.questionReadGate = projection
+        fixture.holder.setIncludeKmpContent(false)
+        advanceUntilIdle()
+
+        val reloaded = content(fixture)
+        assertEquals(listOf(CurriculumSection.AndroidEngineering), reloaded.sections.map { it.kind })
+        assertNull(reloaded.continueStudying)
+        assertNull(reloaded.recommendedNext)
+        assertTrue(reloaded.allTopics.all { it.learningContext == null })
+
+        projection.complete(Unit)
+        advanceUntilIdle()
+
+        // The KMP run is projected away, so the shortcut falls through to the core run.
+        assertEquals(ContinueStudyingTarget.Topic("di"), content(fixture).continueStudying?.target)
+    }
+
     private fun content(fixture: Fixture): TopicBrowserUiState.Content =
         assertIs<TopicBrowserUiState.Content>(fixture.viewModel.uiState.value)
 
@@ -272,13 +323,14 @@ internal class TopicBrowserVisibilityTest {
         includeKmpContent: Boolean,
         studied: List<String> = emptyList(),
         firstTopicReadGate: CompletableDeferred<Unit>? = null,
+        attempts: List<TestAttempt> = emptyList(),
     ): Fixture {
         val holder = curriculumVisibilityStateHolder(includeKmpContent)
         val rawCurriculum = RawCurriculum(firstTopicReadGate)
         val rawLearning = RawLearningContent()
         val curriculum = VisibleCurriculumRepository(rawCurriculum, holder.visibility)
         val learning = VisibleLearningContentRepository(rawLearning, holder.visibility)
-        val history = RecordingHistory()
+        val history = RecordingHistory(attempts)
         val studyRepository = FakeLessonStudyRepository(
             *studied.map { StudiedLesson(lessonId = it, studiedAtEpochMillis = 1_000) }.toTypedArray(),
         )
@@ -317,6 +369,9 @@ internal class TopicBrowserVisibilityTest {
         var topicReads = 0
             private set
 
+        /** Holds the next Question lookup — the history projection's — until completed. */
+        var questionReadGate: CompletableDeferred<Unit>? = null
+
         override suspend fun getActiveTopics(): List<Topic> {
             topicReads += 1
             firstTopicReadGate?.let { gate ->
@@ -344,8 +399,13 @@ internal class TopicBrowserVisibilityTest {
         override suspend fun getTopicById(topicId: String): Topic? = Topics.firstOrNull { it.id == topicId }
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
             Subtopics.firstOrNull { it.id == subtopicId }
-        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
-            emptyMap()
+        override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
+            questionReadGate?.let { gate ->
+                questionReadGate = null
+                gate.await()
+            }
+            return Questions.filter { it.id in questionIds }.associateBy(Question::id)
+        }
     }
 
     /** Two core Units, then the two KMP Units, in authored order. */
@@ -367,8 +427,8 @@ internal class TopicBrowserVisibilityTest {
             Units.flatMap { it.lessons }.firstOrNull { it.id == lessonId }
     }
 
-    /** An empty completed history whose raw reads are counted. */
-    private class RecordingHistory : AssessmentRepository {
+    /** A fixed completed history whose raw reads are counted. */
+    private class RecordingHistory(private val attempts: List<TestAttempt>) : AssessmentRepository {
         var reads = 0
             private set
 
@@ -376,7 +436,7 @@ internal class TopicBrowserVisibilityTest {
         override suspend fun getById(attemptId: String): TestAttempt? = null
         override suspend fun getCompletedAttempts(): List<TestAttempt> {
             reads += 1
-            return emptyList()
+            return attempts
         }
     }
 
@@ -391,6 +451,8 @@ internal class TopicBrowserVisibilityTest {
             Subtopic("koin_shared_graph", "kmp", "Koin in a shared graph"),
             Subtopic("state_hoisting", "compose", "State hoisting"),
         )
+        /** Resolvable only through the historical lookup, which the history projection uses. */
+        val Questions = listOf(question("d1", Subtopics[0]), question("k1", Subtopics[1]))
         val Units = listOf(
             unit("unit_di", "di", "lesson_di"),
             unit("unit_compose", "compose", "lesson_compose"),

@@ -29,6 +29,29 @@ taxonomy entry, changes no production curriculum JSON, changes nothing in this r
 Koin graph, and adds no Dagger or Hilt dependency anywhere. Every identity proposed here
 lives in documentation until the authoring issue that ships it.
 
+### Later change: KMP content separation
+
+This document is the historical record of E27 and is not rewritten. After E27 closed, the
+DI learning migration of [`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md)
+changed the shipped structure it describes:
+
+- The four core Koin Lessons (L5.1–L5.4) moved, with their Lesson ids, into a new core Unit
+  `unit_koin_containers_definitions_and_scopes`, **Koin: Containers, Definitions and
+  Scopes**, home `dependency_injection`, in the old Unit 5 position.
+- `unit_koin_and_dependency_injection_in_kmp` kept its id and title, moved to home Topic
+  `kmp`, and is now authored last, after every core Unit. It holds L5.5
+  `lesson_one_graph_across_platforms` (primary `koin_kmp`, replacing the deprecated
+  `koin_multiplatform`) and a new `lesson_choosing_di_for_a_shared_graph` (primary
+  `kmp_library_selection`) built from the KMP material formerly in L6.1, L6.3 and L6.4.
+- L5.1 now teaches an Android `Application` composition root and dropped supporting
+  `kmp_architecture`; L5.4 dropped supporting `kmp_lifecycle_viewmodel`; L6.3 replaced its
+  KMP Project C with an Android application already running Koin, dropped supporting
+  `koin_multiplatform` and `kmp_architecture`, and no longer links to L5.5.
+- Unit and Lesson ids, mappings and Question routes quoted below are therefore as of E27.
+  The current structure is in the [blueprint](dependency-injection-learning-blueprint.md),
+  where the multiplatform Lessons are L7.1 and L7.2, and the current routing is in
+  [`learning-question-coverage.md`](learning-question-coverage.md).
+
 ## Scope confirmation
 
 The merged epic assumes six instructional Units. **The six-Unit structure is unchanged.**

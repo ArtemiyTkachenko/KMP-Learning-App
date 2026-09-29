@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.topic_study
 
+import org.artkachenko.kmp_learning_app.AppRouteVisibilityResolver
 import org.artkachenko.kmp_learning_app.AppShellViewModel
 import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
 import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
@@ -30,6 +31,7 @@ import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBui
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeTargetResolver
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -114,6 +116,16 @@ internal val topicStudyPresentationModule = module {
             scope = get<AppCoroutineScope>(),
         )
     }
+    single {
+        // The navigation shell's pruning authority. Stateless, and every repository it reads is
+        // already app-scoped; the navigator itself never sees it.
+        AppRouteVisibilityResolver(
+            curriculumRepository = get(),
+            learningContentRepository = get(),
+            assessmentRepository = get(),
+            assessmentSessionLoader = get(),
+        )
+    }
     viewModel {
         AppShellViewModel(
             mistakeReviewService = get(),
@@ -136,6 +148,8 @@ internal val topicStudyPresentationModule = module {
         SavedQuestionsViewModel(
             savedQuestionStateHolder = get(),
             contentResolver = get(),
+            // Resolved content follows visibility while the saved list itself stays unchanged.
+            visibilityStateHolder = get(),
         )
     }
     viewModel {
@@ -177,6 +191,7 @@ internal val topicStudyPresentationModule = module {
         ProgressTopicViewModel(
             topicId = parameters.get(),
             learningProgressService = get(),
+            visibilityStateHolder = get(),
         )
     }
     viewModel { parameters ->
@@ -203,6 +218,8 @@ internal val topicStudyPresentationModule = module {
             // The same app-scoped holder the reader below mutates, so a Lesson marked one level
             // deeper reaches this overview without it being rebuilt.
             studyProgressStateHolder = get(),
+            // The identity lookup resolves hidden Units, so the guard reads the learner's visibility.
+            visibilityStateHolder = get(),
         )
     }
     viewModel { parameters ->
@@ -214,6 +231,7 @@ internal val topicStudyPresentationModule = module {
             lessonId = parameters.get(1),
             learningContentRepository = get(),
             studyProgressStateHolder = get(),
+            visibilityStateHolder = get(),
         )
     }
     single {
@@ -223,6 +241,8 @@ internal val topicStudyPresentationModule = module {
         PracticeTargetResolver(
             curriculumRepository = get(),
             learningContentRepository = get(),
+            // The identity reads resolve hidden targets, so ownership is checked against this.
+            visibility = get<CurriculumVisibilityStateHolder>().visibility,
         )
     }
     viewModel { parameters ->
@@ -232,6 +252,8 @@ internal val topicStudyPresentationModule = module {
             target = parameters.get(),
             targetResolver = get(),
             questionSelector = get(),
+            // Observed so a live builder re-resolves its target when Settings changes visibility.
+            visibilityStateHolder = get(),
             // Optional: opening the builder from content passes a scope alone and keeps the
             // builder's own ALL default, while a preset-carrying entry supplies the source.
             initialSource = parameters.getOrNull() ?: PracticeQuestionSource.ALL,
@@ -244,15 +266,19 @@ internal val topicStudyPresentationModule = module {
             assessmentRepository = get(),
             assessmentSessionLoader = get<AssessmentSessionLoader>(),
             completeAttempt = get(),
+            visibilityStateHolder = get(),
         )
     }
     viewModel { parameters ->
         FocusedResultViewModel(
             attemptId = parameters.get(),
             assessmentRepository = get(),
+            // For its historical resolver only, which the visibility projection classifies with.
+            curriculumRepository = get(),
             assessmentReviewLoader = get(),
             assessmentRetakeService = get(),
             savedQuestionStateHolder = get(),
+            visibilityStateHolder = get(),
         )
     }
     viewModel { parameters ->
@@ -263,6 +289,7 @@ internal val topicStudyPresentationModule = module {
             assessmentReviewLoader = get(),
             assessmentRetakeService = get(),
             savedQuestionStateHolder = get(),
+            visibilityStateHolder = get(),
         )
     }
 }

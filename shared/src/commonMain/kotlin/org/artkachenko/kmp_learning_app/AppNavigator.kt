@@ -83,6 +83,35 @@ internal class AppNavigator(
         return false
     }
 
+    /**
+     * Every detail route on every area's stack, roots excluded — what a caller validating the whole
+     * navigation state needs to look at, not only the area on screen.
+     */
+    fun detailRoutes(): Set<AppRoute> =
+        stacks.values.flatMapTo(linkedSetOf()) { stack -> stack.drop(1).filterIsInstance<AppRoute>() }
+
+    /**
+     * Removes, from every area's stack, the first entry in [invalid] and everything above it.
+     *
+     * Structural only: which routes are invalid is the caller's decision, and this knows nothing
+     * about why. The whole tail goes because an entry above an invalid one was reached *through* it —
+     * a Lesson through its Unit, a builder through its Topic — so it belongs to a path that no longer
+     * exists. Nothing is reconstructed and the root always stays.
+     *
+     * [AppRoute.Settings] on top of a pruned stack is the one exception: it stays open, rebased
+     * directly on the root, so a learner who changes a setting is not thrown out of Settings by the
+     * consequences of that change. Back then returns to the area's root.
+     */
+    fun pruneFrom(invalid: Set<AppRoute>) {
+        stacks.values.forEach { stack ->
+            val first = stack.indexOfFirst { it in invalid }
+            if (first < 1) return@forEach
+            val keepsSettings = stack.last() == AppRoute.Settings
+            while (stack.size > first) stack.removeAt(stack.lastIndex)
+            if (keepsSettings) stack.add(AppRoute.Settings)
+        }
+    }
+
     private fun popToRoot() {
         val stack = backStack
         while (stack.size > 1) stack.removeAt(stack.lastIndex)

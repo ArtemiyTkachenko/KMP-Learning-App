@@ -52,6 +52,7 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.artkachenko.kmp_learning_app.saved_questions.savedQuestionStateHolder
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class MixedInterviewResultViewModelTest {
@@ -437,6 +438,7 @@ internal class MixedInterviewResultViewModelTest {
             ),
         ),
         savedQuestionStateHolder = savedQuestionStateHolder(savedRepository),
+        visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
     )
 
     private fun inProgressAttempt() = TestAttempt(

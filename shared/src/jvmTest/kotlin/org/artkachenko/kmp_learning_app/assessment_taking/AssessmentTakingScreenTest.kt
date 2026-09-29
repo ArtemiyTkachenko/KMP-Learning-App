@@ -43,6 +43,29 @@ import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 
 @OptIn(ExperimentalTestApi::class)
 internal class AssessmentTakingScreenTest {
+    /** A valid attempt the content setting hides: a message, not a failure to retry. */
+    @Test
+    fun anUnavailableAssessmentExplainsItselfWithoutRetry() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = AssessmentTakingUiState.Unavailable,
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithText(
+            "This assessment is not available with the current learning-content settings.",
+        ).assertIsDisplayed()
+        onNodeWithText("Retry").assertDoesNotExist()
+    }
+
     @Test
     fun singleQuestionRendersProgressAndUsesStableAnswerId() = runComposeUiTest {
         var selectedId: String? = null

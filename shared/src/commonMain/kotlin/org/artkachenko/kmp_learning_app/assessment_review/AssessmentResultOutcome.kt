@@ -66,6 +66,8 @@ internal fun AssessmentResultOutcome(
     retakeProgressTestTag: String,
     onPracticeMistakes: ((AssessmentConfig.Focused) -> Unit)?,
     modifier: Modifier = Modifier,
+    /** Questions the current curriculum visibility left out of this result; see [HiddenReviewQuestionsNotice]. */
+    hiddenQuestionCount: Int = 0,
 ) {
     val mistakes = questions.unresolvedMistakes()
     // Reachable only when this host can start a practice run *and* there is something to practise.
@@ -78,6 +80,8 @@ internal fun AssessmentResultOutcome(
             percentage = percentage,
             title = title,
         )
+        // First among the qualifiers: it explains the figure itself, which the other two do not.
+        HiddenReviewQuestionsNotice(hiddenQuestionCount)
         UnresolvedReviewQuestionsNotice(questions, totalQuestions)
         MistakeRetentionNotice(mistakes.size)
         // The actions are one group at their own, tighter spacing, so they read as two ways forward

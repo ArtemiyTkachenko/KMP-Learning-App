@@ -16,6 +16,8 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
 import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
 import org.artkachenko.kmp_learning_app.topic_study.testLearningLesson
 import org.artkachenko.kmp_learning_app.topic_study.testLearningUnit
+import kotlinx.coroutines.flow.MutableStateFlow
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
 
 /**
  * The one crossing from learning content into assessment configuration.
@@ -25,6 +27,8 @@ import org.artkachenko.kmp_learning_app.topic_study.testLearningUnit
  * regression in any of them quietly changes what learners are quizzed on without breaking a screen.
  */
 internal class PracticeTargetResolverTest {
+    private val allVisible = MutableStateFlow(CurriculumVisibility(hiddenTopicIds = emptySet()))
+
     /**
      * The core derivation, with every rule visible at once: a primary concept named by two Lessons
      * appears once, a supporting concept never appears, and a deprecated Lesson contributes
@@ -109,6 +113,7 @@ internal class PracticeTargetResolverTest {
         val resolution = PracticeTargetResolver(
             curriculumRepository = FakeCurriculumRepository(),
             learningContentRepository = FakeLearningContentRepository(),
+            visibility = allVisible,
         ).resolve(PracticeBuilderTarget.LearningUnit("unit_missing"))
 
         assertEquals(PracticeTargetResolution.Unavailable, resolution)
@@ -129,6 +134,7 @@ internal class PracticeTargetResolverTest {
         val resolution = PracticeTargetResolver(
             curriculumRepository = FakeCurriculumRepository(),
             learningContentRepository = FakeLearningContentRepository(units = listOf(unit)),
+            visibility = allVisible,
         ).resolve(PracticeBuilderTarget.LearningUnit("unit_a"))
 
         assertEquals(PracticeTargetResolution.Unavailable, resolution)
@@ -155,6 +161,7 @@ internal class PracticeTargetResolverTest {
         val resolution = PracticeTargetResolver(
             curriculumRepository = FakeCurriculumRepository(),
             learningContentRepository = FakeLearningContentRepository(units = listOf(unit)),
+            visibility = allVisible,
         ).resolve(PracticeBuilderTarget.LearningUnit("unit_a"))
 
         assertEquals(PracticeTargetResolution.NoPracticeableConcepts, resolution)
@@ -170,6 +177,7 @@ internal class PracticeTargetResolverTest {
             curriculumRepository = FakeCurriculumRepository(),
             learningContentRepository =
                 FakeLearningContentRepository(failuresRemaining = Int.MAX_VALUE),
+            visibility = allVisible,
         )
 
         val topic = assertIs<PracticeTargetResolution.Resolved>(
@@ -196,6 +204,7 @@ internal class PracticeTargetResolverTest {
         val resolver = PracticeTargetResolver(
             curriculumRepository = FakeCurriculumRepository(failing = true),
             learningContentRepository = FakeLearningContentRepository(),
+            visibility = allVisible,
         )
 
         val resolution = assertIs<PracticeTargetResolution.Resolved>(
@@ -211,6 +220,7 @@ internal class PracticeTargetResolverTest {
             PracticeTargetResolver(
                 curriculumRepository = FakeCurriculumRepository(),
                 learningContentRepository = FakeLearningContentRepository(units = listOf(unit)),
+                visibility = allVisible,
             ).resolve(PracticeBuilderTarget.LearningUnit(unit.id)),
         )
 

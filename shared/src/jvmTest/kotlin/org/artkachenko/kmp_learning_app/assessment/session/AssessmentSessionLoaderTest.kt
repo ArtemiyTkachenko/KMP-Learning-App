@@ -23,14 +23,19 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
 
 internal class AssessmentSessionLoaderTest {
+    private val allVisible = MutableStateFlow(CurriculumVisibility(hiddenTopicIds = emptySet()))
+
     @Test
     fun loadsInProgressAttemptInPersistedQuestionOrder() = runTest {
         val repository = FakeAssessmentRepository(attempt(listOf("q3", "q1", "q2")))
         val result = AssessmentSessionLoader(
             repository,
             FakeCurriculumRepository(listOf(question("q1"), question("q2"), question("q3"))),
+            allVisible,
         ).load("attempt")
 
         val loaded = assertIs<AssessmentSessionLoadResult.Loaded>(result)
@@ -40,7 +45,7 @@ internal class AssessmentSessionLoaderTest {
     @Test
     fun rejectsMissingAndCompletedAttempts() = runTest {
         val repository = FakeAssessmentRepository(null)
-        val loader = AssessmentSessionLoader(repository, FakeCurriculumRepository())
+        val loader = AssessmentSessionLoader(repository, FakeCurriculumRepository(), allVisible)
         assertIs<AssessmentSessionLoadResult.AttemptNotFound>(loader.load("missing"))
 
         repository.attempt = attempt(listOf("q"), status = AssessmentStatus.COMPLETED)
@@ -51,12 +56,12 @@ internal class AssessmentSessionLoaderTest {
     fun missingQuestionIsExplicitAndDeprecatedQuestionLoads() = runTest {
         val curriculum = FakeCurriculumRepository(listOf(question("q", ContentStatus.DEPRECATED)))
         val missing = AssessmentSessionLoader(
-            FakeAssessmentRepository(attempt(listOf("missing", "q"))), curriculum,
+            FakeAssessmentRepository(attempt(listOf("missing", "q"))), curriculum, allVisible,
         ).load("attempt")
         assertEquals("missing", assertIs<AssessmentSessionLoadResult.MissingQuestion>(missing).questionId)
 
         val loaded = AssessmentSessionLoader(
-            FakeAssessmentRepository(attempt(listOf("q"))), curriculum,
+            FakeAssessmentRepository(attempt(listOf("q"))), curriculum, allVisible,
         ).load("attempt")
         assertIs<AssessmentSessionLoadResult.Loaded>(loaded)
     }
@@ -70,6 +75,7 @@ internal class AssessmentSessionLoaderTest {
         val resumed = AssessmentSessionLoader(
             FakeAssessmentRepository(attempt(listOf("q1"))),
             curriculum,
+            allVisible,
         ).load("attempt")
         val takingOrder = assertIs<AssessmentSessionLoadResult.Loaded>(resumed)
             .session.questions.single().answers.map { it.id }

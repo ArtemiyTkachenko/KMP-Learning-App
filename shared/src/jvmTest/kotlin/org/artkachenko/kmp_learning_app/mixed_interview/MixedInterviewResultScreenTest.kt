@@ -39,6 +39,7 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
+import org.artkachenko.kmp_learning_app.assessment_review.HiddenReviewQuestionsNoticeTag
 
 @OptIn(ExperimentalTestApi::class)
 internal class MixedInterviewResultScreenTest {
@@ -91,6 +92,48 @@ internal class MixedInterviewResultScreenTest {
         onNodeWithText("4 of 5 questions", substring = true)
             .performScrollTo()
             .assertIsDisplayed()
+    }
+
+    /** Audit D-2: a projected result says how many Questions the content setting hides. */
+    @Test
+    fun hiddenQuestionsAreCountedInTheSummaryAndAbsentWhenNoneAreHidden() = runComposeUiTest {
+        var state by mutableStateOf(contentState().copy(hiddenQuestionCount = 2))
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(state = state, onRetry = {}, onBack = {}, onSourceClick = {})
+            }
+        }
+
+        onNodeWithText("2 Kotlin Multiplatform questions are hidden by your learning-content setting.")
+            .performScrollTo()
+            .assertIsDisplayed()
+
+        state = state.copy(hiddenQuestionCount = 1)
+        onNodeWithText("1 Kotlin Multiplatform question is hidden by your learning-content setting.")
+            .performScrollTo()
+            .assertIsDisplayed()
+
+        state = state.copy(hiddenQuestionCount = 0)
+        onNodeWithTag(HiddenReviewQuestionsNoticeTag).assertDoesNotExist()
+    }
+
+    @Test
+    fun anUnavailableResultExplainsItselfWithoutRetry() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = MixedInterviewResultUiState.Unavailable,
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                )
+            }
+        }
+
+        onNodeWithText(
+            "This interview result is not available with the current learning-content settings.",
+        ).assertIsDisplayed()
+        onNodeWithText("Retry").assertDoesNotExist()
     }
 
     @Test

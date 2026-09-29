@@ -7,6 +7,13 @@ internal sealed interface AssessmentTakingUiState {
 
     data object Error : AssessmentTakingUiState
 
+    /**
+     * A valid persisted attempt that contains content the learner's visibility currently hides.
+     * Distinct from [Error] (nothing failed, so there is no Retry), [NoQuestions] and a missing
+     * attempt: it becomes loadable again, unchanged, once that content is shown.
+     */
+    data object Unavailable : AssessmentTakingUiState
+
     data class Content(
         val attemptId: String,
         val questionNumber: Int,

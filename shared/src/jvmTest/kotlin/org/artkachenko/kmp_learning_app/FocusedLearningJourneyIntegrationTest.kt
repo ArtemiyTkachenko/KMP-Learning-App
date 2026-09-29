@@ -77,6 +77,7 @@ import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
 import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
 import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 internal class FocusedLearningJourneyIntegrationTest {
@@ -348,7 +349,7 @@ internal class FocusedLearningJourneyIntegrationTest {
                     single<AssessmentRepository> { repository }
                     single { selector }
                     single { engine }
-                    single { AssessmentSessionLoader(get(), get()) }
+                    single { AssessmentSessionLoader(get(), get(), get<CurriculumVisibilityStateHolder>().visibility) }
                     single { AssessmentRetakeService(get(), get()) }
                 },
             ),

@@ -35,6 +35,7 @@ import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
 
 @OptIn(ExperimentalTestApi::class)
 internal class SavedQuestionsScreenTest {
@@ -178,7 +179,7 @@ internal class SavedQuestionsScreenTest {
         val items = runBlocking {
             SavedQuestionContentResolver(
                 ScreenCurriculumRepository(status = ContentStatus.DEPRECATED),
-            ).resolve(listOf(SavedQuestion("q_old", savedAtEpochMillis = 100)))
+            ).resolve(listOf(SavedQuestion("q_old", savedAtEpochMillis = 100)), CurriculumVisibility(hiddenTopicIds = emptySet()))
         }
         setContent { AppTheme { screen(SavedQuestionsUiState.Content(items)) } }
 

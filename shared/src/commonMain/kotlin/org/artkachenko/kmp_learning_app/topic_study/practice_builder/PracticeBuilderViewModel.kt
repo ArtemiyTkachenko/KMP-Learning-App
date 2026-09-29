@@ -19,6 +19,8 @@ import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentSelectionResult
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 
 /**
  * Configures one targeted practice run, then hands the finished configuration to navigation.
@@ -39,11 +41,16 @@ import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
  * Eligibility is read through [AssessmentQuestionSelector], the same boundary the engine selects
  * with, and deliberately never through `AssessmentEngine.start`: starting persists an attempt, and
  * a screen that checks whether practice is possible must not create practice as a side effect.
+ *
+ * The learner's curriculum visibility is observed while the builder is alive. A change re-resolves
+ * the original [target] — the resolver stays the ownership authority, so the resolved scope is never
+ * inspected here — and cancels any resolution or eligibility read made under the old visibility.
  */
 internal class PracticeBuilderViewModel(
     private val target: PracticeBuilderTarget,
     private val targetResolver: PracticeTargetResolver,
     private val questionSelector: AssessmentQuestionSelector,
+    private val visibilityStateHolder: CurriculumVisibilityStateHolder,
     /**
      * Which source the builder opens on. `ALL` is the entry from Topic Detail and stays the
      * default; a caller that already knows the practice intent — a remembered targeted run —
@@ -71,8 +78,12 @@ internal class PracticeBuilderViewModel(
      */
     private var scope: AssessmentScope? = null
 
+    /** The visibility the newest resolution was requested under; see [observeVisibility]. */
+    private var resolveVisibility: CurriculumVisibility? = null
+
     init {
         resolveTarget()
+        observeVisibility()
     }
 
     fun selectQuestionCount(questionCount: Int) {
@@ -177,9 +188,23 @@ internal class PracticeBuilderViewModel(
      * not be read at all — and only the last of those is worth retrying, which is why it reports
      * as [PracticeAvailability.Error] rather than as one of the settled states.
      */
+    /**
+     * Re-resolves when the learner shows or hides optional content, so a builder parked under
+     * Settings cannot keep a scope resolved for a Topic that is now hidden. The replayed startup
+     * value equals [resolveVisibility] and is ignored.
+     */
+    private fun observeVisibility() {
+        viewModelScope.launch {
+            visibilityStateHolder.visibility.collect { visibility ->
+                if (visibility != resolveVisibility) resolveTarget()
+            }
+        }
+    }
+
     private fun resolveTarget() {
         resolveJob?.cancel()
         availabilityJob?.cancel()
+        resolveVisibility = visibilityStateHolder.visibility.value
         scope = null
         _uiState.update { it.copy(availability = PracticeAvailability.Checking) }
         resolveJob = viewModelScope.launch {

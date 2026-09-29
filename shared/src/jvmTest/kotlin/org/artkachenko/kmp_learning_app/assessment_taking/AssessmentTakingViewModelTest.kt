@@ -43,9 +43,13 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class AssessmentTakingViewModelTest {
+    /** Everything visible: these tests predate curriculum visibility and are not about it. */
+    private val visibility = curriculumVisibilityStateHolder(includeKmpContent = true)
+
     @AfterTest
     fun tearDown() {
         Dispatchers.resetMain()
@@ -387,12 +391,13 @@ internal class AssessmentTakingViewModelTest {
             attemptId = "retake-1",
             assessmentEngine = engine,
             assessmentRepository = repository,
-            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum, visibility.visibility),
             completeAttempt = CompleteAssessment(
                 assessmentEngine = engine,
                 assessmentRepository = repository,
                 historyStore = AssessmentHistoryStore(repository, backgroundScope),
             ),
+            visibilityStateHolder = visibility,
         )
         advanceUntilIdle()
 
@@ -486,12 +491,13 @@ internal class AssessmentTakingViewModelTest {
             attemptId = "mixed-existing",
             assessmentEngine = engine,
             assessmentRepository = repository,
-            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum, visibility.visibility),
             completeAttempt = CompleteAssessment(
                 assessmentEngine = engine,
                 assessmentRepository = repository,
                 historyStore = AssessmentHistoryStore(repository, backgroundScope),
             ),
+            visibilityStateHolder = visibility,
         )
 
         advanceUntilIdle()
@@ -550,12 +556,13 @@ internal class AssessmentTakingViewModelTest {
             attemptId = retake.id,
             assessmentEngine = engine,
             assessmentRepository = repository,
-            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum, visibility.visibility),
             completeAttempt = CompleteAssessment(
                 assessmentEngine = engine,
                 assessmentRepository = repository,
                 historyStore = AssessmentHistoryStore(repository, backgroundScope),
             ),
+            visibilityStateHolder = visibility,
         )
         advanceUntilIdle()
 
@@ -591,12 +598,13 @@ internal class AssessmentTakingViewModelTest {
             attemptId = "mixed-ready",
             assessmentEngine = engine,
             assessmentRepository = repository,
-            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum, visibility.visibility),
             completeAttempt = CompleteAssessment(
                 assessmentEngine = engine,
                 assessmentRepository = repository,
                 historyStore = AssessmentHistoryStore(repository, backgroundScope),
             ),
+            visibilityStateHolder = visibility,
         )
 
         advanceUntilIdle()
@@ -634,12 +642,13 @@ internal class AssessmentTakingViewModelTest {
             attemptId = "mixed-completed",
             assessmentEngine = engine,
             assessmentRepository = repository,
-            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum, visibility.visibility),
             completeAttempt = CompleteAssessment(
                 assessmentEngine = engine,
                 assessmentRepository = repository,
                 historyStore = AssessmentHistoryStore(repository, backgroundScope),
             ),
+            visibilityStateHolder = visibility,
         )
 
         advanceUntilIdle()
@@ -699,12 +708,13 @@ internal class AssessmentTakingViewModelTest {
             attemptId = attemptId,
             assessmentEngine = engine,
             assessmentRepository = repository,
-            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum),
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum, visibility.visibility),
             completeAttempt = CompleteAssessment(
                 assessmentEngine = engine,
                 assessmentRepository = repository,
                 historyStore = AssessmentHistoryStore(repository, CoroutineScope(SupervisorJob())),
             ),
+            visibilityStateHolder = visibility,
         )
     }
 

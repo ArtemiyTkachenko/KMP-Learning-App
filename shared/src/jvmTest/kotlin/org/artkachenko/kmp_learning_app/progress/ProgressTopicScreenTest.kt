@@ -40,6 +40,20 @@ internal class ProgressTopicScreenTest {
             .assertIsDisplayed()
     }
 
+    /** A hidden Topic is unavailable, which is not the same claim as having no answers yet. */
+    @Test
+    fun unavailableStateSaysTheTopicIsUnavailableWithoutRetry() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                ProgressTopicScreen(ProgressTopicUiState.Unavailable, {}, {})
+            }
+        }
+
+        onNodeWithText("Topic unavailable").assertIsDisplayed()
+        onNodeWithText("No completed answers have been recorded for this topic yet.").assertDoesNotExist()
+        onNodeWithText("Retry").assertDoesNotExist()
+    }
+
     @Test
     fun errorStateRendersAndRetries() = runComposeUiTest {
         var retryCount = 0

@@ -72,6 +72,10 @@ internal fun ProgressTopicScreen(
                         message = stringResource(Res.string.progress_topic_empty),
                         modifier = Modifier.fillMaxSize(),
                     )
+                    ProgressTopicUiState.Unavailable -> ScreenMessage(
+                        message = stringResource(Res.string.progress_topic_unavailable),
+                        modifier = Modifier.fillMaxSize(),
+                    )
                     ProgressTopicUiState.Error -> ScreenError(
                         message = stringResource(Res.string.progress_topic_error),
                         onRetry = onRetry,

@@ -584,7 +584,8 @@ This differs from the brief's sequence in two ways. The brief's "downstream filt
 | 4. Content-boundary invariants and leak test | Done — see [Step 4](#step-4-where-the-invariants-live). |
 | 5. Visibility core | Done — see [Step 5](#step-5-visibility-core). |
 | 6. Topic Browser sectioning + Settings switch + change propagation | Done — see [Step 6](#step-6-settings-switch-sections-and-live-propagation). |
-| 7–8 | Not started. |
+| 7. Route guards and back-stack pruning, plus saved, review and mistake filtering | Done — see [Step 7](#step-7-route-guards-back-stack-pruning-and-result-projection). |
+| 8. Architecture documentation | Not started. |
 
 Step 3 shipped Unit K1 as planned, with its two Lessons. The curriculum now has **32 Units
 and 138 Lessons**; the two `kmp` Units (K1, then K2) hold 4 Lessons and follow every core
@@ -826,6 +827,162 @@ serialised by the holder's read mutex.
   show, and its KMP result appears (then disappears after the second round trip).
 - Existing tests take the sectioned state through the test helper `browsingContent(...)`
   and read rows through `allTopics` (`TopicBrowserTestStates.kt`).
+
+### Step 7: route guards, back-stack pruning and result projection
+
+No user-visible path shows Kotlin Multiplatform content while the setting is off. Two layers do
+this. **Destination guards** are the correctness boundary: every destination that resolves identity
+or historical content refuses known-hidden content itself, so a restored, direct or not-yet-pruned
+route never shows it, even for a frame. **Back-stack pruning** is navigation cleanup on top, so Back
+and area switching do not lead into content that is now hidden. Visibility stays Topic-based
+throughout (`CurriculumVisibility.isTopicVisible`); no route, attempt or saved row carries a KMP flag,
+and nothing outside `CurriculumVisibility` names `"kmp"`.
+
+| Piece | Name and location (`shared/src/commonMain/.../kmp_learning_app/`) |
+| --- | --- |
+| Route classification | `AppRouteVisibilityResolver` and `enum AppRouteVisibility { Visible, KnownHidden, Unknown }` in `AppRouteVisibility.kt`, bound as a `single` in `topicStudyPresentationModule`. `classify(route, visibility)` reads nothing while nothing is hidden, and a failed read is `Unknown`. |
+| Pruning pass | `pruneRoutesHiddenBy(visibility, navigator, resolver)` in the same file: `collectLatest` over `CurriculumVisibilityStateHolder.visibility`, classifying `navigator.detailRoutes()` and passing the `KnownHidden` set to `navigator.pruneFrom`. Started from `AppShell` in `App.kt` by a `LaunchedEffect(navigator)`. |
+| Navigator operations | `AppNavigator.detailRoutes()` (every area's non-root entries) and `AppNavigator.pruneFrom(invalid)`. Structural only: no repository or visibility reaches the navigator. |
+| Unit / Lesson guards | `LearningUnitViewModel`, `LearningLessonViewModel`: an ACTIVE Unit whose `topicId` is hidden is the existing `NotFound`. The Lesson is decided by its owning Unit. |
+| Practice target guard | `PracticeTargetResolver` takes `visibility: StateFlow<CurriculumVisibility>`. Topic, Subtopic (parent Topic) and Unit (home Topic, checked before deriving concepts) targets that resolve hidden are `Unavailable`. `PracticeBuilderViewModel` observes the holder and re-resolves the original target. |
+| Progress Topic guard | New `ProgressTopicUiState.Unavailable`, rendered as the existing "Topic unavailable" (`progress_topic_unavailable`). `Empty` keeps meaning a visible Topic with no observations. |
+| Saved Questions | `SavedQuestionContentResolver.resolve(savedQuestions, visibility)` omits resolved hidden Questions. `SavedQuestionsViewModel` keys resolved content on the saved list and the visibility. |
+| Results | `FocusedResultViewModel` and `MixedInterviewResultViewModel` project their one stored attempt through `VisibleHistoryProjection.visibleAttempts`. New `Unavailable` states and `Content.hiddenQuestionCount`. |
+| Hidden-question notice | `HiddenReviewQuestionsNotice` in `assessment_review/AssessmentReviewComponents.kt`, placed by `AssessmentResultOutcome` directly under the completion hero. Plural `assessment_review_hidden_questions`. |
+| In-progress attempts | `AssessmentSessionLoader` takes `visibility` and returns the new `AssessmentSessionLoadResult.ContentUnavailable`. `AssessmentTakingViewModel` maps it to the new `AssessmentTakingUiState.Unavailable`. |
+
+**Route classification.** Ownership comes from current content, never from how an ID is spelled.
+
+| Routes | Rule |
+| --- | --- |
+| `Topics`, `Interview`, `Progress`, `MistakeReview`, `SavedQuestions`, `Settings` | Always `Visible`. |
+| `Topic`, `ProgressTopic`, `PracticeBuilderTopic` | The route's Topic ID. |
+| `PracticeBuilderSubtopic` | The resolved Subtopic's `topicId`. |
+| `LearningUnit`, `LearningLesson`, `PracticeBuilderLearningUnit` | The resolved Unit's `topicId`. A Lesson route uses the Unit it carries. |
+| `FocusedPracticeResult`, `MixedInterviewResult` | `KnownHidden` only when `VisibleHistoryProjection` leaves nothing of the completed attempt. A partial projection stays, and an unresolved Question keeps a result visible, as in history. |
+| `FocusedPracticeAttempt`, `MixedInterviewAttempt` | `AssessmentSessionLoader.load(attemptId, visibility)`: `ContentUnavailable` is `KnownHidden`. An attempt route whose attempt has completed is judged by the result rule, because it hands over to its result. |
+
+A missing ID, a failed read, an unresolved Question, or a result route whose attempt is not yet
+completed is `Unknown`. It stays on the stack and reaches its destination's existing
+NotFound/Error handling. Only `KnownHidden` is pruned.
+
+**Pruning semantics.**
+
+- Every area's stack is validated, not only the current one. A KMP Progress drill-down parked while
+  the learner changes Settings from Learn is gone when they return to Progress.
+- Each stack is cut from its **first** `KnownHidden` entry through its top. Entries above it were
+  reached through it, so their path no longer exists. Roots always stay, and nothing is
+  reconstructed.
+- **Settings preservation.** If the top of a pruned stack is `Settings`, it stays open, rebased
+  directly on the root. The learner is not thrown out of Settings by the switch they just changed,
+  and Back returns to the Learn root. The navigator applies this to any stack whose top is
+  `Settings`, not only the current one. Settings only ever sits on the Learn stack.
+- The pass runs for the initial (possibly restored) stacks under the current visibility and again on
+  every change. `collectLatest` cancels a pass still classifying, so a result computed under OFF
+  cannot prune a stack after visibility has changed again.
+- Turning KMP on does not recreate pruned routes.
+- Pruning is navigation state only. It never cancels or deletes an attempt, unsaves a Question,
+  unmarks a Lesson, or rewrites a configuration or result.
+
+**Destination guards and live observation.** Every guarded ViewModel observes
+`CurriculumVisibilityStateHolder.visibility` while alive: the Unit, the Lesson, the Practice Builder,
+Progress Topic, Saved Questions, both results and Assessment Taking. Each compares an emission with
+the visibility its newest load was requested under, the Step 6 pattern, so the StateFlow's replayed
+value never triggers a second startup read. Each reload goes through the screen's existing
+load path and job cancellation, so a read made under the old visibility cannot land last. A
+destination that is still alive and has not been pruned reloads when content is shown again.
+
+**Saved Questions.** `SavedQuestionStateHolder` still holds every raw saved identity. Nothing is
+filtered, deleted or unsaved, and the result and Mistake cards keep using it to show whether the
+Question on screen is saved. A resolved Question of a hidden Topic is omitted. An unresolved ID
+stays `Missing`, because its Topic cannot be classified. A DEPRECATED Question of a visible Topic
+stays, since status plays no part. A visibility change re-resolves the same saved list with no
+saved-table read. Content resolved under another visibility gives way to `Loading` rather than
+staying on screen, because it could hold now-hidden Questions. If every saved Question is hidden,
+the screen is `Empty`. The count on screen counts visible items only.
+
+**Result projection.** Both result ViewModels load the raw attempt, validate completion as before,
+and then project it. The projected score comes from persisted `Answered.isCorrect`. The review
+lists visible Questions in stored order. The Mixed Topic breakdown is counted from the visible
+review items, so a hidden Topic has no row. The attempt ID, timestamps and configuration are
+unchanged. Nothing visible means `Unavailable`, not `AttemptNotFound`. `AssessmentReviewLoader` is
+still historical and unfiltered: each caller hands it what is currently visible. Retake is
+unchanged and selects through the visible repositories, so it picks only eligible Questions. An
+unavailable result offers no retake.
+
+**D-2 notice.** When `hiddenQuestionCount > 0`, the result summary shows "N Kotlin Multiplatform
+question(s) is/are hidden by your learning-content setting." directly under the score, before the
+unresolved-content and mistake notes. It uses `onSurfaceVariant`, as a neutral note rather than a
+warning. The result is valid and simply projected. The Focused result uses the same notice for a
+historical attempt split across the boundary.
+
+**In-progress attempts are never partially filtered.** The loader checks visibility after its one
+batched Question read. If any Question that resolved belongs to a hidden Topic, the result is
+`ContentUnavailable`. That check runs before the missing-Question walk, so an attempt holding both
+a hidden and a missing Question is unavailable. An ID that does not resolve at all is still
+`MissingQuestion`. The stored attempt is untouched and resumes unchanged once visible.
+`AssessmentTakingViewModel` withdraws a session already on screen as soon as one of its Questions
+becomes hidden. It judges from the Questions it already holds, without a read. It ignores the result
+of an answer or completion write that was in flight when the session was withdrawn. A core session
+is not reloaded, so an unsubmitted selection survives. `Unavailable` has no Retry.
+
+**Surfaces that needed no code, because Step 5 covered them.** Mistake Review and its badge derive
+from `VisibleAssessmentHistory`, and the study link maps through ACTIVE visible Units. The new
+regression test confirms that a KMP mistake and its KMP study link disappear while hidden and
+return when shown. No filter was added to `MistakeReviewService`, `UnresolvedMistakeDerivation`,
+`MistakeReviewStateHolder` or `AssessmentReviewLoader`. Interview history, Progress, Continue
+Studying and recommendations were already projected. Topic Detail already used the visible
+repositories.
+
+**Deviations from the brief.**
+
+- Topic-owned routes (`Topic`, `ProgressTopic`, `PracticeBuilderTopic`) and `ProgressTopicViewModel`
+  check the route's Topic ID directly instead of resolving the Topic first. The ID *is* the Topic's
+  identity, so a lookup could only add a failure mode (`Unknown`) without changing any answer.
+- `PracticeTargetResolver` and `AssessmentSessionLoader` read visibility from an injected
+  `StateFlow`, as the repository decorators do. `SavedQuestionContentResolver` takes it as a
+  parameter instead, because its caller keys cached content on it. `AssessmentSessionLoader` also
+  exposes `load(attemptId, visibility)`, so route classification applies the destination's exact
+  rule under the visibility being validated.
+- `practice_builder_target_unavailable` used to read "This learning unit is no longer available for
+  practice.", which was wrong for a hidden Topic or Subtopic target. It now reads "This content is
+  not available for practice."
+- Assessment Taking also observes visibility live, which the brief did not require. An in-progress
+  attempt route can be parked in the Mistakes stack while Settings changes, and the guard should not
+  depend on pruning.
+- The hidden-question plural names Kotlin Multiplatform because `kmp` is the only Topic visibility
+  can hide. The count itself is Topic-agnostic.
+
+**Tests (all `jvmTest`).**
+
+- `AppRouteVisibilityTest`: classification of every route kind, both states. `Unknown` for missing
+  owners and failed reads. Result projection and in-progress rules, including unresolved Questions.
+  No reads while nothing is hidden. Pruning: the Learn flow back to `Topics`, a parked Progress
+  stack, builder routes, a KMP-only result removed while a partial Mixed result stays, `Unknown` kept,
+  Settings rebased, no recreation on ON, a superseded pass pruning nothing, and no attempt writes.
+- `AppNavigatorTest`: `pruneFrom` cuts from the first invalid entry, reaches every area, never
+  removes a root, and rebases Settings. `detailRoutes` excludes roots.
+- `AppNavigatorRestorationTest`: a stack saved with KMP routes in three areas, restored and
+  validated under OFF. Roots and visible routes stay, and hidden detail routes go.
+- `DestinationVisibilityGuardTest`: Unit and Lesson ON → Content, OFF → NotFound, and back on one
+  ViewModel. A single startup read. Practice targets by Topic, Subtopic and Unit, with a missing
+  label kept. A live builder going `TargetUnavailable` and back. Progress Topic `Unavailable`, not
+  `Empty`.
+- `ResultVisibilityTest`: the D-2 example (1/1 hidden, 1/2 shown), order and persisted
+  correctness, a breakdown with visible Topics only, Mixed and Focused `Unavailable` with no retake,
+  a partial historical Focused result, a retake selecting visible Questions only, a single startup
+  read, and the stored attempt unchanged.
+- `SavedAndSessionVisibilityTest`: resolver omission versus `Missing` versus DEPRECATED. The OFF →
+  ON → OFF round trip with no saved-table read or mutation. All-hidden → `Empty`. The pending
+  removal of a visible item. Loader rules (core, KMP-only, mixed never shortened, `MissingQuestion`
+  kept). Taking `Unavailable` without Retry, resuming when shown, and a live session withdrawn and
+  restored. A core session unaffected.
+- `CurriculumVisibilityIntegrationTest.hiddenKmpContentLeavesEveryIdentityResolvedSurfaceAndReturnsUnchanged`:
+  the production graph over the bundled curriculum. A saved KMP Question, a Mixed result with a KMP
+  mistake, a studied KMP Lesson, and the Mistake Review queue and its KMP study link all follow OFF →
+  ON → OFF on live ViewModels, while attempt, saved and study records stay equal.
+- Screen tests: the hidden-question notice (singular, plural, absent), and each new `Unavailable`
+  state in the Mixed and Focused results, Assessment Taking and Progress Topic, without Retry.
 
 ## Validation Plan
 

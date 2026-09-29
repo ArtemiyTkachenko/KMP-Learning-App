@@ -13,6 +13,7 @@ import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.data.local.assessment.repository.LocalAssessmentRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.learning_progress.LearningPerformanceDerivation
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.koin.dsl.module
 
 internal val assessmentDataModule = module {
@@ -88,6 +89,9 @@ internal val assessmentDataModule = module {
         AssessmentSessionLoader(
             assessmentRepository = get(),
             curriculumRepository = get(),
+            // Resuming is a presentation of the attempt, so it applies the learner's visibility;
+            // the attempt itself is never rewritten to fit it.
+            visibility = get<CurriculumVisibilityStateHolder>().visibility,
         )
     }
     single {

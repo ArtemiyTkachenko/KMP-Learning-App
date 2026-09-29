@@ -10,6 +10,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mixed_result_attempt_not_found
+import kmp_learning_app.shared.generated.resources.mixed_result_unavailable
 import kmp_learning_app.shared.generated.resources.mixed_result_error
 import kmp_learning_app.shared.generated.resources.mixed_result_loading
 import kmp_learning_app.shared.generated.resources.mixed_result_not_completed
@@ -97,6 +98,12 @@ internal fun MixedInterviewResultScreen(
                     )
                     MixedInterviewResultUiState.NotCompleted -> ScreenMessage(
                         message = stringResource(Res.string.mixed_result_not_completed),
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    // A message without Retry: the attempt exists and nothing failed; the
+                    // learner's content setting hides every Question in it.
+                    MixedInterviewResultUiState.Unavailable -> ScreenMessage(
+                        message = stringResource(Res.string.mixed_result_unavailable),
                         modifier = Modifier.fillMaxSize(),
                     )
                     MixedInterviewResultUiState.Error -> ScreenError(
@@ -201,6 +208,7 @@ private fun LazyListScope.outcomeSection(
             retakeActionTestTag = MixedResultPracticeAgainTag,
             retakeProgressTestTag = MixedResultCreatingIndicatorTag,
             onPracticeMistakes = onPracticeMistakes,
+            hiddenQuestionCount = state.hiddenQuestionCount,
         )
     }
     item {

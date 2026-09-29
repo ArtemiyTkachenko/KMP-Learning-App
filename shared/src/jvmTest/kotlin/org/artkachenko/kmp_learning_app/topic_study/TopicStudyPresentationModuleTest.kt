@@ -64,6 +64,7 @@ import org.koin.dsl.module
 import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
 import org.artkachenko.kmp_learning_app.curriculum.visibility.kmpContentPreferenceTestModule
 import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class TopicStudyPresentationModuleTest {
@@ -99,7 +100,7 @@ internal class TopicStudyPresentationModuleTest {
                         )
                     }
                     single<AssessmentRepository> { FakeAssessmentRepository() }
-                    single { AssessmentSessionLoader(get(), get()) }
+                    single { AssessmentSessionLoader(get(), get(), get<CurriculumVisibilityStateHolder>().visibility) }
                     single { StartAssessment(get(), get()) }
                     // Assessment taking resolves completion as one operation rather than being
                     // handed the repository and the cache to coordinate itself.

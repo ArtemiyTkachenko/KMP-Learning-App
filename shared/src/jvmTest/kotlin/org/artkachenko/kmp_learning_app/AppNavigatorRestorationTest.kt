@@ -9,6 +9,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.navigation3.runtime.NavKey
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
+import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
+import org.artkachenko.kmp_learning_app.curriculum.visibility.FixtureAssessmentRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.FixtureCurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.VisibilityGuardFixture
+import org.artkachenko.kmp_learning_app.curriculum.visibility.completedAttempt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -187,6 +200,63 @@ internal class AppNavigatorRestorationTest {
                 subtopicId = "subtopic_stable_id",
             ),
             shell.navigator.currentRoute,
+        )
+    }
+
+    /**
+     * The case Step 7 of the KMP content-separation audit exists for beyond the Settings flow: a
+     * stack saved while Kotlin Multiplatform content was shown, restored under a setting that hides
+     * it. The validation pass that runs for the initial stacks prunes the hidden detail routes and
+     * keeps every root and every visible route.
+     */
+    @Test
+    fun aStackSavedWithKmpShownIsValidatedWhenRestoredWithKmpHidden() = runComposeUiTest {
+        val shell = restorableShell()
+        shell.navigator.push(AppRoute.Topic("kmp"))
+        shell.navigator.push(AppRoute.LearningUnit("unit_kmp"))
+        shell.navigator.push(AppRoute.LearningLesson("unit_kmp", "lesson_kmp_1"))
+        shell.navigator.select(AppTopLevelDestination.PROGRESS)
+        shell.navigator.push(AppRoute.ProgressTopic("android"))
+        shell.navigator.push(AppRoute.PracticeBuilderTopic("android"))
+        shell.navigator.select(AppTopLevelDestination.INTERVIEW)
+        shell.navigator.push(AppRoute.MixedInterviewResult("kmp_result"))
+        waitForIdle()
+
+        restore(shell)
+        assertEquals(AppRoute.MixedInterviewResult("kmp_result"), shell.navigator.currentRoute)
+
+        val attempts = FixtureAssessmentRepository(completedAttempt("kmp_result", 1_000, "k1" to true))
+        val curriculum = FixtureCurriculumRepository()
+        val hidden = MutableStateFlow(CurriculumVisibility.from(includeKmpContent = false))
+        runBlocking {
+            val pruning = launch {
+                pruneRoutesHiddenBy(
+                    visibility = hidden,
+                    navigator = shell.navigator,
+                    resolver = AppRouteVisibilityResolver(
+                        curriculumRepository = curriculum,
+                        learningContentRepository = VisibilityGuardFixture.learningContent(),
+                        assessmentRepository = attempts,
+                        assessmentSessionLoader = AssessmentSessionLoader(attempts, curriculum, hidden),
+                    ),
+                )
+            }
+            // The pass runs on this thread's event loop; wait for it rather than for a fixed count.
+            withTimeout(5_000) {
+                while (AppRoute.MixedInterviewResult("kmp_result") in shell.navigator.detailRoutes()) yield()
+            }
+            pruning.cancelAndJoin()
+        }
+        waitForIdle()
+
+        assertEquals(AppTopLevelDestination.INTERVIEW, shell.navigator.area)
+        assertEquals(listOf<NavKey>(AppRoute.Interview), shell.navigator.backStack)
+        shell.navigator.select(AppTopLevelDestination.TOPICS)
+        assertEquals(listOf<NavKey>(AppRoute.Topics), shell.navigator.backStack)
+        shell.navigator.select(AppTopLevelDestination.PROGRESS)
+        assertEquals(
+            listOf<NavKey>(AppRoute.Progress, AppRoute.ProgressTopic("android"), AppRoute.PracticeBuilderTopic("android")),
+            shell.navigator.backStack,
         )
     }
 }

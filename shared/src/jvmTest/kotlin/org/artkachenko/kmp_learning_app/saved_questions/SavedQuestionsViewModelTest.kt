@@ -25,6 +25,7 @@ import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class SavedQuestionsViewModelTest {
@@ -195,7 +196,7 @@ internal class SavedQuestionsViewModelTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val repository = savedRepository("q1" to 100L)
         val holder = savedQuestionStateHolder(repository)
-        val viewModel = SavedQuestionsViewModel(holder, SavedQuestionContentResolver(VmCurriculumRepository()))
+        val viewModel = SavedQuestionsViewModel(holder, SavedQuestionContentResolver(VmCurriculumRepository()), curriculumVisibilityStateHolder(includeKmpContent = true))
         advanceUntilIdle()
         assertEquals(
             listOf("q1"),
@@ -261,6 +262,7 @@ internal class SavedQuestionsViewModelTest {
         SavedQuestionsViewModel(
             savedQuestionStateHolder = savedQuestionStateHolder(repository),
             contentResolver = SavedQuestionContentResolver(curriculum),
+            visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
         )
 }
 

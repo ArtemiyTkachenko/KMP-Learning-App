@@ -66,6 +66,8 @@ import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResult
 import org.artkachenko.kmp_learning_app.getQuestionById
 import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
+import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
 
 /**
  * The Saved Questions lifecycle across the boundaries no single-layer test owns: a real curriculum
@@ -122,7 +124,7 @@ internal class SavedQuestionLifecycleIntegrationTest {
             assertEquals(savedBefore, savedRepository.getSavedQuestions())
             assertEquals(3, database.savedQuestionDao().count())
 
-            val resolved = contentResolver.resolve(savedBefore)
+            val resolved = contentResolver.resolve(savedBefore, CurriculumVisibility(hiddenTopicIds = emptySet()))
             assertEquals(
                 savedBefore.map { it.questionId },
                 resolved.map { it.questionId },
@@ -195,6 +197,7 @@ internal class SavedQuestionLifecycleIntegrationTest {
                         contentResolver = SavedQuestionContentResolver(
                             LocalCurriculumRepository(secondSession),
                         ),
+                        visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
                     )
 
                     val content = assertIs<SavedQuestionsUiState.Content>(
@@ -343,9 +346,11 @@ internal class SavedQuestionLifecycleIntegrationTest {
             focused = FocusedResultViewModel(
                 attemptId = "focused_attempt",
                 assessmentRepository = assessmentRepository,
+                curriculumRepository = curriculumRepository,
                 assessmentReviewLoader = reviewLoader,
                 assessmentRetakeService = retakeService,
                 savedQuestionStateHolder = holder,
+                visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
             ),
             mixed = MixedInterviewResultViewModel(
                 attemptId = "mixed_attempt",
@@ -354,6 +359,7 @@ internal class SavedQuestionLifecycleIntegrationTest {
                 assessmentReviewLoader = reviewLoader,
                 assessmentRetakeService = retakeService,
                 savedQuestionStateHolder = holder,
+                visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
             ),
             mistakes = MistakeReviewViewModel(
                 historyStore = historyStore,
@@ -370,6 +376,7 @@ internal class SavedQuestionLifecycleIntegrationTest {
             browser = SavedQuestionsViewModel(
                 savedQuestionStateHolder = holder,
                 contentResolver = SavedQuestionContentResolver(curriculumRepository),
+                visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
             ),
         )
     }

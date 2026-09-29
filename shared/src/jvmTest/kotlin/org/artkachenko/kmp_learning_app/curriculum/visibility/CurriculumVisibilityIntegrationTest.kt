@@ -32,6 +32,19 @@ import org.artkachenko.kmp_learning_app.progress.ProgressStateHolder
 import org.artkachenko.kmp_learning_app.progress.ProgressUiState
 import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestionRepository
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewStateHolder
+import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewUiState
+import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultUiState
+import org.artkachenko.kmp_learning_app.mixed_interview.MixedInterviewResultViewModel
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsUiState
+import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsViewModel
+import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonUiState
+import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
+import org.koin.core.parameter.parametersOf
 import org.koin.core.Koin
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -108,6 +121,88 @@ internal class CurriculumVisibilityIntegrationTest {
         assertEquals(storedSaved, koin.get<SavedQuestionRepository>().getSavedQuestions())
         assertEquals(storedStudy, koin.get<LessonStudyRepository>().getStudiedLessons())
     }
+
+    /**
+     * Step 7's round trip over the production graph: every presentation that resolves identity or
+     * historical content — Saved Questions, a completed result, a Lesson, the Mistake Review queue
+     * and its study link — hides KMP content while it is off and shows it again when it is on, on
+     * the same live ViewModels, while the stored attempt, saved and study records never change.
+     */
+    @Test
+    fun hiddenKmpContentLeavesEveryIdentityResolvedSurfaceAndReturnsUnchanged() = withGraph { koin ->
+        Dispatchers.setMain(Dispatchers.Unconfined)
+        try {
+            val curriculum = koin.get<CurriculumRepository>()
+            val learning = koin.get<LearningContentRepository>()
+            val holder = koin.get<CurriculumVisibilityStateHolder>()
+            holder.setIncludeKmpContent(true)
+            val kmpUnits = learning.getActiveUnitsByTopic("kmp")
+            // A KMP Question some KMP Lesson teaches, so its mistake carries a study link.
+            val kmp = curriculum.getActiveQuestions().first { question ->
+                question.topicId == "kmp" &&
+                    kmpUnits.any { unit -> unit.lessons.any { question.subtopicId in it.primarySubtopicIds } }
+            }
+            val (core1, core2) = curriculum.getActiveQuestions().filter { it.topicId != "kmp" }.take(2)
+            val kmpUnit = kmpUnits.first()
+            val kmpLesson = kmpUnit.lessons.first()
+            holder.setIncludeKmpContent(false)
+
+            val attempts = koin.get<AssessmentRepository>()
+            val saved = koin.get<SavedQuestionRepository>()
+            val study = koin.get<LessonStudyRepository>()
+            attempts.save(completedAttempt("mixed", 1_000, core1.id to true, core2.id to false, kmp.id to false))
+            saved.save(kmp.id)
+            study.markStudied(kmpLesson.id)
+            val storedAttempts = attempts.getCompletedAttempts()
+            val storedSaved = saved.getSavedQuestions()
+            val storedStudy = study.getStudiedLessons()
+
+            val savedScreen = koin.get<SavedQuestionsViewModel>()
+            val result = koin.get<MixedInterviewResultViewModel> { parametersOf("mixed") }
+            val lesson = koin.get<LearningLessonViewModel> { parametersOf(kmpUnit.id, kmpLesson.id) }
+            val mistakes = koin.get<MistakeReviewStateHolder>().state
+
+            suspend fun assertHidden() {
+                savedScreen.uiState.await { it == SavedQuestionsUiState.Empty }
+                result.uiState.await {
+                    it is MixedInterviewResultUiState.Content &&
+                        it.totalQuestions == 2 && it.correctAnswers == 1 && it.hiddenQuestionCount == 1
+                }
+                lesson.uiState.await { it == LearningLessonUiState.NotFound }
+                mistakes.await {
+                    it is MistakeReviewUiState.Content && it.mistakes.map { m -> m.questionId } == listOf(core2.id)
+                }
+            }
+            assertHidden()
+
+            holder.setIncludeKmpContent(true)
+            savedScreen.uiState.await {
+                it is SavedQuestionsUiState.Content && it.items.map { item -> item.questionId } == listOf(kmp.id)
+            }
+            result.uiState.await {
+                it is MixedInterviewResultUiState.Content &&
+                    it.totalQuestions == 3 && it.correctAnswers == 1 && it.hiddenQuestionCount == 0
+            }
+            lesson.uiState.await { it is LearningLessonUiState.Content }
+            val shown = mistakes.await {
+                it is MistakeReviewUiState.Content && it.mistakes.any { m -> m.questionId == kmp.id }
+            } as MistakeReviewUiState.Content
+            val kmpMistake = shown.mistakes.single { it.questionId == kmp.id }
+            assertTrue(kmpUnits.any { it.id == kmpMistake.studyLesson?.unitId })
+
+            holder.setIncludeKmpContent(false)
+            assertHidden()
+
+            assertEquals(storedAttempts, attempts.getCompletedAttempts())
+            assertEquals(storedSaved, saved.getSavedQuestions())
+            assertEquals(storedStudy, study.getStudiedLessons())
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    private suspend fun <T> StateFlow<T>.await(predicate: (T) -> Boolean): T =
+        withContext(Dispatchers.Default) { withTimeout(TimeoutMillis) { first(predicate) } }
 
     private suspend fun StateFlow<ProgressUiState>.awaitContent(predicate: (ProgressUiState.Content) -> Boolean) {
         withTimeout(TimeoutMillis) { first { it is ProgressUiState.Content && predicate(it) } }

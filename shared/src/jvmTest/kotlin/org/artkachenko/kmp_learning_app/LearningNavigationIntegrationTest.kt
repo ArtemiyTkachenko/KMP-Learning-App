@@ -23,6 +23,7 @@ import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLess
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitUiState
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitViewModel
+import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 
 /**
  * Learn -> Topic -> Unit -> Lesson on the content that actually ships.
@@ -192,7 +193,7 @@ internal class LearningNavigationIntegrationTest {
         unitId: String,
         repository: LearningContentRepository,
     ): LearningUnitUiState {
-        val viewModel = LearningUnitViewModel(unitId, repository, studyProgressStateHolder())
+        val viewModel = LearningUnitViewModel(unitId, repository, studyProgressStateHolder(), curriculumVisibilityStateHolder(includeKmpContent = true))
         advanceUntilIdle()
         return viewModel.uiState.value
     }
@@ -203,7 +204,7 @@ internal class LearningNavigationIntegrationTest {
         repository: LearningContentRepository,
     ): LearningLessonUiState {
         val viewModel =
-            LearningLessonViewModel(unitId, lessonId, repository, studyProgressStateHolder())
+            LearningLessonViewModel(unitId, lessonId, repository, studyProgressStateHolder(), curriculumVisibilityStateHolder(includeKmpContent = true))
         advanceUntilIdle()
         return viewModel.uiState.value
     }

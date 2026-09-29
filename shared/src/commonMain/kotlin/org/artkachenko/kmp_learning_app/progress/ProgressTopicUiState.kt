@@ -3,7 +3,14 @@ package org.artkachenko.kmp_learning_app.progress
 internal sealed interface ProgressTopicUiState {
     data object Loading : ProgressTopicUiState
 
+    /** The Topic is visible and has no observations yet. */
     data object Empty : ProgressTopicUiState
+
+    /**
+     * The Topic is hidden by the learner's curriculum visibility. A settled answer, distinct from
+     * [Empty]: nothing is claimed about its history, which returns unchanged when it is shown.
+     */
+    data object Unavailable : ProgressTopicUiState
 
     data object Error : ProgressTopicUiState
 

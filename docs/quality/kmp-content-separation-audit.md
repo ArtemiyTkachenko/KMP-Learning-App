@@ -578,8 +578,9 @@ This differs from the brief's sequence in two ways. The brief's "downstream filt
 | --- | --- |
 | 1. Question-bank migration | Done (#438). |
 | 2. Learning migration, DI part | Done (#439). |
-| 3. Learning migration, Compose / Coroutines / Architecture part | Done — see below. |
-| 4–8 | Not started. |
+| 3. Learning migration, Compose / Coroutines / Architecture part | Done (#440) — see below. |
+| 4. Content-boundary invariants and leak test | Done — see [Step 4](#step-4-where-the-invariants-live). |
+| 5–8 | Not started. |
 
 Step 3 shipped Unit K1 as planned, with its two Lessons. The curriculum now has **32 Units
 and 138 Lessons**; the two `kmp` Units (K1, then K2) hold 4 Lessons and follow every core
@@ -611,6 +612,46 @@ Claims marked **(verify)** that primary sources did not support as proposed:
   and then the thread's handler, and crashes an Android app; suppressed exceptions (the
   current coroutines guide no longer carries a JDK 7 caveat); `AtomicInt` is experimental and
   represented on the JVM by `AtomicInteger`.
+
+### Step 4: where the invariants live
+
+All four [content-boundary invariants](#content-boundary-invariants) are bundled-content
+tests in `shared/src/jvmTest`, not `LearningCurriculumValidator` rules: "Topic `kmp` is
+optional content" is this product's authoring policy, not a property of any learning
+curriculum, and an authoring-time guarantee should cost nothing at runtime. Every rule
+derives its KMP Units, Lessons and Subtopics from Topic ownership, through one test constant
+`KMP_TOPIC_ID`, so a future KMP Unit is covered without being named. Each failure lists every
+violation with its Unit, Lesson, Question and block, so an author can fix them in one pass.
+
+| Invariant | Test |
+| --- | --- |
+| 1. KMP-Unit Lessons have only `kmp` primary Subtopics | `BundledLearningCurriculumTest.kmpUnitLessonsPractiseOnlyKmpOwnedSubtopics` |
+| 2. Core Lessons map no `kmp` Subtopic, primary or supporting | `BundledLearningCurriculumTest.coreLessonsMapNoKmpSubtopics` |
+| 3. Core Lessons link to no Lesson of a `kmp` Unit | `BundledLearningCurriculumTest.coreLessonsLinkToNoKmpLesson` |
+| 4. Lexical leak scan of core Questions and Lessons | `KmpContentLeakTest`, scanner `KmpVocabulary` in `KmpContentBoundary.kt`, scanner tests `KmpVocabularyTest` (all in `curriculum/content`) |
+
+- **Consolidated.** The generic rules replace the two narrow tests the migrations left
+  behind: the DI-only test and the test over the 19 Lessons the lifecycle Unit was extracted
+  from, plus the per-Unit primary-ownership assertions. The DI test also excluded the
+  deprecated DI Subtopic `koin_multiplatform`, which Topic ownership cannot see; the new
+  `lessonsMapNoDeprecatedSubtopics` keeps that coverage generically.
+- **Vocabulary**, case-insensitive: `Multiplatform` (so also "Kotlin Multiplatform" and
+  "Compose Multiplatform"), `KMP` as a word, `commonMain`, `iosMain`, `Kotlin/Native` (spaces
+  around the slash allowed), and `expect/actual` (also `expect / actual` and
+  `` `expect`/`actual` ``). Host, platform, shared, source set and iOS are deliberately not in
+  it.
+- **Learner-visible text scanned:** every non-`kmp` Question's text, answer options and
+  explanation, deprecated Questions included because attempt history still shows them; every
+  non-`kmp` Unit's title and summary, and its Lessons' titles, summaries, section titles and
+  every block kind (paragraph, bullet list, code, comparison, callout). Sources — titles and
+  URLs — and IDs are not scanned; the AndroidX `.../commonMain/...` source paths this audit
+  identified are therefore not leaks, and `KmpVocabularyTest` pins that.
+- **No allowlist.** The first run found no learner-visible leak and no structural violation,
+  so no content was changed; a future hit is fixed in the content.
+- **Questions reuse the generic validator.** `CurriculumValidator` reports
+  `SUBTOPIC_TOPIC_MISMATCH` for any Question whose Subtopic belongs to another Topic, and
+  `InitialCurriculumSmokeTest` asserts the bundled curriculum validates cleanly. That is why
+  Question visibility can use `question.topicId` alone; no KMP-specific Question rule exists.
 
 ## Validation Plan
 

@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.curriculum.learning.content
 import kotlinx.coroutines.test.runTest
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
+import org.artkachenko.kmp_learning_app.curriculum.content.KMP_TOPIC_ID
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningBlock
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
 import org.artkachenko.kmp_learning_app.curriculum.learning.validation.LearningCurriculumValidator
@@ -10,6 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 /**
  * Exercises the shipped resource rather than a fixture, so the packaged bundle itself is
@@ -2946,17 +2948,10 @@ internal class BundledLearningCurriculumTest {
             ),
             unit.lessons.map { it.supportingSubtopicIds },
         )
+        // Primary ownership is kmpUnitLessonsPractiseOnlyKmpOwnedSubtopics's subject; general
+        // DI concepts stay supporting.
         unit.lessons.forEach { lesson ->
             assertTrue(lesson.primarySubtopicIds.none { it in lesson.supportingSubtopicIds }, lesson.id)
-        }
-
-        // A KMP-home Lesson practises only KMP concepts; general DI concepts stay supporting.
-        val kmpSubtopics = BundledCurriculumSource.load().subtopics
-            .filter { it.topicId == "kmp" }
-            .map { it.id }
-            .toSet()
-        unit.lessons.forEach { lesson ->
-            assertTrue(lesson.primarySubtopicIds.all { it in kmpSubtopics }, lesson.id)
         }
     }
 
@@ -2968,9 +2963,9 @@ internal class BundledLearningCurriculumTest {
             listOf("unit_kmp_shared_viewmodels_and_host_lifecycles", "unit_koin_and_dependency_injection_in_kmp"),
             all.takeLast(2).map { it.id },
         )
-        assertTrue(all.dropLast(2).none { it.topicId == "kmp" })
-        assertEquals(2, all.count { it.topicId == "kmp" })
-        assertEquals(4, all.filter { it.topicId == "kmp" }.sumOf { it.lessons.size })
+        assertTrue(all.dropLast(2).none { it.topicId == KMP_TOPIC_ID })
+        assertEquals(2, all.count { it.topicId == KMP_TOPIC_ID })
+        assertEquals(4, all.filter { it.topicId == KMP_TOPIC_ID }.sumOf { it.lessons.size })
     }
 
     @Test
@@ -2987,14 +2982,10 @@ internal class BundledLearningCurriculumTest {
             unit.lessons.map { it.supportingSubtopicIds },
         )
 
-        // A KMP-home Lesson practises only KMP concepts; the Android concepts it extends stay
-        // supporting, so they cannot pull core Questions into this Unit's practice.
-        val kmpSubtopics = BundledCurriculumSource.load().subtopics
-            .filter { it.topicId == "kmp" }
-            .map { it.id }
-            .toSet()
+        // Primary ownership is kmpUnitLessonsPractiseOnlyKmpOwnedSubtopics's subject; the
+        // Android concepts this Unit extends stay supporting, so they cannot pull core
+        // Questions into its practice.
         unit.lessons.forEach { lesson ->
-            assertTrue(lesson.primarySubtopicIds.all { it in kmpSubtopics }, lesson.id)
             assertTrue(lesson.primarySubtopicIds.none { it in lesson.supportingSubtopicIds }, lesson.id)
         }
 
@@ -3027,63 +3018,106 @@ internal class BundledLearningCurriculumTest {
         }
     }
 
-    @Test
-    fun coreLessonsTheLifecycleUnitWasExtractedFromCarryNoKmpMappingsOrLinks() = runTest {
-        val kmpSubtopics = BundledCurriculumSource.load().subtopics
-            .filter { it.topicId == "kmp" }
-            .map { it.id }
-            .toSet()
-        val kmpLessons = units().filter { it.topicId == "kmp" }.flatMap { it.lessons }.map { it.id }.toSet()
-        val rewritten = setOf(
-            "lesson_remember_saveable",
-            "lesson_screen_state_owner_boundary",
-            "lesson_lifecycle_aware_collection",
-            "lesson_dispatchers",
-            "lesson_viewmodel_lifetime_and_persistence",
-            "lesson_owner_scoped_work",
-            "lesson_stability_and_skipping",
-            "lesson_launched_effect",
-            "lesson_flow_adapter_or_compose_producer",
-            "lesson_with_context_and_main_safety",
-            "lesson_sequential_and_concurrent_work",
-            "lesson_exception_propagation",
-            "lesson_shared_state_and_coordination",
-            "lesson_state_flow",
-            "lesson_state_holder_responsibility",
-            "lesson_when_a_domain_layer_earns_its_place",
-            "lesson_policy_and_framework_detail",
-            "lesson_mvvm_observed_state",
-            "lesson_choosing_the_owner_by_lifetime",
-        )
-        val lessons = units().filter { it.topicId != "kmp" }.flatMap { it.lessons }.filter { it.id in rewritten }
+    // The content visibility boundary. Topic `kmp` is the only classification: every rule
+    // below derives its KMP Units, Lessons and Subtopics from ownership, so a future KMP
+    // Unit is covered without being named. The lexical half is KmpContentLeakTest.
 
-        assertEquals(rewritten, lessons.map { it.id }.toSet())
-        lessons.forEach { lesson ->
-            assertTrue(
-                (lesson.primarySubtopicIds + lesson.supportingSubtopicIds).none { it in kmpSubtopics },
-                lesson.id,
-            )
-            assertTrue(lesson.relatedLessonIds.none { it in kmpLessons }, lesson.id)
-        }
+    @Test
+    fun kmpUnitLessonsPractiseOnlyKmpOwnedSubtopics() = runTest {
+        // Supporting Subtopics may bridge back to the core concepts a KMP Lesson extends; a
+        // primary one decides practice eligibility, so it must be KMP-owned.
+        val subtopicTopics = BundledCurriculumSource.load().subtopics.associate { it.id to it.topicId }
+        val kmpUnits = units().filter { it.topicId == KMP_TOPIC_ID }
+
+        assertTrue(kmpUnits.isNotEmpty())
+        assertNoBoundaryViolations(
+            kmpUnits.flatMap { unit ->
+                unit.lessons.flatMap { lesson ->
+                    lesson.primarySubtopicIds
+                        .filter { subtopicTopics[it] != KMP_TOPIC_ID }
+                        .map { subtopicId ->
+                            "KMP Unit ${unit.id} Lesson ${lesson.id} has primary Subtopic $subtopicId " +
+                                "owned by Topic ${subtopicTopics[subtopicId]}"
+                        }
+                }
+            },
+        )
     }
 
     @Test
-    fun coreDependencyInjectionUnitsCarryNoKmpMappingsOrLinks() = runTest {
-        // The DI area is separated; the curriculum-wide rule waits for the remaining extractions.
+    fun coreLessonsMapNoKmpSubtopics() = runTest {
+        // Stricter than the KMP side: even a supporting mapping would make a hidden concept
+        // part of Android-mode learning metadata.
         val kmpSubtopics = BundledCurriculumSource.load().subtopics
-            .filter { it.topicId == "kmp" }
+            .filter { it.topicId == KMP_TOPIC_ID }
             .map { it.id }
-            .toSet() + "koin_multiplatform"
-        val kmpLessons = units().filter { it.topicId == "kmp" }.flatMap { it.lessons }.map { it.id }.toSet()
+            .toSet()
+        val coreUnits = units().filter { it.topicId != KMP_TOPIC_ID }
 
-        units().filter { it.topicId == "dependency_injection" }.flatMap { it.lessons }.forEach { lesson ->
-            assertTrue(
-                (lesson.primarySubtopicIds + lesson.supportingSubtopicIds).none { it in kmpSubtopics },
-                lesson.id,
-            )
-            assertTrue(lesson.relatedLessonIds.none { it in kmpLessons }, lesson.id)
+        assertTrue(kmpSubtopics.isNotEmpty())
+        assertNoBoundaryViolations(
+            coreUnits.flatMap { unit ->
+                unit.lessons.flatMap { lesson ->
+                    val mappings = lesson.primarySubtopicIds.map { "primary" to it } +
+                        lesson.supportingSubtopicIds.map { "supporting" to it }
+                    mappings
+                        .filter { (_, subtopicId) -> subtopicId in kmpSubtopics }
+                        .map { (kind, subtopicId) ->
+                            "Core Unit ${unit.id} Lesson ${lesson.id} references KMP $kind Subtopic $subtopicId"
+                        }
+                }
+            },
+        )
+    }
+
+    @Test
+    fun lessonsMapNoDeprecatedSubtopics() = runTest {
+        // Retired concepts — such as the Koin-and-KMP Subtopic the DI migration deprecated —
+        // must not survive as a mapping, where Topic ownership alone would not catch them.
+        val deprecated = BundledCurriculumSource.load().subtopics
+            .filter { it.status == ContentStatus.DEPRECATED }
+            .map { it.id }
+            .toSet()
+
+        assertNoBoundaryViolations(
+            units().flatMap { unit ->
+                unit.lessons.flatMap { lesson ->
+                    (lesson.primarySubtopicIds + lesson.supportingSubtopicIds)
+                        .filter { it in deprecated }
+                        .map { "Unit ${unit.id} Lesson ${lesson.id} references deprecated Subtopic $it" }
+                }
+            },
+        )
+    }
+
+    @Test
+    fun coreLessonsLinkToNoKmpLesson() = runTest {
+        // A visible core Lesson must never offer a link into hidden curriculum. KMP Lessons
+        // may link backward to their core prerequisites.
+        val kmpLessonUnits = units()
+            .filter { it.topicId == KMP_TOPIC_ID }
+            .flatMap { unit -> unit.lessons.map { lesson -> lesson.id to unit.id } }
+            .toMap()
+
+        assertTrue(kmpLessonUnits.isNotEmpty())
+        assertNoBoundaryViolations(
+            units().filter { it.topicId != KMP_TOPIC_ID }.flatMap { unit ->
+                unit.lessons.flatMap { lesson ->
+                    lesson.relatedLessonIds.mapNotNull { relatedId ->
+                        kmpLessonUnits[relatedId]?.let { kmpUnitId ->
+                            "Core Unit ${unit.id} Lesson ${lesson.id} links to Lesson $relatedId " +
+                                "of KMP Unit $kmpUnitId"
+                        }
+                    }
+                }
+            },
+        )
+    }
+
+    private fun assertNoBoundaryViolations(violations: List<String>) {
+        if (violations.isNotEmpty()) {
+            fail("KMP content boundary violated:\n" + violations.joinToString("\n") { "- $it" })
         }
-        assertEquals("kmp", units().last().topicId)
     }
 
     @Test

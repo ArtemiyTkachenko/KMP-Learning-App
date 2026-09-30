@@ -68,14 +68,34 @@ presentation beside the builder rather than in the assessment domain, which is w
 that dependency edge from reversing.
 
 Resolution answers one of three things. `Resolved(name, scope)` carries the scope and the
-label to show. `Unavailable` means the target names nothing that is current study
-material — a stale or deprecated Unit. `NoPracticeableConcepts` means the Unit resolves
-and is current but teaches nothing assessable. The last two reach the screen as
+label to show. `Unavailable` means the target is not something the learner can currently
+practise, for one of two reasons:
+
+- it names nothing that is current study material — a stale or deprecated Unit; or
+- it is currently authored but belongs to a Topic the learner's
+  [curriculum visibility](curriculum-visibility.md) hides — a hidden Topic, a Subtopic whose
+  parent Topic is hidden, or a Unit whose home Topic is hidden.
+
+`NoPracticeableConcepts` means the Unit resolves, is current and visible, but teaches
+nothing assessable. `Unavailable` and `NoPracticeableConcepts` reach the screen as
 `PracticeAvailability.TargetUnavailable` and `NoPracticeableConcepts`, which disable Start
 and offer no Retry: both are settled answers about content, unlike a failed read, which
-stays `Error` and re-resolves on Retry. A Topic or Subtopic target cannot produce either,
-so those flows are unchanged — their scope is known from the ID, and the curriculum is
-read only for a display name whose absence has never blocked practice.
+stays `Error` and re-resolves on Retry.
+
+Ownership is resolved through identity reads (`getTopicById`, `getSubtopicById`,
+`getUnitById`), which return hidden content too, and current visibility is applied
+afterwards to the target's own owning Topic — never by inspecting the scope it would
+produce. A Unit's home Topic is checked before its concepts are derived, so a hidden Unit
+never becomes a scope. For a Topic or Subtopic target the scope is known from the ID, and
+the curriculum is read only for a display name. A name that cannot be read, or a lookup that
+fails, keeps the long-standing missing-label behaviour rather than becoming `Unavailable`,
+because missing metadata is not evidence of a hidden Topic.
+
+`PracticeBuilderViewModel` observes visibility while it is alive and re-resolves its
+*original* target on every change. A target that becomes hidden turns into
+`TargetUnavailable`, and no previously resolved scope is kept to run against. A target shown
+again resolves normally. Eligibility itself — which Questions are in the pool — still comes
+only from `AssessmentQuestionSelector`, over the visible repositories.
 
 The verdict those states produce is the screen's conclusion, so it renders as one:
 availability, its Retry, and Start sit together on one surface rather than loose under the

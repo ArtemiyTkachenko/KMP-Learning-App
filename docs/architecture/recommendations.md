@@ -160,9 +160,10 @@ The shortcut lives on the existing Topics surface as optional enrichment on
 `TopicBrowserUiState.Content`, never as a screen state of its own: unknown,
 failed, or empty history and a failed resolution all leave Topics browsing,
 searching, and opening exactly as they were, with the card simply absent.
-`TopicBrowserViewModel` derives it from the same `AssessmentHistoryStore` emission
-that already produces Topic learning context — one sequential collector, no second
-history read — so both derivations see the same history and an older one cannot
+`TopicBrowserViewModel` derives it from the same `VisibleAssessmentHistory` emission
+that already produces Topic learning context and Recommended Next — one sequential
+collector over the projection of the app-scoped `AssessmentHistoryStore`, no second
+history read — so every derivation sees the same history and an older one cannot
 land on top of a newer. The card is withheld while a search query is active: a
 learner who has started typing has said what they are looking for, and the
 shortcut is not a search result.
@@ -177,6 +178,31 @@ learner's study records and reads no assessment history at all, so the three
 cards may point at three different places and none suppresses, deduplicates, or
 re-decides another. Continue Studying's semantics, wording, inputs, and
 destinations are unchanged by it.
+
+## Curriculum visibility
+
+Neither `LearningRecommendationPolicy` nor `ContinueStudyingResolver` contains a Kotlin
+Multiplatform check. Both read inputs that are already narrowed by
+[curriculum visibility](curriculum-visibility.md):
+
+- **History** is `VisibleAssessmentHistory`, not the raw store. Continue Studying never
+  sees an answer from a hidden Topic, and Recommended Next's mistake count, weak areas and
+  completed-attempt count are derived from visible evidence only.
+- **Curriculum** is the visible ACTIVE catalogue, so coverage and "currently usable" checks
+  see no hidden Topic.
+
+One consequence follows with no special case. When the newest completed attempt was
+KMP-only, the projection drops it, and Continue Studying falls through to the next older
+visible context, exactly as it does past any other unusable entry. A Mixed attempt that
+included KMP stays, projected to its visible answers, and is still skipped as Mixed.
+
+When the setting changes, the Topic Browser reloads its catalogue while history is
+re-projected, and the two finish in no fixed order. `VisibleAssessmentHistory.snapshots`
+pairs each projection with the visibility it was made under. The browser shows
+history-derived guidance — Recommended Next, Continue Studying, and row learning context —
+only while that visibility equals its catalogue's, and treats a mismatch as history not yet
+arrived. Guidance derived under the old visibility is therefore withheld, rather than shown
+beside a catalogue that already hides its target.
 
 ## Contextual practice shortcuts
 

@@ -30,8 +30,12 @@ initial_curriculum.json
   -> CurriculumImporter
   -> Room
   -> LocalCurriculumRepository
-  -> CurriculumRepository
+  -> VisibleCurriculumRepository   (bound as CurriculumRepository)
+  -> CurriculumRepository consumers
 ```
+
+The visibility decorator is an application projection above persistence, not part of it.
+See [Curriculum Visibility Is Not Persisted](#curriculum-visibility-is-not-persisted).
 
 ## Persistence Decision
 
@@ -682,6 +686,29 @@ also holds nothing derived: `StudyProgressDerivation` computes Unit and Topic st
 demand by intersecting these stable IDs with the current ACTIVE learning hierarchy, and stores none
 of them. See [study progress](study-progress.md) for the semantics this storage serves.
 
+## Curriculum Visibility Is Not Persisted
+
+Whether the optional Kotlin Multiplatform Topic is shown is a learner preference. It is
+stored in the platform key-value store, like the theme, under `content.include_kmp` with
+the tokens `on` and `off`, through `AppPreferenceStorage`. It is **not** stored in Room.
+
+Introducing optional-content visibility required:
+
+- no Room schema change and no migration;
+- no rewrite of curriculum tables. Moving Questions and Subtopics into or out of `kmp` was
+  ordinary content re-authoring, which the upserting importer already handles;
+- no attempt, question-attempt, saved-question or `studied_lesson` migration.
+
+Room keeps the full curriculum and the full history whatever the setting. Hidden Topics,
+Subtopics and Questions stay in their tables, and no SQL query filters them out. The
+identity reads (`getTopicById`, `getSubtopicById`, `getQuestionsByIds`) resolve them, which
+is what lets a stored attempt, a saved Question or a restored route still name something
+real. Visibility is applied above the repository, as an application projection over this
+persisted state: `VisibleCurriculumRepository` filters ACTIVE reads, and
+`VisibleAssessmentHistory` projects completed history in memory. Turning the content off
+writes only the preference key, and turning it on reads the same unchanged rows. See
+[curriculum visibility](curriculum-visibility.md).
+
 ## Migration and Schema History
 
 E07-03 establishes schema version 1 and enables version-controlled Room schema
@@ -729,7 +756,7 @@ Android Application
      -> CurriculumDatabase
      -> CurriculumImporter
      -> CurriculumDataInitializer
-     -> CurriculumRepository
+     -> LocalCurriculumRepository   (CurriculumRepository resolves to its visibility decorator)
      -> AssessmentRepository
      -> SavedQuestionRepository
      -> LessonStudyRepository

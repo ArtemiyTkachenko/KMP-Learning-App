@@ -676,7 +676,12 @@ ecosystem trade-offs.
 
 `kmp` is also the core/KMP content boundary: KMP-specific Questions and learning Units live
 under this Topic, and every other Topic's content is complete without it (see
-[`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md)). Two
+[`kmp-content-separation-audit.md`](../quality/kmp-content-separation-audit.md)). It is the
+optional Kotlin Multiplatform curriculum. A learner setting can hide this Topic at runtime
+while every Android Engineering Topic stays visible, and it is off by default. Ownership
+remains Topic-based, so authoring a Question, Subtopic or Unit under `kmp` is all it takes
+to make it optional; there is no separate flag. Runtime behaviour is described in
+[curriculum visibility](../architecture/curriculum-visibility.md). Two
 learning Units have home Topic `kmp`, both authored after every core Unit:
 
 | Unit | Lessons (primary Subtopic) |

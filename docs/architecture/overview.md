@@ -14,21 +14,26 @@ everything the shell needs is either navigation state it owns or a ViewModel
 resolved from Koin at a destination boundary. `AppearanceTheme` is the application's
 single theme decision — see [Appearance](#appearance) below.
 
-The local curriculum data graph uses Koin because E07 introduced concrete
-runtime dependencies that need platform-aware composition: `CurriculumDatabase`,
-`CurriculumImporter`, `CurriculumDataInitializer`, and
-`CurriculumRepository`. Koin is started by the Android `Application`, combines
-the shared curriculum module with the Android database module, and uses the
-classic DSL only. Koin annotations, compiler plugins, Compose injection, and
-ViewModel DSLs are deferred until a real requirement appears.
+The application graph uses Koin, introduced in E07 because the local data layer
+needed platform-aware composition: `CurriculumDatabase`, `CurriculumImporter`,
+`CurriculumDataInitializer`, and `CurriculumRepository`. Every runtime host starts
+it once, before any composition, from the eight shared modules in
+`sharedApplicationModules()` plus its own two platform modules — see
+[Runtime Host Coverage](#runtime-host-coverage). Definitions use the classic DSL:
+`single { }` for application-lifetime objects and `viewModel { }` for the
+destination ViewModels that Compose resolves with `koinViewModel()`. Koin
+annotations, the compiler plugin, `singleOf`/`viewModelOf`, qualifiers and
+scopes remain unused.
 
-Android startup now follows:
+Every host follows the same order; Android is the only one that splits it across
+two platform objects:
 
 ```text
-Application
-  -> start Koin
-MainActivity
-  -> await local curriculum initialization
+host entry point (Application, main(), MainViewController)
+  -> start*LocalDataGraph         start Koin once per process
+host root (MainActivity, DesktopAppRoot, IosAppRoot, WebAppRoot)
+  -> resolve CurriculumDataInitializer
+  -> AppRoot(initializer)         loading, error and retry around initialization
   -> App()
 ```
 
@@ -152,10 +157,18 @@ destinations and the full rules are in
 | Web JS | `webApp/main.kt` -> `startWebLocalDataGraph` | `CurriculumDatabase.web.kt`, SQLite worker/OPFS | `localStorage` | yes |
 | Web Wasm | `webApp/main.kt` -> `startWebLocalDataGraph` | `CurriculumDatabase.web.kt`, SQLite worker/OPFS | `localStorage` | yes |
 
-Each startup function installs `curriculumDataModule`, `learningContentModule`,
-`assessmentDataModule`, `savedQuestionDataModule`, `lessonStudyDataModule`,
-`topicStudyPresentationModule`, `appearanceModule`, and `curriculumVisibilityModule`, plus
-exactly one platform database module and one platform appearance module.
+Each startup function installs `sharedApplicationModules()` — `curriculumDataModule`,
+`learningContentModule`, `assessmentDataModule`, `savedQuestionDataModule`,
+`lessonStudyDataModule`, `topicStudyPresentationModule`, `appearanceModule`, and
+`curriculumVisibilityModule` — plus exactly two platform modules: one that supplies
+`CurriculumDatabase` and one that supplies `AppPreferenceStorage`. The second keeps its
+historical `*AppearanceModule` name, but it is the platform key-value store behind both
+application preferences, not a theme module. The shared list is declared once because only
+the desktop startup function runs in the test suite; `SharedHostStartupTest` resolves the
+whole product graph from the same list. Every host calls Koin's `strictOverride()`, so a
+second module defining a type already defined fails at startup instead of silently
+replacing it. Koin cannot detect the same type defined twice inside one module; the later
+definition replaces the earlier one before the graph sees either.
 
 The shared modules divide ownership as follows:
 

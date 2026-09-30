@@ -23,6 +23,12 @@ import org.koin.mp.KoinPlatform
  * stands exactly as it did before. That is why this is a lookup that may fail rather than
  * `koinInject()`, which would throw.
  *
+ * The lookup reads the global Koin context, which is the same container `koinInject()` and
+ * `koinViewModel()` reach here: every host starts its graph with `startKoin`, and Koin's
+ * `KoinApplication` composable also publishes its application as the global context. Only an
+ * isolated context, such as `KoinIsolatedContext`, would put the holder somewhere this cannot see,
+ * and nothing composes the app under one.
+ *
  * The holder is a lazy Koin `single`, so the first call here is what constructs it and performs
  * its one synchronous storage read, inside the `remember` below. That read completes within this
  * composition, which is why the theme is settled before the first frame and no startup step waits

@@ -22,16 +22,11 @@ import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionS
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
-import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
-import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDataInitializer
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
-import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
-import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
-import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder
 import org.artkachenko.kmp_learning_app.lesson_study.repository.LessonStudyRepository
@@ -48,14 +43,12 @@ import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestion
 import org.artkachenko.kmp_learning_app.settings.AppPreferenceStorage
 import org.artkachenko.kmp_learning_app.settings.AppearanceStateHolder
 import org.artkachenko.kmp_learning_app.settings.ThemePreferenceStore
-import org.artkachenko.kmp_learning_app.settings.appearanceModule
 import org.artkachenko.kmp_learning_app.settings.jvmAppearanceModule
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitViewModel
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderTarget
 import org.artkachenko.kmp_learning_app.topic_study.practice_builder.PracticeBuilderViewModel
-import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicDetailViewModel
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserViewModel
 import org.koin.core.context.startKoin
@@ -63,18 +56,18 @@ import org.koin.core.context.stopKoin
 import org.koin.core.parameter.parametersOf
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
-import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
 import org.artkachenko.kmp_learning_app.curriculum.visibility.VisibleCurriculumRepository
 import org.artkachenko.kmp_learning_app.curriculum.visibility.VisibleLearningContentRepository
 import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 
 /**
- * Every runtime host installs the same three shared modules plus exactly one platform
- * `CurriculumDatabase` module, then composes [AppRoot]. These tests pin that contract
- * without needing a device, simulator, or browser: if a shared module stops providing
- * something the product graph needs, every host would fail at its first ViewModel
- * resolution, and this fails first instead.
+ * Every runtime host installs [sharedApplicationModules] plus exactly two platform bindings — one
+ * `CurriculumDatabase` and one `AppPreferenceStorage` — under strict override, then composes
+ * [AppRoot]. These tests build the graph the same way, with an in-memory database and the JVM
+ * preference module standing in for the platform half, so they pin that contract without needing
+ * a device, simulator, or browser: if a shared module stops providing something the product graph
+ * needs, or two modules define the same type, every host would fail, and this fails first instead.
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 internal class SharedHostStartupTest {
@@ -91,19 +84,11 @@ internal class SharedHostStartupTest {
         Dispatchers.setMain(Dispatchers.Unconfined)
         val database = inMemoryDatabase()
         val app = koinApplication {
-            modules(
-                // The only binding a platform host adds on top of the shared modules.
-                module { single<CurriculumDatabase> { database } },
-                curriculumDataModule,
-                learningContentModule,
-                assessmentDataModule,
-                savedQuestionDataModule,
-                lessonStudyDataModule,
-                topicStudyPresentationModule,
-                appearanceModule,
-                curriculumVisibilityModule,
-                jvmAppearanceModule,
-            )
+            // As every host does, so a duplicate definition fails here instead of replacing one.
+            strictOverride()
+            modules(sharedApplicationModules())
+            // The two platform bindings: the database and the preference store.
+            modules(module { single<CurriculumDatabase> { database } }, jvmAppearanceModule)
         }
 
         try {
@@ -132,11 +117,12 @@ internal class SharedHostStartupTest {
                 koin.get<ProgressTopicViewModel> { parametersOf("topic") },
             )
             assertIs<MistakeReviewViewModel>(koin.get<MistakeReviewViewModel>())
-            // Exactly one completed-history cache. Every history-derived surface in the app — this
-            // badge, Progress, the mistake queue, the interview record, and the Practice Builder's
-            // preflight through AssessmentQuestionSelector — reads this one instance, and a second
-            // binding would give them separately-cached histories that drift apart after an attempt
-            // completes. Nothing else asserts it, so a duplicate definition would otherwise pass.
+            // One completed-history cache. Every history-derived surface in the app — this badge,
+            // Progress, the mistake queue, the interview record, and the Practice Builder's
+            // preflight through AssessmentQuestionSelector — reads this one instance, so it must
+            // stay a `single`: as a `factory` each would cache its own history, and they would
+            // drift apart after an attempt completes. A second definition of it is caught
+            // separately, by strict override when the graph is built.
             assertEquals(
                 koin.get<AssessmentHistoryStore>(),
                 koin.get<AssessmentHistoryStore>(),
@@ -171,16 +157,16 @@ internal class SharedHostStartupTest {
             assertIs<LessonStudyRepository>(koin.get<LessonStudyRepository>())
             assertIs<SavedQuestionContentResolver>(koin.get<SavedQuestionContentResolver>())
             assertIs<SavedQuestionsViewModel>(koin.get<SavedQuestionsViewModel>())
-            // Exactly one app-scoped holder: the review surfaces and the browser share saved state
-            // by sharing this instance, so a second binding would silently break that.
+            // An app-scoped holder: the review surfaces and the browser share saved state by
+            // sharing this instance, so a `factory` here would silently break that.
             assertEquals(
                 koin.get<SavedQuestionStateHolder>(),
                 koin.get<SavedQuestionStateHolder>(),
             )
             // Study state spans both shared modules the same way: the repository comes from
             // `lessonStudyDataModule` and the app-scoped projection from the presentation module.
-            // Exactly one holder, because the entire reason it exists is that the Lesson reader,
-            // the Unit overview, and Topic Detail are alive at once and must agree.
+            // A `single`, because the entire reason it exists is that the Lesson reader, the Unit
+            // overview, and Topic Detail are alive at once and must agree.
             assertEquals(
                 koin.get<StudyProgressStateHolder>(),
                 koin.get<StudyProgressStateHolder>(),
@@ -196,8 +182,8 @@ internal class SharedHostStartupTest {
             // store comes from the host's module and everything above it from the shared one.
             assertIs<AppPreferenceStorage>(koin.get<AppPreferenceStorage>())
             assertIs<ThemePreferenceStore>(koin.get<ThemePreferenceStore>())
-            // Exactly one holder, because it is the application's theme: a second instance would
-            // mean the startup screens and the shell could disagree about light or dark.
+            // A `single`, because it is the application's theme: a second instance would mean the
+            // startup screens and the shell could disagree about light or dark.
             assertEquals(
                 koin.get<AppearanceStateHolder>(),
                 koin.get<AppearanceStateHolder>(),
@@ -231,21 +217,10 @@ internal class SharedHostStartupTest {
                     // An in-memory database is released with the JVM anyway.
                     val created = inMemoryDatabase()
                     val koin = startKoin {
+                        strictOverride()
+                        modules(sharedApplicationModules())
                         modules(
                             module { single<CurriculumDatabase> { created } },
-                            curriculumDataModule,
-                            // The Topic Browser is the first Learn surface to read learning
-                            // content, so the app root cannot start without this module either.
-                            learningContentModule,
-                            assessmentDataModule,
-                            savedQuestionDataModule,
-                            lessonStudyDataModule,
-                            topicStudyPresentationModule,
-                            // AppRoot resolves the appearance preference through this, so a host
-                            // that forgot it would start under the system theme with no way to
-                            // change it. The platform module is the host's own half.
-                            appearanceModule,
-                            curriculumVisibilityModule,
                             jvmAppearanceModule,
                         )
                     }.koin

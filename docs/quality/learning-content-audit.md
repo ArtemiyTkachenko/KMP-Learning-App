@@ -4336,6 +4336,9 @@ contradictions, and none needed a change. **`rememberSaveable` and State That Mu
 Survive** already says saved state is not retained when the user swipes the activity away
 from Recents. **`withContext` and Main-Safety** already says `withContext` is "not a
 builder in the launch/async sense", which the corrected paragraph now agrees with.
+The Lesson's authoring note in `docs/content/coroutines-flow-learning-blueprint.md` (L1.2)
+still said `withContext` "is not a builder", and was updated to the same model so that the
+specification and the shipped Lesson agree.
 
 **Validation.** `python3 tools/learning_question_coverage.py --write` and `--check`
 (current; only the learning-curriculum fingerprint changed, and every Question association

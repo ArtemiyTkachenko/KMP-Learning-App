@@ -7099,7 +7099,7 @@
         {
           "id": "lesson_coroutine_builders",
           "title": "Starting Coroutines: `launch`, `async` and `runBlocking`",
-          "summary": "A suspending function cannot start itself, so somewhere the chain has to begin. Three builders begin it, and they differ in what the caller receives and what the caller is able to do next — a handle, a future value, or a blocked thread. Choosing between them is a statement of intent that every later reader of the code will believe.",
+          "summary": "A suspending function cannot start itself, so somewhere the chain has to begin. Three coroutine builders — `launch`, `async` and `runBlocking` — are the usual ways to begin it, and they differ in what the caller receives and what the caller is able to do next — a handle, a future value, or a blocked thread. Choosing between them is a statement of intent that every later reader of the code will believe.",
           "primarySubtopicIds": [
             "coroutine_builders"
           ],
@@ -7223,7 +7223,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Two things are deliberately absent from the builder list, and naming them is what stops them creeping in. **`withContext` is not a builder.** It starts no coroutine; it is a suspending function that runs a block with a changed context and returns the block's result. Filing it alongside `launch` and `async` is precisely how people come to believe it \"starts something\" (see **`withContext` and Main-Safety**). And **`async` is not primarily a parallelism feature** — it is the builder that returns a value. Deciding when work should genuinely overlap, and what overlapping buys, is a separate decision (see **Sequential by Default, Concurrent on Purpose**)."
+                  "text": "Two things are deliberately left out of this comparison, and naming them is what stops them creeping in. **`withContext` is not an alternative to `launch` or `async`.** Kotlin's documentation lists it among the coroutine builder functions, but it answers a different question. It runs its block in the supplied context, suspends the caller until that block completes, and returns the block's result directly — not a `Job` or `Deferred` standing for work that carries on while the caller moves to its next statement. When the new context names a different dispatcher, the block is dispatched there and the caller resumes on its own dispatcher afterwards; when the dispatcher is unchanged, no dispatch happens at all. Either way the caller waits while the block runs under the resulting context, then continues with its result. It is never a way to start work and keep going, and filing it alongside `launch` and `async` is how people come to believe it \"starts something\" (see **`withContext` and Main-Safety**). And **`async` is not primarily a parallelism feature** — it is the builder that returns a value. Deciding when work should genuinely overlap, and what overlapping buys, is a separate decision (see **Sequential by Default, Concurrent on Purpose**)."
                 },
                 {
                   "type": "paragraph",
@@ -7256,6 +7256,10 @@
             {
               "title": "Best practices for coroutines in Android",
               "url": "https://developer.android.com/kotlin/coroutines/coroutines-best-practices"
+            },
+            {
+              "title": "withContext",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-context.html"
             }
           ],
           "status": "ACTIVE"
@@ -12985,7 +12989,7 @@
         {
           "id": "lesson_viewmodel_lifetime_and_persistence",
           "title": "The ViewModel Owner: Lifetime Is Not Persistence",
-          "summary": "A ViewModel decides nothing about what it survives. It is stored in a ViewModelStore, that store belongs to an owner — an Activity, a Fragment or a navigation entry — and the owner's lifetime is the ViewModel's lifetime. Walking one screen through six events by naming the owner each time separates three ideas that are routinely collapsed into one: who may change a value, when its owner disappears, and how the value comes back afterwards.",
+          "summary": "A ViewModel decides nothing about what it survives. It is stored in a ViewModelStore, that store belongs to an owner — an Activity, a Fragment or a navigation entry — and the owner's lifetime is the ViewModel's lifetime. Walking one screen through seven events by naming the owner each time separates three ideas that are routinely collapsed into one: who may change a value, when its owner disappears, and how the value comes back afterwards.",
           "primarySubtopicIds": [
             "state_ownership"
           ],
@@ -13032,7 +13036,7 @@
               "blocks": [
                 {
                   "type": "paragraph",
-                  "text": "Walk the loans screen up a ladder of six events, from the smallest to the largest, and answer each from the store's side, which is where the answer actually comes from. Each rung is the same two questions: which owner, and is it still holding its store?"
+                  "text": "Walk the loans screen up a ladder of seven events, from the smallest to the largest, and answer each from the store's side, which is where the answer actually comes from. Each rung is the same two questions: which owner, and is it still holding its store?"
                 },
                 {
                   "type": "comparison",
@@ -13074,10 +13078,16 @@
                       "Is gone, and `onCleared` has run. Existing outside the Composition protected nothing"
                     ],
                     [
-                      "The process is killed and the app is launched again later",
-                      "There is no owner; the process that held it no longer exists",
-                      "No store, no owner, no objects at all",
-                      "Is gone. Anything the reader must find again has to be reconstructed by something else"
+                      "The system kills the process while the app is in the background, and Android later restores the task",
+                      "A new owner, created when the destination is re-created in a new process",
+                      "No — the old store died with the process; the new owner starts with an empty one",
+                      "Is gone. The re-created screen can read back small values it recorded in saved state, such as `SavedStateHandle` entries, because Android restored this task; everything else has to be reloaded"
+                    ],
+                    [
+                      "The task itself is gone — the user swiped it away from Recents, the app was force-stopped, or the device rebooted — and the app starts fresh",
+                      "A new owner in a new task",
+                      "No — a new, empty store, and no saved state from the old task to restore",
+                      "Is gone, and so is the old task's saved state. Only durable storage, such as a database, brings anything back"
                     ]
                   ]
                 },
@@ -13150,7 +13160,7 @@
                 },
                 {
                   "type": "paragraph",
-                  "text": "Two different mechanisms answer the last rung. Saved state hands a small amount of information to the system so a screen can be reconstructed after the process is gone — `SavedStateHandle` on the ViewModel side, `rememberSaveable` on the Composition side. Durable persistence is ordinary application storage, such as a database, for data of any size. Either way, the architectural consequence is the same: **persistence is a separate responsibility with a separate owner, and a state holder that has not been given one does not have it.**"
+                  "text": "Two different mechanisms answer the last two rungs, and they are not interchangeable. Saved state records a small amount of transient UI state — `SavedStateHandle` on the ViewModel side, `rememberSaveable` on the Composition side — so a screen can be reconstructed after the system kills the process and Android restores the task. It is tied to that task: when the task goes away, because the user removed the app from Recents, the app was force-stopped or the device rebooted, the saved state goes with it. It is restoration, not storage, and it promises nothing about an arbitrary later launch. Durable persistence is ordinary application storage, such as a database, for data of any size and for anything that must still be there on a fresh start. Either way, the architectural consequence is the same: **persistence is a separate responsibility with a separate owner, and a state holder that has not been given one does not have it.**"
                 },
                 {
                   "type": "callout",
@@ -13177,6 +13187,10 @@
             {
               "title": "Save and manage navigation state",
               "url": "https://developer.android.com/guide/navigation/navigation-3/save-state"
+            },
+            {
+              "title": "Saved State module for ViewModel",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel/viewmodel-savedstate"
             }
           ],
           "status": "ACTIVE"

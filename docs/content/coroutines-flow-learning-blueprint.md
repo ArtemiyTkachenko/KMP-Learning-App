@@ -171,8 +171,12 @@ bridged where builder blocks need them.
   `kotlin_lambdas` (kotlin_language)
 - **Notes:** `async` is introduced here only as "the builder that returns a value".
   Intentional concurrency is L2.4 and its failure semantics are L3.3 — both are named and
-  deferred. `withContext` is deliberately absent: it is not a builder and putting it in this
-  list is what produces the belief that it starts a coroutine. `CoroutineStart` modes and
+  deferred. `withContext` is deliberately absent from the comparison. Kotlin's documentation
+  lists it among the coroutine builder functions, but it is not an alternative to `launch` or
+  `async`: it suspends the caller until its block completes under the resulting context and
+  returns the block's result, not a `Job` or `Deferred`, and it does not always switch
+  threads. Putting it in this list is what produces the belief that it starts work that
+  carries on. `CoroutineStart` modes and
   `LAZY` are **Reference**, mentioned in one line at most.
 
 #### L1.3 — `Job`: the Handle That Carries Lifetime

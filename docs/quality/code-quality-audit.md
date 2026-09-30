@@ -177,16 +177,18 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-DATA-020` | Learning content / source governance | Observation | High | `LearningCurriculumValidator.kt`, `InitialCurriculumContentQualityTest.kt`, `learning_curriculum.json` | Learning sources are ungated by design, and secondary sources are no longer exceptional. | The question bank has a 16-host allowlist; the learning document deliberately has none. Of 443 learning sources, 17 cite `martinfowler.com`, 7 cite `raw.githubusercontent.com` at the moving `androidx-main` branch, 2 `staltz.com`, 2 `blog.ploeh.dk`. Several are plainly primary for the claim. | Record the position deliberately; pin the raw GitHub citations to a tag or commit so the cited text cannot move. | Open |
 | `CQ-DATA-021` | Shared history cache / generation atomicity | Medium | High | `AssessmentHistoryStore.kt` | The failed-read retry bumped the refresh generation with a read-modify-write that `invalidate()` could overwrite. | `invalidate()` is atomic (`reloads.update { it + 1 }`) and deliberately takes no lock, but `generationForOneShotRead()` read `reloads.value`, then assigned `currentGeneration + 1` — an *absolute* value. The `failedReadRetry` mutex serialises one-shot readers against each other and not against `invalidate()`, so two invalidations landing between that read and that write were both lost, and because the write was absolute rather than an increment the generation could move *backwards*. A later `completedAttempts()` requiring generation *n* could then be satisfied by a `Settled(n)` produced by a read that started before its own call, which is precisely the stale-history answer the generation exists to prevent. Reaching it needs a failed read plus two concurrent invalidations, so it is an edge case rather than a live defect. | Bump with `reloads.updateAndGet { it + 1 }`, which is atomic against `invalidate()` and monotonic whatever else is incrementing. No deterministic regression test is possible: on a single-threaded test dispatcher nothing can interleave between two non-suspending `MutableStateFlow.value` accesses, and the brief forbids producing the race with timing. The two existing coalescing and retry regressions pin that behaviour is unchanged. | Fixed |
 | `CQ-DATA-022` | Assessment completion / operation boundary | Medium | High | `CompleteAssessment.kt`, `AssessmentTakingViewModel.kt`, `AssessmentDataModule.kt`, `CompleteAssessmentTest.kt` | Persisting a completed attempt and marking the shared history cache stale were two statements in a ViewModel, and the second was both cancellable and forgettable. | `assessmentRepository.save(attempt)` is one atomic write transaction, but `historyStore.invalidate()` sat after it as a separate step reached by *resuming a continuation* — and a cancelled job throws at that resumption. The learner leaving the taking destination as the transaction commits was enough to leave the attempt `COMPLETED` in SQLite while the app-scoped cache still held the list from before it, so Progress, the mistake queue, the Mistakes badge, the interview record, Topic learning context and unseen-practice selection all silently omitted a finished assessment for the rest of the process, recoverable only by a manual Retry or a restart. The structural half matters more than the window: nothing in `AssessmentRepository.save`'s signature says a completed write obliges a second call, which is the exact shape of `CQ-STATE-012` and `CQ-STATE-013` — both of which became real bugs because a caller forgot. | Introduce `CompleteAssessment` beside the existing `StartAssessment`, owning scoring, the write and the invalidation as one operation, with the invalidation in `finally`. Unconditional invalidation is correct because the costs are asymmetric: a needless one costs a single re-read that returns the cached attempts, which `history` documents as a normal emission, while a missing one costs correctness. No `NonCancellable` is needed — `invalidate()` does not suspend. The repository cannot own the call itself, because `AssessmentHistoryStore` is built on the repository and the dependency would be a cycle. | Fixed |
-| `CQ-DI-004` | Common Koin graph / override safety | Medium | High | `SharedHostStartupTest.kt`, `AndroidLocalData.kt`, `IosLocalData.kt`, `DesktopLocalData.kt`, `WebLocalData.kt` | Nothing can detect a duplicate or overriding definition, and the assertions that claim to cannot. | `koin-core` 4.2.2 `KoinApplication` declares `private var allowOverride = true`; `strictOverride()` flips it and no host and no test calls it, so `InstanceRegistry.saveMapping` replaces an existing index silently and logs only `warn("(+) override index ...")` — invisible, because no host installs a logger. A throwaway probe confirmed it: two modules each declaring `single { Probe(...) }` resolved through `koinApplication { }` yield one instance, the later definition winning. `SharedHostStartupTest`'s four identity assertions state the opposite mechanism ("a second binding would give them separately-cached histories that drift apart", "a duplicate definition would otherwise pass", "a second binding would silently break that", "a second instance would mean the startup screens and the shell could disagree"); a duplicate produces one winner, so `assertEquals(get(), get())` passes either way. What those assertions really pin is `single` not becoming `factory`, which is what the Part 4A falsification run demonstrated. | Call `strictOverride()` in the four `start*LocalDataGraph` functions and in the graph test so an unintended duplicate fails at startup, and correct the four assertion comments to say they pin scope rather than uniqueness. | Open |
-| `CQ-DI-005` | Common Koin graph / container boundary | Low | High | `ui/theme/AppearanceTheme.kt`, six journey integration tests | The appearance preference is the one dependency resolved from the global container rather than from the composition's Koin. | `AppearanceTheme` uses `KoinPlatform.getKoinOrNull()`, which is `KoinPlatformTools.defaultContext().getOrNull()` — the `GlobalContext`. Every other common-code resolution goes through `koinViewModel`/`koinInject`, which read `LocalKoinScopeContext`, the composition local that `KoinApplication { }` and `KoinContext { }` override. Six tests compose the real `App()` under `KoinApplication { ... }` — `FocusedLearningJourney`, `LearningProductionContentJourney`, `LearningReaderJourney`, `MixedInterviewJourney`, `ProgressLearningJourney`, `TopicDiscovery` — and all six omit `appearanceModule`; installing it would change nothing, because the holder would live in the composition's Koin while the lookup reads the global one those tests `stopKoin()`. `AppearanceThemeTest`'s helper states the coupling, so it is known rather than hidden. | Resolve the holder through the composition's scope with the same optional guard — preview-safety is orthogonal to which container is consulted — so a host that used `KoinApplication { }` instead of `startKoin` would not silently lose dark mode. | Open |
-| `CQ-DI-006` | Graph test / host contract documentation | Low | High | `SharedHostStartupTest.kt` | The graph test describes a three-module, one-platform-binding graph that has not existed for several epics. | The class KDoc reads "Every runtime host installs the same three shared modules plus exactly one platform `CurriculumDatabase` module"; hosts install seven common modules and two platform modules, and the test body installs all nine nine lines below the comment. The inline comment "The only binding a platform host adds on top of the shared modules" is contradicted three lines later by `jvmAppearanceModule`, which supplies `AppPreferenceStorage`. This is the one test whose stated job is to pin the host contract, and it misstates both dimensions a new host can get wrong. | Restate both comments from the module list the test already builds: seven common modules, and exactly two platform bindings, naming `CurriculumDatabase` and `AppPreferenceStorage`. | Open |
-| `CQ-DI-007` | Architecture documentation / DI narrative | Low | High | `docs/architecture/overview.md` | The DI narrative contradicts the same document's Runtime Host Coverage table. | Lines 17-23 still say Koin "is started by the Android `Application`, combines the shared curriculum module with the Android database module" and that "Compose injection, and ViewModel DSLs are deferred until a real requirement appears". Ninety lines later the host table correctly lists four hosts and all seven common modules plus two platform modules. Three claims are false: four hosts start Koin, the graph is seven common modules, and both deferred techniques are in use — `org.koin.core.module.dsl.viewModel` for fifteen definitions and Compose injection at twenty `koinViewModel` sites plus one `koinInject`. It reads as current restraint rather than as an E07-era note. | Rewrite the paragraph to match the host table, and restate the deferral sentence as what is still deferred: annotations, the compiler plugin, `singleOf`/`viewModelOf`, qualifiers and scopes. | Open |
+| `CQ-DI-004` | Common Koin graph / override safety | Medium | High | `SharedHostStartupTest.kt`, `AndroidLocalData.kt`, `IosLocalData.kt`, `DesktopLocalData.kt`, `WebLocalData.kt` | Nothing could detect a duplicate or overriding definition, and the assertions that claimed to could not. | `koin-core` 4.2.2 `KoinApplication` declares `private var allowOverride = true`; `strictOverride()` flips it and no host and no test called it, so `InstanceRegistry.saveMapping` replaced an existing index silently and logged only `warn("(+) override index ...")` — invisible, because no host installs a logger. A throwaway probe confirmed it: two modules each declaring `single { Probe(...) }` resolved through `koinApplication { }` yield one instance, the later definition winning. `SharedHostStartupTest`'s four identity assertions stated the opposite mechanism; a duplicate produces one winner, so `assertEquals(get(), get())` passes either way. What those assertions really pin is `single` not becoming `factory`. **Part 4B re-check on `efb38ac`:** unchanged — the graph had grown to eight shared modules and still no host or test was strict. | Call `strictOverride()` in the four `start*LocalDataGraph` functions and in the graph test so an unintended duplicate fails at startup, and correct the four assertion comments to say they pin scope rather than uniqueness. **Fixed in Part 4B:** all four hosts and both `SharedHostStartupTest` graphs call `strictOverride()`; the whole 54-definition desktop graph and the test graph build under it, so the current graph has no duplicate. Falsified: a second `single<AppPreferenceStorage>` added to `curriculumVisibilityModule` fails both graph tests and `DesktopLocalDataPathTest` with `DefinitionOverrideException`; with `strictOverride()` removed from the desktop host only, the same duplicate passes `DesktopLocalDataPathTest` silently. **Limit recorded:** strict mode sees duplicates *across* modules only. Koin's `Module.saveMapping` is a plain map write, so a type defined twice inside one module collapses to the later definition before the registry sees it — confirmed by a second falsification run, which stayed green. The four comments now say what they pin. | Fixed |
+| `CQ-DI-005` | Common Koin graph / container boundary | Low | High | `ui/theme/AppearanceTheme.kt`, `AppearanceThemeTest.kt` | The appearance preference is the one dependency resolved from the global container rather than from the composition's Koin. | Part 4A: `AppearanceTheme` uses `KoinPlatform.getKoinOrNull()`, the `GlobalContext`, while `koinViewModel`/`koinInject` read `LocalKoinScopeContext`, which `KoinApplication { }` and `KoinContext { }` override; six journey tests compose `App()` under `KoinApplication { }` without `appearanceModule`, and the finding concluded that installing it would change nothing and that a host using `KoinApplication { }` would lose dark mode. **Part 4B re-check against the `koin-compose` 4.2.2 source:** that premise is false. `KoinApplication(...)` builds its application through `rememberKoinApplication`/`rememberKoinMPApplication`, whose `CompositionKoinApplicationLoader` calls `startKoin(koinApplication)` — it *publishes* the application as the global context and provides the same instance to the composition locals. `KoinContext { }` is deprecated and defaults to the global instance. The global lookup and the composition-local lookup therefore read the same container in every configuration this repository uses: `startKoin` in all four hosts and in the startup tests, `KoinApplication { }` in the journey tests. Only `KoinIsolatedContext`, or `KoinContext(koin = …)` given a non-global instance, would diverge, and nothing uses either. The journey tests simply do not install `appearanceModule`, so they theme from the system value — a choice, not a container mismatch. Moving the lookup to the composition would not be a local fix either: `getKoin()`/`currentKoinScope()` throw when neither a provider nor a global graph exists, Compose forbids `try`/`catch` around a composable call, and the preview-safe guard would still have to consult `KoinPlatform.getKoinOrNull()` first. | No production change. `AppearanceTheme`'s KDoc now states why its global lookup is the composition's container and names the isolated-context exception. A new regression test, `aGraphStartedByTheKoinApplicationComposableReachesTheTheme`, starts the holder through the `KoinApplication` composable and asserts stored Light then switched Dark, so it cannot pass on the system value; falsified by swapping in `KoinIsolatedContext`, which fails it. | Not a defect |
+| `CQ-DI-006` | Graph test / host contract documentation | Low | High | `SharedHostStartupTest.kt` | The graph test described a three-module, one-platform-binding graph that had not existed for several epics. | The class KDoc read "Every runtime host installs the same three shared modules plus exactly one platform `CurriculumDatabase` module", and the inline comment on the database binding read "The only binding a platform host adds on top of the shared modules", contradicted three lines later by `jvmAppearanceModule`. **Part 4B re-check on `efb38ac`:** both still present, against eight shared modules and two platform bindings. | Restate both comments from the module list the test builds. **Fixed in Part 4B:** the KDoc names `sharedApplicationModules` and the two platform bindings, `CurriculumDatabase` and `AppPreferenceStorage`, and states strict override; the test builds from the same list the hosts install, so the comment cannot drift from a hand-copied list again. The four identity assertions are kept — they are the only guard against a `single` becoming a `factory` — and their comments now say that is what they pin. | Fixed |
+| `CQ-DI-007` | Architecture documentation / DI narrative | Low | High | `docs/architecture/overview.md` | The DI narrative contradicted the same document's Runtime Host Coverage table. | The opening DI paragraph said Koin "is started by the Android `Application`, combines the shared curriculum module with the Android database module" and that "Compose injection, and ViewModel DSLs are deferred", followed by an Android-only startup diagram with no `AppRoot`. **Part 4B re-check on `efb38ac`:** #445 rewrote the host table and module-ownership sections but did **not** touch this paragraph or the diagram; all three false claims were still present. | Rewrite the paragraph to match the host table and restate what is still deferred. **Fixed in Part 4B:** the paragraph now describes four hosts, `sharedApplicationModules()` plus two platform modules, and the DSL actually used; what remains unused is named (annotations, the compiler plugin, `singleOf`/`viewModelOf`, qualifiers, scopes); the diagram is the common four-host startup order through `AppRoot`. | Fixed |
 | `CQ-DI-008` | App scope / platform dispatcher semantics | Observation | High | `assessment/history/AppCoroutineScope.kt`, `ProgressStateHolder.kt`, `MistakeReviewStateHolder.kt` | `Dispatchers.Default` is a background pool on three targets and the browser's main thread on two. | `AppCoroutineScope` is `CoroutineScope(SupervisorJob() + Dispatchers.Default)`. On Kotlin/JS and Kotlin/Wasm that is the single-threaded event loop. On each `invalidate()` — every completed attempt — `ProgressStateHolder` re-derives the dashboard, `MistakeReviewStateHolder` rebuilds the queue, and `MistakeReviewService.load` issues one `getQuestionById` per unresolved mistake through `AssessmentReviewLoader`, each in its own read transaction. The holders are lazy `single`s, so this starts on the first visit to those areas and then continues for the process whether or not the screens are shown again. No measurement was taken on any host. | Record only; `CQ-DATA-010` owns the per-ID query cost it compounds. Revisit with Part 5 cross-cutting performance. **Partly relieved by the Stage 4E fix pass**: the per-ID query cost this compounds is gone — one derivation and one queue rebuild are now one batched read each instead of one read transaction per identity. What this finding records is unchanged and still open: the derivations themselves still run on every `invalidate()` for the life of the process once their areas have been visited, on the browser's main thread on two targets. The remedy for that is a subscription policy, not a query shape. | Open |
 | `CQ-DI-009` | Constructor defaults / graph opt-out | Observation | High | `AssessmentQuestionSelector.kt`, `LearningProgressService.kt`, `MistakeReviewStateHolder.kt` | Three constructors can supply a dependency the graph also owns. | `AssessmentQuestionSelector` and `LearningProgressService` default `performanceDerivation` to `LearningPerformanceDerivation(curriculumRepository)`; `MistakeReviewStateHolder` defaults `learningContentRepository` to `null`. All three are supplied explicitly by their modules, so production shares one stateless derivation and the mistake queue does get its study links. The null is the one that is not harmless in kind: it removes the study-Lesson link silently rather than failing, and six test call sites construct the holder without it. | Record only. Noted because a default that builds or omits a graph-owned dependency is how a future call site would silently opt out of the graph, invisibly at the call site. | Open |
+| `CQ-DI-010` | Host composition / module-list parity | Medium | High | `AndroidLocalData.kt`, `DesktopLocalData.kt`, `IosLocalData.kt`, `WebLocalData.kt`, `SharedApplicationModules.kt`, `SharedHostStartupTest.kt` | Each host listed the eight shared modules by hand, and three of the four lists ran in no automated check. | The four `start*LocalDataGraph` functions each repeated the same eight module references, and `SharedHostStartupTest` built its graph from two further hand-copied lists. Only `startDesktopLocalDataGraph` is executed by the suite (`DesktopLocalDataPathTest`); there is no Android instrumented or host test of `startAndroidLocalDataGraph`, iOS runs no host-level test and Linux CI does not compile it, and no web test starts the web graph. The graph test therefore proved that *its own list* resolves, not that any host installs it. Adding `curriculumVisibilityModule` in #442 took six identical edits across four hosts and two test lists; had one host been missed, every check would have stayed green and that platform would have failed at the first resolution of a visibility-bound type — `koinInject<CurriculumVisibilityStateHolder>()` in `App()`. | **Fixed in Part 4B:** one `internal fun sharedApplicationModules(): List<Module>` in `commonMain` names the canonical shared list; every host installs it, then its two platform modules in a separate, visible `modules(...)` call; `SharedHostStartupTest` builds from the same function. A function rather than a `val`, so no host depends on cross-file top-level initialization order on JS or Native. No platform-module builder, `expect`/`actual` or host abstraction was introduced, and the host functions keep their own guard, platform context and initializer bridge. | Fixed |
 | `CQ-STATE-012` | Learn surfaces / history recovery | High | High | `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt`, `TopicBrowserViewModelTest.kt`, `TopicDetailViewModelTest.kt` | Neither Learn ViewModel's Retry could recover any state derived from the shared assessment history. | Both observe `AssessmentHistoryStore.history` and derive optional enrichment from it — learning context, Recommended Next and Continue Studying on the browser; learning context and the unresolved-mistake count on Topic Detail. `retry()` reloaded only the curriculum and the study projection. It called neither `historyStore.invalidate()`, which is the only thing that re-reads an attempt table that failed, nor anything that re-runs a derivation over history that read successfully — a re-read of unchanged history is an equal `AssessmentHistory.Loaded` that a `StateFlow` does not emit again. A transient database failure at startup therefore removed every guided surface for the rest of the session, and the Retry button that exists for exactly that restored the catalogue and left the rest gone. `ProgressViewModel.refresh()` and `MistakeReviewViewModel.refresh()` already document and implement both halves (`CQ-STATE-008`); these two never received them. | Mirror the existing pattern in both ViewModels: a `derivations` counter combined into the history collection, and a `retry()` that calls `historyStore.invalidate()` and bumps it. Four jvm regressions pin both failure domains, each confirmed to fail against the previous code. | Fixed |
 | `CQ-STATE-013` | Shared history / retryable derivation | Medium | High | `ProgressStateHolder.kt`, `MistakeReviewStateHolder.kt`, `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt`, `AssessmentHistoryStore.kt` | Four owners now keep a private `derivations` counter to make a retry over unchanged history observable. | The counter exists because `AssessmentHistoryStore.history` is a `StateFlow` and an equal `Loaded` is not re-emitted. Each consumer solves that for itself with the same `MutableStateFlow(0)` plus `combine(history, derivations)` pair, which is why `CQ-STATE-012` was possible at all: the pattern is copied rather than owned. Giving the store's own emissions an identity — a generation on `AssessmentHistory.Loaded`, or an explicit re-derivation signal beside `invalidate()` — would let all four copies and both `retryDerivation()` methods be deleted. | Defer. It is a deliberate consolidation across the store and four consumers with its own test surface, not a bug fix, and it depends on `CQ-STATE-012` having landed. Re-confirmed as the top Stage 4C candidate during the Stage 4B fix pass, which deliberately kept it out of scope to avoid one patch spanning two unrelated themes. Fixed in the Stage 4C fix pass: `history` became a `SharedFlow` with `replay = 1` whose contract is one emission per settled refresh, and all four counters plus both `retryDerivation()` methods are deleted. | Fixed |
 | `CQ-STATE-014` | Attempt creation / event versus state | Low | Medium | `AssessmentLaunchViewModel.kt`, `FocusedResultViewModel.kt`, `MixedInterviewResultViewModel.kt`, `AssessmentLaunchCoordinator.kt` | Attempt creation is published as durable state and as a one-shot `Channel` event describing the same fact, reconciled by a handled-callback. | Each of the three sets `Created(attemptId)` on its `MutableStateFlow` and sends the same identity through a `Channel(BUFFERED)` consumed by a `LaunchedEffect` in the composable. `receiveAsFlow` is single-consumer and that collection is cancelled when the destination leaves composition, so an event lost in flight would strand the state on `Created`, where the `start`/`repeat` guards refuse to launch again — the action is then dead for the life of that ViewModel. The window is one dispatch wide and no failure has been observed. | Defer. The remedy is a decision about event delivery shared by all three result surfaces, which is wider than a local fix and belongs with the Part 2 owners. | Deferred |
 | `CQ-KMP-001` | Android preference storage / contract | Medium | High | `settings/AndroidAppearanceModule.kt`, `settings/AppPreferenceStorage.kt` | The Android store was the one implementation that could throw out of a contract that forbids it. | `AppPreferenceStorage` states that implementations must not throw and that an unreadable store reports absence, "because failing to remember a preference is not a reason to fail to start". The JVM, iOS and web implementations all guard; Android called `getSharedPreferences` and `getString` unguarded. `getSharedPreferences` throws when the preferences directory is unavailable — the normal state of a credential-protected context before first unlock — and `getString` throws `ClassCastException` if the key holds another type. `AppearanceStateHolder` performs that read synchronously in its constructor, which Koin resolves lazily inside `AppearanceTheme`'s `remember`, i.e. during `AppRoot`'s first composition and above the startup error screen, so a throw is an unrecoverable first-frame crash rather than a forgotten preference. Carried over as the open handoff from Part 3D. | Guard both methods with `runCatching`, using the idiom `JvmAppPreferenceStorage` already uses, and resolve the `SharedPreferences` instance lazily so its own failure is absence too. Not covered by a test: `shared` has no populated Android host-test source set and exercising `SharedPreferences` off-device would mean adding Robolectric. | Fixed || `CQ-CROSS-001` | Attempt result surfaces / retake orchestration | Medium | High | `topic_study/focused_result/FocusedResultViewModel.kt`, `mixed_interview/MixedInterviewResultViewModel.kt`, both UI state files, both screens, both destinations, `assessment/retake/AssessmentRetakeController.kt` | One retake state machine existed twice, under two names. | `RepeatPracticeState` and `RepeatInterviewState` were structurally identical six-case sealed interfaces, driven by identical `repeatPractice`/`repeatInterview`, `onRetakeEventHandled` and `setRepeatState` bodies over the same `AssessmentRetakeService.createRetake`, and reported through two one-case event hierarchies (`FocusedResultEvent`, `MixedInterviewResultEvent`) collected by two identical `LaunchedEffect` blocks. `CQ-BUG-003` — the post-persistence re-entry window — had to be found and fixed in both copies independently, which is the concrete cost this records. Neither copy could be tested without a full result ViewModel and its four fakes. | Extract `AssessmentRetakeController` in `assessment/retake/`, owning `AssessmentRetakeState`, the buffered `AssessmentRetakeCreated` event, the re-entry guard and the identity-matched release. Both ViewModels delegate; each keeps only whether there is a loaded result to repeat, and each screen keeps its own wording. | Fixed |
+| `CQ-KMP-002` | Platform database builders / migration-list parity | Medium | High | `CurriculumDatabase.android.kt`, `CurriculumDatabase.jvm.kt`, `CurriculumDatabase.ios.kt`, `CurriculumDatabase.web.kt`, `CurriculumDatabaseMigrationTest.kt` | Each platform database builder lists the seven migrations by hand, and no test exercises any builder's list. | All four builders pass the same `addMigrations(MIGRATION_1_2, …, MIGRATION_7_8)` against `CurriculumDatabase` version 8, and today they agree exactly — no accidental driver or migration difference was found (bundled SQLite on Android, JVM and iOS; `WebWorkerSQLiteDriver` on both web targets, by design). But `CurriculumDatabaseMigrationTest` builds its own lists, and `DesktopLocalDataPathTest` opens a fresh database, so no check would notice a `MIGRATION_8_9` added to three builders and forgotten in the fourth. On that platform an upgraded install would throw Room's missing-migration error from the first open inside `CurriculumDataInitializer`: `AppRoot.Error` with a Retry that can never succeed, while a fresh install and every test stay green. The mechanism is the same as `CQ-DI-010`'s. | Declare the chain once in `commonMain` — e.g. `internal val curriculumDatabaseMigrations: Array<Migration>` beside the migrations — have each builder call `addMigrations(*curriculumDatabaseMigrations)`, and let the migration test's full-chain case use the same array. Deferred to **Part 4C**, which owns the platform Room builders; recorded in Part 4B because it was found while comparing them for parity. | Deferred |
 | `CQ-CROSS-002` | Attempt result surfaces / state ownership | Low | High | `FocusedResultUiState.kt`, `MixedInterviewResultUiState.kt`, both screens | Retake state was stored inside the result content it is not part of. | `Content.repeatPracticeState` / `Content.repeatInterviewState` put a running action inside a record of a settled fact: the score and the transcript of a completed attempt cannot change while the screen is open, and the retake state changes on every press. The conflation forced every transition through a `setRepeatState` that cast to `Content` and silently dropped the write otherwise — unreachable in practice, but a transition that can disappear is not a state machine anyone can reason about. | Publish retake state as its own `StateFlow` beside `uiState`, and pass it to the screen as its own parameter. The "only retake a loaded result" rule becomes an explicit guard in the ViewModel rather than an implicit consequence of a cast. | Fixed |
 | `CQ-CROSS-003` | Mixed interview result / derivation placement | Low | High | `mixed_interview/MixedInterviewResultViewModel.kt`, `mixed_interview/TopicAnswerCounts.kt` | Per-Topic aggregation was a suspending ViewModel method built on a mutable counter class. | `loadTopicPerformance` grouped the transcript by `topicId`, counted with a `private class TopicCounts(var questionCount, var correctCount)`, computed percentages, and resolved Topic names, all in one method. The counting is a deterministic transformation with no I/O in it, but it could only be exercised through the ViewModel, a fake curriculum repository and a fake review loader; the mutable holder existed only because the derivation was written imperatively in the wrong layer. | Extract the pure `List<ReviewQuestionItem>.topicAnswerCounts()` and an immutable `TopicAnswerCounts` that requires a positive denominator. The ViewModel keeps the name resolution, which is the only part that needs a repository. | Fixed |
 | `CQ-CROSS-004` | Review surfaces / mutation boundary | Low | High | `FocusedResultViewModel.kt`, `MixedInterviewResultViewModel.kt`, `MistakeReviewViewModel.kt`, `assessment_review/AssessmentReviewModels.kt` | One mutation-boundary rule, written three times over three traversals. | "A review surface may only toggle a Question it currently shows as `Available`" was implemented independently in all three `toggleSaved` methods, twice over `content.questions` and once over `content.mistakes.reviewItem`, and documented three times. The three surfaces share one saved-state holder, so accepting a save on one that the others would refuse is a real inconsistency the duplication makes possible. | One `ReviewQuestionItem.isAvailableFor(questionId)` predicate in `assessment_review`, called by all three. | Fixed |
@@ -216,6 +218,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Stage 4C fix pass | Shared assessment-history refresh contract: state/event semantics and the store's own type surface | Complete | `6324153` plus the working tree | 1 store, 1 interface, 6 consumers and 1 test file read in full; 5 further state holders and UI-state files read for comparison | 6 (2 fixed, 1 deferred, 2 not a defect, 1 accepted as-is) | 2 fixed | `:shared:compileKotlinJvm`; `:shared:jvmTest` (1549 tests); `:shared:check`; `:androidApp:assembleDebug`; `git status --short` | Not a planned chunk. A state-model, API-contract and boundary-correctness pass bounded to one cluster: the shared history store and everything that derives from it. `CQ-STATE-013` and `CQ-STATE-015` are fixed; `CQ-STATE-014` and `CQ-TYPE-001` remain deferred. **The planned Part 4B — host composition roots — is unrelated to this pass, remains the next planned chunk, and was not started.** |
 | Stage 4E fix pass | Historical curriculum resolution: one batched read instead of one round trip per stable ID | Complete | `272a509` plus the working tree | 1 repository interface, 1 DAO, 1 Room repository, 5 per-ID call sites, and the 4 app-scoped/ViewModel consumers that drive them; 31 test doubles and 10 integration tests updated | 6 (1 high, 1 medium, 4 low) | 1 cluster (`CQ-DATA-010`) | `:shared:jvmTest` (1559 tests), `:shared:check`, `:androidApp:assembleDebug`, `git diff --check` | High 0 new; the pass converted `CQ-DATA-010` from *Needs measurement* to *Fixed* by supplying the trigger analysis it lacked, and relieved half of `CQ-DI-008`. Five deferred findings recorded for 4F. See review record below. |
 | Stage 4F fix pass | Regression protection: superseded, cancelled and unread asynchronous results must not reach the learner as an answer | Complete | `cbd7d5c` plus the working tree | All 131 test files inventoried by name; every production file without a same-named test checked for indirect coverage; every broad `catch` in `commonMain` and the platform source sets; 1 new test file, 4 test files extended, 3 test doubles gated | 5 (2 high, 2 medium, 1 low) | 1 cluster (`CQ-TEST-001`, `CQ-TEST-002`, `CQ-TEST-003`) | `:shared:jvmTest` (1569 tests), `:shared:check`, `:androidApp:assembleDebug`, `git diff --check` | No production-code change. Ten tests added, each verified against a deliberately broken production tree and restored. Two findings deferred to 4G. See review record below. |
+| Part 4B | Host composition roots | Complete | `efb38ace99c81685f99bba4b8f3200d14d898096` plus the working tree | 2 Android shell files (`KmpLearningApplication`, `MainActivity`) and the manifest; `desktopApp` and `webApp` `main.kt`; the iOS Swift bridge (`iOSApp.swift`, `ContentView.swift`) and `MainViewController`; 4 graph-start files, 3 platform roots and the common `AppRoot`/`AppStartupInitializer`; 8 platform modules and 4 database builders; `AppearanceTheme`, `AppearanceModule`, `CurriculumDataModule`, `CurriculumDataInitializer`, `CurriculumVisibilityModule`; both web worker factories; `koin-core`, `koin-compose` 4.2.2 and `sqlite-web` 2.7.0 read from source; 5 host/startup test files plus 19 Koin-touching test files classified | 6 (2 new, 4 re-evaluated) | 4 | Targeted host/theme/startup suites (22 tests); three falsification runs; `:shared:jvmTest` (1832 tests); `:shared:allTests` (iOS simulator, JS, Wasm and Android host 538 each, JVM 1832); `:androidApp:assembleDebug`; `:shared:check`; `git diff --check`; `git status --short` | High 0, Medium 3, Low 3, Observation 0 among the six. All four host families install the same eight shared modules and exactly one `CurriculumDatabase` and one `AppPreferenceStorage` binding, resolve the same app-scoped `CurriculumDataInitializer`, start the graph before any composition, and pass platform context only on Android. `CQ-DI-010` (new) is fixed by declaring the shared list once; `CQ-DI-004` is fixed with `strictOverride()` in every host and graph test; `CQ-DI-006` and `CQ-DI-007` are fixed documentation; `CQ-DI-005` is re-classified *Not a defect* on the `koin-compose` source; `CQ-KMP-002` (new) records the same hand-copied-list risk in the four database builders' migration chains and is deferred to Part 4C. No iOS or web runtime was observed. Part 4C is next. See review record below. |
 
 ### Part 1A Review Record
 
@@ -3819,6 +3822,343 @@ only dependency-related edit deletes catalog entries that nothing referenced.
 The GitHub-hosted behaviour of the changed workflow was **not** observed. Everything above is local.
 
 
+## Part 4B Review Record
+
+- **Framing:** the planned Part 4B chunk, taken from `main` at
+  `efb38ace99c81685f99bba4b8f3200d14d898096` (merge of #446, confirmed against GitHub's `main`
+  before starting). It owns the *composition* of the common graph into runnable applications —
+  executable entry point → graph start → platform bindings → `AppStartupInitializer` → `AppRoot` →
+  `App()` — and not the internals of the modules, which Part 4A audited.
+- **Production boundary read in full:** `KmpLearningApplication.kt`, `MainActivity.kt` and
+  `AndroidManifest.xml`; `desktopApp/.../main.kt`; `webApp/.../main.kt` and the webpack header
+  config; `iOSApp.swift`, `ContentView.swift`, `Info.plist` and `MainViewController.kt`;
+  `AndroidLocalData.kt`, `DesktopLocalData.kt`, `IosLocalData.kt`, `WebLocalData.kt`;
+  `DesktopAppRoot.kt`, `IosAppRoot.kt`, `WebAppRoot.kt`; `AppRoot.kt`.
+- **Supporting platform bindings:** the four `*CurriculumDataModule`s and their
+  `CurriculumDatabase.*.kt` builders, the four `*AppearanceModule`s, both
+  `SQLiteWasmWorker` actuals, and in common code `CurriculumDataModule`, `CurriculumDataInitializer`,
+  `AppearanceModule`, `AppearanceTheme` and `CurriculumVisibilityModule`.
+- **Library source read:** `koin-core` 4.2.2 (`KoinApplication`, `Koin.loadModules`,
+  `InstanceRegistry`, `Module`, `Scope.getOrNull`), `koin-compose` 4.2.2 (`KoinApplication`,
+  `KoinContext`, `KoinIsolatedContext`, `rememberKoinApplication`,
+  `CompositionKoinApplicationLoader`, `getKoin`, `currentKoinScope`) and `sqlite-web` 2.7.0
+  (`CoroutineWebWorker`, the JS `WebWorkerWrapper`).
+- **Tests read:** `SharedHostStartupTest`, `AppRootTest`, `DesktopLocalDataPathTest`,
+  `AppearanceThemeTest`, `SettingsNavigationIntegrationTest`, and every other test that touches
+  the container (19 files), classified below.
+
+### Host composition matrix
+
+Derived from the code, not from the diagram in the task statement, which it confirms.
+
+| | Android | Desktop (JVM) | iOS | Web JS + Wasm |
+| --- | --- | --- | --- | --- |
+| Entry point | `KmpLearningApplication.onCreate` (manifest `android:name`) | `desktopApp` `main()` | Swift `iOSApp` → `ContentView` → `ComposeView.makeUIViewController` → `MainViewController()` | `webApp` `main()` (one source set for both targets) |
+| Graph start | `startAndroidLocalDataGraph(application)` | `startDesktopLocalDataGraph()` | `startIosLocalDataGraph()`, inside `MainViewController()` | `startWebLocalDataGraph()` |
+| Shared modules | `sharedApplicationModules()` — 8 | same | same | same |
+| Database module | `androidCurriculumDataModule` | `jvmCurriculumDataModule` | `iosCurriculumDataModule` | `webCurriculumDataModule` |
+| Preference module | `androidAppearanceModule` | `jvmAppearanceModule` | `iosAppearanceModule` | `webAppearanceModule` |
+| Platform context in Koin | `androidContext(application.applicationContext)` | none | none | none |
+| Override mode | `strictOverride()` | same | same | same |
+| Initializer resolved by | `androidAppStartupInitializer()` in `MainActivity.onCreate`, before `setContent` | `desktopAppStartupInitializer()` in `DesktopAppRoot`'s `remember` | `iosAppStartupInitializer()` in `IosAppRoot`'s `remember` | `webAppStartupInitializer()` in `WebAppRoot`'s `remember` |
+| Composable root | `AppRoot(initializer)` directly | `DesktopAppRoot()` → `AppRoot` | `ComposeUIViewController { IosAppRoot() }` → `AppRoot` | `ComposeViewport { WebAppRoot() }` → `AppRoot` |
+| Database location | `Context.getDatabasePath("curriculum.db")`, credential-encrypted app storage | `~/.kmp-learning-app/curriculum.db` | `<Documents>/curriculum.db` | `curriculum.db` in OPFS via the SQLite worker |
+| Preference location | `SharedPreferences` `org.artkachenko.kmp_learning_app.preferences` | `~/.kmp-learning-app/preferences.properties` | `NSUserDefaults.standardUserDefaults` | `window.localStorage` |
+| Global-context API | `GlobalContext` | `GlobalContext` | `KoinPlatform` | `KoinPlatform` |
+
+The last row is a spelling difference only: `KoinPlatform.getKoinOrNull()` is
+`KoinPlatformTools.defaultContext().getOrNull()`, which is the same `GlobalContext` on every
+target. It was left as it is rather than churned.
+
+### Graph inventory
+
+Re-counted from the module files on `efb38ac`; the Part 4A figures (7 modules, 45 definitions)
+predate the visibility feature and are not current.
+
+- **Shared:** 8 modules, 52 definitions — 37 `single`, 15 `viewModel`, no `factory`, no
+  qualifier, no `bind`. By module: `curriculumDataModule` 3, `learningContentModule` 1,
+  `assessmentDataModule` 12, `savedQuestionDataModule` 1, `lessonStudyDataModule` 1,
+  `topicStudyPresentationModule` 12 singles + 15 ViewModels, `appearanceModule` 2,
+  `curriculumVisibilityModule` 5.
+- **Platform:** exactly 2 modules per host, each one `single` — 8 platform modules in all.
+- **Per running host:** 10 modules, 54 definitions. That all 54 are distinct keys is no longer
+  an inspection result: the desktop graph and both test graphs now build under
+  `strictOverride()`, which would reject a cross-module duplicate.
+
+### Android
+
+- **Ordering is correct.** The graph starts in `Application.onCreate`, which runs before any
+  Activity; `MainActivity` calls `enableEdgeToEdge()` then `super.onCreate`, resolves the
+  initializer, then `setContent { AppRoot(initializer) }`. Only `applicationContext` enters Koin,
+  and `createCurriculumDatabase` normalises to `applicationContext` again, so no Activity can leak
+  into an app-scoped `single`.
+- **Recreation.** A configuration change re-runs `MainActivity.onCreate`, which resolves the same
+  `single` initializer; `AppRoot`'s `remember(initializer)` builds a fresh `AppStartupStateHolder`
+  seeded `Ready` if the process already completed initialization (the `CQ-BUG-001` contract). A
+  recreation during import cancels the old composition's `LaunchedEffect`; the new one calls
+  `initialize()` again, and the initializer's mutex plus the importer's idempotency make that safe.
+  Process death builds a new `Application`, a new graph and a fresh, incomplete initializer.
+- **Storage availability.** The manifest does not declare `directBootAware`, so Android does not
+  start this process before the first unlock, and credential-encrypted storage — where both the
+  database and `SharedPreferences` live — is available whenever any code here runs.
+  `AndroidAppPreferenceStorage`'s KDoc cites the pre-unlock state as a reason for its guard; that
+  state is unreachable under this manifest, but the guard is still what the no-throw contract
+  requires, so it was not changed.
+- **No material issue found.**
+
+### Desktop
+
+- `main()` starts the graph before `application { }`, so a graph-construction failure — now
+  including a strict-override conflict — ends the process before a window exists. That is the
+  intended outcome for a developer error.
+- `createJvmCurriculumDatabase` ignores `mkdirs()`'s result; an unwritable home directory therefore
+  surfaces when `initialize()` first opens the database, which is inside `AppRoot`'s recovery
+  boundary and shows the startup error.
+- Database and preference paths are the same `~/.kmp-learning-app` directory, computed from
+  `user.home` in both places.
+- One window; closing it calls `exitApplication`, and the process exit ends the graph. Nothing
+  closes the Room database first, which is safe for SQLite's committed transactions.
+- `DesktopLocalDataPathTest` is the one test that executes a real host start function, and it
+  `stopKoin()`s in `finally`, so no global graph leaks into a later test.
+- **No material issue found.**
+
+### iOS
+
+- **Entry contract.** `iOSApp` has one `WindowGroup { ContentView() }`; `ContentView` embeds
+  `ComposeView`, whose `makeUIViewController` calls `MainViewControllerKt.MainViewController()`.
+  `Info.plist` declares no `UIApplicationSceneManifest`, so the app is single-scene. If a second
+  controller were ever created, the startup guard returns and `IosAppRoot` resolves the same
+  initializer, whose mutex coalesces a concurrent `initialize()`.
+- **Documents path.** `documentDirectory()` uses `create = false` and `requireNotNull`. The
+  sandbox's Documents directory always exists, so this is not a reachable failure — but if it
+  were, it would throw during `IosAppRoot`'s `remember`, outside `AppRoot`'s recovery boundary
+  (see the failure map). Nothing claims otherwise.
+- `NSUserDefaults` does not throw on these calls, which is why `IosAppPreferenceStorage` is the one
+  unguarded implementation.
+- **Verification level:** the changed iOS file compiled (`compileKotlinIosSimulatorArm64`), the
+  test binary linked, and the 538 common tests ran on the iOS simulator through `:shared:allTests`.
+  **No app launch on a simulator or device was performed**, so iOS host behaviour is verified by
+  compilation and static inspection only.
+- **No material issue found.**
+
+### Web JS and Wasm
+
+- `main()` starts the graph before `ComposeViewport`, so no composable can resolve before the graph
+  exists. JS and Wasm share `webMain`'s builder and modules on purpose; only the `new Worker(...)`
+  expression differs, in `sqliteWasmWorker`'s `jsMain` and `wasmJsMain`.
+- **When storage is touched.** The database `single` is lazy, so the worker is constructed when
+  `WebAppRoot`'s `remember` first resolves the initializer — not at graph start. OPFS is opened
+  only when `initialize()` first queries, inside `AppRoot`'s recovery boundary.
+- **Worker failures.** A synchronous `new Worker(...)` throw (an invalid URL or a security error)
+  would escape from composition. An asynchronous load failure goes to `sqlite-web`'s
+  `worker.onerror`, which fails only requests *already pending*; if it fires before the first
+  request is posted, a later request waits for a reply that never comes. Whether that leaves the
+  startup screen on Loading rather than Error was **not observed** and needs a browser run; it is
+  handed to Part 4C with the worker family.
+- `localStorage` failures are caught inside the JavaScript expressions and read as absent.
+- The architecture's requirements — OPFS, `SharedArrayBuffer`, a cross-origin-isolated context —
+  match the host: `webApp/webpack.config.d/webpack.config.js` sets
+  `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`.
+- **Verification level:** `webMain` compiled for both targets and the 538 common tests ran in the
+  JS and Wasm browser test tasks. **No web application was launched in a browser.**
+- **No material issue found** beyond the unobserved worker case.
+
+### Startup failure boundary
+
+Which failures can reach `AppStartupState.Error` (and so Retry), and which happen before or
+outside it:
+
+| Failure | When it happens | Reaches `AppRoot.Error`? |
+| --- | --- | --- |
+| Strict-override conflict | `start*LocalDataGraph`, before any UI | No — the host never starts; a developer error |
+| Missing definition | First resolution of the missing type | No — a crash, at initializer resolution or at the first `koinInject`/`koinViewModel` |
+| `CurriculumDatabase` object construction (Room builder configuration, iOS Documents path, synchronous web worker construction) | Initializer resolution: `MainActivity.onCreate` on Android, the platform root's `remember` elsewhere | No — outside the state machine |
+| `AppearanceStateHolder` construction and its preference read | `AppearanceTheme`'s `remember`, above the state machine | Cannot fail — all four stores are guarded or non-throwing; this is why `CQ-KMP-001` mattered |
+| Database open, migration, bundled JSON decode, validation, import | `CurriculumDataInitializer.initialize()` | **Yes**, with Retry |
+| Desktop directory not writable | First open, inside `initialize()` | **Yes** |
+| Web OPFS unavailable, worker script failing to load | First request, inside `initialize()` | Probably, but see the unobserved `onerror` race above |
+| Curriculum visibility preference read | `App()`, after `Ready` | Cannot fail — the same guarded store |
+
+The pre-`AppRoot` failures are all deterministic: a retry could not fix any of them, so treating
+them as "the host cannot construct the application" is legitimate. **No comment or document claims
+recoverability the composition order cannot provide.** `MainActivity`'s comment and the
+architecture overview both speak of a failed *initialization*, which is exactly the set that
+reaches Retry. No finding was opened; the map is recorded for Part 5's startup-reporting work
+(`CQ-DATA-013`, `CQ-DATA-018`).
+
+### Graph-start idempotency
+
+Every start function returns early when a global Koin already exists. That proves *a* graph
+exists, not *this application's*. The question is whether anything else can create one first:
+
+- **Production:** no. Nothing else in these processes starts Koin — no library, and on Android no
+  `ContentProvider` does before `Application.onCreate`. Each host's entry point runs once per
+  process; iOS may create a second controller in principle, and there the guard is the intended
+  behaviour.
+- **Tests:** the only test that runs a real start function is `DesktopLocalDataPathTest`, and every
+  test that starts a global graph stops it in `finally` under the shared lock, so the guard does
+  not currently mask a foreign graph there.
+- **Previews:** a preview has no graph and never calls a start function.
+
+Throwing, or checking for a marker binding, would guard against a situation no current path
+produces. **No finding; the guard is left as it is.** What would change this is a second
+Koin-using component in the same process.
+
+### `AppStartupInitializer` seam
+
+All four hosts resolve `CurriculumDataInitializer` — a `single` in `curriculumDataModule` — from
+the container; none constructs one. So reconstruction sees in-process success, a new process gets
+a fresh owner, concurrent calls are coalesced by its mutex, Retry calls the same owner through
+`AppStartupStateHolder`, cancellation is rethrown, and completion is held only in memory. No
+host-specific behaviour appears in `AppRoot`. The two-member interface still matches every host's
+need; nothing was added.
+
+### Global-container use
+
+| Site | Classification |
+| --- | --- |
+| `startKoin` and the start guards in the four `*LocalData.kt` files | Host composition |
+| `GlobalContext.get()` / `KoinPlatform.getKoin()` in the four `*AppStartupInitializer()` bridges | Host composition |
+| `KoinPlatform.getKoinOrNull()` in `AppearanceTheme` | Presentation resolution, deliberately optional — see `CQ-DI-005` |
+| `koinInject()` in `App.kt` (visibility holder, route resolver) and `SettingsDestination.kt`; 20 `koinViewModel()` sites | Presentation resolution through the composition |
+| `startKoin`/`stopKoin`/`KoinApplication`/`koinApplication` in 19 jvm test files | Test-only control |
+
+No domain, data, state-holder or ViewModel class reaches the container, as Part 4A found.
+Curriculum visibility has no hidden global dependency: `App()` and `SettingsDestination` resolve
+its holder with `koinInject()`.
+
+### Module-list duplication — why it was extracted
+
+Retaining the four lists was the default. It failed the evidence test for one reason: **only one
+of the four lists ran anywhere.** `SharedHostStartupTest` proved that *a* list resolves;
+`DesktopLocalDataPathTest` proved the desktop list does; nothing executed the Android, iOS or web
+list, and Linux CI does not compile iOS at all. #442 made the six identical edits correctly, but
+that was care, not a check. The extraction names a stable concept — the canonical shared module
+list — which is platform-independent (all eight modules are `commonMain`), keeps each host's two
+platform modules and its platform context in the host file, and makes the tested list the
+installed list. It does not help strict override, which works the same either way. It is a
+function rather than a `val` so that no host depends on cross-file top-level initialization order
+on JS or Native. No `expect`/`actual`, builder, or host abstraction was introduced. See `CQ-DI-010`.
+
+### Database and preference parity
+
+- **Databases:** one filename, `curriculum.db`, everywhere; bundled SQLite on Android, JVM and iOS,
+  the worker driver on web; the same seven migrations in the same order against schema version 8.
+  Locations differ by platform, as intended. No accidental difference exists today; the
+  hand-copied migration chain is recorded as `CQ-KMP-002` and deferred to Part 4C.
+- **Preferences:** each host installs exactly one `AppPreferenceStorage`, now enforced by strict
+  override; `ThemePreferenceStore` and `KmpContentPreferenceStore` both take `storage = get()`, so
+  both application preferences share the platform store, as intended. The `*AppearanceModule`
+  names predate the second preference. The overview now says the module is the platform key-value
+  store; the declarations were not renamed, because the name has not caused a wrong binding and
+  the rename would touch eight files and the DI teaching plan.
+
+### KMP visibility at the host boundary
+
+`curriculumVisibilityModule` is in `sharedApplicationModules()` and therefore in every host. It
+needs only `AppPreferenceStorage`, which every host supplies. `SharedHostStartupTest` asserts that
+`CurriculumRepository` resolves to `VisibleCurriculumRepository`, that `LearningContentRepository`
+resolves to `VisibleLearningContentRepository`, and that `VisibleAssessmentHistory` resolves.
+`DesktopLocalDataPathTest` asserts the same filtering through the real desktop start function (16
+of 17 Topics visible, the hidden one resolvable by ID). Because the raw repositories are bound only
+by concrete type, a host without the module fails to resolve the interfaces rather than serving
+unfiltered content; with a single shared list, no host can now be without it.
+
+### What the tests prove
+
+- **`SharedHostStartupTest`:** the shared list plus stand-in platform bindings resolves every
+  service and all 15 ViewModel bindings under strict override, four app-scoped types are `single`,
+  and `AppRoot` reaches the Topic Browser with bundled content. After this pass, *the list the hosts
+  install* is the list it resolves.
+- **`DesktopLocalDataPathTest`:** the real desktop start function builds under strict override,
+  creates the database on disk, imports, and serves filtered content.
+- **`AppRootTest`:** the startup state machine — seeding from `isInitialized`, Retry, cancellation.
+- **`AppearanceThemeTest`:** the theme follows the holder in a global graph, in a graph started
+  by the `KoinApplication` composable (new), and falls back to the system value with no graph.
+- **`SettingsNavigationIntegrationTest`:** the real `App()` under `startKoin` with the appearance
+  and visibility modules — both preferences reach the shell.
+- **Not proved, and not provable in this environment:** that the Android, iOS and web start
+  functions *run* correctly. Their shared half is now structurally identical to the tested one;
+  their platform half is two visible lines each and was checked by compilation only.
+
+### Falsification
+
+1. **Cross-module duplicate.** A second `single<AppPreferenceStorage>` added to
+   `curriculumVisibilityModule`: both `SharedHostStartupTest` tests and `DesktopLocalDataPathTest`
+   failed with `DefinitionOverrideException: Already existing definition for [Singleton:
+   'org.artkachenko.kmp_learning_app.settings.AppPreferenceStorage']`. With `strictOverride()`
+   removed from `DesktopLocalData.kt` only, the same duplicate passed `DesktopLocalDataPathTest`
+   silently, so strict override is the only detector.
+2. **Intra-module duplicate.** A second `single { ThemePreferenceStore(...) }` inside
+   `appearanceModule`: every graph test **passed**. `Module.saveMapping` is
+   `mappings[mapping] = factory`, so the duplicate never reaches the registry. Recorded as the
+   limit of `CQ-DI-004`'s fix, not hidden.
+3. **Isolated container.** `aGraphStartedByTheKoinApplicationComposableReachesTheTheme` with
+   `KoinApplication` replaced by `KoinIsolatedContext(context = koinApplication { ... })`: the test
+   **failed** on its scheme assertion, so it detects a holder the theme cannot see.
+
+Every deliberate break was restored from a saved copy; `git status --short` afterwards listed only
+the intended files.
+
+### Fixes
+
+- `CQ-DI-010` — `SharedApplicationModules.kt` (new) and the four `*LocalData.kt` files.
+- `CQ-DI-004` — `strictOverride()` in the four hosts and both `SharedHostStartupTest` graphs; the
+  four identity-assertion comments now describe scope.
+- `CQ-DI-006` — `SharedHostStartupTest` KDoc and inline comments.
+- `CQ-DI-007` — the DI paragraph and startup diagram in `docs/architecture/overview.md`, plus the
+  host-coverage paragraph (shared list, strict override and its limit, the preference module's
+  role).
+- `CQ-DI-005` — KDoc on `AppearanceTheme` and one regression test; no production behaviour change.
+
+### Handoffs
+
+- **Part 4C — platform capability implementations:** `CQ-KMP-002` (one shared migration chain);
+  the web worker `onerror` race before the first request, which needs a browser run; and the
+  standing Part 3D/4A items it already owns.
+- **Part 5 — cross-cutting:** the startup failure map above, for startup error reporting alongside
+  `CQ-DATA-013` and `CQ-DATA-018`. `CQ-DI-008`, `CQ-DI-009`, `CQ-STATE-014` and `CQ-TYPE-001` were
+  not touched; Part 4B found no host-side evidence that changes them.
+- **Part 6 — test architecture:** host start functions other than desktop remain unexecuted by
+  any test; after `CQ-DI-010` the residual risk is each host's two platform lines.
+
+### Validation
+
+- `./gradlew :shared:jvmTest --tests '*SharedHostStartupTest*' --tests '*AppearanceThemeTest*'
+  --tests '*DesktopLocalDataPathTest*' --tests '*AppRootTest*'
+  --tests '*SettingsNavigationIntegrationTest*'` — 22 tests, passed.
+- Three falsification runs, as above.
+- `./gradlew :shared:jvmTest` — 1832 tests, 0 failures.
+- `./gradlew :shared:allTests` — passed: `iosSimulatorArm64Test`, `jsBrowserTest`,
+  `wasmJsBrowserTest` and `testAndroidHostTest` 538 tests each, `jvmTest` 1832; the changed iOS,
+  JS and Wasm sources compiled.
+- `./gradlew :androidApp:assembleDebug` — passed.
+- `./gradlew :shared:check` — passed.
+- `git diff --check` — clean. `git status --short` — only the files listed under Fixes and this
+  document.
+- **Not run:** `:desktopApp:assemble` and `:webApp:assemble` (neither executable's source changed;
+  their shared dependency compiled for every target above), iOS framework linking for the app,
+  and any app launch on a simulator, device or browser.
+
+### Part 4B assessment
+
+The host composition roots are sound. Every host constructs the same application in the same
+order, starts the graph once before any composition, binds exactly the two things the platform
+must supply, passes platform context only where a platform needs it, and hands one app-scoped
+initializer to one shared state machine. The platform differences sit at the seams the
+architecture names: storage location, driver, and Android's context.
+
+What the pass changed is enforcement rather than behaviour. Two properties that were true only
+by inspection are now checked: that every host installs the same shared graph (`CQ-DI-010`), and
+that no module silently replaces another's definition (`CQ-DI-004`, within the limit Koin allows).
+One Part 4A finding did not survive contact with the library source: `KoinApplication { }`
+publishes its application globally, so `AppearanceTheme`'s lookup reads the composition's
+container in every configuration this repository uses (`CQ-DI-005`). The two documentation
+findings were still open despite #445 and are fixed. No production behaviour changed.
+
+Part 4 is not synthesised here. **The next planned chunk is Part 4C — Platform capability
+implementations.**
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -4439,8 +4779,44 @@ Needs measurement: 0
 Accepted as-is: 0
 Not a defect: 0
 
-Part 4B — Next
+Part 4B — Complete
+
+High: 0
+Medium: 3
+Low: 3
+Observations: 0
+
+Fixed: 4
+Deferred: 1
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 1
+
+Part 4C — Next
 ```
+
+Part 4B is complete. Every runtime host was traced from its executable or framework entry point to
+`App()` and compared mechanically: Android, Desktop, iOS and the shared JS/Wasm web root each start
+the graph once before any composition, install the same eight shared modules plus exactly one
+`CurriculumDatabase` and one `AppPreferenceStorage` binding, pass platform context only on Android,
+and resolve one app-scoped `CurriculumDataInitializer` for one shared `AppRoot` state machine. The
+current graph is 8 shared modules and 52 definitions (37 singles, 15 ViewModels) plus two platform
+singles per host. What the pass found was missing enforcement, not wrong behaviour. `CQ-DI-010`
+(Medium) is fixed: the shared list was hand-copied into four hosts and only the desktop copy ran in
+any test, so it is now one `sharedApplicationModules()` that every host and the graph test use.
+`CQ-DI-004` (Medium) is fixed: every host and graph test calls `strictOverride()`, a cross-module
+duplicate now fails at startup — falsified both ways against the real desktop start function — and
+the recorded limit is that Koin cannot see a duplicate inside one module. `CQ-DI-006` and
+`CQ-DI-007` are fixed documentation; #445 had not resolved the stale DI paragraph. `CQ-DI-005` is
+*Not a defect*: `koin-compose` 4.2.2's `KoinApplication` composable publishes its application as
+the global context, so the global lookup reads the composition's container everywhere it is used,
+and a new test pins that. `CQ-KMP-002` records the same hand-copied-list risk in the four
+database builders' migration chains and is deferred to Part 4C. The startup failure boundary is
+mapped in the review record: every failure that could be retried reaches `AppRoot`'s Retry, and
+the ones that cannot are deterministic construction errors. iOS and web were verified by
+compilation and their common test suites only; no app was launched on a simulator, device or
+browser. The exact next planned chunk is **Part 4C — Platform capability implementations**. Do
+not begin it automatically.
 
 The Stage 4G fix pass is complete. It is not one of the planned chunks and it made no production
 finding: it audited the repository's build, CI, static analysis and dependency configuration against

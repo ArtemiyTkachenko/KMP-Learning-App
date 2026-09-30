@@ -1,16 +1,8 @@
 package org.artkachenko.kmp_learning_app
 
-import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
-import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
-import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDataInitializer
-import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.jvmCurriculumDataModule
-import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
-import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
-import org.artkachenko.kmp_learning_app.settings.appearanceModule
 import org.artkachenko.kmp_learning_app.settings.jvmAppearanceModule
-import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 
@@ -18,18 +10,10 @@ public fun startDesktopLocalDataGraph() {
     if (GlobalContext.getOrNull() != null) return
 
     startKoin {
-        modules(
-            curriculumDataModule,
-            learningContentModule,
-            assessmentDataModule,
-            savedQuestionDataModule,
-            lessonStudyDataModule,
-            topicStudyPresentationModule,
-            appearanceModule,
-            curriculumVisibilityModule,
-            jvmCurriculumDataModule,
-            jvmAppearanceModule,
-        )
+        // A second definition of a type fails here rather than silently replacing the first.
+        strictOverride()
+        modules(sharedApplicationModules())
+        modules(jvmCurriculumDataModule, jvmAppearanceModule)
     }
 }
 

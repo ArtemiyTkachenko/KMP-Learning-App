@@ -15,8 +15,10 @@ import org.artkachenko.kmp_learning_app.settings.ThemePreferenceStore
 import org.artkachenko.kmp_learning_app.ui.theme.AppDarkColorScheme
 import org.artkachenko.kmp_learning_app.ui.theme.AppLightColorScheme
 import org.artkachenko.kmp_learning_app.ui.theme.AppearanceTheme
+import org.koin.compose.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
 
 /**
@@ -106,6 +108,42 @@ internal class AppearanceThemeTest {
 
                 assertSame(AppDarkColorScheme, assertNotNull(outer))
                 assertSame(assertNotNull(outer), assertNotNull(inner))
+            }
+        }
+    }
+
+    /**
+     * A graph started by Koin's `KoinApplication` composable, rather than by `startKoin`, still
+     * reaches the theme. `AppearanceTheme` reads the global context, and this pins that the
+     * composable publishes its application there, so the Compose-idiomatic root keeps the learner's
+     * appearance. Stored Light then switched to Dark, so the result cannot pass on the system value.
+     */
+    @Test
+    fun aGraphStartedByTheKoinApplicationComposableReachesTheTheme() {
+        synchronized(appIntegrationMainDispatcherLock) {
+            stopKoin()
+            val storage = MapAppPreferenceStorage()
+            ThemePreferenceStore(storage).write(ThemePreference.Light)
+            val holder = AppearanceStateHolder(ThemePreferenceStore(storage))
+            try {
+                runComposeUiTest {
+                    var scheme: ColorScheme? = null
+                    setContent {
+                        KoinApplication(
+                            configuration = koinConfiguration { modules(module { single { holder } }) },
+                        ) {
+                            AppearanceTheme { scheme = MaterialTheme.colorScheme }
+                        }
+                    }
+                    waitForIdle()
+                    assertSame(AppLightColorScheme, assertNotNull(scheme))
+
+                    holder.setDarkTheme(true)
+                    waitForIdle()
+                    assertSame(AppDarkColorScheme, assertNotNull(scheme))
+                }
+            } finally {
+                stopKoin()
             }
         }
     }

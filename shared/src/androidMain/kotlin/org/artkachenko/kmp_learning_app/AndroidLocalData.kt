@@ -1,17 +1,9 @@
 package org.artkachenko.kmp_learning_app
 
 import android.app.Application
-import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
-import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityModule
-import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDataInitializer
 import org.artkachenko.kmp_learning_app.data.local.curriculum.androidCurriculumDataModule
-import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
-import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
-import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.settings.androidAppearanceModule
-import org.artkachenko.kmp_learning_app.settings.appearanceModule
-import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
@@ -20,19 +12,11 @@ public fun startAndroidLocalDataGraph(application: Application) {
     if (GlobalContext.getOrNull() != null) return
 
     startKoin {
+        // A second definition of a type fails here rather than silently replacing the first.
+        strictOverride()
         androidContext(application.applicationContext)
-        modules(
-            curriculumDataModule,
-            learningContentModule,
-            assessmentDataModule,
-            savedQuestionDataModule,
-            lessonStudyDataModule,
-            topicStudyPresentationModule,
-            appearanceModule,
-            curriculumVisibilityModule,
-            androidCurriculumDataModule,
-            androidAppearanceModule,
-        )
+        modules(sharedApplicationModules())
+        modules(androidCurriculumDataModule, androidAppearanceModule)
     }
 }
 

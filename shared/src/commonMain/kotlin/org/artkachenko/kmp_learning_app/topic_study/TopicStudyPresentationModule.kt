@@ -158,15 +158,15 @@ internal val topicStudyPresentationModule = module {
         )
     }
     viewModel {
-        // The shared history cache, not another read of its own: Topic learning context, the
-        // recommendation, and the continue shortcut all refresh from the same invalidation as
-        // Progress and the mistake queue.
+        // The visible projection of the shared history cache, not another read of its own: Topic
+        // learning context, the recommendation, and the continue shortcut all refresh from the same
+        // invalidation as Progress and the mistake queue.
         TopicBrowserViewModel(
             curriculumRepository = get(),
-            // The E20 singleton from `learningContentModule`, through its interface: learning
-            // availability is optional enrichment here, so presentation consumes the same
-            // repository contract every other Learn surface will rather than reading the bundled
-            // document for itself.
+            // The E20 singleton, through its interface — which `curriculumVisibilityModule` binds to
+            // the visibility decorator around it: learning availability is optional enrichment here,
+            // so presentation consumes the same repository contract every other Learn surface does
+            // rather than reading the bundled document for itself.
             learningContentRepository = get(),
             learningProgressService = get(),
             visibleHistory = get(),

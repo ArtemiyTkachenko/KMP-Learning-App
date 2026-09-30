@@ -6,6 +6,37 @@ application code, schema or UI was changed by it. Progress against the
 [Migration Order](#migration-order) is recorded under
 [Implementation status](#implementation-status).
 
+**Status: complete.** All eight migration steps are done. The final runtime system is
+described canonically in
+[curriculum visibility](../architecture/curriculum-visibility.md). This audit remains the
+record of how the migration was planned and performed.
+
+## Final State
+
+- **Content.** Topic `kmp` holds **23 ACTIVE** Questions (plus 2 DEPRECATED), and **two
+  Learning Units with four Lessons**, authored after every core Unit. Core Questions and
+  Lessons were rewritten or split so that each is complete without KMP.
+- **One boundary.** Topic membership is the whole classification. `CurriculumVisibility` is
+  the only production code that names `"kmp"`, and everything else asks
+  `isTopicVisible(topicId)`. No Question, Subtopic, Unit, route, attempt, saved row or study
+  record carries a KMP flag.
+- **Default OFF.** The preference `content.include_kmp` (`on`/`off`, both written
+  explicitly; absent or unknown reads OFF) lives in `AppPreferenceStorage`, not Room.
+- **No deletion.** Toggling writes only the preference. Attempts, question attempts, saved
+  Questions and study records are never written by it, and no schema or data migration was
+  needed.
+- **Projected history.** `VisibleAssessmentHistory` projects completed history (hidden
+  answers dropped, scores recomputed from persisted correctness, unresolved IDs kept). Every
+  metric, recommendation, selection source and result summary derives from it. ACTIVE reads
+  go through two repository decorators, and identity reads pass through.
+- **Guarded identity routes.** Every destination that opens content by identity refuses
+  known-hidden content itself. In-progress attempts are atomic (`ContentUnavailable`), and
+  completed results are projected (decision D-2).
+- **Retained-stack pruning.** `KnownHidden` routes are pruned from every area's stack,
+  `Unknown` routes are kept, Settings is preserved, and nothing is resurrected.
+- **Build-time invariants.** Three structural content-boundary tests and a lexical leak scan
+  keep KMP material out of the core curriculum.
+
 - **Baseline:** local `HEAD` = `origin/main` at `6cc8452` (Quality improvements #436).
 - **Inputs read:** `initial_curriculum.json` (17 Topics, 361 Subtopics, 478 Questions: 437
   ACTIVE, 41 DEPRECATED), `learning_curriculum.json` (30 Units, 135 Lessons), and the
@@ -585,7 +616,9 @@ This differs from the brief's sequence in two ways. The brief's "downstream filt
 | 5. Visibility core | Done — see [Step 5](#step-5-visibility-core). |
 | 6. Topic Browser sectioning + Settings switch + change propagation | Done — see [Step 6](#step-6-settings-switch-sections-and-live-propagation). |
 | 7. Route guards and back-stack pruning, plus saved, review and mistake filtering | Done — see [Step 7](#step-7-route-guards-back-stack-pruning-and-result-projection). |
-| 8. Architecture documentation | Not started. |
+| 8. Architecture documentation | Done — see [Step 8](#step-8-final-architecture-documentation). |
+
+**KMP content separation migration: complete.**
 
 Step 3 shipped Unit K1 as planned, with its two Lessons. The curriculum now has **32 Units
 and 138 Lessons**; the two `kmp` Units (K1, then K2) hold 4 Lessons and follow every core
@@ -983,6 +1016,51 @@ repositories.
   ON → OFF on live ViewModels, while attempt, saved and study records stay equal.
 - Screen tests: the hidden-question notice (singular, plural, absent), and each new `Unavailable`
   state in the Mixed and Focused results, Assessment Taking and Progress Topic, without Retry.
+
+### Step 8: final architecture documentation
+
+A documentation and consistency pass. No product behaviour changed.
+
+**Canonical document.** The plan put the visibility boundary in `overview.md` beside the
+appearance preference. The final system touches preference ownership, DI, three filtering
+seams, history projection, four attempt and saved-state rules, destination guards and
+navigation, which is too much for one overview section. It therefore has its own document,
+[`docs/architecture/curriculum-visibility.md`](../architecture/curriculum-visibility.md).
+That document describes the final system rather than the steps, and the sibling documents
+link to it from the one section where each is visibility-sensitive.
+
+**Stale statements corrected**, in place rather than with a later exception:
+
+| Document | Was | Now |
+| --- | --- | --- |
+| `overview.md` | Appearance is "the only application-level preference" | An *Application Preferences* section with *Appearance* and *Curriculum Visibility*: two explicit app-scoped owners, no settings framework |
+| `overview.md` | Host modules listed without `curriculumVisibilityModule`; content diagrams ending at the raw repositories as the application-facing interfaces | The module is listed with a table of module ownership; both diagrams pass through the decorators |
+| `overview.md` | No account of back-stack validation | *Curriculum Visibility And The Back Stacks*: `AppRouteVisibilityResolver`, `Visible`/`KnownHidden`/`Unknown`, and the pruning rules |
+| `practice-selection.md` | `CompletedAssessmentHistory` "that `AssessmentHistoryStore` implements" as the selector's history | The application binds `VisibleAssessmentHistory`; a section on why no source needs KMP logic, and on Mixed selection |
+| `recommendations.md` | Topic Browser guidance from the raw `AssessmentHistoryStore` emission | From `VisibleAssessmentHistory`, with the snapshot visibility gate and the Continue Studying fall-through |
+| `practice-builder.md` | `Unavailable` is only a stale or deprecated Unit; Topic and Subtopic targets cannot produce it | Hidden Topic, Subtopic and Unit targets are `Unavailable`, re-resolved live |
+| `progress.md` | Overall totals from the persisted score; learning context and the mistake derivation read raw history | Projected history everywhere, the recomputed score, the `ProgressTopic` `Empty`/`Unavailable` split, and a list of what hiding removes |
+| `assessment.md` | Mixed results show the durable score over every resolved Question; saved resolution unfiltered | Projected results, the D-2 notice, atomic in-progress attempts, saved-Question omission |
+| `persistence.md` | Pipeline ending at `CurriculumRepository` directly | The decorator, plus a section: the preference is not Room, no migration was needed, and Room keeps everything |
+| `study-progress.md` | Silent on visibility | The raw holder, visible denominators, and refresh without clearing |
+| `curriculum.md` | — | One paragraph: `kmp` is the optional Topic, hidden by a runtime setting; runtime behaviour is linked, not duplicated |
+
+**Stale source comments corrected** (comments only):
+
+- `CurriculumVisibilityStateHolder` said the navigator would read it "later". It now names
+  the destination guards and the back-stack pruning pass.
+- `TopicStudyPresentationModule` described the Topic Browser's learning repository as the
+  `learningContentModule` singleton directly, and its history as the raw cache. Both now name
+  the visibility layer between.
+
+The comment sweep found no other statement made stale by the migration. Result ViewModels,
+the session loader, the saved-question resolver, the Practice target resolver and the
+navigator were already documented for the final behaviour when they changed. Test comments
+that mention "Step 7" refer to this audit's historical record and stay.
+
+**Validation.** The documented claims were checked against the source, and the existing
+visibility suites were run as they stand. No test was added, because every documented
+guarantee already has one: see the verification table in the architecture document.
 
 ## Validation Plan
 

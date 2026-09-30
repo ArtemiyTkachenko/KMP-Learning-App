@@ -1,6 +1,6 @@
 # Assessment Architecture
 
-How an assessment is configured, run, scored, and persisted. See [overview](overview.md) for app composition and [progress](progress.md) for the statistics derived from completed attempts.
+How an assessment is configured, run, scored, and persisted. See [overview](overview.md) for app composition, [progress](progress.md) for the statistics derived from completed attempts, and [curriculum visibility](curriculum-visibility.md) for how hidden optional content affects new, in-progress, and completed attempts.
 
 ## Assessment Domain
 
@@ -176,15 +176,19 @@ durable attempt identity and restoration cannot start the assessment again.
 Focused destinations use the same coordinator and push
 `FocusedPracticeAttempt(attemptId)` after persistence.
 Completion replaces the attempt entry with `MixedInterviewResult(attemptId)`;
-the result loads the durable `AssessmentScore` from `AssessmentRepository` and
-uses `AssessmentReviewLoader` with `CurriculumRepository.getQuestionsByIds` for
-ordered historical review. Resolved review Questions are grouped by `topicId`
-in attempt encounter order by `topicAnswerCounts()`, a pure derivation over the
-review items alone; `CurriculumRepository.getTopicById` then resolves historical
-names without ACTIVE filtering, once per distinct Topic. A review item whose
-Question the curriculum no longer holds has no Topic to attribute it to and is
-counted in no Topic, while the durable score above the breakdown still counts
-it. Topic performance is derived in memory and is not persisted.
+the result loads the persisted attempt from `AssessmentRepository`, projects it to
+the learner's current [curriculum visibility](#curriculum-visibility), and uses
+`AssessmentReviewLoader` with `CurriculumRepository.getQuestionsByIds` for ordered
+historical review of the visible answers. The score shown is the projected attempt's:
+the durable `AssessmentScore` when nothing is hidden, and a score recomputed from
+persisted correctness over the visible answers when something is. Resolved review
+Questions are grouped by `topicId` in attempt encounter order by
+`topicAnswerCounts()`, a pure derivation over the visible review items alone;
+`CurriculumRepository.getTopicById` then resolves historical names without ACTIVE
+filtering, once per distinct Topic. A review item whose Question the curriculum no
+longer holds has no Topic to attribute it to and is counted in no Topic, while the
+score above the breakdown still counts it — the projection keeps unresolved answers.
+Topic performance is derived in memory and is not persisted.
 
 Mixed interview repeats follow the same persisted-retake boundary as focused
 practice. The Mixed result delegates creation to `AssessmentRetakeService`,
@@ -297,8 +301,10 @@ saved on a result screen appear here, and one removed here disappear there. It a
 thing: `SavedQuestionContentResolver` maps each saved identity through
 `CurriculumRepository.getQuestionsByIds` — the historical resolver, never an ACTIVE listing — into
 `SavedQuestionItem.Available` or `SavedQuestionItem.Missing`, preserving the repository's saved
-order (`saved_at_epoch_millis DESC, question_id ASC`) exactly. DEPRECATED content resolves and
-renders like any other; a null lookup is a `Missing` placeholder that keeps its position and stays
+order (`saved_at_epoch_millis DESC, question_id ASC`) exactly. The resolver also applies the
+learner's current [curriculum visibility](#curriculum-visibility): a resolved Question of a
+hidden Topic is omitted. The holder itself is never filtered. DEPRECATED content of a visible
+Topic resolves and renders like any other; a null lookup is a `Missing` placeholder that keeps its position and stays
 removable, because the learner still owns that identity; a *failing* lookup is a screen error with
 Retry, since a curriculum that cannot be read is not evidence that a Question was retired. Retry
 re-runs resolution against the loaded saved list explicitly, because a refresh that re-reads an
@@ -337,6 +343,66 @@ Topic detail screens use a Material 3 top app bar for back navigation, with the
 navigation icon invoking the existing Navigation 3 back-stack pop. Detail and
 practice destinations should keep this phone-style toolbar affordance instead
 of rendering a standalone text Back button in page content.
+
+## Curriculum Visibility
+
+The learner can hide the optional Kotlin Multiplatform Topic. Assessment applies that
+differently to attempts that do not exist yet, attempts in progress, and completed
+attempts. The system-wide model is [curriculum visibility](curriculum-visibility.md).
+
+**Starting.** Selection reads `VisibleCurriculumRepository` and `VisibleAssessmentHistory`,
+so a new attempt — focused, Mixed, or a retake — cannot contain a Question from a hidden
+Topic. See [practice selection](practice-selection.md#curriculum-visibility).
+
+**In progress: atomic.** `AssessmentSessionLoader` resolves an in-progress attempt's
+Questions through the identity read, because the persisted attempt owns its Question
+sequence. If any Question that resolved belongs to a hidden Topic, the result is
+`AssessmentSessionLoadResult.ContentUnavailable`, and `AssessmentTakingViewModel` shows
+`Unavailable` with no Retry. The attempt is **not** partially filtered. Numbering, the first
+unanswered position, completion and the stored score all describe one persisted sequence,
+and a session with a Question removed for presentation would disagree with storage.
+Visibility is checked before the missing-Question walk, so an attempt holding both a hidden
+and a missing Question is unavailable. An ID that does not resolve at all is still
+`MissingQuestion`. A session already on screen is withdrawn as soon as one of its Questions
+becomes hidden, and a core session is unaffected. The stored attempt is never changed, so
+it resumes exactly where it was once the content is visible again.
+
+**Completed: projected.** A completed attempt is a historical record, so both result
+screens project it through `VisibleHistoryProjection`, the rule every history consumer uses:
+
+- hidden Questions are omitted from the review, and the visible transcript keeps its
+  original order;
+- the score is recomputed from persisted `Answered.isCorrect` over the visible answers, and
+  never from the current answer key;
+- the Mixed Topic breakdown is counted from visible review items, so a hidden Topic has no
+  row;
+- when anything was hidden, the summary states "N Kotlin Multiplatform questions are hidden
+  by your learning-content setting." (plural `assessment_review_hidden_questions`) directly
+  under the score, as a neutral note rather than a warning. This is audit decision D-2: one rule everywhere, and the interview record shows
+  the same projected score;
+- a result with no visible Question is `Unavailable`, not `AttemptNotFound`, and offers no
+  retake. The attempt still exists and returns unchanged when shown.
+
+The attempt ID, timestamps and configuration are unchanged, and nothing is written back.
+`AssessmentReviewLoader` stays historical and unfiltered, and each caller hands it what is
+currently visible.
+
+```text
+IN_PROGRESS  → atomic: any hidden Question makes the session unavailable
+COMPLETED    → historical record: safely projected to its visible Questions
+```
+
+The two rules are deliberately different, not two inconsistent implementations. An
+in-progress attempt is still a state machine whose next step depends on its full sequence.
+A completed attempt is finished, and showing its visible part cannot change what it
+records.
+
+**Saved Questions.** `SavedQuestionStateHolder` keeps every raw saved identity, because the
+result and Mistake cards need to show whether any Question on screen is saved.
+`SavedQuestionContentResolver` omits resolved hidden Questions. An unresolved ID stays
+`Missing`, because its ownership is unknown. The collection's count covers visible entries
+only, and a visibility change re-resolves the same saved list without reading or writing the
+saved table.
 
 ## Interview Simulation: What Was Considered And Not Built
 

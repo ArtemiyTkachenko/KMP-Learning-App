@@ -9,9 +9,9 @@ import org.artkachenko.kmp_learning_app.settings.KmpContentPreferenceStore
  * The learner's curriculum visibility, owned for the lifetime of the application.
  *
  * Follows [org.artkachenko.kmp_learning_app.settings.AppearanceStateHolder] for the same reasons:
- * the repository decorators, the history projection, the Settings switch, the Topic Browser and
- * Topic Detail — and later the navigator — all read it, so it must outlive every destination and be
- * the one instance they share. It is a Koin `single`.
+ * the repository decorators, the history projection, the Settings switch, the Topic Browser, Topic
+ * Detail, the destination guards and the back-stack pruning pass all read it, so it must outlive
+ * every destination and be the one instance they share. It is a Koin `single`.
  *
  * The stored preference is read once, synchronously, in the constructor, so the first read of the
  * curriculum already sees the learner's choice and optional content never appears for a moment

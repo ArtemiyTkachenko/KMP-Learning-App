@@ -783,6 +783,30 @@ E22-05 has since added that card, and the decision stands: the browser gained on
 actionable shortcut into the next Lesson, and still carries no per-Topic or aggregate study
 figure. See [Where it appears](#where-it-appears).
 
+## Curriculum visibility
+
+The learner can hide the optional Kotlin Multiplatform Topic (see
+[curriculum visibility](curriculum-visibility.md)). Study state handles that entirely on the
+content side of the join, and never on the record side:
+
+- `StudyProgressStateHolder` owns the complete persisted set of studied Lessons. It is not
+  visibility-filtered, and nothing in it knows that visibility exists.
+- Unit progress, Topic progress and Continue Learning are derived against the ACTIVE Units
+  and Lessons that `LearningContentRepository` returns. The application binds that interface
+  to `VisibleLearningContentRepository`, which omits Units whose home Topic is hidden.
+- Hiding KMP therefore removes its Lessons from every current denominator and from the
+  Continue Learning walk, while their `studied_lesson` rows stay exactly as they were.
+- Showing KMP again brings the Lessons back with their prior studied state, because the
+  record was never touched.
+- When visibility changes, the Topic Browser and Topic Detail reload their ACTIVE reads and
+  ask the holder to `refresh()`. That refresh re-reads the full record. It clears, filters and
+  unmarks nothing.
+
+This is deliberately unlike assessment history, which is *projected* at an app-scoped seam
+([progress](progress.md#curriculum-visibility)). Study records need no projection: they are
+already joined against current content on every derivation, and the visible content is
+simply smaller.
+
 ## Non-goals and future boundaries
 
 E22-01 introduces no Kotlin type. Prose specifies this contract completely, and every

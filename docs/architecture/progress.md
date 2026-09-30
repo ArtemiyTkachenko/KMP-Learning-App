@@ -5,8 +5,12 @@ How completed assessment history becomes learner-facing statistics, and how thos
 ## Derived Learning Progress
 
 Completed history feeds the shared `LearningProgressService`, which derives a
-`LearningProgressSnapshot` entirely in memory. Overall totals sum persisted
-`AssessmentScore` values, while Topic and Subtopic observations use persisted
+`LearningProgressSnapshot` entirely in memory. That history is always
+`VisibleAssessmentHistory` — the raw completed attempts projected to the learner's
+current [curriculum visibility](#curriculum-visibility) — and never the raw store. Overall
+totals sum the attempts' `AssessmentScore` values: the persisted score for an attempt with
+nothing hidden, and a score recomputed over the visible answers for one the projection
+trimmed. Topic and Subtopic observations use persisted
 `QuestionAnswerState.Answered.isCorrect` values plus stable historical Question,
 Topic, and Subtopic lookup. Every completed occurrence counts equally,
 including focused, mixed, and retake attempts; derived statistics are not
@@ -15,8 +19,8 @@ persisted. A Topic or a Subtopic is weak after at least 5 observations below
 pattern rather than on one unlucky Question.
 
 The two sources answer slightly different questions, and are allowed to. Overall
-totals come from the persisted score of each completed attempt and therefore
-count every occurrence the learner answered, while the Topic and Subtopic
+totals come from the score of each visible completed attempt and therefore
+count every visible occurrence the learner answered, while the Topic and Subtopic
 breakdown can only place an occurrence whose Question still resolves through
 `CurriculumRepository.getQuestionsByIds`. A historical Question that no longer
 resolves at all — which the never-delete import contract makes unreachable
@@ -283,6 +287,15 @@ learner earned on questions that have since been retired. The screen stays
 analytics-focused: unseen Subtopics are still not listed here, because browsing the
 whole curriculum is Topic Detail's job.
 
+The route carries a Topic ID that may belong to a hidden Topic — a retained or restored
+entry, or one opened before Settings changed — so `ProgressTopicViewModel` guards it
+explicitly against current visibility and keeps two states apart. `Empty` means a
+*visible* Topic with no observations yet. `Unavailable` means the Topic is hidden. It
+renders as the existing "Topic unavailable" message, claims nothing about the Topic's
+history, and returns to content when the Topic is shown again. A hidden Topic would
+otherwise read as `Empty`, because its evidence has been projected out, and "no
+observations yet" would be a false statement.
+
 ## Learning context on the study surfaces
 
 The Topics list, Topic Detail, and Subtopic rows present the same derived
@@ -304,12 +317,14 @@ only input that can produce Loading, Empty, or Error: browsing, searching, and
 starting practice keep working when history is unavailable, and an optional
 statistic is never allowed to take down the study flow. The query lives outside
 both loads, so a history refresh rebuilds the rows underneath an active search
-without disturbing what was typed. Learning context follows the app-scoped
-`AssessmentHistoryStore` rather than reading completed attempts again, so a newly
-completed assessment refreshes these screens through the same invalidation every
-other consumer uses — no restart, no manual retry, and no second history cache.
-No app-wide analytics state holder was introduced: the store plus the service
-already are the shared source, and each feature only maps them.
+without disturbing what was typed. Learning context follows `VisibleAssessmentHistory`,
+the projection of the app-scoped `AssessmentHistoryStore`, rather than reading completed
+attempts again. A newly completed assessment therefore refreshes these screens through the
+same invalidation every other consumer uses — no restart, no manual retry, and no second
+history cache — and a visibility change re-derives them from the re-projected history
+without reading the attempt table at all. No app-wide analytics state holder was
+introduced: the store, its projection and the service already are the shared source, and
+each feature only maps them.
 
 `AssessmentHistoryStore.history` is a `SharedFlow` with `replay = 1` rather than a
 `StateFlow`, and that choice is the whole of a consumer's Retry. Every consumer
@@ -323,6 +338,9 @@ resulting read settles**, whether the attempts changed, came back identical, or
 could not be read at all. A consumer therefore recovers both failures by observing
 this flow, with nothing of its own to arrange; `replay = 1` is what still lets a
 returning destination render the cached history on its first frame.
+`VisibleAssessmentHistory`, which consumers actually observe, keeps the same contract: it
+is shared with `replay = 1` and re-projects every settled refresh, including an unchanged
+one.
 
 Search matching is unchanged by any of this. It still reads Topic and Subtopic
 names only, in memory, against the catalog already loaded, so learning context is
@@ -343,7 +361,7 @@ source of truth.
 
 Unresolved mistake state is derived once, never persisted:
 
-    AssessmentRepository.getCompletedAttempts()   (newest first)
+    VisibleAssessmentHistory                      (newest first, projected)
         -> first occurrence per stable Question ID
         -> that occurrence's persisted correctness
         -> incorrect only
@@ -368,3 +386,30 @@ Mistake Review also presents the shared Saved Questions state described in
 are independent: saving or unsaving an entry never resolves it, and only a later correct answer
 takes it out of the queue. The E17-04 scoped practice shortcut is unchanged and stays a separate
 action on the entry.
+
+## Curriculum visibility
+
+Every learner-visible assessment statistic is derived from two already-narrowed inputs —
+`VisibleAssessmentHistory` and the ACTIVE reads of `VisibleCurriculumRepository` — and
+never from raw completed history. Nothing in this document contains a Kotlin Multiplatform
+check. The mechanism is described in [curriculum visibility](curriculum-visibility.md).
+
+With KMP content hidden:
+
+- a completed KMP-only attempt disappears from the projection, so it is not counted in the
+  completed-attempt count, the history rows, or recent performance;
+- a mixed attempt that included KMP Questions keeps only its visible answers, and its score
+  is recomputed over them from persisted correctness;
+- overall answered and correct totals exclude KMP answers, because they sum those
+  projected scores;
+- recent performance reads the same projected attempts, so hidden answers are neither in
+  its window nor in its series;
+- weak areas and Topic and Subtopic performance have no hidden evidence to rank;
+- the coverage denominator is the visible ACTIVE bank, so hidden Questions neither count
+  as covered nor lower the percentage;
+- the unresolved-mistake count and queue omit KMP mistakes;
+- a Progress Topic route to `kmp` is `Unavailable`, not `Empty`.
+
+Showing the content again restores every figure exactly, because the projection is
+recomputed from unchanged stored attempts. Nothing about a projection is persisted, and
+the durable `AssessmentScore` on a stored attempt is never rewritten.

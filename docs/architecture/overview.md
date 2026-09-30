@@ -2,7 +2,7 @@
 
 How the application is composed, which hosts run it, and how curriculum content is modelled.
 
-Sibling notes: [assessment](assessment.md) · [progress](progress.md) · [practice selection](practice-selection.md) · [recommendations](recommendations.md) · [practice builder](practice-builder.md) · [persistence](persistence.md) · [study progress](study-progress.md)
+Sibling notes: [assessment](assessment.md) · [progress](progress.md) · [practice selection](practice-selection.md) · [recommendations](recommendations.md) · [practice builder](practice-builder.md) · [persistence](persistence.md) · [study progress](study-progress.md) · [curriculum visibility](curriculum-visibility.md)
 
 The product's visible identity, its version contract, and the application icon are in
 [product identity and versioning](../development/versioning.md).
@@ -35,6 +35,10 @@ MainActivity
 `CurriculumRepository` is the application-facing data boundary intended for
 E08 assessment-engine work. Runtime reads should depend on that interface
 rather than on Room entities, DAOs, or the local repository implementation.
+The interface resolves to `VisibleCurriculumRepository`, which wraps
+`LocalCurriculumRepository` and applies the learner's
+[curriculum visibility](curriculum-visibility.md) to eligibility reads. The local
+implementation is bound by its concrete type only, and the decorator is its one consumer.
 
 The shell exposes four areas — Learn, Interview, Progress, and Mistakes —
 through `AppTopLevelDestination`, which maps each to its `AppRoute`. Learn is the visible
@@ -105,6 +109,37 @@ initialization cannot leave a host without content. `App()` keeps its own theme 
 usable directly in tests and previews that bypass `AppRoot` — both go through `AppearanceTheme`, so
 the two are one decision rather than two that happen to agree.
 
+### Curriculum Visibility And The Back Stacks
+
+Routes carry stable IDs, so a retained or restored stack can hold a route to content the
+learner has since hidden in Settings. Two layers handle this, and neither changes a stored
+record. Destinations that open content by identity guard themselves against hidden content.
+That is the correctness boundary, and it holds even for a route nobody has pruned yet. The
+navigation layer then prunes what is now known to be hidden, so Back and area switching do
+not lead there:
+
+```text
+CurriculumVisibilityStateHolder.visibility
+  -> pruneRoutesHiddenBy (collectLatest, started from AppShell)
+       -> AppNavigator.detailRoutes()            every area's non-root entries
+       -> AppRouteVisibilityResolver.classify    Visible | KnownHidden | Unknown
+       -> AppNavigator.pruneFrom(KnownHidden)
+```
+
+Only `KnownHidden` is pruned. `Unknown` — a failed lookup, a missing or stale identity,
+incomplete metadata — is not proof of hidden ownership, so the route stays and its
+destination's own NotFound or Error handling applies. Every area's stack is validated, not
+only the current one. Each stack is cut from its first `KnownHidden` entry through its top,
+because the entries above were reached through it. Roots always remain. A `Settings` entry
+on top of a pruned stack stays open, rebased directly onto the Topics root. `collectLatest`
+cancels a pass that a newer visibility has made obsolete. Turning the content back on does
+not resurrect pruned routes, and pruning never touches domain persistence.
+
+`AppNavigator` gained only structural operations. It knows nothing about repositories or
+visibility, and the decision of which routes are invalid belongs to the caller. The guarded
+destinations and the full rules are in
+[curriculum visibility](curriculum-visibility.md#identity-addressed-routes).
+
 ### Runtime Host Coverage
 
 `App()` and the common product graph are used by every configured runtime host:
@@ -119,8 +154,23 @@ the two are one decision rather than two that happen to agree.
 
 Each startup function installs `curriculumDataModule`, `learningContentModule`,
 `assessmentDataModule`, `savedQuestionDataModule`, `lessonStudyDataModule`,
-`topicStudyPresentationModule`, and `appearanceModule`, plus exactly one platform database
-module and one platform appearance module.
+`topicStudyPresentationModule`, `appearanceModule`, and `curriculumVisibilityModule`, plus
+exactly one platform database module and one platform appearance module.
+
+The shared modules divide ownership as follows:
+
+| Module | Owns |
+| --- | --- |
+| `curriculumDataModule` | The importer, the startup initializer, and the Room-backed `LocalCurriculumRepository`, bound by its concrete type only |
+| `learningContentModule` | `BundledLearningContentRepository`, bound by its concrete type only |
+| `curriculumVisibilityModule` | The KMP preference store and `CurriculumVisibilityStateHolder`; the `CurriculumRepository` and `LearningContentRepository` interfaces, bound to the visibility decorators around the two raw repositories; and `VisibleAssessmentHistory` |
+| `assessmentDataModule` | Attempt persistence, the raw `AssessmentHistoryStore` cache, and the assessment services. Selection and progress receive `VisibleAssessmentHistory` |
+| `topicStudyPresentationModule` | Shared presentation state (`SavedQuestionStateHolder`, `StudyProgressStateHolder`), `MistakeReviewService` over `VisibleAssessmentHistory`, `AppRouteVisibilityResolver`, and the ViewModels |
+
+Application code therefore never receives a raw repository through an interface. A graph
+without `curriculumVisibilityModule` fails to resolve `CurriculumRepository` and
+`LearningContentRepository`, rather than silently serving unfiltered content. See
+[curriculum visibility](curriculum-visibility.md#repository-decoration-and-di).
 The host then composes its thin platform root, which delegates initialization to
 the common `AppRoot` state machine. Database creation and platform storage stay
 below the shared repository boundary; `App()` does not start Koin or select a
@@ -138,9 +188,17 @@ Kotlin/Native iOS compilations remain disabled on the Linux CI runner. iOS
 framework linking and simulator runtime verification are therefore local macOS
 checks rather than Linux CI guarantees.
 
-## Appearance
+## Application Preferences
 
-The one user-facing setting, and the only application-level preference the product has.
+The product has two independent application-level preferences, both on the Settings screen:
+the theme and curriculum visibility. Each has its own store, which owns its key and tokens
+over the shared `AppPreferenceStorage`, and its own app-scoped state holder. There is no
+generic settings framework, and Settings owns neither preference: `SettingsDestination`
+resolves the two holders directly and has no ViewModel.
+
+### Appearance
+
+Appearance is responsible for the theme only.
 
 ```text
 platform key-value store (AppPreferenceStorage)
@@ -180,6 +238,29 @@ no settings framework, and no new dependency — the storage key `appearance.the
 single switch reflecting the *effective* theme; there is no UI action for returning to automatic
 mode, which is why nothing writes `System` back.
 
+### Curriculum Visibility
+
+The second preference decides whether the optional Kotlin Multiplatform curriculum (Topic
+`kmp`) is shown. It follows the appearance pattern, with one deliberate difference in its
+stored semantics:
+
+```text
+platform key-value store (AppPreferenceStorage)
+          -> KmpContentPreferenceStore          key content.include_kmp, tokens on/off
+          -> CurriculumVisibilityStateHolder    Koin single, application lifetime
+          -> CurriculumVisibility               the hidden Topic IDs every seam applies
+          <- SettingsDestination                sends the learner's choice back
+```
+
+An absent or unrecognised value reads as OFF, which is the fresh-install default. Unlike the
+theme, both `on` and `off` are always written. Absence here means *never chosen*, not a
+choice of its own like the theme's `System`, so a future change of default must not flip a
+learner who deliberately chose OFF. The holder reads synchronously in its constructor for
+the same no-flash reason the appearance holder does. It is consumed below presentation — by
+the repository decorators and the history projection — as well as by Settings, the Topic
+Browser, the destination guards and back-stack pruning. What the setting hides, and why
+hiding never deletes anything, is [curriculum visibility](curriculum-visibility.md).
+
 ## Curriculum Content Model
 
 The curriculum content contract lives in shared `commonMain` code as immutable
@@ -214,8 +295,16 @@ initial_curriculum.json          learning_curriculum.json
   -> CurriculumImporter            -> LearningContentLoader
   -> Room                          -> validated in-memory document
   -> LocalCurriculumRepository     -> BundledLearningContentRepository
+  -> VisibleCurriculumRepository   -> VisibleLearningContentRepository
   -> CurriculumRepository          -> LearningContentRepository
+     consumers                        consumers
 ```
+
+The last step is a Koin binding rather than a further transformation. Each `Visible*`
+decorator implements the interface and wraps the raw implementation, which is bound by its
+concrete type only, so every consumer of either interface receives the decorator. ACTIVE
+reads are filtered by [curriculum visibility](curriculum-visibility.md), and identity reads
+pass through unchanged.
 
 Learning content is publisher-owned static content, so it is not persisted:
 there are no learning-content Room tables, no migration, and no startup
@@ -236,7 +325,9 @@ ACTIVE Units for a home Topic in authored order; `getUnitById` and
 `getLessonById` resolve stable identity regardless of status. This mirrors the
 split `CurriculumRepository` already makes between active selection and
 historical resolution. A Unit's home Topic decides where it is browsed and does
-not constrain the Topics its Lessons reference.
+not constrain the Topics its Lessons reference. It also decides the Unit's visibility: the
+application-facing repository drops Units of a hidden Topic from both ACTIVE reads, and
+still resolves them by ID.
 
 `getActiveUnits` is the fourth query, added by E22-05: every ACTIVE Unit in the
 document, in global authored order. It exists because sequence across Topics is
@@ -396,7 +487,10 @@ Lesson, and a Unit/Lesson mismatch all reach the learner as unavailable, while a
 document that could not be read is a separate, retryable `Error`. The Unit
 overview lists ACTIVE Lessons in authored order and never sorts them, and an
 ACTIVE Unit with no current Lessons renders as an empty overview rather than an
-error.
+error. For the same reason — identity reads resolve everything — both destinations
+also check the learner's current visibility: a Unit whose home Topic is hidden, and
+any Lesson inside it, is the same `NotFound`, re-evaluated live while the screen is
+alive.
 
 E21-04 makes the Lesson destination the reading surface. `LearningLessonUiState.Content`
 carries the authored `LearningSection` and `SourceReference` values directly rather than

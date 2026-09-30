@@ -93,6 +93,7 @@ does not cover: [CI](docs/workflows/ci.md).
 - [Persistence](docs/architecture/persistence.md): Room schema, migrations, import policy, platform storage.
 - [Study progress](docs/architecture/study-progress.md): learner-owned studied state, its lifecycle under re-authoring, derived Unit and Topic progress.
 - [Text selection](docs/architecture/text-selection.md): selectable screens, the copy prompt, and the per-platform selection seams.
+- [Curriculum visibility](docs/architecture/curriculum-visibility.md): the optional Kotlin Multiplatform Topic — preference, repository decorators, history projection, route guards, back-stack pruning, hide-not-delete.
 
 **Development** — how to write code here:
 [Kotlin style](docs/development/kotlin.md) ·

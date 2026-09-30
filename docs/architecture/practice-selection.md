@@ -106,7 +106,10 @@ selection ends at `NoEligibleQuestions`, which the Practice Builder already read
 as "this setup has nothing to ask", instead of quietly practising FOUNDATION.
 
 The selector reads history through `CompletedAssessmentHistory`, a one-shot
-suspending read that `AssessmentHistoryStore` implements. It serves the Practice
+suspending read. The application binds it to `VisibleAssessmentHistory`, the
+visibility projection over `AssessmentHistoryStore`, which remains the raw cache
+and persistence-history authority underneath (see
+[Curriculum visibility](#curriculum-visibility) below). It serves the Practice
 Builder's per-edit preflight from the app-scoped cache rather than issuing a
 query for every chip the learner taps, and it inherits the store's invalidation,
 so a just-completed assessment stops being unseen through the same refresh
@@ -167,3 +170,27 @@ completed correctly, the normal completion save creates the newest correct
 occurrence and `AssessmentTakingViewModel` invalidates `AssessmentHistoryStore`.
 The next Mistake Review or selection derivation therefore excludes that Question;
 a later completed incorrect occurrence reopens it through exactly the same path.
+
+### Curriculum visibility
+
+Selection has no Kotlin Multiplatform logic, because both of its inputs are narrowed
+before they reach it:
+
+| Input | Arrives through | Effect with KMP hidden |
+| --- | --- | --- |
+| ACTIVE candidate pools | `CurriculumRepository`, bound to `VisibleCurriculumRepository` | No `kmp` Question is a candidate, at any scope or level |
+| Completed history | `CompletedAssessmentHistory`, bound to `VisibleAssessmentHistory` | Hidden answers are projected out, so they are not exposure, weak-area evidence or unresolved mistakes |
+
+The four sources — `ALL`, `UNSEEN`, `WEAK_AREAS`, and `UNRESOLVED_MISTAKES` — therefore
+behave identically with the content hidden or shown. They simply operate on a smaller
+curriculum and a projected history. A weak `kmp` Topic cannot be ranked, and a `kmp`
+mistake cannot be selected, because neither reaches the selector.
+
+Mixed selection follows the same rule. With KMP hidden, `kmp` is absent from
+`getActiveQuestions`. With KMP shown, it is one ordinary Topic in the existing
+coverage-first round-robin, with no special weighting.
+
+Because selection always reads the visible repositories, a newly started attempt — including
+a retake — can never contain hidden content. What happens to an attempt that already
+contains it is described in
+[curriculum visibility](curriculum-visibility.md#in-progress-and-completed-attempts).

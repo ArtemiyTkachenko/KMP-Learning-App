@@ -4281,7 +4281,8 @@ already-remediated Unit was edited.
 open and are not editorial findings: the saved-state claim in **The ViewModel Owner:
 Lifetime Is Not Persistence** (Batch 5A) and "It starts no coroutine" in **Starting
 Coroutines: `launch`, `async` and `runBlocking`** (Mega Batch A). Both belong to a technical
-content pass.
+content pass. *(Both were later closed; see
+[Technical-Review Closure](#technical-review-closure-2026-09-30).)*
 
 #### Validation and size
 
@@ -4303,3 +4304,43 @@ Final Batch status: Units 1–6 are **Re-verified**, and LC-001 through LC-038 a
 All 30 Units are **Re-verified** and the ledger has 0 open findings.
 
 **Editorial remediation complete: 0 open findings.**
+
+### Technical-Review Closure (2026-09-30)
+
+A technical correction pass over the two notes the editorial batches recorded outside the
+ledger. It is not an editorial batch: no `LC-*` finding was created or reopened, no other
+Lesson was edited, and no ID, mapping, status, order or `relatedLessonIds` value changed.
+Each claim was checked against current first-party documentation, not against the Lesson's
+own wording.
+
+**Note 1 — Starting Coroutines: `launch`, `async` and `runBlocking`** (Mega Batch A)
+
+| | |
+| --- | --- |
+| Original claim | SENIOR / paragraph 2: "**`withContext` is not a builder.** It starts no coroutine; it is a suspending function that runs a block with a changed context and returns the block's result." |
+| Technical issue | Both halves are wrong as categorical statements. The Kotlin *Coroutines basics* page lists `withContext()` among its "coroutine builder function" examples. The `withContext` KDoc says that, like `coroutineScope`, it "creates a new lexically scoped child coroutine". The distinction worth teaching is the caller's contract, not whether a coroutine object exists. The Lesson summary's "Three builders begin it" also read as an exhaustive list. |
+| Resolution | SENIOR / paragraph 2 now says `withContext` is not an *alternative* to `launch` or `async`. Kotlin lists it among the builders, but it runs its block in the supplied context, suspends the caller until the block completes, and returns the block's result directly rather than a `Job` or `Deferred` for work that carries on. With a different dispatcher the block is dispatched there and the caller resumes on its own afterwards; with the same dispatcher no dispatch happens, so a thread switch is not unconditional. It is not a way to start work and keep going, and the pointer to **`withContext` and Main-Safety** is kept. The summary now names `launch`, `async` and `runBlocking` as "the usual ways to begin it" rather than as the builders. CORE / paragraph 2 ("Three of them cover almost everything you will write") already made no exhaustive claim and was left. |
+| Authoritative sources | [`withContext` API reference](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/with-context.html) ("Calls the specified suspending block with an updated coroutine context, suspends until it completes, and returns the result"; "If the resulting context … has the same `ContinuationInterceptor` as the caller, no dispatch is performed"), **added** as a Source. [Coroutines basics](https://kotlinlang.org/docs/coroutines-basics.html), already a Source (builder list). |
+
+**Note 2 — The ViewModel Owner: Lifetime Is Not Persistence** (Batch 5A)
+
+| | |
+| --- | --- |
+| Original claim | PRACTICAL comparison, last row: "The process is killed and the app is launched again later" → the state "Is gone. Anything the reader must find again has to be reconstructed by something else". SENIOR / paragraph 4: saved state lets "a screen … be reconstructed after the process is gone". |
+| Technical issue | The row merged two Android situations with different saved-state outcomes, and the Senior paragraph over-generalised saved state to any process loss. Saved state is restored after system-initiated process death when Android restores the task. It is tied to the task stack and is lost when the task goes away — removal from Recents, force-stop, reboot — so it is neither durable storage nor a promise about an arbitrary later launch. |
+| Resolution | The six-event ladder became seven. The old last row was split into "the system kills the process while the app is in the background, and Android later restores the task" (ViewModel memory gone; the re-created screen can read back small values recorded in saved state, such as `SavedStateHandle` entries) and "the task itself is gone … and the app starts fresh" (ViewModel memory and the old task's saved state both gone; only durable storage brings anything back). The summary and PRACTICAL / paragraph 1 now say "seven events"; the "rungs four and five" reference is unchanged. SENIOR / paragraph 4 now says saved state (`SavedStateHandle`, `rememberSaveable`) reconstructs small transient state after system-initiated process death when Android restores the task, is tied to that task, is restoration rather than storage, and promises nothing about an arbitrary later launch; durable persistence is for data of any size and for a fresh start. The core claim — moving state into a ViewModel may change lifetime and does not make it durable — and the "small amount" size guidance are unchanged. |
+| Authoritative sources | [Saved State module for ViewModel](https://developer.android.com/topic/libraries/architecture/viewmodel/viewmodel-savedstate) ("These values persist after the process is killed by the system"; "Saved state is tied to your task stack. If your task stack goes away, your saved state also goes away"; force-stopping, removing from Recents and rebooting as the cases; "In User-initiated UI state dismissal scenarios, saved state isn't restored"), **added** as a Source. [Save UI states](https://developer.android.com/topic/libraries/architecture/saving-states) was used to confirm the ViewModel / saved state / persistent storage comparison and was not added, because the added page already supports every claim the Lesson makes. |
+
+**Consistency check.** Other Lessons that discuss the same subjects were read for direct
+contradictions, and none needed a change. **`rememberSaveable` and State That Must
+Survive** already says saved state is not retained when the user swipes the activity away
+from Recents. **`withContext` and Main-Safety** already says `withContext` is "not a
+builder in the launch/async sense", which the corrected paragraph now agrees with.
+
+**Validation.** `python3 tools/learning_question_coverage.py --write` and `--check`
+(current; only the learning-curriculum fingerprint changed, and every Question association
+and count is unchanged), `./gradlew :shared:jvmTest` (1 831 tests, 0 failures), `git diff --check`
+(clean). Test change: none; no existing test pins the changed prose or Sources.
+
+**Learning-content editorial findings: 0 open.**
+**Learning-content technical-review notes recorded by this audit: 0 open.**

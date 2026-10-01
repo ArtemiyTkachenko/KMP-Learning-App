@@ -182,3 +182,22 @@ internal val MIGRATION_7_8 = Migration(
         """,
     )
 }
+
+/**
+ * Every migration the database ships, in upgrade order — the one list each platform builder installs.
+ *
+ * The four builders differ in driver and location, never in how an existing database is upgraded,
+ * so the chain is declared once here rather than copied into each of them. A migration added above
+ * and not appended here fails `CurriculumDatabaseMigrationTest`, which opens a version-1 database
+ * through a builder configured with exactly this list. The individual constants stay addressable
+ * for the tests that exercise a single version step.
+ */
+internal val curriculumDatabaseMigrations: List<Migration> = listOf(
+    MIGRATION_1_2,
+    MIGRATION_2_3,
+    MIGRATION_3_4,
+    MIGRATION_4_5,
+    MIGRATION_5_6,
+    MIGRATION_6_7,
+    MIGRATION_7_8,
+)

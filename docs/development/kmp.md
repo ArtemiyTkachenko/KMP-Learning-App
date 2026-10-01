@@ -32,7 +32,7 @@ Source sets that currently hold code:
 | `iosMain` | iOS platform implementations. |
 | `jvmMain` | JVM/desktop platform implementations. |
 | `webMain` | Code shared by both browser targets, including the web Room builder and Koin module. |
-| `commonTest`, `jvmTest` | See [testing](testing.md). |
+| `commonTest`, `jvmTest`, `webTest` | See [testing](testing.md). |
 
 `webMain` is the intermediate source set for JS and Wasm. Per-target `jsMain` and
 `wasmJsMain` exist in the hierarchy but currently hold no `:shared` sources — only

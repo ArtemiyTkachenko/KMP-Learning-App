@@ -2,7 +2,10 @@ package org.artkachenko.kmp_learning_app.ui.selection
 
 import androidx.compose.runtime.Composable
 
-/** Copies here are offered by the floating toolbar, so wrapping that is all it takes. */
+/**
+ * Wraps the floating-toolbar seam, which AndroidX foundation 1.11's new context menu no longer
+ * calls for a selection, so no copy is reported here today. See the common declaration.
+ */
 @Composable
 internal actual fun ReportSelectionCopies(
     onCopied: () -> Unit,

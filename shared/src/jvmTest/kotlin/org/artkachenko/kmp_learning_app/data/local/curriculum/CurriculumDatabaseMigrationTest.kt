@@ -26,6 +26,36 @@ import org.artkachenko.kmp_learning_app.data.local.assessment.AssessmentAttemptS
 
 internal class CurriculumDatabaseMigrationTest {
     @Test
+    fun theInstalledMigrationChainUpgradesTheOldestSchemaToTheCurrentVersion() = runTest {
+        // Every platform builder installs `curriculumDatabaseMigrations`, so this opens a version-1
+        // file exactly as an upgraded installation would be opened — through a builder, migrating
+        // to whatever version the database class now declares. A migration left out of the chain
+        // fails here with Room's missing-migration error even though the step tests below pass.
+        val databasePath = Files.createTempDirectory("curriculum-migration-test")
+            .resolve("curriculum.db")
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = Path.of("schemas").toAbsolutePath(),
+            databasePath = databasePath,
+            driver = BundledSQLiteDriver(),
+            databaseClass = CurriculumDatabase::class,
+            databaseFactory = { CurriculumDatabaseConstructor.initialize() },
+        )
+        helper.createDatabase(version = 1).use { connection ->
+            connection.executeSQL("INSERT INTO topic (id, name, status, sort_order) VALUES ('topic', 'Topic', 'ACTIVE', 0)")
+        }
+
+        val database = Room.databaseBuilder<CurriculumDatabase>(name = databasePath.toString())
+            .setDriver(BundledSQLiteDriver())
+            .addMigrations(*curriculumDatabaseMigrations.toTypedArray())
+            .build()
+        try {
+            assertEquals("Topic", database.curriculumDao().getTopicById("topic")?.name)
+        } finally {
+            database.close()
+        }
+    }
+
+    @Test
     fun migrationFromOneToEightPreservesCurriculumAndHistoricalAssessmentRows() = runTest {
         val databasePath = Files.createTempDirectory("curriculum-migration-test")
             .resolve("curriculum.db")
@@ -114,14 +144,7 @@ internal class CurriculumDatabaseMigrationTest {
 
         helper.runMigrationsAndValidate(
             version = 8,
-            migrations = listOf(
-                MIGRATION_2_3,
-                MIGRATION_3_4,
-                MIGRATION_4_5,
-                MIGRATION_5_6,
-                MIGRATION_6_7,
-                MIGRATION_7_8,
-            ),
+            migrations = curriculumDatabaseMigrations,
         ).use { connection ->
             connection.prepare("SELECT selection_mode, level FROM question WHERE id = 'question'").use { statement ->
                 assertTrue(statement.step())
@@ -830,15 +853,7 @@ internal class CurriculumDatabaseMigrationTest {
 
         val database = Room.databaseBuilder<CurriculumDatabase>(name = databasePath.toString())
             .setDriver(BundledSQLiteDriver())
-            .addMigrations(
-                MIGRATION_1_2,
-                MIGRATION_2_3,
-                MIGRATION_3_4,
-                MIGRATION_4_5,
-                MIGRATION_5_6,
-                MIGRATION_6_7,
-                MIGRATION_7_8,
-            )
+            .addMigrations(*curriculumDatabaseMigrations.toTypedArray())
             .build()
         try {
             val store = AssessmentAttemptStore(database)

@@ -30,10 +30,14 @@ internal class AppearanceStateHolder(private val store: ThemePreferenceStore) {
     /**
      * Records an explicit choice and persists it.
      *
-     * The write is not dispatched: it is one small key-value write, and doing it here means the
-     * preference is durable by the time the switch has finished moving, rather than depending on a
-     * coroutine that a closing app may not have run. The observable state is updated first, so the
-     * UI follows the learner's action immediately.
+     * The write is not dispatched: it is one small key-value write, and doing it here hands the
+     * value to the platform store before the switch has finished moving, rather than depending on a
+     * coroutine that a closing app may not have run. When it reaches disk is the store's business:
+     * the desktop file is written in the call, `NSUserDefaults` and `localStorage` take it into a
+     * store that outlives the app process, and Android's `apply()` writes behind but is completed
+     * by the framework before the Activity stops — only a process killed inside that window
+     * forgets the choice. The observable state is updated first, so the UI follows the learner's
+     * action immediately.
      */
     fun setDarkTheme(enabled: Boolean) {
         val chosen = if (enabled) ThemePreference.Dark else ThemePreference.Light

@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.settings
 
+import java.io.File
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -121,6 +122,23 @@ internal class JvmAppPreferenceStorageTest {
 
             assertNull(storage.read(ThemePreferenceStore.Key))
             assertEquals(ThemePreference.System, store.read())
+        }
+    }
+
+    @Test
+    fun anUnreadableFileReadsAsAbsentAndAWriteToItDoesNotThrow() {
+        withTemporaryHome { home ->
+            // A malformed escape makes `Properties.load` throw, so both the read and the
+            // read-modify-write hit the failure the storage contract requires them to absorb.
+            File(home, ".kmp-learning-app").apply { mkdirs() }
+                .resolve("preferences.properties")
+                .writeText("appearance.theme=\\uZZZZ\n")
+            val storage = koinApplication { modules(jvmAppearanceModule) }
+                .koin
+                .get<AppPreferenceStorage>()
+
+            assertNull(storage.read(ThemePreferenceStore.Key))
+            storage.write(ThemePreferenceStore.Key, ThemePreferenceStore.DarkToken)
         }
     }
 }

@@ -14,11 +14,12 @@ import org.koin.dsl.module
  * Both calls guard themselves in JavaScript rather than in Kotlin. `localStorage` throws when a
  * browser has site data blocked, and catching it on the JavaScript side keeps one behaviour for
  * both targets instead of depending on how each maps a thrown `DOMException`. An absent or
- * unreadable value reads as the empty string, which becomes "no preference stored".
+ * unreadable value reads as null, which is "no preference stored"; a stored value, including an
+ * empty one, reads back as itself.
  */
 private class WebAppPreferenceStorage : AppPreferenceStorage {
 
-    override fun read(key: String): String? = readLocalStorage(key).takeIf { it.isNotEmpty() }
+    override fun read(key: String): String? = readLocalStorage(key)
 
     override fun write(key: String, value: String?) {
         if (value == null) removeLocalStorage(key) else writeLocalStorage(key, value)
@@ -26,8 +27,8 @@ private class WebAppPreferenceStorage : AppPreferenceStorage {
 }
 
 @OptIn(ExperimentalWasmJsInterop::class)
-private fun readLocalStorage(key: String): String =
-    js("(function(){ try { return window.localStorage.getItem(key) || '' } catch (e) { return '' } })()")
+private fun readLocalStorage(key: String): String? =
+    js("(function(){ try { return window.localStorage.getItem(key) } catch (e) { return null } })()")
 
 @OptIn(ExperimentalWasmJsInterop::class)
 private fun writeLocalStorage(key: String, value: String): Boolean =

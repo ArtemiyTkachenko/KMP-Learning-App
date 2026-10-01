@@ -481,9 +481,12 @@ Expected platform-specific responsibilities:
 
 Android remains the primary MVP target, but every configured application host
 now supplies a persistent `CurriculumDatabase` to the same shared repositories.
-All platform builders open schema version 8 and register the complete migration chain from
-`MIGRATION_1_2` through `MIGRATION_7_8`; curriculum, assessment history, saved Question identity,
-and Lesson study state remain in one database.
+All platform builders open schema version 8 and install the same migration chain,
+`curriculumDatabaseMigrations`, declared once beside the migrations in `CurriculumMigrations.kt`
+(`MIGRATION_1_2` through `MIGRATION_7_8`); curriculum, assessment history, saved Question identity,
+and Lesson study state remain in one database. A new migration is appended to that list, not to a
+builder. No builder enables destructive fallback, so a missing migration fails the open rather than
+discarding learner data.
 
 Android and Desktop use `BundledSQLiteDriver` with `curriculum.db` in the
 platform application data directory. JVM persistence tests use the same driver
@@ -508,9 +511,34 @@ must run in a secure, cross-origin-isolated context. The webpack development
 server sends `Cross-Origin-Opener-Policy: same-origin` and
 `Cross-Origin-Embedder-Policy: require-corp`; production hosting must provide
 equivalent headers and serve the generated worker JavaScript and SQLite WASM
-asset with correct MIME types. Initialization or storage-capability failures
-flow through `AppRoot`'s existing Error/Retry state rather than silently falling
-back to an ephemeral database.
+asset with correct MIME types. There is no fallback to an ephemeral database: a
+storage failure surfaces as a failed database request inside `CurriculumDataInitializer`, and so
+as `AppRoot`'s Error/Retry state. A browser without OPFS — or a page that is not cross-origin
+isolated — answers the first open with `SQLiteException` ("`sqlite3.oo1.OpfsDb` is not a
+constructor"), and a worker whose SQLite fails to initialize answers every request, queued or
+later, with "SQLite failed to initialize".
+
+One failure does not reach Error. If the worker script itself fails to load, `sqlite-web` 2.7.0's
+`worker.onerror` fails only the requests already in flight and records nothing, so any request
+posted afterwards — the first one, if the load failed before it, or the one Retry sends — waits
+for a reply that never comes, and startup stays on Loading. This is a driver limitation with no
+local fix that does not intercept the driver's private message protocol; it is recorded as
+`CQ-KMP-004` in the [code-quality audit](../quality/code-quality-audit.md).
+
+`WebCurriculumDatabaseTest` in `shared/src/webTest` runs this path in a real browser for both
+targets: the production builder through the packaged worker onto OPFS, foreign-key enforcement,
+rollback of a failed write transaction, and concurrent write transactions that do not interleave
+even though each statement is a separate message to the worker. `shared/karma.config.d` gives the
+browser test page the same COOP/COEP headers as the development server, without which OPFS is
+unavailable.
+
+The worker script is installed into `build/js/node_modules` and `build/wasm/node_modules` as a
+local npm package, and an edit to `sqliteWasmWorker/worker/worker.js` is not reliably copied there
+again: `kotlinNpmInstall` sees an unchanged `package.json` and Yarn keeps the old copy. After
+editing it locally, delete `build/js/node_modules/sqlite-wasm-worker`,
+`build/wasm/node_modules/sqlite-wasm-worker` and both `.yarn-integrity` files before building, and
+confirm the copies match the source. A fresh checkout, such as CI's, always installs the current
+file.
 
 ## Assessment Attempt History
 
@@ -744,7 +772,9 @@ by row rather than by checking that the tables still exist.
 
 Destructive migration should not be the default production strategy. Migration
 tests validate the migration chain against Room's exported schemas and verify
-existing curriculum and assessment rows remain intact.
+existing curriculum and assessment rows remain intact, and one test opens a version-1 file through
+a builder configured with `curriculumDatabaseMigrations`, so a migration missing from the shared
+chain fails even when every single-step test passes.
 
 ## Koin
 

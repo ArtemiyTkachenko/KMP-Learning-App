@@ -187,8 +187,16 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-STATE-012` | Learn surfaces / history recovery | High | High | `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt`, `TopicBrowserViewModelTest.kt`, `TopicDetailViewModelTest.kt` | Neither Learn ViewModel's Retry could recover any state derived from the shared assessment history. | Both observe `AssessmentHistoryStore.history` and derive optional enrichment from it — learning context, Recommended Next and Continue Studying on the browser; learning context and the unresolved-mistake count on Topic Detail. `retry()` reloaded only the curriculum and the study projection. It called neither `historyStore.invalidate()`, which is the only thing that re-reads an attempt table that failed, nor anything that re-runs a derivation over history that read successfully — a re-read of unchanged history is an equal `AssessmentHistory.Loaded` that a `StateFlow` does not emit again. A transient database failure at startup therefore removed every guided surface for the rest of the session, and the Retry button that exists for exactly that restored the catalogue and left the rest gone. `ProgressViewModel.refresh()` and `MistakeReviewViewModel.refresh()` already document and implement both halves (`CQ-STATE-008`); these two never received them. | Mirror the existing pattern in both ViewModels: a `derivations` counter combined into the history collection, and a `retry()` that calls `historyStore.invalidate()` and bumps it. Four jvm regressions pin both failure domains, each confirmed to fail against the previous code. | Fixed |
 | `CQ-STATE-013` | Shared history / retryable derivation | Medium | High | `ProgressStateHolder.kt`, `MistakeReviewStateHolder.kt`, `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt`, `AssessmentHistoryStore.kt` | Four owners now keep a private `derivations` counter to make a retry over unchanged history observable. | The counter exists because `AssessmentHistoryStore.history` is a `StateFlow` and an equal `Loaded` is not re-emitted. Each consumer solves that for itself with the same `MutableStateFlow(0)` plus `combine(history, derivations)` pair, which is why `CQ-STATE-012` was possible at all: the pattern is copied rather than owned. Giving the store's own emissions an identity — a generation on `AssessmentHistory.Loaded`, or an explicit re-derivation signal beside `invalidate()` — would let all four copies and both `retryDerivation()` methods be deleted. | Defer. It is a deliberate consolidation across the store and four consumers with its own test surface, not a bug fix, and it depends on `CQ-STATE-012` having landed. Re-confirmed as the top Stage 4C candidate during the Stage 4B fix pass, which deliberately kept it out of scope to avoid one patch spanning two unrelated themes. Fixed in the Stage 4C fix pass: `history` became a `SharedFlow` with `replay = 1` whose contract is one emission per settled refresh, and all four counters plus both `retryDerivation()` methods are deleted. | Fixed |
 | `CQ-STATE-014` | Attempt creation / event versus state | Low | Medium | `AssessmentLaunchViewModel.kt`, `FocusedResultViewModel.kt`, `MixedInterviewResultViewModel.kt`, `AssessmentLaunchCoordinator.kt` | Attempt creation is published as durable state and as a one-shot `Channel` event describing the same fact, reconciled by a handled-callback. | Each of the three sets `Created(attemptId)` on its `MutableStateFlow` and sends the same identity through a `Channel(BUFFERED)` consumed by a `LaunchedEffect` in the composable. `receiveAsFlow` is single-consumer and that collection is cancelled when the destination leaves composition, so an event lost in flight would strand the state on `Created`, where the `start`/`repeat` guards refuse to launch again — the action is then dead for the life of that ViewModel. The window is one dispatch wide and no failure has been observed. | Defer. The remedy is a decision about event delivery shared by all three result surfaces, which is wider than a local fix and belongs with the Part 2 owners. | Deferred |
-| `CQ-KMP-001` | Android preference storage / contract | Medium | High | `settings/AndroidAppearanceModule.kt`, `settings/AppPreferenceStorage.kt` | The Android store was the one implementation that could throw out of a contract that forbids it. | `AppPreferenceStorage` states that implementations must not throw and that an unreadable store reports absence, "because failing to remember a preference is not a reason to fail to start". The JVM, iOS and web implementations all guard; Android called `getSharedPreferences` and `getString` unguarded. `getSharedPreferences` throws when the preferences directory is unavailable — the normal state of a credential-protected context before first unlock — and `getString` throws `ClassCastException` if the key holds another type. `AppearanceStateHolder` performs that read synchronously in its constructor, which Koin resolves lazily inside `AppearanceTheme`'s `remember`, i.e. during `AppRoot`'s first composition and above the startup error screen, so a throw is an unrecoverable first-frame crash rather than a forgotten preference. Carried over as the open handoff from Part 3D. | Guard both methods with `runCatching`, using the idiom `JvmAppPreferenceStorage` already uses, and resolve the `SharedPreferences` instance lazily so its own failure is absence too. Not covered by a test: `shared` has no populated Android host-test source set and exercising `SharedPreferences` off-device would mean adding Robolectric. | Fixed || `CQ-CROSS-001` | Attempt result surfaces / retake orchestration | Medium | High | `topic_study/focused_result/FocusedResultViewModel.kt`, `mixed_interview/MixedInterviewResultViewModel.kt`, both UI state files, both screens, both destinations, `assessment/retake/AssessmentRetakeController.kt` | One retake state machine existed twice, under two names. | `RepeatPracticeState` and `RepeatInterviewState` were structurally identical six-case sealed interfaces, driven by identical `repeatPractice`/`repeatInterview`, `onRetakeEventHandled` and `setRepeatState` bodies over the same `AssessmentRetakeService.createRetake`, and reported through two one-case event hierarchies (`FocusedResultEvent`, `MixedInterviewResultEvent`) collected by two identical `LaunchedEffect` blocks. `CQ-BUG-003` — the post-persistence re-entry window — had to be found and fixed in both copies independently, which is the concrete cost this records. Neither copy could be tested without a full result ViewModel and its four fakes. | Extract `AssessmentRetakeController` in `assessment/retake/`, owning `AssessmentRetakeState`, the buffered `AssessmentRetakeCreated` event, the re-entry guard and the identity-matched release. Both ViewModels delegate; each keeps only whether there is a loaded result to repeat, and each screen keeps its own wording. | Fixed |
-| `CQ-KMP-002` | Platform database builders / migration-list parity | Medium | High | `CurriculumDatabase.android.kt`, `CurriculumDatabase.jvm.kt`, `CurriculumDatabase.ios.kt`, `CurriculumDatabase.web.kt`, `CurriculumDatabaseMigrationTest.kt` | Each platform database builder lists the seven migrations by hand, and no test exercises any builder's list. | All four builders pass the same `addMigrations(MIGRATION_1_2, …, MIGRATION_7_8)` against `CurriculumDatabase` version 8, and today they agree exactly — no accidental driver or migration difference was found (bundled SQLite on Android, JVM and iOS; `WebWorkerSQLiteDriver` on both web targets, by design). But `CurriculumDatabaseMigrationTest` builds its own lists, and `DesktopLocalDataPathTest` opens a fresh database, so no check would notice a `MIGRATION_8_9` added to three builders and forgotten in the fourth. On that platform an upgraded install would throw Room's missing-migration error from the first open inside `CurriculumDataInitializer`: `AppRoot.Error` with a Retry that can never succeed, while a fresh install and every test stay green. The mechanism is the same as `CQ-DI-010`'s. | Declare the chain once in `commonMain` — e.g. `internal val curriculumDatabaseMigrations: Array<Migration>` beside the migrations — have each builder call `addMigrations(*curriculumDatabaseMigrations)`, and let the migration test's full-chain case use the same array. Deferred to **Part 4C**, which owns the platform Room builders; recorded in Part 4B because it was found while comparing them for parity. | Deferred |
+| `CQ-KMP-001` | Android preference storage / contract | Medium | High | `settings/AndroidAppearanceModule.kt`, `settings/AppPreferenceStorage.kt` | The Android store was the one implementation that could throw out of a contract that forbids it. | `AppPreferenceStorage` states that implementations must not throw and that an unreadable store reports absence, "because failing to remember a preference is not a reason to fail to start". The JVM, iOS and web implementations all guard; Android called `getSharedPreferences` and `getString` unguarded. `getSharedPreferences` throws when the preferences directory is unavailable — the normal state of a credential-protected context before first unlock — and `getString` throws `ClassCastException` if the key holds another type. `AppearanceStateHolder` performs that read synchronously in its constructor, which Koin resolves lazily inside `AppearanceTheme`'s `remember`, i.e. during `AppRoot`'s first composition and above the startup error screen, so a throw is an unrecoverable first-frame crash rather than a forgotten preference. Carried over as the open handoff from Part 3D. | Guard both methods with `runCatching`, using the idiom `JvmAppPreferenceStorage` already uses, and resolve the `SharedPreferences` instance lazily so its own failure is absence too. Not covered by a test: `shared` has no populated Android host-test source set and exercising `SharedPreferences` off-device would mean adding Robolectric. | Fixed |
+| `CQ-CROSS-001` | Attempt result surfaces / retake orchestration | Medium | High | `topic_study/focused_result/FocusedResultViewModel.kt`, `mixed_interview/MixedInterviewResultViewModel.kt`, both UI state files, both screens, both destinations, `assessment/retake/AssessmentRetakeController.kt` | One retake state machine existed twice, under two names. | `RepeatPracticeState` and `RepeatInterviewState` were structurally identical six-case sealed interfaces, driven by identical `repeatPractice`/`repeatInterview`, `onRetakeEventHandled` and `setRepeatState` bodies over the same `AssessmentRetakeService.createRetake`, and reported through two one-case event hierarchies (`FocusedResultEvent`, `MixedInterviewResultEvent`) collected by two identical `LaunchedEffect` blocks. `CQ-BUG-003` — the post-persistence re-entry window — had to be found and fixed in both copies independently, which is the concrete cost this records. Neither copy could be tested without a full result ViewModel and its four fakes. | Extract `AssessmentRetakeController` in `assessment/retake/`, owning `AssessmentRetakeState`, the buffered `AssessmentRetakeCreated` event, the re-entry guard and the identity-matched release. Both ViewModels delegate; each keeps only whether there is a loaded result to repeat, and each screen keeps its own wording. | Fixed |
+| `CQ-KMP-002` | Platform database builders / migration-list parity | Medium | High | `CurriculumDatabase.android.kt`, `CurriculumDatabase.jvm.kt`, `CurriculumDatabase.ios.kt`, `CurriculumDatabase.web.kt`, `CurriculumDatabaseMigrationTest.kt` | Each platform database builder lists the seven migrations by hand, and no test exercises any builder's list. | All four builders pass the same `addMigrations(MIGRATION_1_2, …, MIGRATION_7_8)` against `CurriculumDatabase` version 8, and today they agree exactly — no accidental driver or migration difference was found (bundled SQLite on Android, JVM and iOS; `WebWorkerSQLiteDriver` on both web targets, by design). But `CurriculumDatabaseMigrationTest` builds its own lists, and `DesktopLocalDataPathTest` opens a fresh database, so no check would notice a `MIGRATION_8_9` added to three builders and forgotten in the fourth. On that platform an upgraded install would throw Room's missing-migration error from the first open inside `CurriculumDataInitializer`: `AppRoot.Error` with a Retry that can never succeed, while a fresh install and every test stay green. The mechanism is the same as `CQ-DI-010`'s. | Declare the chain once in `commonMain` — e.g. `internal val curriculumDatabaseMigrations: Array<Migration>` beside the migrations — have each builder call `addMigrations(*curriculumDatabaseMigrations)`, and let the migration test's full-chain case use the same array. Deferred to **Part 4C**, which owns the platform Room builders; recorded in Part 4B because it was found while comparing them for parity. **Part 4C resolution:** `internal val curriculumDatabaseMigrations: List<Migration>` now sits at the end of `CurriculumMigrations.kt`, all four builders call `addMigrations(*curriculumDatabaseMigrations.toTypedArray())`, and the individual `MIGRATION_x_y` constants are unchanged for the single-step tests. A new test, `theInstalledMigrationChainUpgradesTheOldestSchemaToTheCurrentVersion`, opens a version-1 file through a builder configured with exactly that list, so it migrates to whatever version the class declares; the full-chain helper test and the aggregate-reconstruction test use the list too. Dropping `MIGRATION_7_8` from it failed two tests with Room's "A migration from 1 to 8 was required but not found". No separate contiguity assertion was added: Room's own path search is that check. | Fixed |
+| `CQ-KMP-003` | Selection copy reporting / platform seams | Medium | High | `ui/selection/SelectionCopyReports*.kt`, `TextToolbarCopyReports.kt`, `SelectableContent.kt`, `docs/architecture/text-selection.md` | The "Copied to clipboard" confirmation never fires on Android or the web, although the common contract and the architecture document said it did on every touch platform. | The touch actual wraps `LocalTextToolbar`. **Android** resolves AndroidX foundation 1.11.2, where `ComposeFoundationFlags.isNewContextMenuEnabled` defaults to `true`: `SelectionManager.updateSelectionToolbar` then calls the new provider (`AndroidTextContextMenuToolbarProvider`, an `ActionMode` via `LocalView`) and its Copy item calls `SelectionManager.copy()` directly — `LocalTextToolbar.showMenu` is never called. Observed on a Pixel 9a emulator: long-press, toolbar shows Copy / Select all / Read aloud, Copy puts the text on the clipboard, no snackbar; with the flag forced `false` in a throwaway build the old toolbar (Copy / Select all) appears and the snackbar does. **Web** (Compose Multiplatform 1.11.1, flag `false`): `isInTouchMode` is the constant `false`, so the toolbar is never requested, and the right-click menu is foundation's own `ContextMenuArea` whose Copy also calls `SelectionManager.copy()`. A further latent hazard: `WebTextToolbarPopup` renders only when `LocalTextToolbar.current is WebTextToolbar`, so if the web toolbar is ever enabled the wrapper would suppress it. Desktop (`LocalTextContextMenu`, tested) and iOS (flag off, always touch mode, by source) do report. The copy itself is correct everywhere. | Restore the confirmation through the one point every copy shares: `SelectionContainer`'s `onCopyHandler` writes to `LocalClipboard`, so a delegating `Clipboard` provided above the container would see Android's new menu, the web right-click menu, iOS, desktop and keyboard copies alike (web Ctrl/Cmd-C is answered from the browser's `copy` event and would still pass silently). That replaces three seams with one and makes keyboard copies announce themselves, which is a product decision, so it is deferred rather than applied here; turning the experimental flag off on Android was rejected as a fix because it would also remove the new menu's Read aloud and smart-selection items. Corrected now: the `expect` KDoc, the Android/web actual KDoc, `SelectableContent`'s KDoc and a "Current reach" section in `text-selection.md`. | Deferred |
+| `CQ-KMP-004` | Web SQLite driver / worker load failure | Low | High | `sqlite-web` 2.7.0 `CoroutineWebWorker`, `WebWorkerWrapper`; `SQLiteWasmWorker.js.kt`, `SQLiteWasmWorker.wasmJs.kt` | If the worker script fails to load, every request posted afterwards waits forever. | The library installs `worker.onerror` in `WebWorkerWrapper`'s constructor; `CoroutineWebWorker.onError` completes exceptionally only the `pendingMessages` present at that moment and records no terminal state, there is no initialization handshake, and a load failure arrives as a plain `Event` ("An unknown error has occurred in the worker."). Reproduced in headless Chrome with `WebWorkerSQLiteDriver(Worker("/does-not-exist-worker.js"))`: a request already pending failed with `WebWorkerException`, the **next** request timed out; when the load failed before the first request, that first request timed out. In the app the database `single` constructs the worker when `WebAppRoot` resolves the initializer and the first request follows from `AppRoot`'s `LaunchedEffect`, so the outcome is Loading forever, or Error whose Retry then hangs. Triggers are deployment faults — the worker chunk missing or blocked — not runtime conditions. | Record as a driver limitation. A local fix would have to wrap the `Worker`'s `postMessage` and synthesize `{id, error}` replies in the driver's private message shape, which is the fragile protocol layering this repository should not own; the right fix is a terminal-failure state in `sqlite-web`. `persistence.md` now names the case instead of claiming every web storage failure reaches Error/Retry. | Deferred |
+| `CQ-KMP-005` | Web preference storage / contract | Low | High | `settings/WebAppearanceModule.kt`, `WebAppPreferenceStorageTest.kt` | The web store read a stored empty string as absence. | `readLocalStorage` used `''` as its absence-and-failure sentinel (`getItem` falling back to `''`) and `read` mapped empty to null, while `AppPreferenceStorage.read` promises "the stored value". Harmless for today's four tokens, none empty, but a property of one implementation rather than of the contract — the Part 3D handoff. | Return `null` from the JavaScript for absence and for a blocked store, and return any stored value unchanged; three browser tests on both targets pin read-back, absence, clear-one-key and the empty value. Falsified by restoring the old file: `Expected <>, actual <null>`. | Fixed |
+| `CQ-KMP-006` | Worker packaging / developer workflow | Low | High | `sqliteWasmWorker/build.gradle.kts` (`npm(..., worker/)`), `docs/architecture/persistence.md` | A local edit to `worker.js` does not reliably reach the bundle. | The worker is a local npm package copied into `build/js/node_modules` and `build/wasm/node_modules`. With `package.json` unchanged, `kotlinNpmInstall --rerun` left the old copy in place; deleting `.yarn-integrity` refreshed it once and not the next time, and only deleting the installed package directory as well was reliable. During this pass a stale copy of a deliberately broken worker made a cross-origin-isolated browser probe hang for 20 s, which first read as an OPFS failure. CI installs from a clean checkout and is unaffected. | Document the reliable refresh and the check in `persistence.md`. Not changed in the build: the copying is Kotlin Gradle plugin and Yarn behaviour. | Fixed |
+| `CQ-BUG-006` | SQLite worker initialization | Low | High | `sqliteWasmWorker/worker/worker.js` | A rejected SQLite initialization left every database request waiting forever. | The worker queues requests until `sqlite3InitModule()` resolves and had no rejection branch. An unhandled rejection inside a worker raises `unhandledrejection` in the worker, not `error` on the `Worker` object, so the driver's `onerror` never ran either. Reproduced by forcing the promise to reject: the first `open` did not settle (1.5 s probe timeout, then Mocha's own timeout). Startup would sit on Loading with no Retry. | Give initialization a terminal failed state: on rejection, answer every queued and every later request with `{id, error: "SQLite failed to initialize: …"}` — the protocol the driver already turns into `SQLiteException`. Verified with the same forced rejection on both targets: a queued and a later `open` each fail with `SQLiteException: SQLite failed to initialize: forced init failure`. | Fixed |
+| `CQ-DOC-002` | Preference durability wording | Low | High | `settings/AppearanceStateHolder.kt` | The KDoc promised the choice was "durable by the time the switch has finished moving". | True of the desktop file, which is written in the call; `NSUserDefaults` and `localStorage` take the value into a store that outlives the process; Android's `Editor.apply()` writes behind and the framework completes it before the Activity stops (`QueuedWork`), so only a process killed in that window loses it. No caller depends on synchronous durability — the Part 3D handoff. `apply()` is the right call for a UI preference written on the main thread. | Reword the KDoc to say the write is handed to the platform store synchronously and what each store does next. No behaviour change. | Fixed |
+| `CQ-TEST-006` | Web persistence and platform adapters / coverage | Medium | High | `shared/src/webTest/**`, `shared/karma.config.d/cross-origin-isolation.js`, `UtcOffsetJvmTest.kt`, `JvmAppPreferenceStorageTest.kt` | No test executed the web database path, and no test exercised any platform `localUtcOffset` or the web preference store. | `shared/src/webTest` had no sources, so the browser suites ran only common tests; nothing started the SQLite worker, opened OPFS, or checked that Room's transaction and foreign-key guarantees hold when every statement is a worker message. `LocalTimestampTest` injects offsets by design. The JVM preference test did not reach the no-throw branches. | Add the first `webTest` sources and a Karma config that serves COOP/COEP, as the dev server does: `WebCurriculumDatabaseTest` (production builder through the worker onto OPFS with FKs enforced; a failed write transaction leaves nothing; three concurrent read-then-write transactions do not interleave), `WebAppPreferenceStorageTest`, `UtcOffsetWebTest`; plus `UtcOffsetJvmTest` under fixed zones and one unreadable-file test on the JVM store. Every new test was falsified: FKs off, no transaction, read and write as separate operations, `rawOffset`, missing negation, guards removed. | Fixed |
 | `CQ-CROSS-002` | Attempt result surfaces / state ownership | Low | High | `FocusedResultUiState.kt`, `MixedInterviewResultUiState.kt`, both screens | Retake state was stored inside the result content it is not part of. | `Content.repeatPracticeState` / `Content.repeatInterviewState` put a running action inside a record of a settled fact: the score and the transcript of a completed attempt cannot change while the screen is open, and the retake state changes on every press. The conflation forced every transition through a `setRepeatState` that cast to `Content` and silently dropped the write otherwise — unreachable in practice, but a transition that can disappear is not a state machine anyone can reason about. | Publish retake state as its own `StateFlow` beside `uiState`, and pass it to the screen as its own parameter. The "only retake a loaded result" rule becomes an explicit guard in the ViewModel rather than an implicit consequence of a cast. | Fixed |
 | `CQ-CROSS-003` | Mixed interview result / derivation placement | Low | High | `mixed_interview/MixedInterviewResultViewModel.kt`, `mixed_interview/TopicAnswerCounts.kt` | Per-Topic aggregation was a suspending ViewModel method built on a mutable counter class. | `loadTopicPerformance` grouped the transcript by `topicId`, counted with a `private class TopicCounts(var questionCount, var correctCount)`, computed percentages, and resolved Topic names, all in one method. The counting is a deterministic transformation with no I/O in it, but it could only be exercised through the ViewModel, a fake curriculum repository and a fake review loader; the mutable holder existed only because the derivation was written imperatively in the wrong layer. | Extract the pure `List<ReviewQuestionItem>.topicAnswerCounts()` and an immutable `TopicAnswerCounts` that requires a positive denominator. The ViewModel keeps the name resolution, which is the only part that needs a repository. | Fixed |
 | `CQ-CROSS-004` | Review surfaces / mutation boundary | Low | High | `FocusedResultViewModel.kt`, `MixedInterviewResultViewModel.kt`, `MistakeReviewViewModel.kt`, `assessment_review/AssessmentReviewModels.kt` | One mutation-boundary rule, written three times over three traversals. | "A review surface may only toggle a Question it currently shows as `Available`" was implemented independently in all three `toggleSaved` methods, twice over `content.questions` and once over `content.mistakes.reviewItem`, and documented three times. The three surfaces share one saved-state holder, so accepting a save on one that the others would refuse is a real inconsistency the duplication makes possible. | One `ReviewQuestionItem.isAvailableFor(questionId)` predicate in `assessment_review`, called by all three. | Fixed |
@@ -219,6 +227,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Stage 4E fix pass | Historical curriculum resolution: one batched read instead of one round trip per stable ID | Complete | `272a509` plus the working tree | 1 repository interface, 1 DAO, 1 Room repository, 5 per-ID call sites, and the 4 app-scoped/ViewModel consumers that drive them; 31 test doubles and 10 integration tests updated | 6 (1 high, 1 medium, 4 low) | 1 cluster (`CQ-DATA-010`) | `:shared:jvmTest` (1559 tests), `:shared:check`, `:androidApp:assembleDebug`, `git diff --check` | High 0 new; the pass converted `CQ-DATA-010` from *Needs measurement* to *Fixed* by supplying the trigger analysis it lacked, and relieved half of `CQ-DI-008`. Five deferred findings recorded for 4F. See review record below. |
 | Stage 4F fix pass | Regression protection: superseded, cancelled and unread asynchronous results must not reach the learner as an answer | Complete | `cbd7d5c` plus the working tree | All 131 test files inventoried by name; every production file without a same-named test checked for indirect coverage; every broad `catch` in `commonMain` and the platform source sets; 1 new test file, 4 test files extended, 3 test doubles gated | 5 (2 high, 2 medium, 1 low) | 1 cluster (`CQ-TEST-001`, `CQ-TEST-002`, `CQ-TEST-003`) | `:shared:jvmTest` (1569 tests), `:shared:check`, `:androidApp:assembleDebug`, `git diff --check` | No production-code change. Ten tests added, each verified against a deliberately broken production tree and restored. Two findings deferred to 4G. See review record below. |
 | Part 4B | Host composition roots | Complete | `efb38ace99c81685f99bba4b8f3200d14d898096` plus the working tree | 2 Android shell files (`KmpLearningApplication`, `MainActivity`) and the manifest; `desktopApp` and `webApp` `main.kt`; the iOS Swift bridge (`iOSApp.swift`, `ContentView.swift`) and `MainViewController`; 4 graph-start files, 3 platform roots and the common `AppRoot`/`AppStartupInitializer`; 8 platform modules and 4 database builders; `AppearanceTheme`, `AppearanceModule`, `CurriculumDataModule`, `CurriculumDataInitializer`, `CurriculumVisibilityModule`; both web worker factories; `koin-core`, `koin-compose` 4.2.2 and `sqlite-web` 2.7.0 read from source; 5 host/startup test files plus 19 Koin-touching test files classified | 6 (2 new, 4 re-evaluated) | 4 | Targeted host/theme/startup suites (22 tests); three falsification runs; `:shared:jvmTest` (1832 tests); `:shared:allTests` (iOS simulator, JS, Wasm and Android host 538 each, JVM 1832); `:androidApp:assembleDebug`; `:shared:check`; `git diff --check`; `git status --short` | High 0, Medium 3, Low 3, Observation 0 among the six. All four host families install the same eight shared modules and exactly one `CurriculumDatabase` and one `AppPreferenceStorage` binding, resolve the same app-scoped `CurriculumDataInitializer`, start the graph before any composition, and pass platform context only on Android. `CQ-DI-010` (new) is fixed by declaring the shared list once; `CQ-DI-004` is fixed with `strictOverride()` in every host and graph test; `CQ-DI-006` and `CQ-DI-007` are fixed documentation; `CQ-DI-005` is re-classified *Not a defect* on the `koin-compose` source; `CQ-KMP-002` (new) records the same hand-copied-list risk in the four database builders' migration chains and is deferred to Part 4C. No iOS or web runtime was observed. Part 4C is next. See review record below. |
+| Part 4C | Platform capability implementations | Complete | `7f935ece4e50e1745005c3fb6b5bf38a12d258aa` plus the working tree | 4 database builders and their modules, `CurriculumDatabase`, `CurriculumMigrations`; `AppPreferenceStorage`, 4 preference stores, both preference consumers and `AppearanceStateHolder`; 3 common selection files and 4 selection actuals; `UtcOffset`, 4 offset actuals, `LocalTimestamp`; both worker actuals, `worker.js`, its `package.json`, the worker and web build/webpack config; `room3-runtime` 3.0.1, `sqlite-web` 2.7.0 (JS and Wasm), `sqlite-wasm` 3.50.1, Compose foundation 1.11.1 (web, iOS) and AndroidX foundation 1.11.2 read from source; 5 existing test classes | 9 (7 new, 2 re-evaluated) | 6 | Targeted migration, offset, preference and web database tests with 12 falsification runs; an Android emulator check; `:shared:jvmTest` (1837); `:shared:allTests` (JS/Wasm 545 each, iOS simulator and Android host 538); `:androidApp:assembleDebug`; `:shared:check`; `:sqliteWasmWorker`, `:webApp`, `:desktopApp` assemble; `git diff --check` | High 0, Medium 3, Low 5, Observation 0 among the eight that changed status; `CQ-KMP-001` re-verified and left Fixed. `CQ-KMP-002` fixed with one `curriculumDatabaseMigrations` list and a builder-level test. `CQ-BUG-006` (worker hung forever when SQLite failed to initialize), `CQ-KMP-005` (web empty value read as absence), `CQ-DOC-002` (durability wording), `CQ-KMP-006` (worker re-install trap) and `CQ-TEST-006` (no test ran the web database path or any platform offset) fixed; the first `webTest` sources run the real worker on OPFS in both browsers. `CQ-KMP-003` (copy confirmation never fires on Android — emulator-confirmed — or the web) and `CQ-KMP-004` (`sqlite-web` hangs after a worker load failure — browser-reproduced) deferred. No web app launch and no iOS app launch. Part 4 is complete; Part 5 is next. See review record below. |
 
 ### Part 1A Review Record
 
@@ -4159,6 +4168,310 @@ findings were still open despite #445 and are fixed. No production behaviour cha
 Part 4 is not synthesised here. **The next planned chunk is Part 4C — Platform capability
 implementations.**
 
+## Part 4C Review Record
+
+- **Framing:** the planned Part 4C chunk, taken from `7f935ece4e50e1745005c3fb6b5bf38a12d258aa`
+  (merge of #447), the `main` this task named. It owns the platform implementations behind common
+  contracts — Room builders, preference stores, selection-copy reporting, the local UTC offset and
+  the SQLite worker — and asks of each whether it satisfies the contract it claims and whether its
+  differences are the platform's or accidental. Repositories, ViewModels and Koin were not
+  re-audited.
+- **Production boundary read in full:** the four `CurriculumDatabase.*.kt` builders and their four
+  `*CurriculumDataModule`s, `CurriculumDatabase.kt`, `CurriculumMigrations.kt`;
+  `AppPreferenceStorage`, the four `*AppearanceModule`s, `ThemePreferenceStore`,
+  `KmpContentPreferenceStore`, `AppearanceStateHolder`; `SelectionCopyReports.kt`,
+  `TextToolbarCopyReports.kt`, `SelectableContent.kt` and the four selection actuals; `UtcOffset.kt`,
+  the four offset actuals and `LocalTimestamp.kt`; `SQLiteWasmWorker.kt` and its JS and Wasm
+  actuals, `worker/worker.js`, `worker/package.json`, `sqliteWasmWorker/build.gradle.kts`, and
+  `webApp`'s webpack header config.
+- **Library source read:** `room3-runtime` 3.0.1 (`RoomDatabase.Builder.build`, connection-pool
+  selection, `RoomConnectionManager.openLocked`/`configureDatabase`/`onMigrate`,
+  `withReadTransaction`/`withWriteTransaction`, the web connection wrapper); `sqlite-web` 2.7.0
+  for both targets (`WebWorkerWrapper`, `CoroutineWebWorker`, `DatabaseWebWorker`, the JS
+  `DatabaseWebWorkerImpl`, `WebWorkerSQLiteConnection`, `WebWorkerSQLiteStatement`);
+  `@sqlite.org/sqlite-wasm` 3.50.1-build1 (OPFS VFS installation and its failure handling);
+  Compose foundation for web and iOS (Compose Multiplatform 1.11.1) and AndroidX foundation 1.11.2
+  (`SelectionContainer`, `SelectionManager`, `ComposeFoundationFlags`, the web and iOS
+  `ContextMenuArea` actuals, `WebTextToolbarArea`, the Android context-menu toolbar provider); the
+  five generated `CurriculumDatabase_Impl` files.
+- **Tests read:** `CurriculumDatabaseMigrationTest`, `JvmAppPreferenceStorageTest`,
+  `CopyReportingTextToolbarTest`, `SelectionCopyDesktopTest`, `LocalTimestampTest`.
+
+### Database builder parity
+
+| Concern | Android | JVM | iOS | Web (JS + Wasm) |
+| --- | --- | --- | --- | --- |
+| Name | `curriculum.db` | `curriculum.db` | `curriculum.db` | `curriculum.db` |
+| Location | `Context.getDatabasePath` (credential-encrypted app storage) | `~/.kmp-learning-app/` | app `Documents/` | OPFS, scoped to the origin |
+| Builder | `Room.databaseBuilder(context, path)` | `Room.databaseBuilder(path)` | `Room.databaseBuilder(path)` | `Room.databaseBuilder(name)` |
+| Driver | `BundledSQLiteDriver` | `BundledSQLiteDriver` | `BundledSQLiteDriver` | `WebWorkerSQLiteDriver` over the packaged worker |
+| Migrations | `curriculumDatabaseMigrations` | same | same | same |
+| Destructive fallback | none | none | none | none |
+| Foreign keys | `PRAGMA foreign_keys = ON` in the generated `onOpen`, identical in all five generated implementations | same | same | same |
+| Connections | Room's pool | Room's pool | Room's pool | one connection — Room forces `SingleConnection` when the platform is web |
+| Explicit journal/pool/config options | none | none | none | none |
+
+Before this pass the migration row was four hand-copied lists; it is now one (`CQ-KMP-002`).
+Location and driver are the intended platform differences. No accidental divergence in schema
+configuration, driver choice, name, foreign keys or destructive behaviour was found.
+
+### Database capability contract
+
+The repositories assume atomic write transactions (`CurriculumImporter`,
+`AssessmentAttemptStore.save`), consistent read transactions (`LocalCurriculumRepository`'s batched
+reads, historical hydration), enforced foreign keys and migration on open.
+
+- **Bundled SQLite (Android, JVM, iOS)** is one engine behind one driver; every repository
+  integration test in `jvmTest` exercises it. Android and iOS share it by construction, so they are
+  covered by compilation plus the JVM's behavioural tests, not by their own runs.
+- **Web** was the open question, and is now answered both from source and in a browser. Room gives
+  the web a single connection; `withWriteTransaction` holds it for the whole block, so another
+  coroutine's statements wait for the pool rather than interleave. The driver awaits each request
+  before sending the next, the worker handles each message synchronously in arrival order, and
+  `WebWorkerSQLiteStatement` tracks `BEGIN`/`COMMIT`/`ROLLBACK` so `inTransaction()` is truthful.
+  `WebCurriculumDatabaseTest` runs this through the real worker onto OPFS on both targets: the
+  production builder opens the current schema and rejects an orphan subtopic; a write transaction
+  that throws after inserting leaves no row; three concurrent read-then-insert transactions each
+  see the previous one's row. Each assertion was falsified — foreign keys turned off, the
+  transaction replaced by a plain writer connection, the read and write split into separate
+  operations (all three readers then saw 0, two inserts hit `UNIQUE constraint failed`).
+- Migration execution on the web uses the same `Migration` objects and the same engine family;
+  the browser test creates the schema fresh and does not upgrade an old file there.
+
+### Preference stores
+
+Contract: `read` returns the stored value or null; `write` stores or clears; neither throws. Current
+values are `appearance.theme` ∈ {`light`, `dark`, absent} and `content.include_kmp` ∈ {`on`, `off`}.
+
+| | Android | JVM | iOS | Web |
+| --- | --- | --- | --- | --- |
+| Store | `SharedPreferences` | `~/.kmp-learning-app/preferences.properties` | `NSUserDefaults.standardUserDefaults` | `localStorage` |
+| No-throw | `runCatching` on lookup, read, write (`CQ-KMP-001`, still holds) | `runCatching` on read and write | no throwing path for string values | caught inside the `js()` call |
+| Absent / unreadable | null | null | null (`stringForKey` is nil for absent or non-string, non-number values) | null (now; was `''`, `CQ-KMP-005`) |
+| Clear one key | `remove(key)` | `Properties.remove(key)` then rewrite | `removeObjectForKey` | `removeItem` |
+| Durability after `write` returns | write-behind, flushed before the Activity stops | written in the call | daemon-backed, outlives the process | browser-managed, outlives the tab |
+| Protected by | compilation and inspection | 5 JVM tests, incl. restart, key independence, clear, unreadable file | compilation and inspection | 3 browser tests per target; blocked storage by inspection |
+
+- **Android durability.** `apply()` is correct for a main-thread UI preference; `commit()` would
+  block on disk for no caller that needs it. The only overstated promise was `AppearanceStateHolder`'s
+  KDoc (`CQ-DOC-002`).
+- **JVM.** The truncating read-modify-write recorded earlier was not reopened; no new corruption or
+  restart evidence appeared. Database and preferences share `~/.kmp-learning-app` on purpose.
+- **iOS.** No `synchronize()` is needed or added — Apple documents it as unnecessary.
+- **Web.** The empty-string sentinel was a real if harmless contract violation and is fixed rather
+  than documented around, because the fix is one expression.
+
+### Selection-copy reporting
+
+The contract — let the platform copy, then report once — holds wherever the wrapper is actually
+called: both wrappers run the platform action before `onCopied`, leave an unavailable action
+`null` or disabled, forward paste, cut, select-all and autofill untouched, read the latest callback
+through `rememberUpdatedState`, and delegate rendering to the platform. The defect is reach
+(`CQ-KMP-003`):
+
+| | Seam the wrapper uses | Does the platform menu call it? | Evidence |
+| --- | --- | --- | --- |
+| Desktop | `LocalTextContextMenu` | yes | `SelectionCopyDesktopTest` (real mouse drag, right-click, Copy) |
+| iOS | `LocalTextToolbar` | yes — flag off, always touch mode | source only |
+| Android | `LocalTextToolbar` | **no** — AndroidX 1.11.2 uses the new `ActionMode` provider | emulator, both ways |
+| Web | `LocalTextToolbar` | **no** — no touch mode; right-click menu copies directly | source only |
+
+**Keyboard copies** are routed outside every menu: `SelectionManager`'s key handler calls `copy()`
+directly on Android, iOS and desktop, and on the web the browser's `copy` event is answered through
+`rememberClipboardEventsHandler`. The snackbar confirms a menu action the learner cannot otherwise
+see complete; it does not promise to announce a deliberate shortcut, and a global key hook is not
+justified to do so. Recorded as an accepted limitation in `text-selection.md`. The clipboard-level
+seam in `CQ-KMP-003`'s recommendation would announce keyboard copies on every platform but the web
+as a side effect, which is part of why that change is a product decision.
+
+The selection wrapper still never touches the clipboard itself; the platform's copy remains the
+source of truth for what is copied.
+
+### UTC offset
+
+All four actuals satisfy "how far local civil time runs ahead of UTC at this instant":
+
+- **Android, JVM** — `TimeZone.getDefault().getOffset(epochMillis)`: raw plus DST at the instant,
+  positive east, historical rules applied. A desktop JVM caches its default zone, so a zone change
+  while the app runs is not seen until restart; not a contract issue for this UI.
+- **iOS** — `NSTimeZone.localTimeZone.secondsFromGMTForDate`: DST-aware, positive east, whole
+  seconds; the `Double` seconds conversion cannot move a displayed minute.
+- **Web** — `-new Date(ms).getTimezoneOffset()`: the negation is correct; `Double` milliseconds are
+  exact far beyond any date the app produces. Pre-1900 local-mean-time offsets can be fractional
+  minutes, which the `Int` return would not represent, but the app only formats attempt timestamps.
+
+New tests: `UtcOffsetJvmTest` sets Berlin, St John's and Kolkata and restores the default in
+`finally` (winter/summer, negative half-hour, fractional without DST); `UtcOffsetWebTest` compares
+the app's civil time with `Date.getHours`/`getMinutes` for a winter and a summer instant on both
+targets. Falsified with `rawOffset` (two summer failures) and without the web negation
+(`Expected <13>, actual <11>` for July in the machine's WEST zone). The web test proves little on a
+UTC CI agent, which its KDoc says. iOS is compiled and inspected only.
+
+### SQLite worker
+
+- **Protocol.** `open`, `prepare`, `step`, `close` match `DatabaseWebWorkerImpl` field for field.
+  Invalid database and statement IDs reply with an error; IDs are never reused; binding indexes are
+  1-based in the worker and 0-based in `StatementBindings`, consistently; `step` resets, rebinds and
+  returns every row at once, which `WebWorkerSQLiteStatement` buffers. Close is one-way, so a failed
+  close — reachable only if `finalize`/`close` throws — is delivered as an unmatched error that
+  `CoroutineWebWorker` broadcasts to whatever is pending. That is upstream design and no current
+  path triggers it; recorded, not changed.
+- **Initialization.** Requests queue until `sqlite3InitModule()` settles, in order, unbounded — the
+  queue holds at most the few requests startup sends. Rejection had no branch (`CQ-BUG-006`, fixed);
+  initialization that never settles would still hang, but sqlite-wasm bounds its own OPFS proxy wait
+  at four seconds and treats an OPFS failure as "no OPFS VFS" rather than rejecting.
+- **OPFS and isolation.** Without SharedArrayBuffer or OPFS, initialization succeeds and the first
+  `open` fails with `sqlite3.oo1.OpfsDb is not a constructor` — observed in Karma before the headers
+  were added. That reaches `AppRoot.Error`; nothing hangs and no fallback is added.
+- **`worker.onerror` race.** Reproduced both ways in a browser; `CQ-KMP-004`.
+- **JS versus Wasm.** The two actuals differ only in how the `Worker` is constructed — Kotlin/JS can
+  call the `Worker` constructor with a `js()` URL argument, Kotlin/Wasm needs the whole `new Worker`
+  expression inside `js()` — and both reference `sqlite-wasm-worker/worker.js`, the one package both
+  `node_modules` trees install. The browser tests ran the real worker on both targets.
+- **Packaging.** `worker.js` is a local npm dependency that imports `@sqlite.org/sqlite-wasm`;
+  webpack bundles it as a separate chunk with `sqlite3.wasm` and the OPFS proxy as assets (seen in
+  the dev-server build). `webApp`'s dev server sends COOP/COEP, and the test Karma server now does
+  too. A local edit to the worker is not reliably re-installed (`CQ-KMP-006`).
+
+### Visibility and boundaries
+
+Every touched declaration is `internal` or `private` except `createSQLiteWasmWorker`, which must be
+`public` to cross the module boundary into `:shared`. No platform API entered `commonMain`; the
+migration list is common because migrations are. No dependency or source-set dependency changed;
+`webTest` inherits `kotlin-test` and `kotlinx-coroutines-test` from `commonTest`. Only the Karma
+config was added under `shared/`.
+
+### Intentional versus accidental duplication
+
+Intentional and left alone: Android and JVM sharing a `TimeZone` call; three one-line touch
+selection actuals; four small database builders; four preference stores. Accidental and fixed: the
+migration chain copied into four builders.
+
+### Startup failure boundary — web addendum
+
+Part 4B's map listed "web OPFS unavailable, worker script failing to load" as *probably* reaching
+Error. Resolved: missing OPFS or isolation reaches Error with Retry; SQLite initialization failure
+now does too; a worker script that fails to load does not (`CQ-KMP-004`).
+
+### Falsification
+
+1. Canonical chain without `MIGRATION_7_8` → two migration tests fail with Room's
+   missing-migration error.
+2. Worker initialization forced to reject, **before** the fix → the first `open` never settles (JS).
+   **After** the fix → a queued and a later `open` both fail with `SQLiteException: SQLite failed to
+   initialize: forced init failure` (JS and Wasm).
+3. Worker URL that 404s → pending request fails with `WebWorkerException`; the next request, and a
+   first request sent after the failure, never settle (JS).
+4. `WebCurriculumDatabaseTest`: foreign keys off, no transaction, split read/write → each test fails
+   on its own assertion.
+5. `UtcOffsetJvmTest` with `rawOffset`; `UtcOffsetWebTest` without the negation → fail.
+6. `JvmAppPreferenceStorageTest` with read's `getOrNull` → `getOrThrow`, and separately write's
+   `runCatching` → `run` → the new test fails each time.
+7. `WebAppPreferenceStorageTest` against the original web store → the empty-value test fails.
+8. Android emulator with `isNewContextMenuEnabled = false` forced in a throwaway build → the
+   snackbar appears; the default build shows none.
+
+Every break was restored from a saved copy or `git show HEAD:`, and the installed worker copies
+were re-synchronised and compared with the source afterwards.
+
+### Fixes
+
+- `CQ-KMP-002` — `CurriculumMigrations.kt`, the four builders, `CurriculumDatabaseMigrationTest`.
+- `CQ-BUG-006` — `worker/worker.js`.
+- `CQ-KMP-005` — `WebAppearanceModule.kt`, `WebAppPreferenceStorageTest`.
+- `CQ-DOC-002` — `AppearanceStateHolder.kt` KDoc.
+- `CQ-TEST-006` — `shared/karma.config.d/cross-origin-isolation.js`, `WebCurriculumDatabaseTest`,
+  `UtcOffsetWebTest`, `UtcOffsetJvmTest`, one `JvmAppPreferenceStorageTest` case.
+- `CQ-KMP-006` and the documentation half of `CQ-KMP-003`/`CQ-KMP-004` — `persistence.md`,
+  `text-selection.md`, `testing.md`, and the selection KDoc.
+- Ledger hygiene: the `CQ-KMP-001` row had `CQ-CROSS-001` on the same line, breaking the table; a
+  newline was restored.
+
+### Runtime validation actually performed
+
+| Surface | Level reached |
+| --- | --- |
+| Web worker, OPFS, Room transactions, preferences, offset | Browser tests ran in headless Chrome for JS and Wasm, against the real bundled worker |
+| Web application | **Not launched** in a browser; a dev-server build was started once and stopped before use |
+| Android selection copy | App installed and exercised on a Pixel 9a emulator (default and flag-off builds) |
+| Android preferences, database | Compiled (`assembleDebug`); not exercised |
+| iOS | Compiled and test binary run on the simulator through `:shared:allTests`; no app launch |
+| Desktop | JVM tests, including the real desktop selection menu |
+
+### Handoffs
+
+- **Part 5 — cross-cutting:** `CQ-KMP-003` (one clipboard-level copy seam, a product decision about
+  keyboard copies); `CQ-KMP-004` (upstream `sqlite-web` terminal-failure state — revisit on each
+  `sqlite` upgrade); the startup failure map with the web addendum above.
+- **Part 6 — test architecture:** Android and iOS platform adapters remain covered by compilation
+  only; `webTest` now exists and is where browser-only behaviour belongs. One observation for 6D: an
+  uncaught exception escaping `runTest` in a browser test disconnected Karma instead of failing one
+  test, which hides every later result in that suite.
+
+### Validation
+
+- `./gradlew :shared:jvmTest --tests '*CurriculumDatabaseMigrationTest*'` — 9 tests, passed; the
+  falsification run failed 2 as intended.
+- `./gradlew :shared:jvmTest --tests '*UtcOffsetJvmTest*'` and `--tests '*JvmAppPreferenceStorageTest*'`
+  — 3 and 5 tests, passed; falsifications failed as intended.
+- `./gradlew :shared:jsBrowserTest` and `:shared:wasmJsBrowserTest` filtered to
+  `WebCurriculumDatabaseTest`, `WebAppPreferenceStorageTest`, `UtcOffsetWebTest` — 3, 3 and 1 tests
+  per target, passed; falsifications failed as intended. Temporary worker probes ran in the same
+  suites and were deleted.
+- Android emulator (Pixel 9a AVD): debug APK installed and the selection copy exercised, default and
+  flag-off builds; the flag-off build was reverted.
+- `./gradlew :shared:jvmTest` — 1837 tests, 0 failures (1832 before plus 5 new).
+- `./gradlew :shared:allTests` — passed: `jvmTest` 1837, `jsBrowserTest` 545, `wasmJsBrowserTest`
+  545 (538 common plus 7 web), `iosSimulatorArm64Test` 538, `testAndroidHostTest` 538.
+- `./gradlew :androidApp:assembleDebug` — passed.
+- `./gradlew :shared:check` — passed.
+- `./gradlew :sqliteWasmWorker:assemble :webApp:assemble :desktopApp:assemble` — passed.
+- Installed worker copies in `build/js` and `build/wasm` compared equal to `worker/worker.js`.
+- `git diff --check` — clean. `git status --short` — only the files listed under Fixes, the new
+  test files and Karma config, `kmp.md`, and this document.
+- **Not run:** a web or iOS application launch, Android instrumented tests (none exist), and CI —
+  in particular whether headless Chrome on the Linux runner opens OPFS as it did locally.
+
+### Part 4C assessment
+
+The platform implementations mostly do what their contracts say, and the differences between them
+are the platforms'. Two contracts were not met and are now fixed — a worker that could hang forever
+when SQLite failed to start, and a web store that turned an empty value into absence — and one
+duplication that only care had kept consistent is now a single list. One contract is not met and
+cannot be met locally without a design decision: menu copies are confirmed on desktop and iOS
+only, because the Compose builds this app resolves no longer route Android's or the web's menu
+through the seam the wrapper uses. That was invisible to every compile and every test, and was
+found by reading the resolved library and confirmed on a device. The web database path, the most
+structurally different of the four, is now exercised in a browser for the guarantees the
+repositories rely on.
+
+## Part 4 Synthesis
+
+- **Is the common Koin graph consistent across hosts?** Yes. Every host installs the same eight
+  shared modules from `sharedApplicationModules()` plus exactly one database and one preference
+  binding (`CQ-DI-010`), under `strictOverride()` (`CQ-DI-004`).
+- **Are graph duplicates detected?** Across modules, yes — at startup in every host and in the graph
+  tests. Within one module, no; Koin's mapping table cannot see it, and that limit is recorded.
+- **Are platform-provided dependencies exactly what common code expects?** Yes: `CurriculumDatabase`
+  and `AppPreferenceStorage`, plus Android's context. Both shared preferences use the one store.
+- **Are migration semantics consistent?** Yes, and now structurally so: one
+  `curriculumDatabaseMigrations` list, no destructive fallback anywhere, foreign keys on everywhere,
+  and a builder-level test that fails on a missing link (`CQ-KMP-002`).
+- **Do the preference stores satisfy the contract?** Yes, after `CQ-KMP-001` (Android no-throw) and
+  `CQ-KMP-005` (web empty value). Durability differs by platform and is now described accurately
+  (`CQ-DOC-002`); no caller needs more.
+- **Are the `expect`/`actual` seams narrow?** Yes: four one-function families, each a single
+  platform call or a composition-local wrapper. The selection seam is the right shape but the wrong
+  hook on two platforms today (`CQ-KMP-003`).
+- **Are the JS and Wasm differences genuine?** Yes. The only one is how a `Worker` is constructed,
+  which the two compilers genuinely require; preferences and the offset share one `webMain`
+  `js()` form.
+- **Are platform limitations documented?** Yes: OPFS and isolation requirements, the worker
+  load-failure hang, keyboard copies, the selection-copy reach, and the worker re-install step.
+- **Deferred into Parts 5 and 6:** `CQ-KMP-003`, `CQ-KMP-004`, `CQ-DI-008`, `CQ-DI-009`,
+  `CQ-STATE-014`, `CQ-TYPE-001`; the startup-reporting map (Part 5); Android/iOS adapter coverage and
+  host start functions other than desktop (Part 6).
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -4792,8 +5105,45 @@ Needs measurement: 0
 Accepted as-is: 0
 Not a defect: 1
 
-Part 4C — Next
+Part 4C — Complete
+
+High: 0
+Medium: 3
+Low: 5
+Observations: 0
+
+Fixed: 6
+Deferred: 2
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Part 4 — Complete
+
+Part 5 — Next
 ```
+
+Part 4C is complete, and with it Part 4. Every platform implementation behind a common contract
+was compared mechanically and against the library it runs on. The four database builders differ
+only in location and driver, and now install one `curriculumDatabaseMigrations` list instead of
+four copies (`CQ-KMP-002`, fixed, with a builder-level test that fails on a missing link). The web
+database — Room, `sqlite-web`, the packaged worker, sqlite-wasm and OPFS — was exercised for the
+first time, in headless Chrome on both browser targets: foreign keys are enforced, a failed write
+transaction rolls back, and concurrent transactions do not interleave even though every statement
+is a worker message (`CQ-TEST-006`). Two worker failure modes were reproduced in a browser: a
+rejected SQLite initialization hung every request and is fixed in the repository's own worker
+(`CQ-BUG-006`); a worker script that fails to load hangs every later request inside `sqlite-web`
+and is deferred as an upstream limitation (`CQ-KMP-004`). The preference stores satisfy their
+contract after the web store stopped reading an empty value as absence (`CQ-KMP-005`); Android's
+`apply()` is correct and only the durability wording was overstated (`CQ-DOC-002`). The UTC-offset
+actuals are correct on every platform and are now tested on the JVM under fixed zones and in the
+browser. The one material gap: the copy confirmation fires on desktop and iOS only, because
+AndroidX foundation 1.11.2 routes Android's selection toolbar through its new context menu and the
+web never shows the toolbar at all — confirmed on an Android emulator both ways (`CQ-KMP-003`,
+deferred as a product decision about a clipboard-level seam; the documentation now says so).
+No iOS or web application was launched. The Part 4 synthesis is in the Part 4C review record. The
+exact next planned chunk is **Part 5 — Cross-cutting production quality**. Do not begin it
+automatically.
 
 Part 4B is complete. Every runtime host was traced from its executable or framework entry point to
 `App()` and compared mechanically: Android, Desktop, iOS and the shared JS/Wasm web root each start

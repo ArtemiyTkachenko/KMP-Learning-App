@@ -23,7 +23,9 @@ import org.jetbrains.compose.resources.stringResource
  *
  * Copies are noticed rather than performed: [ReportSelectionCopies] wraps the platform's own copy
  * action, so the clipboard still receives exactly what the platform's Copy would have put there.
- * A keyboard copy bypasses those menus and so passes unannounced.
+ * Today that confirmation reaches the desktop and iOS menus only — see [ReportSelectionCopies] for
+ * why Android's and the browser's menus copy silently. A keyboard copy bypasses every menu and so
+ * passes unannounced on every platform.
  */
 @Composable
 internal fun SelectableContent(

@@ -152,12 +152,23 @@ function handleMessage(e) {
     }
 }
 
+// Requests that arrive before SQLite has initialized wait here. Initialization ends either ready
+// or permanently failed: a failure answers every waiting and every later request with an error, so
+// the driver reports it instead of awaiting a reply that would never come.
 const messageQueue = [];
+let initializationError = null;
+
+function failRequest(e) {
+    postMessage({'id': e.data.id, 'error': initializationError});
+}
+
 onmessage = (e) => {
-    if (!sqlite3) {
-        messageQueue.push(e);
-    } else {
+    if (sqlite3) {
         handleMessage(e);
+    } else if (initializationError) {
+        failRequest(e);
+    } else {
+        messageQueue.push(e);
     }
 };
 
@@ -165,5 +176,10 @@ sqlite3InitModule().then(instance => {
     sqlite3 = instance;
     while (messageQueue.length > 0) {
         handleMessage(messageQueue.shift());
+    }
+}, error => {
+    initializationError = 'SQLite failed to initialize: ' + (error && error.message ? error.message : error);
+    while (messageQueue.length > 0) {
+        failRequest(messageQueue.shift());
     }
 });

@@ -113,6 +113,35 @@ internal class SavedQuestionStateHolderTest {
         assertEquals(emptySet(), savedIds(holder))
     }
 
+    /**
+     * The save landed but the read after it did not, so what persistence now holds is unknown to
+     * this process. The card keeps the last state actually read, its pending marker clears so it
+     * is usable again, and the next refresh discovers the truth.
+     *
+     * The study holder pins the same rule (`aSuccessfulWriteWhoseReadBackFails…`); both copies of
+     * the algorithm can drift independently until they share an owner (audit `CQ-CROSS-005`).
+     */
+    @Test
+    fun aSuccessfulSaveWhoseReadBackFailsKeepsTheLastKnownStateUntilTheNextRefresh() = runTest {
+        val repository = FakeSavedQuestionRepository()
+        val holder = loadedHolder(repository)
+        repository.failReads = true
+
+        holder.toggleSaved("q1")
+        advanceUntilIdle()
+
+        assertEquals(listOf("q1"), repository.saveCalls)
+        val settled = assertIs<SavedQuestionsState.Loaded>(holder.state.value)
+        assertEquals(emptySet(), settled.savedQuestionIds)
+        assertEquals(emptySet(), settled.pendingQuestionIds)
+
+        repository.failReads = false
+        holder.refresh()
+        advanceUntilIdle()
+
+        assertEquals(setOf("q1"), savedIds(holder))
+    }
+
     @Test
     fun anUnreadableRepositoryIsErrorRatherThanAnEmptySavedSet() = runTest {
         val repository = FakeSavedQuestionRepository(listOf(SavedQuestion("q1", 1_000)))

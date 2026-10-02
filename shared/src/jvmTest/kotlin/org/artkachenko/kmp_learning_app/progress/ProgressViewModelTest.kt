@@ -25,6 +25,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAttempt
 import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
@@ -531,6 +532,28 @@ internal class ProgressViewModelTest {
         assertEquals(listOf("second", "first"), content(context.viewModel).history.map { it.attemptId })
     }
 
+    /**
+     * The dashboard's owner ending mid-derivation is not a dashboard that failed to derive. The
+     * holder runs on the application scope, so this is the graph being torn down; settling as
+     * `Error` would hand any observer still attached a Retry for an operation nobody failed.
+     */
+    @Test
+    fun aDerivationCancelledByItsOwnerEndingDoesNotBecomeAnError() = runTest {
+        setMain(testScheduler)
+        val context = TestContext(
+            attempts = listOf(historyAttempt("a1", AssessmentConfig.Mixed(1))),
+            questions = listOf(question("a1-q", "topic", "subtopic")),
+        )
+        context.curriculum.activeQuestionsGate = CompletableDeferred()
+        context.viewModel.refresh()
+        advanceUntilIdle()
+
+        context.scope.cancel()
+        advanceUntilIdle()
+
+        assertIs<ProgressUiState.Loading>(context.viewModel.uiState.value)
+    }
+
     @Test
     fun aStaleReadCompletingLateDoesNotOverwriteTheNewerResult() = runTest {
         setMain(testScheduler)
@@ -602,8 +625,9 @@ private class TestContext(
 ) {
     val assessment = FakeAssessmentRepository(attempts)
     val curriculum = FakeCurriculumRepository(questions, topics, subtopics)
+    /** The application scope the holder and the history cache run on. */
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     val viewModel = run {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val store = AssessmentHistoryStore(assessment, scope)
         ProgressViewModel(
             historyStore = store,
@@ -655,6 +679,9 @@ private class FakeCurriculumRepository(
     /** An unreadable curriculum while the attempt table reads perfectly well. */
     var failActiveQuestions = false
 
+    /** When set, the ACTIVE read suspends until it completes, holding a derivation in flight. */
+    var activeQuestionsGate: CompletableDeferred<Unit>? = null
+
     fun resetLookupCounts() {
         topicLookupCalls.clear()
         subtopicLookupCalls.clear()
@@ -667,6 +694,7 @@ private class FakeCurriculumRepository(
     /** LearningProgressService reads the ACTIVE bank once per load to derive curriculum coverage. */
     override suspend fun getActiveQuestions(): List<Question> {
         activeQuestionCalls += 1
+        activeQuestionsGate?.await()
         if (failActiveQuestions) error("Curriculum unavailable.")
         return questions
     }

@@ -405,6 +405,31 @@ internal class AssessmentTakingViewModelTest {
         assertEquals(1, repository.savedAttempts.size)
     }
 
+    /**
+     * A route naming an attempt that no longer exists, or an in-progress attempt whose stored
+     * Question no longer resolves, failed to load. Neither is hidden content: `Unavailable` tells
+     * the learner the attempt resumes unchanged once its content is shown again, and nothing the
+     * visibility setting does can bring either of these back.
+     */
+    @Test
+    fun aMissingAttemptOrQuestionIsAnErrorRatherThanHiddenContent() = runViewModelTest {
+        val repository = RecordingAssessmentRepository()
+        repository.savedAttempts += TestAttempt(
+            id = "orphaned",
+            config = AssessmentConfig.Focused(AssessmentScope.Topic("topic"), 10),
+            questionAttempts = listOf(QuestionAttempt("retired-question")),
+            status = AssessmentStatus.IN_PROGRESS,
+            startedAt = Instant.fromEpochMilliseconds(1_000),
+        )
+
+        val missingAttempt = existingAttemptViewModel("no-such-attempt", repository, emptyList())
+        val missingQuestion = existingAttemptViewModel("orphaned", repository, emptyList())
+        advanceUntilIdle()
+
+        assertEquals(AssessmentTakingUiState.Error, missingAttempt.uiState.value)
+        assertEquals(AssessmentTakingUiState.Error, missingQuestion.uiState.value)
+    }
+
     @Test
     fun newMixedAssessmentUsesBalancedSelectionAndPersistsMixedConfig() = runViewModelTest {
         val questions = listOf(
@@ -713,6 +738,36 @@ internal class AssessmentTakingViewModelTest {
                 assessmentEngine = engine,
                 assessmentRepository = repository,
                 historyStore = AssessmentHistoryStore(repository, CoroutineScope(SupervisorJob())),
+            ),
+            visibilityStateHolder = visibility,
+        )
+    }
+
+    /** A destination opened on [attemptId] as a route names it, without starting anything. */
+    private fun kotlinx.coroutines.test.TestScope.existingAttemptViewModel(
+        attemptId: String,
+        repository: RecordingAssessmentRepository,
+        questions: List<Question>,
+    ): AssessmentTakingViewModel {
+        val curriculum = FakeCurriculumRepository(questions)
+        val engine = AssessmentEngine(
+            questionSelector = AssessmentQuestionSelector(
+                curriculumRepository = curriculum,
+                completedHistory = { emptyList() },
+                randomize = { it },
+            ),
+            generateAttemptId = { error("start must not be called") },
+            now = { Instant.fromEpochMilliseconds(2_000) },
+        )
+        return AssessmentTakingViewModel(
+            attemptId = attemptId,
+            assessmentEngine = engine,
+            assessmentRepository = repository,
+            assessmentSessionLoader = AssessmentSessionLoader(repository, curriculum, visibility.visibility),
+            completeAttempt = CompleteAssessment(
+                assessmentEngine = engine,
+                assessmentRepository = repository,
+                historyStore = AssessmentHistoryStore(repository, backgroundScope),
             ),
             visibilityStateHolder = visibility,
         )

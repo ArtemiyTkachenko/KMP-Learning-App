@@ -6,16 +6,19 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.lifecycle.ViewModelStore
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
@@ -139,6 +142,27 @@ internal class AssessmentLaunchViewModelTest {
         assertEquals(listOf("attempt-2"), repository.attempts.map { it.id })
     }
 
+    /**
+     * The launch dialog's owner going away while the attempt is still being written is not a
+     * failed launch. Clearing the ViewModel cancels the start; it must stay cancellation rather
+     * than settle as `Failed(Unexpected)` and offer a Retry nobody is there to press.
+     */
+    @Test
+    fun clearingTheOwnerWhileStartingDoesNotSettleAsAFailedLaunch() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val repository = FakeAssessmentRepository(saveGate = CompletableDeferred())
+        val viewModel = viewModel(repository, listOf(question("question")))
+        val owner = ViewModelStore().apply { put("launch", viewModel) }
+
+        viewModel.start(AssessmentConfig.Mixed(questionCount = 1))
+        runCurrent()
+        owner.clear()
+        advanceUntilIdle()
+
+        assertEquals(AssessmentLaunchState.Launching, viewModel.state.value)
+        assertEquals(emptyList(), repository.attempts)
+    }
+
     private fun viewModel(
         repository: FakeAssessmentRepository,
         questions: List<Question>,
@@ -157,11 +181,13 @@ internal class AssessmentLaunchViewModelTest {
 
     private class FakeAssessmentRepository(
         var failSave: Boolean = false,
+        private val saveGate: CompletableDeferred<Unit>? = null,
     ) : AssessmentRepository {
         val attempts = mutableListOf<TestAttempt>()
 
         override suspend fun save(attempt: TestAttempt) {
             if (failSave) error("save failed")
+            saveGate?.await()
             attempts += attempt
         }
 

@@ -51,4 +51,30 @@ internal class AssessmentLaunchDialogTest {
         onNodeWithText("Cancel").performClick()
         assertEquals(listOf("retry", "cancel"), actions)
     }
+
+    /**
+     * An operational failure must not be explained as an empty selection: that sentence sends the
+     * learner off to change a configuration that was never the problem.
+     */
+    @Test
+    fun anUnexpectedFailureIsNotReportedAsAnEmptySelection() = runComposeUiTest {
+        val actions = mutableListOf<String>()
+        setContent {
+            AppTheme {
+                AssessmentLaunchDialog(
+                    state = AssessmentLaunchState.Failed(
+                        config = AssessmentConfig.Mixed(questionCount = 20),
+                        reason = AssessmentLaunchFailure.Unexpected,
+                    ),
+                    onRetry = { actions += "retry" },
+                    onDismissFailure = { actions += "cancel" },
+                )
+            }
+        }
+
+        onNodeWithText("Something went wrong while preparing it. Try again.").assertIsDisplayed()
+        onNodeWithText("No questions are available for this selection.").assertDoesNotExist()
+        onNodeWithText("Retry").performClick()
+        assertEquals(listOf("retry"), actions)
+    }
 }

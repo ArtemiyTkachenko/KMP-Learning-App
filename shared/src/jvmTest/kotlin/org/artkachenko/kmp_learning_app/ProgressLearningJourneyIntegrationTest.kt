@@ -7,6 +7,7 @@ import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -218,10 +219,11 @@ internal class ProgressLearningJourneyIntegrationTest {
                     // the latest completed occurrence of each Question.
                     scrollToTextStartingWith("unresolved mistakes to review")
                     onNodeWithText("2 unresolved mistakes to review").assertIsDisplayed()
-                    onNodeWithText("2", useUnmergedTree = true).assertIsDisplayed()
+                    // The badge is asserted on the Mistakes target's merged node — what is
+                    // announced with it — rather than as a bare "2" anywhere in the unmerged tree.
                     onNodeWithTag(
                         appNavigationBarItemTag(AppTopLevelDestination.MISTAKES),
-                    ).performClick()
+                    ).assert(hasText("2")).performClick()
                     waitForText("Lifecycle question")
                     onNodeWithText("Lifecycle question").assertIsDisplayed()
                     onNodeWithText("Newest lifecycle selection").performScrollTo().assertIsDisplayed()

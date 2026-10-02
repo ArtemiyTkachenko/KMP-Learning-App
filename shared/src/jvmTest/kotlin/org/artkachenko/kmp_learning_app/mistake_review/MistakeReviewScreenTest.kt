@@ -1,6 +1,17 @@
 package org.artkachenko.kmp_learning_app.mistake_review
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.v2.runSkikoComposeUiTest
+import androidx.compose.ui.unit.dp
+import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
@@ -132,6 +143,51 @@ internal class MistakeReviewScreenTest {
             configs,
         )
     }
+
+    /**
+     * The expanded arrangement is a separate branch, so it is the one place an action could be
+     * dropped while the compact screen still shows it: the remediation block and its practice
+     * action must sit in their own pane, and the queue in the other, still operable.
+     */
+    @Test
+    fun theExpandedQueueKeepsRemediationAndTheQueueInTheirOwnPanes() =
+        runSkikoComposeUiTest(size = Size(ExpandedWidth.value, ExpandedHeight.value)) {
+            val configs = mutableListOf<AssessmentConfig.Focused>()
+            setContent {
+                MaterialTheme {
+                    CompositionLocalProvider(
+                        LocalAppWindowSizeClass provides AppWindowSizeClass.Expanded,
+                    ) {
+                        Box(Modifier.size(ExpandedWidth, ExpandedHeight)) {
+                            MistakeReviewScreen(
+                                state = MistakeReviewUiState.Content(
+                                    listOf(availableMistake("q1"), availableMistake("q2")),
+                                ),
+                                onRetry = {},
+                                onBrowseTopics = {},
+                                onSourceClick = {},
+                                onPracticePreset = {},
+                                onStartPractice = configs::add,
+                            )
+                        }
+                    }
+                }
+            }
+
+            onNode(
+                hasText("2 unresolved mistakes to review") and
+                    hasAnyAncestor(hasTestTag(MistakeRemediationPaneTag)),
+            ).assertIsDisplayed()
+            onNode(
+                hasText("Question q1") and hasAnyAncestor(hasTestTag(MistakeQueuePaneTag)),
+            ).assertIsDisplayed()
+            onNode(
+                hasText("Practice 2 mistakes") and
+                    hasAnyAncestor(hasTestTag(MistakeRemediationPaneTag)),
+            ).performClick()
+
+            assertEquals(2, configs.single().questionCount)
+        }
 
     /** With nothing missing there is no discrepancy, so the screen says nothing about one. */
     @Test
@@ -691,3 +747,6 @@ private fun availableMistake(
             ),
         ),
     )
+
+private val ExpandedWidth = 1280.dp
+private val ExpandedHeight = 800.dp

@@ -556,6 +556,7 @@ private fun UnresolvedMistakeSummary(
                     Modifier
                         .clickable(
                             onClickLabel = reviewLabel,
+                            role = Role.Button,
                             onClick = onReviewMistakes,
                         )
                         .testTag(ProgressReviewMistakesTag)

@@ -56,6 +56,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -344,12 +347,25 @@ internal fun AppNavigationRail(
     ) {
         AppTopLevelDestination.entries.forEach { destination ->
             val label = stringResource(destination.label)
+            val count = badges[destination] ?: 0
             NavigationRailItem(
                 selected = destination == selected,
                 onClick = { onSelect(destination) },
                 icon = { DestinationIcon(destination, badges) },
                 label = { Text(label) },
-                modifier = Modifier.testTag(appNavigationBarItemTag(destination)),
+                modifier = Modifier
+                    .testTag(appNavigationBarItemTag(destination))
+                    // Material clears the icon's semantics whenever the item shows its label, and
+                    // the badge goes with it: the rail drew a count no screen reader announced. The
+                    // compact bar keeps its badge inside the merged target, so the rail states the
+                    // same count the same way rather than gaining wording of its own.
+                    .then(
+                        if (count > 0) {
+                            Modifier.semantics { text = AnnotatedString(count.toString()) }
+                        } else {
+                            Modifier
+                        },
+                    ),
             )
         }
     }

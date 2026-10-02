@@ -1,5 +1,8 @@
 package org.artkachenko.kmp_learning_app.topic_study.learning_unit
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
@@ -107,7 +110,10 @@ internal class LearningUnitScreenTest {
 
         // The row is addressed by its Lesson ID and emits that same ID: neither the row's position
         // nor its title is what leaves this screen.
-        onNodeWithTag(learningLessonRowTag("lesson_state_down_events_up")).performClick()
+        // A hand-built clickable row, so its control role is the app's to supply.
+        onNodeWithTag(learningLessonRowTag("lesson_state_down_events_up"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
 
         assertEquals(listOf("lesson_state_down_events_up"), clicked)
     }

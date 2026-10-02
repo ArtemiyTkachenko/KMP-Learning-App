@@ -14,6 +14,8 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
@@ -336,8 +338,54 @@ internal class AppNavigationBarTest {
         }
 
         onNodeWithText("7", useUnmergedTree = true).assertIsDisplayed()
+        // Drawn is not announced: the count must also reach the Mistakes target's merged node.
+        onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.MISTAKES)).assert(hasText("7"))
         AppTopLevelDestination.entries.forEach {
             onNodeWithTag(appNavigationBarItemTag(it)).performClick()
+        }
+        assertEquals(AppTopLevelDestination.entries.toList(), selected)
+    }
+
+    /**
+     * The rail is a second implementation of the same navigation, not a restyled bar: it is built
+     * from Material's `NavigationRailItem` and its own badge icon, so nothing above covers it.
+     * What must match is meaning rather than appearance — every destination, the one selection,
+     * the badge on the item it counts, and each target reporting its own destination.
+     */
+    @Test
+    fun theWideRailOffersTheSameDestinationsSelectionBadgeAndCallbacks() = runComposeUiTest {
+        val selected = mutableListOf<AppTopLevelDestination>()
+        setContent {
+            AppTheme {
+                Box(Modifier.size(AppNavigationRailBreakpoint, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.PROGRESS,
+                        onSelect = selected::add,
+                        showsNavigation = true,
+                        badges = mapOf(AppTopLevelDestination.MISTAKES to 7),
+                    ) { }
+                }
+            }
+        }
+
+        onNodeWithTag(AppNavigationRailDividerTag).assertIsDisplayed()
+        onNodeWithTag(AppNavigationBarTag).assertDoesNotExist()
+        AppTopLevelDestination.entries.forEach { destination ->
+            val item = onNodeWithTag(appNavigationBarItemTag(destination)).assertIsDisplayed()
+            if (destination == AppTopLevelDestination.PROGRESS) {
+                item.assertIsSelected()
+            } else {
+                item.assertIsNotSelected()
+            }
+            // The count belongs to the Mistakes target in the merged tree, which is what a
+            // screen reader announces with it, and to no other. Material's rail item clears its
+            // icon's semantics, so a drawn badge alone would not satisfy this.
+            if (destination == AppTopLevelDestination.MISTAKES) {
+                item.assert(hasText("7"))
+            } else {
+                item.assert(hasText("7").not())
+            }
+            item.performClick()
         }
         assertEquals(AppTopLevelDestination.entries.toList(), selected)
     }

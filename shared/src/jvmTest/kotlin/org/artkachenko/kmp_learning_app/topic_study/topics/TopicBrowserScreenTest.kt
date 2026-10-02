@@ -1,6 +1,15 @@
 package org.artkachenko.kmp_learning_app.topic_study.topics
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.foundation.layout.Box
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.v2.runSkikoComposeUiTest
+import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
+import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
@@ -680,6 +689,52 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("Weak-area practice").assertIsDisplayed()
     }
 
+    /**
+     * The expanded browser gives derived guidance its own pane beside the catalogue. That is a
+     * separate branch, so it is where a card or the catalogue could go missing while the compact
+     * list still showed both: each must be in its own pane and still reach its callback.
+     */
+    @Test
+    fun theExpandedBrowserKeepsGuidanceAndTheCatalogueInTheirOwnOperablePanes() =
+        runSkikoComposeUiTest(size = Size(ExpandedBrowserWidth.value, ExpandedBrowserHeight.value)) {
+            val clicks = mutableListOf<Any>()
+            val target = ContinueStudyingTarget.Topic("kotlin", "coroutines")
+            setContent {
+                MaterialTheme {
+                    CompositionLocalProvider(
+                        LocalAppWindowSizeClass provides AppWindowSizeClass.Expanded,
+                    ) {
+                        Box(Modifier.size(ExpandedBrowserWidth, ExpandedBrowserHeight)) {
+                            TopicBrowserScreen(
+                                state = browsingContent(
+                                    topics = listOf(topicItem("kotlin", "Kotlin")),
+                                    continueStudying = ContinueStudyingContext(
+                                        target,
+                                        "Coroutines",
+                                        "Kotlin",
+                                    ),
+                                ),
+                                onTopicClick = { clicks += it },
+                                onRetry = {},
+                                onContinueStudyingClick = { clicks += it },
+                            )
+                        }
+                    }
+                }
+            }
+
+            onNode(
+                hasTestTag(TopicBrowserContinueStudyingTag) and
+                    hasAnyAncestor(hasTestTag(TopicBrowserGuidancePaneTag)),
+            ).performClick()
+            onNode(
+                hasText("Kotlin") and hasClickAction() and
+                    hasAnyAncestor(hasTestTag(TopicBrowserCataloguePaneTag)),
+            ).performClick()
+
+            assertEquals(listOf<Any>(target, "kotlin"), clicks)
+        }
+
     @Test
     fun theContinueCardIsOneTargetEmittingTheSemanticContinueTarget() = runComposeUiTest {
         var clickedTarget: ContinueStudyingTarget? = null
@@ -701,6 +756,7 @@ internal class TopicBrowserScreenTest {
         // One tap, and no Continue/Configure/Dismiss row of competing actions.
         onNodeWithTag(TopicBrowserContinueStudyingTag)
             .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .assertHeightIsAtLeast(MinimumTouchTarget)
             .performClick()
 
@@ -1587,6 +1643,7 @@ internal class TopicBrowserScreenTest {
 
         onNodeWithTag(TopicBrowserContinueLearningTag)
             .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .assertHeightIsAtLeast(MinimumTouchTarget)
             .performClick()
 
@@ -1888,3 +1945,6 @@ private val MinimumTouchTarget = 48.dp
 
 /** Comfortably longer than any spec on `AppMotion`, so "settled" never means "still moving". */
 private const val SettleMillis = 2_000L
+
+private val ExpandedBrowserWidth = 1280.dp
+private val ExpandedBrowserHeight = 800.dp

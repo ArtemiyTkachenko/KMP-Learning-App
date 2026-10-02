@@ -243,7 +243,10 @@ internal class ProgressScreenTest {
         // Progress answers "what should I work on next?", and the most concrete answer it holds is
         // a queue of questions already got wrong. Reporting its size and then refusing to open it
         // stopped one step short of being useful.
-        onNodeWithTag(ProgressReviewMistakesTag).assertHasClickAction().performClick()
+        onNodeWithTag(ProgressReviewMistakesTag)
+            .assertHasClickAction()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
         assertEquals(1, reviews)
     }
 
@@ -396,9 +399,14 @@ internal class ProgressScreenTest {
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
         onNodeWithText("Kotlin · Coroutines").assertIsDisplayed()
-        // The raw instant never reaches the UI; how it reads is `timestampText`'s job and is
-        // asserted there, against an explicit zone rather than the agent's.
+        // The raw instant never reaches the UI; both rows are dated through `timestampText`, whose
+        // wording TimestampTextTest pins against an explicit zone. Only the month and year are
+        // asserted here, since the production clock and zone decide the rest.
         onNodeWithText("2026-08-29T00:15:00Z").assertDoesNotExist()
+        assertEquals(
+            2,
+            onAllNodesWithText("Aug 2026", substring = true).fetchSemanticsNodes().size,
+        )
         assertEquals(
             listOf(
                 CompletedAssessmentType.MIXED to "mixed-id",

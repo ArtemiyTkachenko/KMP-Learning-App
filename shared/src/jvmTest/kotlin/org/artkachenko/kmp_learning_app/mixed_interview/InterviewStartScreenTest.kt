@@ -104,10 +104,15 @@ internal class InterviewStartScreenTest {
         onNodeWithText("5 of 20 correct").assertIsDisplayed()
         onNodeWithText("18 of 20 correct").assertIsDisplayed()
 
+        // Only the latest row is dated, through the shared formatter; its wording is pinned by
+        // TimestampTextTest. A month and year is all that is asserted, because the production
+        // clock and zone decide the rest and a mid-day mid-month instant keeps both in any zone.
         onNodeWithText("Last interview")
+            .assert(hasText(CompletedAtMonthAndYear, substring = true))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
         onNodeWithText("Best")
+            .assert(hasText(CompletedAtMonthAndYear, substring = true).not())
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
 
@@ -292,8 +297,10 @@ private fun historyState(
     InterviewHistoryUiState.Content(InterviewHistoryUiModel(attemptCount, latest, best))
 
 /**
- * A fixed completion instant, so the record's date renders deterministically whatever the agent's
- * clock and zone happen to be. `InterviewStartScreenTest` asserts on scores and labels rather than
- * on the formatted date, which `TimestampTest` covers directly.
+ * A fixed completion instant, 2025-09-11T12:43Z. Mid-day and mid-month, so it reads as September
+ * 2025 under any real zone and long after any clock this suite runs on. This suite asserts only
+ * that the date is shown; how it is worded is `TimestampTextTest`'s.
  */
 private val CompletedAt: Instant = Instant.fromEpochMilliseconds(1_757_594_626_872)
+
+private const val CompletedAtMonthAndYear = "Sep 2025"

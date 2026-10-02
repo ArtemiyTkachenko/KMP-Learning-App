@@ -217,6 +217,13 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-TEST-012` | Curriculum import / answer-option reactivation | Medium | High | `CurriculumImporterTest.kt`; `CurriculumPersistenceMapper.kt`, `CurriculumImporter.kt` | Nothing proved that a retired answer option authored again is offered again. | Part 3A records reactivation as a verified row of the reconciliation table, and the mapper's comment states it, but the retirement tests stop at "retained and DEPRECATED". An import that kept a persisted option's status — the natural shape of a "don't disturb history" refactor — passed all 1 840 jvm tests while leaving the option out of every new assessment; when that option is the keyed answer, the Question becomes unanswerable while history still reviews correctly. | Extend the retirement sequence one step: retire a historically selected option, author it again as the keyed answer, and assert active reads offer it with that key. **Part 6B:** `aRetiredAnswerOptionThatIsAuthoredAgainIsOfferedAgain` added; with the status-preserving probe applied it is the only failure of 1 844. | Fixed |
 | `CQ-TEST-013` | Learning content cache / failure memoisation | Low | High | `BundledLearningContentRepositoryTest.kt`; `BundledLearningContentRepository.kt` | The "failed load caches nothing" test could not tell a retried failure from a remembered one. | `aFailedLoadStaysAFailureAndCachesNothing` loads a document that is invalid on every attempt, so a cache that stored the exception — a shared `Deferred` does, and it also stores a cancellation — produced exactly the same five failures. Part 3A cited the test as proving retry. The repository is a process-lifetime `single`, so a remembered failure or a first caller's cancellation would keep every Learn surface failing until restart. | Pin the two observable consequences at the repository: a failed first load is retried and a later success is served and then cached; a first load cancelled by its caller leaves the next caller to load. **Part 6B:** both tests added in `commonTest`; with a memoising probe applied they are the only two failures of 1 844. | Fixed |
 | `CQ-TEST-014` | Assessment persistence / corrupt history | Low | High | `AssessmentAttemptStoreTest.kt`; `AssessmentAttemptStore.kt` | The documented "a corrupt attempt fails completed history as a whole" rule had no test at the history read. | Part 3B documented the policy and `persistence.md` states it, but the only corruption tests read one attempt by ID (malformed multi-Subtopic scope) or reject a write (foreign key). Wrapping each reconstruction in `getCompletedAttempts` with `runCatching … getOrNull()` — a plausible "resilience" edit — passed every test while silently undercounting the history that Progress, the mistake queue and unseen-practice selection derive from. | One representative corruption — an answered occurrence whose selected-answer rows are lost — must fail the history read, while an intact attempt still reads by ID. Do not enumerate the mapper's other `require`s; the domain constructor repeats them. **Part 6B:** `aCorruptCompletedAttemptFailsTheHistoryReadInsteadOfVanishingFromIt` added; the skipping probe fails only it. | Fixed |
+| `CQ-UI-014` | Navigation rail / accessibility | Low | High | `AppNavigationBar.kt` | The rail drew the unresolved-mistake badge but no screen reader announced it. | Material 3's `NavigationRailItem` clears its icon's semantics whenever the label is shown, and the badge is inside the icon. Measured in `:shared:jvmTest`: the compact Mistakes item's merged node is `[7, Mistakes]`, the rail's was `[Mistakes]`. The rail is what every window at or above the 600dp breakpoint shows, including the desktop host. The compact bar is hand-built and already establishes the announcement. | Give the rail item the same count text in its own semantics, so its merged node reads exactly as the compact item's does; no new wording. **Part 6C:** fixed in `AppNavigationRail`; pinned by `theWideRailOffersTheSameDestinationsSelectionBadgeAndCallbacks`, which fails with the fix removed. | Fixed |
+| `CQ-UI-015` | Progress / accessibility | Low | High | `ProgressScreen.kt` | The Progress "review mistakes" row was a custom clickable row with an action label but no control role. | Every other navigating custom row in the app publishes `Role.Button` — the rule `CQ-UI-004` established — including the history rows on the same screen. This row became a route after Part 1D, and its test asserted only a click action. | Add `Role.Button` beside its existing `onClickLabel`. **Part 6C:** fixed; `theUnresolvedCountRoutesIntoTheMistakeQueue` now asserts the role and fails without it. | Fixed |
+| `CQ-TEST-015` | App shell / composed back handling | Medium | High | `AppShellBackNavigationTest.kt`; `App.kt` | No test sent a back event through the composed shell. | `AppNavigatorTest` pins what each back step does to the stacks, and every journey presses the toolbar's Back, which calls `popBack()` directly. Neither reaches `NavDisplay`'s own handler or the outer `NavigationBackHandler` gated by `canLeaveArea`. Disabling the outer handler (system Back on an area root would then close the app instead of returning to Start) or making `NavDisplay.onBack` a no-op (Back on any detail does nothing) passed the whole suite. | Supply the shell a `NavigationEventDispatcher` whose fallback stands in for the host, and dispatch `backCompleted()` on a `DirectNavigationEventInput`: Start root is unconsumed, another area root returns to Start, a detail pops only the detail. **Part 6C:** three tests added; each probe fails exactly one of them. | Fixed |
+| `CQ-TEST-016` | Navigation rail / equivalence | Low | High | `AppNavigationBarTest.kt`; `AppNavigationBar.kt` | The rail — a second implementation built from `NavigationRailItem` — had no test of its selection, badge or callbacks. | Every bar test composes the compact branch. The one wide test checks rail placement; the wide discovery journey clicks each item, so only `onSelect` routing was protected. Losing selection on the rail passed the suite, and the missing badge announcement (`CQ-UI-014`) was not detectable at all. | One direct test at the breakpoint: every destination present, exactly the selected one selected, the count in the Mistakes item's merged node and no other, and each item reporting its own destination. The compact bar's test and `ProgressLearningJourneyIntegrationTest` now assert the badge in the merged node too, rather than as a bare unmerged `Text`. **Part 6C:** selection, announcement and callback probes each fail the new test. | Fixed |
+| `CQ-TEST-017` | Assessment launch dialog / failure wording | Low | High | `AssessmentLaunchDialogTest.kt`; `AssessmentLaunchDialog.kt` | Nothing rendered the dialog's `Unexpected` failure. | The one failure test covers `NoEligibleQuestions`. Mapping `Unexpected` to the no-questions string — which tells a learner whose database read failed to change a selection that was never the problem — passed the suite. | Render `Failed(Unexpected)` and assert its own sentence, the absence of the no-questions sentence, and Retry. **Part 6C:** added; the probe fails only it. | Fixed |
+| `CQ-TEST-018` | Custom clickable rows / control roles | Low | High | `LearningUnitScreenTest.kt`, `TopicBrowserScreenTest.kt`, `ProgressScreenTest.kt` | Three hand-built navigating rows had no test of their `Role.Button`. | `CQ-UI-004`'s Topic Detail rows, `PerformanceCard` and Interview rows are pinned (probed). Removing the role from the Learning Unit's Lesson rows or from the Topic Browser's continuation rows (`GuidanceRow`: Continue Studying and Continue Learning) failed nothing, and the Progress mistake row never had one (`CQ-UI-015`). | Assert the role where each row's click is already tested, rather than adding tests. **Part 6C:** four assertions added; each probe fails its own. | Fixed |
+| `CQ-TEST-019` | Adaptive layout / unexercised Expanded branches | Low | High | `MistakeReviewScreenTest.kt`, `TopicBrowserScreenTest.kt`; `MistakeReviewScreen.kt`, `TopicBrowserScreen.kt` | No test composed Mistake Review's two-pane arrangement or the Topic Browser's guidance pane. | Both screens branch on `isExpanded` and build the panes separately from the compact list. Every other adaptive screen has an Expanded test; these two had none, so dropping the remediation block (and its practice action) from the expanded pane, or the guidance cards from the browser's pane, passed the suite — on the window size the desktop host opens at. | One Expanded test each: both panes present, each holding its own content, and the action in each still reaching its callback. **Part 6C:** added; the two drop probes and a one-column fallback probe each fail only the new test. | Fixed |
 
 ## Audit Pass Log
 
@@ -248,6 +255,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 5 | Cross-cutting production quality | Complete | `2749766c96113e46bb91f90ac71424140da15fd6` plus the working tree | All `:shared` production source sets by mechanical scan (unreferenced declarations, unproduced sealed cases, every error fallback, numeric literals, forwarding functions, multi-Boolean APIs, cross-feature presentation imports), host modules and Swift for public-API callers, and about 25 owner, module and pipeline files read in full | 9 new (Low 6, Observation 3) plus 9 existing re-evaluated | 5 new fixed; 3 existing fixed or partly fixed (`CQ-DI-009`, `CQ-DATA-013` CI half, `CQ-STATE-016` reopened) | Targeted suites; `:shared:jvmTest` (1 835); `:shared:allTests`; `:androidApp:assembleDebug`; `:shared:check`; desktop and web host compiles; `git diff --check` | `CQ-DI-008` measured on JVM and in Wasm and accepted; `CQ-DATA-018` accepted; `CQ-STATE-014`, `CQ-TYPE-001`, `CQ-KMP-003`, `CQ-KMP-004` stay deferred with stated reasons. Falsified: smoke-test diagnostics both ways, the interview record (2 of 17 fail on the old mapping). Dead code removed: `StudyProgressService`, `AssessmentTakingUiState.NoQuestions`, `AppScreenVerticalPadding`. See review record. |
 | Part 6A | Presentation/state behavior coverage | Complete | `f19e05a` (merge of PR #449) plus the working tree | 25 presentation/state owners; 22 direct test files read for their assertions (`AppShellViewModelTest`, `AssessmentLaunchViewModelTest`, `AssessmentRetakeControllerTest`, `AssessmentTakingViewModelTest`, `FocusedResultViewModelTest`, `MixedInterviewResultViewModelTest`, `InterviewStartViewModelTest`, `ProgressViewModelTest`, `ProgressTopicViewModelTest`, `MistakeReviewViewModelTest`, `MistakeStudyLessonMappingTest`, `SavedQuestionStateHolderTest`, `StudyProgressStateHolderTest`, `SavedQuestionsViewModelTest`, `TopicBrowserViewModelTest`, `TopicDetailViewModelTest`, `LearningUnitViewModelTest`, `LearningLessonViewModelTest`, `PracticeBuilderViewModelTest`, `KmpContentPreferenceTest`, `AppearancePreferenceTest`, `AppRootTest`); 6 visibility/integration suites read (`ResultVisibilityTest`, `DestinationVisibilityGuardTest`, `SavedAndSessionVisibilityTest`, `CurriculumVisibilityIntegrationTest`, `TopicBrowserVisibilityTest`, `TopicDetailVisibilityTest`) and 3 consulted by search | 5 new (Low 4, Observation 1) plus 3 existing re-evaluated | 5 tests added (`CQ-TEST-005`, `CQ-TEST-007` – `CQ-TEST-010`); 0 production changes | Narrow owner suites throughout; 8 falsification runs, two of them over the whole jvm suite; `:shared:jvmTest`; `:shared:allTests`; `:shared:check`; `git diff --check` | High 0, Medium 0, Low 4, Observation 1. The suite already protected almost every owner's contract; five unprotected contracts each passed the whole suite when deliberately broken. `CQ-TEST-011` deferred to Part 6D. See review record below. |
 | Part 6B | Repository/persistence/content coverage | Complete | `1560386ef2da97e02c92052047be374dccf30779` (merge of PR #450) plus the working tree | 27 production boundaries (assessment start, completion, retake, session and review loading, attempt store and repository, history store and visible projection; both codecs, validators, the importer and initializer, local and visible curriculum repositories; the learning loader, cache and visible repository; both learner-owned repositories; migrations; the web database; both bundled documents). About 45 test files read for their assertions, chiefly `AssessmentAttemptStoreTest`, `LocalAssessmentRepositoryTest`, `CompleteAssessmentTest`, `AssessmentRetakeServiceTest`, `AssessmentSessionLoaderTest`, `AssessmentReviewLoaderTest`, `AnswerOrderTest`, `AssessmentEngineIntegrationTest`, `AssessmentHistoryStoreTest`, `VisibleAssessmentHistoryTest`, `VisibleHistoryProjectionTest`, `CurriculumJsonCodecTest`, `CurriculumValidatorTest`, `CurriculumImporterTest`, `CurriculumLocalDataPathTest`, `LocalCurriculumRepositoryTest`, `VisibleCurriculumRepositoryTest`, `CurriculumDatabaseTest`, `CurriculumDatabaseMigrationTest`, `LearningCurriculumJsonCodecTest`, `LearningCurriculumValidatorTest`, `LearningContentLoaderTest`, `BundledLearningContentRepositoryTest`, `VisibleLearningContentRepositoryTest`, both learner-owned repository suites, `InitialCurriculumSmokeTest`, `InitialCurriculumContentQualityTest`, `BundledLearningCurriculumTest`, `LearningContentEndToEndTest`, the KMP boundary suites and `WebCurriculumDatabaseTest` | 3 new (Medium 1, Low 2) plus main-ledger `CQ-TEST-001` | 4 fixed (`CQ-TEST-001`, `-012`, `-013`, `-014`); tests and authoring docs only | Targeted suites; `:shared:jvmTest` (1 844); `:shared:allTests`; `:shared:check`; `git diff --check` | Every validator error code is pinned by an exact ordered code list; every claimed transaction, deferred-foreign-key, validate-before-write, historical-correctness, migration-chain and identity-versus-eligibility contract was broken in production and its named test failed. Three documented guarantees had no failing test (reactivation, failure memoisation, corrupt history). No production code changed. `CQ-DATA-016` and `CQ-DATA-019` gained test evidence and stay Open. See review record. |
+| Part 6C | Compose UI/navigation/accessibility coverage | Complete | `44f9d66ad8d4068ec27c61b75b23cad2900f54c7` (merge of PR #451) plus the working tree | 44 Compose test files enumerated mechanically at the baseline (46 after the pass) and all 588 of their test names plus the four pure navigation suites mapped to Part 1 contracts; the shell, navigation bar and rail, back handling, every screen of Learn, Assessment, Interview, Progress, Mistake Review and Saved Questions, the shared status, hierarchy, metric, performance and adaptive primitives, and `timestampText` audited. Direct suites read for their assertions included `AppNavigationBarTest`, `SettingsScreenTest`, `TopicBrowserScreenTest`, `TopicBrowserSectionsScreenTest`, `TopicDetailScreenTest`, `LearningUnitScreenTest`, `LearningLessonScreenTest`, `PracticeBuilderScreenTest`, `AssessmentTakingScreenTest`, `AssessmentReviewComponentsTest`, the result, interview, progress, mistake and saved suites, `AdaptiveLayoutTest` and `LargeFontScaleTest`; navigation: `AppNavigatorTest`, `AppNavigationTest`, `AppNavigatorRestorationTest`, `AppNavigationTransitionsTest`, `AppRouteVisibilityTest`; journeys: the seven that compose `App()` or the reader | 7 new (Medium 1, Low 6) plus Stage 4F `CQ-TEST-004` | 8 fixed (`CQ-TEST-004`, `-015` to `-019`, `CQ-UI-014`, `-015`); two one-modifier production fixes | Targeted suites; `:shared:jvmTest` (1 854); `:shared:allTests`; `:shared:check`; `:androidApp:assembleDebug`; `git diff --check` | Every `CQ-UI-*` fix that changed behaviour re-verified by reverting it. With all ten new-test regressions applied at once, 12 of 1 852 failed — exactly the new and strengthened assertions. Found and fixed one production accessibility defect (the rail's unannounced badge) and one missing role. No screenshot infrastructure justified. See review record. |
 
 ### Part 1A Review Record
 
@@ -3644,7 +3652,7 @@ checklist has no finding attached to it.
 | `CQ-TEST-001` | `AppShellViewModel` | `SharedHostStartupTest` asserts Koin resolves it; `ProgressLearningJourneyIntegrationTest` asserts the literal text `"2"` in the unmerged tree of one full-app run | The badge's whole mapping from `AssessmentHistory`: `Loading`/`Failed` badge nothing (the `CQ-STATE-017` adjudication), the count is the mistake queue's rule over the *shared* read, it moves on completion, and a rebuilt shell takes the replayed history | A shell that badges an error indicator, that recounts by reading the attempt table itself on every rebuild, or that stops following `invalidate()`. Only the one integration assertion stands between any of those and shipping, and it survives the first two | ViewModel | **High** | **Fixed** **Ledger note (Part 5):** this ID was issued twice. The main Finding Ledger already holds a different `CQ-TEST-001` (bundled-content tests / coupling, Open). Both rows are kept to preserve the trail; refer to this one as "Stage 4F `CQ-TEST-001`". |
 | `CQ-TEST-002` | `PracticeBuilderViewModel.refreshAvailability()` | `availabilityRefreshesWhenTheLevelSelectionChanges` (sequential; its two toggles are not separated by a scheduler advance, so the superseded check never starts), `aFailedEligibilityCheckIsAnErrorThatRetryCanRecoverFrom` | The documented supersession rule — *"Held so a superseded eligibility read cannot land after the one that replaced it"* — and the documented cancellation rethrow beside it | Dropping `availabilityJob?.cancel()` leaves the learner looking at the eligible count *and the offered run lengths* of a level selection they have already moved off; folding the cancellation into `Error` puts "could not check" on a screen whose newer check is still running. `refreshAvailability()` runs on every level and source tap, so this is the most frequently exercised cancellation in the app | ViewModel | **High** | **Fixed** |
 | `CQ-TEST-003` | `LearningLessonViewModel`, `LearningUnitViewModel`, `ProgressTopicViewModel` | Each has a failure-and-retry test; none has a cancellation test | All three `loadJob?.cancel()`, publish `Loading`, then relaunch, and all three rethrow `CancellationException` so the abandoned load publishes nothing. Eight comparable owners in the repository have this test; these three do not | A double-tapped Retry, or a Lesson opened while the previous document read is outstanding, leaves `Error` on screen over a reload that is going to succeed — and on the Progress drill-down `Error` is the state that offers Retry, so the learner is invited to retry the retry | ViewModel | Medium | **Fixed** |
-| `CQ-TEST-004` | `timestampText` | `LocalTimestampTest` covers the pure day-and-offset arithmetic; nothing covers the wording layer, and the one integration assertion deliberately avoids it | The `TODAY`/`YESTERDAY`/dated branch selection and the twelve-entry `shortMonthResource` table | A month mis-mapped in that table dates every Progress history row and every interview record wrongly, silently. A mid-month instant keeps such a test timezone-independent, so it is writable without flakiness | Compose UI | Medium | **Deferred to 4G**; Part 6A assigned it to **Part 6C** (Compose wording, not state) |
+| `CQ-TEST-004` | `timestampText` | `LocalTimestampTest` covers the pure day-and-offset arithmetic; nothing covers the wording layer, and the one integration assertion deliberately avoids it | The `TODAY`/`YESTERDAY`/dated branch selection and the twelve-entry `shortMonthResource` table | A month mis-mapped in that table dates every Progress history row and every interview record wrongly, silently. A mid-month instant keeps such a test timezone-independent, so it is writable without flakiness | Compose UI | Medium | **Deferred to 4G**; Part 6A assigned it to **Part 6C** (Compose wording, not state); **Fixed in Part 6C** — `TimestampTextTest` pins Today/Yesterday/dated wording, all twelve months in one table, and each instant read at its own offset, under an installed and restored zone. Mapping 8 to September, Today to Yesterday, or reading an instant at `now`'s offset each fails exactly one of its tests; the Progress history and interview record now assert that the formatter's output is shown |
 | `CQ-TEST-005` | `AssessmentLaunchViewModel` | Four tests over success, no-eligible-questions, retry and re-entry | Its `CancellationException` rethrow, which keeps a dismissed launch dialog from settling as `Failed(Unexpected)` | Lower than `CQ-TEST-003`: the state belongs to a dialog that is going away, so a swallowed cancellation is largely unobservable | ViewModel | Low | **Deferred to 4G**; **Fixed in Part 6A** |
 
 Two candidates were investigated and **not** raised. `AppShellViewModel`'s `catch (_: Exception) -> 0`
@@ -5145,6 +5153,305 @@ matters. `CQ-TEST-001` is resolved by classification rather than deletion: the b
 still pinned, exactly once, where the authoring workflow expects it, and the import tests now prove
 every row rather than counting them.
 
+## Part 6C Review Record
+
+**Pass:** Compose UI/navigation/accessibility coverage. **Baseline:** `44f9d66ad8d4068ec27c61b75b23cad2900f54c7`
+(merge of PR #451), on branch `task/code-quality-part-8`, plus the working tree described below.
+Local `main` was stale and the remote was unreachable, so the baseline was confirmed as the branch
+tip that contains PR #451. Part 6C asked one question of every user-visible Compose, navigation,
+adaptive-layout, interaction and accessibility contract Part 1 established: *if this regressed,
+would a test fail at the level that owns it?* It used Parts 1A–1D as the statement of intended
+behaviour rather than re-auditing the UI, and left state derivation to 6A and persistence to 6B.
+
+### Method
+
+The Compose test surface was enumerated mechanically rather than carried forward: every test
+source composing UI through `runComposeUiTest` or `runSkikoComposeUiTest`, which is 44 files at
+`44f9d66` (39 and 5). Eleven of the 18 files whose names say *Integration* or *Journey* drive
+ViewModels without composing anything and are not counted. Every test name in those 44 files plus the four
+pure navigation suites — 588 tests — was listed and mapped to the Part 1 contracts; the assertions
+of the suites a contract depended on were then read. Every fixed `CQ-UI-*` was re-verified by
+reverting its fix in production and running the owning suites. A candidate became a finding only
+when all five 6C conditions held, and the "no current test fails" condition was never assumed: each
+gap was proved by a production probe first, and the whole jvm suite was finally run with every
+regression the new assertions target applied at once (see Falsification).
+
+### Current Compose-test inventory
+
+| Kind | Files | Examples |
+| --- | ---: | --- |
+| Direct screen/component | 24 | `TopicBrowserScreenTest` (65), `TopicDetailScreenTest` (58), `LearningLessonScreenTest` (50), `ProgressScreenTest` (35), `MistakeReviewScreenTest` (25), the assessment, result, saved, settings and review-component suites, `ContentGroupTest`, `ContentHierarchyTest`, `MetricComponentsTest`, `TrailingFigureRowTest` |
+| Shell and navigation | 4 | `AppNavigationBarTest`, `AppNavigatorRestorationTest`, `AppRootTest`, `SharedHostStartupTest` |
+| Adaptive and large-type layout | 2 | `AdaptiveLayoutTest`, `LargeFontScaleTest` (plus Expanded tests inside the screen suites) |
+| Theme and rendering behaviour | 3 | `AppearanceThemeTest`, `TopicDiscoveryThemeTest`, `ScreenStateTransitionTest` |
+| Journey/integration (compose `App()` or a destination) | 7 | `FocusedLearningJourneyIntegrationTest`, `MixedInterviewJourneyIntegrationTest`, `ProgressLearningJourneyIntegrationTest`, `SettingsNavigationIntegrationTest`, `TopicDiscoveryIntegrationTest`, `LearningReaderJourneyIntegrationTest`, `LearningProductionContentJourneyTest` |
+| Destination-level | 3 | `ProgressDestinationTest`, `MistakeReviewDestinationTest`, the one composing test in `AssessmentLaunchViewModelTest` |
+| Platform seam on the JVM | 1 | `SelectionCopyDesktopTest` |
+| Non-Compose navigation state (not counted above) | 4 | `AppNavigatorTest` (12), `AppNavigationTest` (45), `AppRouteVisibilityTest` (16), `AppNavigationTransitionsTest` (2) |
+| Non-Compose rendering math (not counted above) | 4 | `AppColorSchemeTest`, `ProgressHeroThemeTest`, `InterviewStartHeroThemeTest`, `RecentTrendChartTest` |
+
+Part 6C adds two files (`TimestampTextTest`, `AppShellBackNavigationTest`), so the count is now 46.
+The ViewModel-only "integration" suites — `LearningNavigationIntegrationTest`,
+`LearningUnitPracticeIntegrationTest`, `TargetedPracticeLifecycleIntegrationTest`,
+`GuidedLearningPracticePresetIntegrationTest`, `SavedQuestionCaptureIntegrationTest`,
+`SavedQuestionLifecycleIntegrationTest` and the visibility integration suites — were classified by
+6A and are not Compose coverage.
+
+### What the suite already protects well
+
+- **Interaction over presence.** Nearly every interactive contract is asserted by clicking and
+  comparing the emitted identity, not by `assertIsDisplayed`: stable Topic, Subtopic, Unit, Lesson,
+  attempt and Question IDs leave every screen, and source clicks emit the exact URL.
+- **State distinctions survive to the screen.** Unavailable versus Error versus Empty is rendered
+  distinctly where it matters, and Retry is offered only where it can help: Lesson and Unit
+  `NotFound`, hidden assessments, Progress Topic `Unavailable` and results all say so "without
+  Retry"; the builder offers Retry "only for a failed check" and not for a configuration the
+  learner can change; the interview record omits an unavailable history rather than saying "No
+  interviews yet".
+- **Every `CQ-UI-*` fix that changed behaviour has a failing test** (re-verified below).
+- **Semantic structure.** Headings, radio/checkbox/switch roles, toggleable state, selected state,
+  progress range semantics, one-node-per-switch and decorative icons not announcing are each
+  pinned at a named test, and touch targets are measured on the hand-built targets that could
+  shrink.
+- **Adaptive behaviour where content could move.** Practice Builder, both results, Interview
+  Start, Progress and the Lesson reader each have an Expanded test asserting which pane holds
+  which content and that the actions remain operable; large-type behaviour has its own suite.
+- **Navigation rules at the right level.** Stack rules are pure `AppNavigator` tests; route policy
+  is exhaustive in `AppNavigationTest` and `AppRouteVisibilityTest`; restoration and focus-mode
+  wiring are asserted once through the real shell.
+
+### Screen coverage matrix
+
+| Surface | Direct | Journey | Variants / interactions / semantics / adaptive | Classification |
+| --- | --- | --- | --- | --- |
+| `AppRoot` / startup status | `AppRootTest` (6) | `SharedHostStartupTest` | Loading, Error + Retry, recovery, cancellation | Direct coverage sufficient |
+| Navigation scaffold, bar, rail | `AppNavigationBarTest` (13) | discovery, settings, interview journeys | compact geometry, selection, badge, overlay clearance, focus mode; rail now equivalent | **Gap fixed** (`CQ-TEST-016`, `CQ-UI-014`) |
+| Shell back handling | `AppShellBackNavigationTest` (3) | — | Start root, area root, detail | **Gap fixed** (`CQ-TEST-015`) |
+| Settings | `SettingsScreenTest` (14) | `SettingsNavigationIntegrationTest` (7) | both switches: label, description, `Role.Switch`, state both ways, one node, independence, 48dp; three sections in order | Direct coverage sufficient |
+| Topic Browser | `TopicBrowserScreenTest` (66), `TopicBrowserSectionsScreenTest` (6) | `TopicDiscoveryIntegrationTest` (6) | Loading/Error/Empty, search, clear, no-results with query, scroll reset, sections, guidance, continue cards, saved entry, long names, heading | **Gap fixed** (`CQ-TEST-018`, `CQ-TEST-019`) |
+| Topic Detail | `TopicDetailScreenTest` (58) | discovery journey | tabs, indicator, per-page scroll, target Subtopic, terminal states, every shortcut rule, `Role.Button` rows, fallbacks | Direct coverage sufficient |
+| Learning Unit | `LearningUnitScreenTest` (18) | reader journeys | states, Lesson rows and order, study states incl. loading/unavailable, practice, narrow width | **Gap fixed** (`CQ-TEST-018`) |
+| Learning Lesson | `LearningLessonScreenTest` (50) | `LearningReaderJourneyIntegrationTest`, `LearningProductionContentJourneyTest` | every block, depth labels, headings, sources and failure, previous/next, study toggle and pending, practice, scroll reset, reading meter | Direct coverage sufficient |
+| Assessment launch dialog | `AssessmentLaunchDialogTest` (3) | journeys | launching, NoEligible, Unexpected, Retry/Cancel | **Gap fixed** (`CQ-TEST-017`) |
+| Practice Builder | `PracticeBuilderScreenTest` (20) | `LargeFontScaleTest` | radio vs checkbox roles, selected/disabled, availability, Retry only for failure, Start enablement, compact reach, expanded split, heading | Direct coverage sufficient |
+| Assessment Taking | `AssessmentTakingScreenTest` (20) | both assessment journeys | heading, radio/checkbox rows, reveal names the verdict in text, partial, locked input, Submit disabled, progress meter, states | Direct coverage sufficient |
+| Shared review components | `AssessmentReviewComponentsTest` (13), `AssessmentCompletionHeroTest`, `AssessmentResultOutcomeTest`, `AssessmentRetakeActionTest` | — | outcome text for correct/partial/incorrect, explanation, ordered sources, save/unsave and per-ID pending, missing Question, disclosure | Shared component coverage is sufficient |
+| Focused result | `FocusedResultScreenTest` (10) | `FocusedLearningJourneyIntegrationTest` | score, hidden count, source failure association, saved state, expanded panes | Direct coverage sufficient |
+| Interview Start | `InterviewStartScreenTest` (9) | `MixedInterviewJourneyIntegrationTest` | heading, Start, latest/best navigation, Loading, Unavailable omitted, expanded, compact height; date shown on latest only | **Gap fixed** (`CQ-TEST-004` consumer half) |
+| Mixed result | `MixedInterviewResultScreenTest` (18) | mixed journey | Topic breakdown inert, hidden and unresolved notices, retake states, saves, expanded panes | Direct coverage sufficient |
+| Mistake Review | `MistakeReviewScreenTest` (26), `MistakeReviewDestinationTest` (3) | `ProgressLearningJourneyIntegrationTest` | states, queue order, remediation, scoped practice, saves, source URL and failure, heading, Lesson link, expanded panes | **Gap fixed** (`CQ-TEST-019`) |
+| Progress | `ProgressScreenTest` (35), `ProgressDestinationTest` (2) | Progress journey | every section, fallbacks, Role.Button cards, trend description, two-pane (in `AdaptiveLayoutTest`), timestamps shown | **Gap fixed** (`CQ-TEST-004` consumer half, `CQ-TEST-018`, `CQ-UI-015`) |
+| Progress Topic | `ProgressTopicScreenTest` (10) | — | Loading/Empty/Unavailable without Retry/Error, metrics, fallbacks; the screen has no practice action | Direct coverage sufficient |
+| Saved Questions | `SavedQuestionsScreenTest` (16) | saved lifecycle suites (ViewModel level) | states, deprecated renders as current, missing still removable, per-ID pending, source independence and failure, order | Direct coverage sufficient |
+| Shared status, hierarchy, metric, performance, group | `ContentHierarchyTest`, `MetricComponentsTest`, `ContentGroupTest`, `TrailingFigureRowTest`, `ScreenStateTransitionTest`; callers | — | `SectionHeading` heading, accuracy formatting, group order/inertness; `ScreenLoading`/`ScreenError` through a Loading and an Error test on every screen that uses them | Shared component coverage is sufficient |
+| Adaptive layout | `AdaptiveLayoutTest` (9) + eight screen suites | wide discovery journey | breakpoints, published class, dashboard panes, reading measure, outline rules | **Gap fixed** (`CQ-TEST-019`) |
+| `timestampText` | `TimestampTextTest` (3) | consumers assert presence only | day names, twelve months, per-instant offset | **Gap fixed** (`CQ-TEST-004`) |
+
+### Navigation coverage matrix
+
+| Rule | Protection | Level |
+| --- | --- | --- |
+| Top-level selection, independent stacks, reselect to root | `AppNavigatorTest` | Pure navigator |
+| Back: detail, area root to Start, Start unconsumed | `AppNavigatorTest`; **`AppShellBackNavigationTest`** for the composed handlers | Pure navigator + Compose shell |
+| `push`, `replaceTop`, `detailRoutes` across areas | `AppNavigatorTest`, `AppNavigationTest` | Pure navigator |
+| Pruning: first invalid entry and tail, every area, never root, Settings rebased | `AppNavigatorTest`, `AppRouteVisibilityTest` | Pure navigator |
+| Visibility-driven pruning through the shell, including restored stacks | `AppRouteVisibilityTest`, `aStackSavedWithKmpShownIsValidatedWhenRestoredWithKmpHidden` | Pure + Compose shell |
+| Restoration: area, open detail, outer back, learning identities, Settings/Saved, attempts | `AppNavigatorRestorationTest` (9) | Compose shell |
+| Route serialization | `subclassesOfSealed<AppRoute>()` registers every route, and a non-serializable route does not compile; restoration covers each payload shape (object, one ID, two IDs, nullable ID, default enum) | Sufficient — no per-route test |
+| Route-to-destination wiring and area membership | `AppNavigationTest` (45) | Pure |
+| Focus mode hides navigation | `onlyActiveAssessmentsEnterFocusMode`, `focusModeRendersNeitherCompactNavigationNorRail`, asserted live in `MixedInterviewJourneyIntegrationTest`; kept on Settings, builder and lesson in two journeys | Pure + scaffold + journey |
+| Transition classification | `AppNavigationTransitionsTest` | Pure — the classification is the contract |
+| Compact versus wide navigation | `AppNavigationBarTest` for both branches; discovery journey for routing | Compose |
+| `NavEntry` ViewModel-store lifetime (`CQ-DI-003`) | — | **Part 6D** |
+
+### Accessibility coverage matrix
+
+| Surface | Contract | Test | Gap? |
+| --- | --- | --- | --- |
+| Topic Detail Unit and Subtopic rows | `Role.Button` (`CQ-UI-004`) | `aSelectedUnitEmitsItsStableIdOnly`, `subtopicStartUsesStableIdAndEmptyItemsAreAbsent` | No |
+| Learning Unit Lesson rows | `Role.Button` | `selectingALessonEmitsItsStableIdentity` | **Fixed** (`CQ-TEST-018`) |
+| Topic Browser continuation rows | `Role.Button` | both continue-card tests | **Fixed** (`CQ-TEST-018`) |
+| Progress mistake row | `Role.Button` + action label | `theUnresolvedCountRoutesIntoTheMistakeQueue` | **Fixed** (`CQ-UI-015`) |
+| `PerformanceCard` | navigable ⇔ button + chevron; inert has no click (`CQ-UI-002`) | two Progress Topic-performance and two interview-record tests; `theTopicBreakdownIsOneInertGroupedTable` | No |
+| Navigation destinations | Tab role, selected, 48dp, badge in merged node, both branches | `AppNavigationBarTest` | **Fixed** (`CQ-TEST-016`, `CQ-UI-014`) |
+| Settings switches | one `Role.Switch` node each, state, 48dp, independent | `SettingsScreenTest` | No |
+| Practice Builder controls | count and source radio, levels checkbox (`CQ-UI-008`) | `filterControlsExposeSingleAndMultipleSelectionRoles` | No |
+| Assessment answers | radio/checkbox rows, verdict in text, locked after reveal | `AssessmentTakingScreenTest` | No |
+| Review outcomes | selected-correct, selected-wrong, missed-correct, partial stated in text | `AssessmentReviewComponentsTest`, reveal tests | No |
+| Special headings | browser title, current Question, interview title, mistake count, builder scope | one named test each; `SectionHeading` once in `ContentHierarchyTest` | No |
+| Lesson outline | selected entry, scroll target, Expanded only, no one-item outline | `AdaptiveLayoutTest` | No |
+| Progress semantics | assessment meter range, reading meter not a stop, charts and rings not announced, trend described in text | taking, Lesson, Progress, Progress Topic, completion hero tests | No |
+| Decorative icons | markers and chevrons do not announce | `discoveryRowsAnnounceTheirNameOnceAndStayFullSizeTargets` and peers | No |
+
+### `CQ-TEST-004` resolution
+
+`TimestampTextTest` is a jvm Compose test that installs a zone and restores it in `finally`, as
+`UtcOffsetJvmTest` already does. It pins three things and nothing the arithmetic tests own: the
+day-name branch (Today, Yesterday, dated) with zero-padded times, all twelve month resources as
+one ordered table, and that an instant is read at its own offset rather than at `now`'s — the
+daylight-saving rule the function's KDoc promises and nothing tested. The consumers assert only
+that a formatted date is shown, by month and year, which no real zone or later clock can change:
+both Progress history rows, and the latest interview row but not the best one. Two comments that
+claimed the wording was "asserted there", one naming a `TimestampTest` that never existed, are
+corrected. Breaking 8→September fails the month table (and the Progress consumer); Today→Yesterday
+fails the day-name test; reading at `now`'s offset fails the offset test.
+
+### `CQ-UI-*` re-verification
+
+| Finding | Test that fails when the fix is reverted |
+| --- | --- |
+| `CQ-UI-001` | Duplication fix; reverting to a private copy is not observable. `AppRootTest` protects the visible Loading, Error and Retry it consolidated |
+| `CQ-UI-002` | Removing `Role.Button` from `PerformanceCard`: 4 tests (Progress Topic rows ×2, interview record ×2); the coherent API is enforced by its type |
+| `CQ-UI-003` | Removing the per-query `scrollToItem(0)`: `changingTheQueryStartsTheNewResultSetAtTheTop` |
+| `CQ-UI-004` | Removing both roles: `aSelectedUnitEmitsItsStableIdOnly`, `subtopicStartUsesStableIdAndEmptyItemsAreAbsent` |
+| `CQ-UI-005` | `browserTitleIsAHeading` |
+| `CQ-UI-006` | Mapping CORE to the Practical label: 5 `LearningLessonScreenTest` tests; one shared function means body and outline cannot drift |
+| `CQ-UI-007` | `key(Unit)` for `key(question.id)`: `aNewQuestionStartsAtTheTopOfItsOwnContent` |
+| `CQ-UI-008` | Radio back to checkbox: `filterControlsExposeSingleAndMultipleSelectionRoles` |
+| `CQ-UI-009` | `questionAndAnswerRowsExposeTheirAssessmentSemantics` |
+| `CQ-UI-010` | `aFirstVisitExplainsTheSessionAndSaysWhereResultsWillAppear`, `anExpandedWindowKeepsBothTheInvitationAndTheRecord` |
+| `CQ-UI-011` | Composition cost only; no deterministic UI test exists and the repository has no recomposition-count convention, so it is protected by structure (`remember(state.mistakes)`) and review |
+| `CQ-UI-012` | Duplication fix; the behaviour it shares is pinned in both callers' Expanded tests |
+| `CQ-UI-013` | Latent in production: both result destinations receive method references on the remembered `AppNavigator`, so a stale capture behaves identically. A test would pin the `rememberUpdatedState` idiom, not a learner-visible outcome |
+| `CQ-UI-014`, `CQ-UI-015` | New in 6C; see the ledger |
+
+### Adaptive-layout coverage
+
+Medium and Expanded share one branch wherever a screen branches at all, so each distinct
+arrangement needs one test, not one per class. Same composition at every size: Topic Detail,
+Learning Unit, Settings, Saved Questions, Progress Topic, Assessment Taking (the meter follows the
+column). Navigation only: the shell, both branches tested. Single column versus two panes:
+Progress (`AdaptiveLayoutTest`), Mistake Review and the Topic Browser guidance pane (both added,
+`CQ-TEST-019`). Form plus summary: Practice Builder. Summary plus transcript: both results through
+`AssessmentResultLayout`. Outline on Expanded only: the Lesson reader. Invitation plus record:
+Interview Start. Every one now has a test asserting that both halves exist, hold their own
+content, and keep their actions operable.
+
+### Meaningful gaps
+
+| ID | Existing coverage | Missing contract | Regression that would have shipped | Test level | Severity |
+| --- | --- | --- | --- | --- | --- |
+| `CQ-TEST-004` | arithmetic only | wording and month table | every record dated in the wrong month | jvm Compose | Medium |
+| `CQ-TEST-015` | navigator rules; toolbar Back | composed back handlers | system Back closing the app from an area root, or doing nothing on a detail | Compose shell | Medium |
+| `CQ-TEST-016` | compact bar only | rail equivalence | rail loses selection or its badge's announcement | Compose component | Low |
+| `CQ-TEST-017` | NoEligible branch | Unexpected wording | a read failure described as an empty selection | Compose component | Low |
+| `CQ-TEST-018` | some rows | `Role.Button` on three rows | custom rows lose their control role | Compose screen | Low |
+| `CQ-TEST-019` | compact branches | two Expanded branches | an action or a pane missing on desktop | Compose screen | Low |
+
+### Production defects found by the new tests
+
+Both are fixes of an already-established semantic rule, local, measured and deterministic, so they
+were fixed rather than recorded. `CQ-UI-014`: Material's rail item clears its icon's semantics, so
+the rail drew the unresolved-mistake count and announced nothing; the rail now states the count in
+its own semantics, which makes its merged node identical to the compact item's. `CQ-UI-015`: the
+Progress mistake row lacked the `Role.Button` every other navigating custom row has. A
+consequence worth recording: `ProgressLearningJourneyIntegrationTest` asserted the badge as a bare
+`"2"` in the unmerged tree, which both proved nothing about announcement and broke once the rail
+announced the count; it now asserts the count on the Mistakes item's merged node.
+
+### Candidates investigated and rejected
+
+- **Push/pop slide direction.** The classification test is the contract; direction lives in
+  spec lambdas whose only observable form is animation frames, which 6C does not freeze.
+- **A `CQ-UI-013` callback-freshness test.** Latent in production (see above).
+- **A recomposition-count test for `CQ-UI-011`.** No repository convention, and unstable.
+- **A per-route serialization test.** `subclassesOfSealed` makes an unregistered route impossible.
+- **The launch dialog offering Retry for `NoEligibleQuestions`.** Unlike the builder, the dialog
+  sits above surfaces with no configuration to change, and the existing test pins this behaviour
+  deliberately. A product question, not a coverage gap.
+- **A source-failure clearing test per destination.** Five destinations share one line
+  (`failedSourceUrl = url.takeIf { failure }`); association is pinned in five screens, the host
+  handler path in `MistakeReviewDestinationTest`, and the no-failure state in `successfulSourceOpenShowsNoFailureMessage`.
+- **Direct `ScreenLoading`/`ScreenError` tests.** Every screen that uses them has its own Loading
+  and Error-with-Retry test.
+- **The rail badge's drawing.** Material removes it from the merged tree, so it cannot be asserted
+  semantically; the announcement and the drawn badge read the same `badges` map.
+- **Every screen in both themes, or at all three widths.** Theme selection is pinned in
+  `AppearanceThemeTest`, contrast in `AppColorSchemeTest` and the hero and discovery theme tests;
+  widths are covered per arrangement, not per class.
+- **Focus management.** The product has no stated focus contract, and desktop JVM focus does not
+  model mobile screen-reader focus. No finding.
+- **Screenshot or golden infrastructure.** No contract found that semantics, geometry or
+  interaction could not express. **No screenshot infrastructure justified.**
+- **Browser or device copies of the common screen suites.** All audited behaviour is common
+  Compose with no platform branch, and the JVM tests exercise the same semantics and layout APIs.
+  The one known divergence, selection-copy reporting (`CQ-KMP-003`), is the example of where JVM
+  UI tests did not predict platform behaviour; it stays deferred, and platform classification is
+  6D's.
+- **Hard-coded `"  ·  "` in the Progress history row.** Kotlin-assembled punctuation beside a
+  formatter whose KDoc says it avoids exactly that. A localization observation outside 6C's
+  contract; noted, not opened.
+
+### Falsification
+
+Every probe edited production, ran the named suites, and restored the file from a backup taken
+beforehand; `git status --short` showed only the intended files afterwards.
+
+| Probe | Result |
+| --- | --- |
+| month 8 → September | `everyMonthIsNamedByItsOwnAbbreviation`, `mixedAndFocusedHistoryRenderAndEmitStableTargets` |
+| Today → Yesterday resource | `theSameLocalDayIsTodayThePreviousOneYesterdayAndAnythingOlderIsDated` |
+| instant read at `now`'s offset | `eachInstantIsReadAtItsOwnOffsetRatherThanTheOffsetOfNow` |
+| interview caption removed / Progress row time removed | one consumer test each |
+| outer back handler disabled | `backOnAnotherAreaRootReturnsToStart` (none of 73 navigation, restoration and Settings tests) |
+| `NavDisplay.onBack = {}` | `backOnADetailPopsOnlyTheDetail` |
+| rail `selected = false` / announcement removed / `onSelect` misrouted | the rail test, each alone |
+| dialog `Unexpected` → no-questions string | `anUnexpectedFailureIsNotReportedAsAnEmptySelection` |
+| Lesson-row role / continuation-row role removed, before 6C | 0 of 39 and 0 of 81 failed; after, 1 and 2 |
+| Progress mistake row without its role | `theUnresolvedCountRoutesIntoTheMistakeQueue` |
+| Expanded Mistake Review drops remediation / browser drops guidance / browser falls back to one column | the new Expanded test only, each |
+| `CQ-UI-002` … `CQ-UI-010`, Settings `Role.Switch` | see the re-verification table |
+| **Whole jvm suite, all ten new-test regressions at once** | **12 of 1 852 failed — exactly the new and strengthened assertions** (the two Expanded tests were added afterwards and probed separately) |
+
+### Changes
+
+Production (`commonMain`): `AppNavigationBar.kt` (`CQ-UI-014`) and `ProgressScreen.kt`
+(`CQ-UI-015`), one modifier each. Tests: two new files (`TimestampTextTest`,
+`AppShellBackNavigationTest`); new tests in `AppNavigationBarTest`, `AssessmentLaunchDialogTest`,
+`MistakeReviewScreenTest` and `TopicBrowserScreenTest`; strengthened assertions in
+`InterviewStartScreenTest`, `ProgressScreenTest`, `LearningUnitScreenTest`, `TopicBrowserScreenTest`,
+`AppNavigationBarTest` and `ProgressLearningJourneyIntegrationTest`. Ten tests added, eight
+existing tests strengthened, none removed. The new shell test stops Koin, closes its database and
+resets `Dispatchers.Main` in `finally`; the timestamp test restores the default zone. Neither adds
+another `CQ-TEST-011`.
+
+### Handoffs
+
+- **Part 6D:** `CQ-TEST-011`; the Navigation 3 `NavEntry` ViewModel-store gap (`CQ-DI-003`);
+  Android and iOS adapter coverage; host startup coverage; browser-test failure reporting; final
+  platform/integration classification, including whether any common UI behaviour needs a device
+  or browser run; the final residual ledger synthesis.
+- **Separate production follow-ups:** `CQ-STATE-014`, `CQ-TYPE-001`, `CQ-CROSS-005`, `CQ-KMP-003`,
+  `CQ-KMP-004`, `CQ-CROSS-010`.
+- **Content/product/tooling:** the Part 6B classification of `CQ-DATA-003`, `-012`, `-013` (runtime
+  half), `-014`, `-015`, `-016`, `-017`, `-019`, `-020` stands unchanged.
+
+### Validation
+
+- Targeted, during the pass: every touched suite after each edit, plus the falsification runs
+  above (a scratch driver that backs up and restores every production file it edits).
+- `./gradlew :shared:jvmTest` — 1 854 tests, 0 failures (1 844 at Part 6B, plus the ten added).
+- `./gradlew :shared:allTests` — run because `commonMain` changed: Android host 538, iOS simulator
+  arm64 538, JS browser 545, Wasm browser 545, JVM 1 854; 0 failures. The common targets are
+  unchanged in count because every new test is in `jvmTest`.
+- `./gradlew :shared:check` — successful.
+- `./gradlew :androidApp:assembleDebug` — successful.
+- No device, emulator, simulator or browser UI run: the repository has no such UI suite, and none
+  was created to satisfy a platform quota.
+- `git diff --check` — clean. `git status --short` — two production files, ten test files (two
+  new) and this ledger.
+
+### Part 6C assessment
+
+The Compose suite is broad and mostly well aimed: it clicks rather than looks, it renders the
+distinctions 6A pinned in state, and every Part 1 fix that changed behaviour still has a test that
+fails without it. Its gaps had one shape — a second implementation or a second branch of something
+whose first was tested. The rail beside the compact bar, the composed back handlers beside the
+navigator's rules, the Expanded branch beside the compact list, the `Unexpected` wording beside
+`NoEligible`, the wording layer beside the arithmetic, and three custom rows beside the ones
+`CQ-UI-004` fixed. Following that shape found the pass's one material accessibility defect, the
+rail's silent badge, on the window size the desktop host opens at.
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -5850,9 +6157,46 @@ Test evidence appended, status unchanged: CQ-DATA-016 (Open), CQ-DATA-019 (Open)
 Re-verified by probe, still protected: CQ-BUG-004, CQ-DATA-006, CQ-KMP-002
 Unchanged: CQ-CROSS-010 (Deferred), CQ-DATA-003, -012, -014, -015, -017, -020 (Open or Deferred)
 
-Part 6C — Next
-Part 6D — Pending
+Part 6C — Complete
+
+High: 0
+Medium: 1
+Low: 6
+Observations: 0
+
+Fixed: 7
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Existing findings re-evaluated in Part 6C:
+Fixed: Stage 4F CQ-TEST-004
+Re-verified by probe, still protected: CQ-UI-002 to CQ-UI-010
+Protected by structure, no test justified: CQ-UI-001, CQ-UI-006 (mapping pinned), CQ-UI-011, CQ-UI-012, CQ-UI-013 (latent)
+Unchanged: CQ-TEST-011, CQ-DI-003 (Part 6D); CQ-KMP-003 (Deferred)
+
+Part 6D — Next
 ```
+
+Part 6C is complete. The Compose test surface was enumerated from `44f9d66` — 44 files that
+compose UI, 588 tests — and every Part 1 contract was mapped to the assertion that would fail if it
+regressed, by reverting each `CQ-UI-*` fix in production rather than trusting test names: all that
+changed behaviour still fail their named tests. Stage 4F's `CQ-TEST-004` is fixed by
+`TimestampTextTest`, which pins the day names, all twelve month resources and the per-instant offset
+under an installed and restored zone, while the two consumers now assert only that a date is shown.
+Six gaps shared one shape — a second implementation or branch of something whose first was tested:
+the composed back handlers (`CQ-TEST-015`, Medium: system Back could stop working while every
+navigator and journey test passed), the wide navigation rail (`CQ-TEST-016`), the launch dialog's
+`Unexpected` wording (`CQ-TEST-017`), three custom rows' `Role.Button` (`CQ-TEST-018`), and the
+Expanded branches of Mistake Review and the Topic Browser (`CQ-TEST-019`). Testing the rail found
+the pass's one material defect: Material's rail item clears its icon's semantics, so on every
+window at or above 600dp — the desktop host included — the unresolved-mistake badge was drawn and
+never announced (`CQ-UI-014`, fixed to match the compact bar). The Progress mistake row lacked the
+role every other navigating row has (`CQ-UI-015`, fixed). With all ten regressions applied together,
+exactly the new and strengthened assertions failed, 12 of 1 852. No screenshot infrastructure and no
+device or browser suite was justified. The exact next planned chunk is **Part 6D —
+Platform/integration coverage and final synthesis**. Do not begin it automatically.
 
 Part 6B is complete. Every data, persistence, import, serialization and bundled-content contract
 Part 3 established was mapped, against `1560386`, to the assertions that would fail if it

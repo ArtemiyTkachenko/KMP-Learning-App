@@ -17,6 +17,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.curriculum.learning.content.learningContentModule
 import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModule
@@ -272,7 +273,7 @@ internal class SettingsNavigationIntegrationTest {
             Dispatchers.setMain(Dispatchers.Unconfined)
             try {
                 runComposeUiTest {
-                    // Deliberately not closed, for the reason the other app-level tests give: Room
+                    // Deliberately not closed, for the reason SharedHostStartupTest gives: Room
                     // runs queries on its own executor, and closing under in-flight ViewModel work
                     // throws into the global handler and fails whichever test runs next.
                     val database = Room.inMemoryDatabaseBuilder<CurriculumDatabase>()
@@ -317,6 +318,7 @@ internal class SettingsNavigationIntegrationTest {
                 }
             } finally {
                 stopKoin()
+                Dispatchers.resetMain()
             }
         }
     }

@@ -233,7 +233,6 @@
     <string name="assessment_taking_next_question">Next question</string>
     <string name="assessment_taking_loading">Preparing questions</string>
     <string name="assessment_taking_answer_save_error">Answer could not be saved. Try again.</string>
-    <string name="assessment_taking_no_questions">No practice questions are currently available.</string>
     <string name="assessment_taking_start_error">Practice could not be started.</string>
     <string name="assessment_taking_unavailable">This assessment is not available with the current learning-content settings.</string>
     <string name="assessment_taking_ready">All questions answered. Ready to finish.</string>

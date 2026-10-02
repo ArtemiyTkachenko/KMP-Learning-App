@@ -44,6 +44,7 @@ import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestion
 import org.artkachenko.kmp_learning_app.saved_questions.savedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
+import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
 
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class MistakeReviewViewModelTest {
@@ -100,7 +101,12 @@ internal class MistakeReviewViewModelTest {
         repository.failNextLoad = true
         val scope = testCacheScope()
         val store = testHistoryStore(repository, scope)
-        val state = MistakeReviewStateHolder(vmService(repository), store.visibleHistory(scope), scope).state
+        val state = MistakeReviewStateHolder(
+            vmService(repository),
+            store.visibleHistory(scope),
+            scope,
+            FakeLearningContentRepository(),
+        ).state
         advanceUntilIdle()
         assertIs<MistakeReviewUiState.Error>(state.value)
 
@@ -126,6 +132,7 @@ internal class MistakeReviewViewModelTest {
             ),
             store.visibleHistory(scope),
             scope,
+            FakeLearningContentRepository(),
         ).state
 
         advanceUntilIdle()
@@ -285,6 +292,7 @@ internal class MistakeReviewViewModelTest {
                 ),
                 visibleHistory = store.visibleHistory(scope),
                 scope = scope,
+                learningContentRepository = FakeLearningContentRepository(),
             ),
             savedQuestionStateHolder = savedQuestionStateHolder(savedRepository),
         )
@@ -300,6 +308,7 @@ internal class MistakeReviewViewModelTest {
             mistakeReviewService = vmService(repository),
             visibleHistory = testHistoryStore(repository, scope).visibleHistory(scope),
             scope = scope,
+            learningContentRepository = FakeLearningContentRepository(),
         ).state
     }
 }

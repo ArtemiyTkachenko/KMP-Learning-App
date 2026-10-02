@@ -22,6 +22,14 @@ import org.artkachenko.kmp_learning_app.saved_questions.repository.SavedQuestion
  * [repository] remains the persistent source of truth. Nothing is stored here that the database does
  * not already hold: this is the in-memory projection the UI observes, refreshed from the repository
  * after every mutation rather than assembled independently.
+ *
+ * The concurrency rules below — a coalesced refresh, a read-back serialised against every other
+ * read, a refresh failure that keeps earlier loaded state, a per-ID pending set — are the same
+ * rules [org.artkachenko.kmp_learning_app.lesson_study.StudyProgressStateHolder] follows. They
+ * have already drifted once: the serialised read-back existed in the study holder before the saved
+ * holder had it, and the race it prevents was found in the saved holder later (audit
+ * `CQ-STATE-001`). A fix to one of these rules belongs in both until they share an owner
+ * (`CQ-CROSS-005`).
  */
 internal class SavedQuestionStateHolder(
     private val repository: SavedQuestionRepository,

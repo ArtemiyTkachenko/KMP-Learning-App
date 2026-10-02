@@ -109,11 +109,12 @@ internal class InterviewStartViewModelTest {
     }
 
     @Test
-    fun aFailedReadLeavesTheScreenStartable() = runTest(dispatcher) {
+    fun aFailedReadOmitsTheRecordWithoutClaimingThereAreNoInterviews() = runTest(dispatcher) {
         val state = interviewState(FailingRepository)
         testScheduler.advanceUntilIdle()
 
-        assertIs<InterviewHistoryUiState.Empty>(state.value)
+        // Not Empty: that state renders "No interviews yet", which an unread history cannot know.
+        assertIs<InterviewHistoryUiState.Unavailable>(state.value)
     }
 
     /**

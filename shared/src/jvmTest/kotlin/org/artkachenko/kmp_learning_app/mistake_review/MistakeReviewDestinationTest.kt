@@ -49,6 +49,7 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
+import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
 
 @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 internal class MistakeReviewDestinationTest {
@@ -175,7 +176,12 @@ private fun destinationViewModel(
         val store = AssessmentHistoryStore(repository, scope)
         MistakeReviewViewModel(
             historyStore = store,
-            stateHolder = MistakeReviewStateHolder(service, store.visibleHistory(scope), scope),
+            stateHolder = MistakeReviewStateHolder(
+                service,
+                store.visibleHistory(scope),
+                scope,
+                FakeLearningContentRepository(),
+            ),
             savedQuestionStateHolder = SavedQuestionStateHolder(
                 FakeSavedQuestionRepository(),
                 scope,

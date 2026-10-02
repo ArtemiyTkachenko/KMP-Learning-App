@@ -65,7 +65,6 @@ import kmp_learning_app.shared.generated.resources.assessment_taking_completion_
 import kmp_learning_app.shared.generated.resources.assessment_taking_finish
 import kmp_learning_app.shared.generated.resources.assessment_taking_finishing
 import kmp_learning_app.shared.generated.resources.assessment_taking_loading
-import kmp_learning_app.shared.generated.resources.assessment_taking_no_questions
 import kmp_learning_app.shared.generated.resources.assessment_taking_next_question
 import kmp_learning_app.shared.generated.resources.assessment_taking_question_progress
 import kmp_learning_app.shared.generated.resources.assessment_taking_ready
@@ -159,10 +158,6 @@ internal fun AssessmentTakingScreen(
                         modifier = Modifier.fillMaxSize(),
                     )
 
-                    AssessmentTakingUiState.NoQuestions -> ScreenMessage(
-                        message = stringResource(Res.string.assessment_taking_no_questions),
-                        modifier = Modifier.fillMaxSize(),
-                    )
 
                     AssessmentTakingUiState.Error -> ScreenError(
                         message = stringResource(Res.string.assessment_taking_start_error),

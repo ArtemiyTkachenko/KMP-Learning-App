@@ -6,7 +6,7 @@ import org.artkachenko.kmp_learning_app.settings.iosAppearanceModule
 import org.koin.core.context.startKoin
 import org.koin.mp.KoinPlatform
 
-public fun startIosLocalDataGraph() {
+internal fun startIosLocalDataGraph() {
     if (KoinPlatform.getKoinOrNull() != null) return
 
     startKoin {
@@ -17,5 +17,5 @@ public fun startIosLocalDataGraph() {
     }
 }
 
-public fun iosAppStartupInitializer(): AppStartupInitializer =
+internal fun iosAppStartupInitializer(): AppStartupInitializer =
     KoinPlatform.getKoin().get<CurriculumDataInitializer>()

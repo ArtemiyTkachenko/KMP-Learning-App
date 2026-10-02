@@ -254,8 +254,9 @@ internal val topicStudyPresentationModule = module {
             questionSelector = get(),
             // Observed so a live builder re-resolves its target when Settings changes visibility.
             visibilityStateHolder = get(),
-            // Optional: opening the builder from content passes a scope alone and keeps the
-            // builder's own ALL default, while a preset-carrying entry supplies the source.
+            // Production always supplies this: `PracticeBuilderDestination` passes the route's
+            // preset or its own ALL default. The read stays optional because the graph is also
+            // resolved with a target alone, and then it opens on the same ALL the destination uses.
             initialSource = parameters.getOrNull() ?: PracticeQuestionSource.ALL,
         )
     }

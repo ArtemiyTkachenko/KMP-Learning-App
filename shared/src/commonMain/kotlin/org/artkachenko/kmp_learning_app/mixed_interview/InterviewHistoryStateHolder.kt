@@ -24,6 +24,14 @@ internal sealed interface InterviewHistoryUiState {
     data object Empty : InterviewHistoryUiState
 
     data class Content(val history: InterviewHistoryUiModel) : InterviewHistoryUiState
+
+    /**
+     * The record could not be derived, so the screen shows none — and does not claim there is none.
+     *
+     * Distinct from [Empty], which says the learner has never finished an interview: an unreadable
+     * history is unknown, not empty, which is how every other history-derived surface treats it.
+     */
+    data object Unavailable : InterviewHistoryUiState
 }
 
 /**
@@ -44,8 +52,9 @@ internal class InterviewHistoryStateHolder(
             when (history) {
                 AssessmentHistory.Loading -> InterviewHistoryUiState.Loading
                 // The record is supplementary and the screen's action does not depend on it, so a
-                // failed read shows the first-run shape rather than blocking the only control.
-                AssessmentHistory.Failed -> InterviewHistoryUiState.Empty
+                // failed read omits it rather than blocking the only control — and rather than
+                // showing the first-run note, which would tell the learner they have no interviews.
+                AssessmentHistory.Failed -> InterviewHistoryUiState.Unavailable
                 is AssessmentHistory.Loaded -> history.attempts.toUiState()
             }
         }

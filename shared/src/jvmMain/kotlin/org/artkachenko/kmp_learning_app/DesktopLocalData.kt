@@ -17,5 +17,5 @@ public fun startDesktopLocalDataGraph() {
     }
 }
 
-public fun desktopAppStartupInitializer(): AppStartupInitializer =
+internal fun desktopAppStartupInitializer(): AppStartupInitializer =
     GlobalContext.get().get<CurriculumDataInitializer>()

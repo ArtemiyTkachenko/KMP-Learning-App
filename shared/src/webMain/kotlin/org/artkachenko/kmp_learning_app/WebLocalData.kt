@@ -17,5 +17,5 @@ public fun startWebLocalDataGraph() {
     }
 }
 
-public fun webAppStartupInitializer(): AppStartupInitializer =
+internal fun webAppStartupInitializer(): AppStartupInitializer =
     KoinPlatform.getKoin().get<CurriculumDataInitializer>()

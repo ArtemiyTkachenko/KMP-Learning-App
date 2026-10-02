@@ -68,6 +68,7 @@ import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
 import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
+import org.artkachenko.kmp_learning_app.topic_study.FakeLearningContentRepository
 
 /**
  * The Saved Questions lifecycle across the boundaries no single-layer test owns: a real curriculum
@@ -370,6 +371,7 @@ internal class SavedQuestionLifecycleIntegrationTest {
                     ),
                     visibleHistory = historyStore.visibleHistory(scope),
                     scope = scope,
+                    learningContentRepository = FakeLearningContentRepository(),
                 ),
                 savedQuestionStateHolder = holder,
             ),

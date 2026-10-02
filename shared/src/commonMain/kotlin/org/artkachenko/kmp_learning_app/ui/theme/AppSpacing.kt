@@ -1,6 +1,5 @@
 package org.artkachenko.kmp_learning_app.ui.theme
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -45,16 +44,6 @@ internal object AppSpacing {
     /** Rarely used separation between major regions of a screen. */
     val Major: Dp = 32.dp
 }
-
-/**
- * The vertical padding every scrolling screen applies to its content.
- *
- * The horizontal margin is deliberately not part of this: it varies with window width and is
- * supplied by `AppLayout.screenHorizontalMargin`. Combine the two rather than reintroducing a
- * fixed horizontal literal.
- */
-internal val AppScreenVerticalPadding: PaddingValues =
-    PaddingValues(vertical = AppSpacing.Comfortable)
 
 /** Keeps the last item in a scrolling list clear of the navigation bar when it scrolls to the end. */
 internal val AppListBottomPadding: Dp = AppSpacing.Section

@@ -151,7 +151,8 @@ internal class BundledLearningCurriculumTest {
             ),
             units().map { it.topicId },
         )
-        assertEquals(138, units().sumOf { it.lessons.size })
+        // No total Lesson count: every Unit's Lessons are pinned by id in the next test, so a total
+        // would only repeat their sum.
 
         units().forEach { unit ->
             assertEquals(ContentStatus.ACTIVE, unit.status, unit.id)

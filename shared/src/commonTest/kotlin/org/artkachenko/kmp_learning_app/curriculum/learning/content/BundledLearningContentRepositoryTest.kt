@@ -181,6 +181,54 @@ internal class BundledLearningContentRepositoryTest {
     }
 
     /**
+     * "Caches nothing" in the stronger sense the test above cannot show, because its document fails
+     * the same way on every load: a failure is not memoised, so the next call loads again and a
+     * load that now succeeds is served. A cache that remembered the exception — a shared `Deferred`
+     * does — would keep every Learn surface failing for the rest of the process.
+     */
+    @Test
+    fun aFailedFirstLoadIsNotRememberedAndTheNextCallLoadsAgain() = runTest {
+        var loads = 0
+        val repository = repository(
+            onLoad = {
+                loads++
+                if (loads == 1) throw IllegalStateException("Bundled resource could not be read.")
+                null
+            },
+        )
+
+        assertFailsWith<IllegalStateException> { repository.getActiveUnits() }
+
+        assertEquals(listOf("unit_b", "unit_c", "unit_a"), repository.getActiveUnits().map { it.id })
+        repository.getUnitById("unit_a")
+        assertEquals(2, loads, "The failure must be retried once, and the success then cached.")
+    }
+
+    /**
+     * The first caller is often a screen that goes away mid-load. Its cancellation belongs to that
+     * caller only; the next caller loads the document rather than inheriting the cancellation.
+     */
+    @Test
+    fun aFirstLoadCancelledByItsCallerLeavesNothingCached() = runTest {
+        var loads = 0
+        val firstLoadGate = CompletableDeferred<Unit>()
+        val repository = repository(
+            onLoad = {
+                loads++
+                if (loads == 1) firstLoadGate else null
+            },
+        )
+
+        val abandoned = async { repository.getActiveUnits() }
+        runCurrent()
+        abandoned.cancel()
+        runCurrent()
+
+        assertEquals(listOf("unit_b", "unit_c", "unit_a"), repository.getActiveUnits().map { it.id })
+        assertEquals(2, loads)
+    }
+
+    /**
      * [onLoad] may return a [CompletableDeferred] to hold the load open, which is how the concurrent
      * test above arranges an overlap without a timing assumption.
      */

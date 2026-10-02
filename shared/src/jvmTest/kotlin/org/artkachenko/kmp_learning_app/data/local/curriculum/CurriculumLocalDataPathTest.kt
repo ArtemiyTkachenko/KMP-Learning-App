@@ -16,6 +16,7 @@ import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
+import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.curriculum.serialization.CurriculumJsonCodec
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
@@ -40,16 +41,35 @@ internal class CurriculumLocalDataPathTest {
 
             initializer.initialize()
 
+            // Counts and orders are derived from the bundle that was just imported, so this path
+            // test does not re-pin the bank's shape — InitialCurriculumSmokeTest owns that. The
+            // named first rows are the representative fixture this test reads end to end.
+            val authored = BundledCurriculumSource.load()
             val repository: CurriculumRepository = LocalCurriculumRepository(database)
             val activeTopics = repository.getActiveTopics()
-            assertEquals(17, activeTopics.size)
+            assertEquals(
+                authored.topics.filter { it.status == ContentStatus.ACTIVE }.map { it.id },
+                activeTopics.map { it.id },
+            )
             assertEquals("android_platform", activeTopics.first().id)
 
             val lifecycleSubtopics = repository.getActiveSubtopics("lifecycle_navigation")
             assertEquals("activity_lifecycle", lifecycleSubtopics.first().id)
 
             val lifecycleQuestions = repository.getActiveQuestionsByTopic("lifecycle_navigation")
-            assertEquals(23, lifecycleQuestions.size)
+            val activeSubtopicIds = authored.subtopics
+                .filter { it.status == ContentStatus.ACTIVE }
+                .mapTo(mutableSetOf()) { it.id }
+            assertEquals(
+                authored.questions
+                    .filter {
+                        it.topicId == "lifecycle_navigation" &&
+                            it.status == ContentStatus.ACTIVE &&
+                            it.subtopicId in activeSubtopicIds
+                    }
+                    .map { it.id },
+                lifecycleQuestions.map { it.id },
+            )
             assertEquals("activity_lifecycle_001", lifecycleQuestions.first().id)
 
             val question = repository.getQuestionById("activity_lifecycle_001")
@@ -62,7 +82,7 @@ internal class CurriculumLocalDataPathTest {
             assertEquals(listOf("activity_lifecycle_001_b"), question.correctAnswerIds)
             assertEquals(1, question.sources.size)
             assertEquals("The Activity Lifecycle", question.sources.first().title)
-            assertEquals(480, database.curriculumDao().countQuestions())
+            assertEquals(authored.questions.size, database.curriculumDao().countQuestions())
         }
     }
 
@@ -79,7 +99,7 @@ internal class CurriculumLocalDataPathTest {
             initializer.initialize()
 
             assertEquals(firstCounts, database.curriculumDao().countRows())
-            assertEquals(17, LocalCurriculumRepository(database).getActiveTopics().size)
+            assertEquals(BundledCurriculumSource.load().authoredRowCounts(), firstCounts)
         }
     }
 
@@ -97,15 +117,9 @@ internal class CurriculumLocalDataPathTest {
                 )
             }
 
+            // Two racing initializers persist one dataset: exactly the rows the bundle authors.
             assertEquals(
-                RowCounts(
-                    topics = 17,
-                    subtopics = 361,
-                    questions = 480,
-                    answerOptions = 1_926,
-                    correctAnswers = 530,
-                    questionSources = 643,
-                ),
+                BundledCurriculumSource.load().authoredRowCounts(),
                 database.curriculumDao().countRows(),
             )
         }
@@ -241,6 +255,17 @@ internal class CurriculumLocalDataPathTest {
             answerOptions = countAnswerOptions(),
             correctAnswers = countCorrectAnswers(),
             questionSources = countQuestionSources(),
+        )
+
+    /** The row counts an exact import of this document produces: one row per authored value. */
+    private fun Curriculum.authoredRowCounts(): RowCounts =
+        RowCounts(
+            topics = topics.size,
+            subtopics = subtopics.size,
+            questions = questions.size,
+            answerOptions = questions.sumOf { it.answers.size },
+            correctAnswers = questions.sumOf { it.correctAnswerIds.size },
+            questionSources = questions.sumOf { it.sources.size },
         )
 
     private fun question(

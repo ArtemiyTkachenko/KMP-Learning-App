@@ -164,7 +164,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-DATA-011` | Learning progress / documentation | Low | High | `docs/architecture/progress.md` | Nothing said that grouped Topic and Subtopic answered counts may sum to less than the overall answered count. | Overall totals sum persisted `AssessmentScore` values, while `LearningPerformanceDerivation` can only place an occurrence whose Question still resolves through `getQuestionById` and skips the rest with `continue`. `missingQuestionKeepsPersistedOverallWhileDeprecatedAndMissingMetadataRemainScoped` proves the resulting divergence is intended, and Part 3A's never-delete import contract makes it unreachable through ordinary publishing, but the document described the two sources without stating that they can disagree. | Document the divergence and its one cause beside the existing coverage explanation, including that DEPRECATED content does not cause it because `getQuestionById` is the historical resolver. | Fixed |
 | `CQ-DI-001` | Common Koin graph / startup timing | Low | High | `settings/AppearanceStateHolder.kt`, `ui/theme/AppearanceTheme.kt`, `AppRoot.kt`, `docs/architecture/overview.md` | Four written statements claimed the appearance preference is read while the host builds its Koin graph, which lazy `single` semantics make false. | Koin 4.2.2 declares `single(createdAtStart: Boolean = false)` and only definitions in `Module.eagerInstances` are instantiated by `createEagerInstances()`; no definition in this repository passes `createdAtStart`, and no host calls `koin.get<AppearanceStateHolder>()` during startup — the four `start*LocalDataGraph` functions resolve `CurriculumDataInitializer` and nothing else. The holder's first resolution is therefore `AppearanceTheme`'s own `remember { KoinPlatform.getKoinOrNull()?.getOrNull<AppearanceStateHolder>() }`, which makes `AppearanceTheme`'s "No storage I/O happens here" the exact opposite of what that composable does. The guarantee the comments were defending is unaffected: the read is synchronous inside `remember`, so it completes within the first composition and before the first frame, and there is still no light-to-dark flash and no startup step awaiting storage. | Restate all four to describe lazy first-resolution and say that *synchronous* rather than *early* is what prevents the flash. The graph is correct as it stands; only the explanation was wrong, and `StudyProgressStateHolder` and `SavedQuestionStateHolder` already describe their own laziness accurately. | Fixed |
 | `CQ-DI-002` | Common Koin graph / test coverage | Low | High | `SharedHostStartupTest.kt` | The graph test asserted singleton identity for three app-scoped holders but not for `AssessmentHistoryStore`, and never resolved two of the fifteen ViewModel bindings. | `sharedHostModulesResolveTheWholeProductGraph` already pinned one instance each of `SavedQuestionStateHolder`, `StudyProgressStateHolder` and `AppearanceStateHolder`, but not the completed-history cache that eleven consumers share and that the Part 2 and Part 3 conclusions rest on — so `single` becoming `factory` there would have left every history-derived surface with its own cache and no test would have failed. Switching the definition to `factory` was confirmed to leave the suite green before the assertion was added, and to fail at the new assertion afterwards. `AppShellViewModel` and `InterviewStartViewModel` were also the only two bindings no graph-level test resolved. | Assert one `AssessmentHistoryStore` beside the three existing identity assertions and resolve the two remaining ViewModels, in the one test that installs the real `assessmentDataModule`. No new test class; the existing graph check is the right owner. | Fixed |
-| `CQ-DI-003` | Navigation 3 / ViewModel store ownership | Low | High | `AppNavigator.kt`, `App.kt` | Two back-stack entries with an equal route would silently share one `ViewModelStore`, and `push` does not prevent one. | `ViewModelStoreNavEntryDecorator` scopes each store by `NavEntry.contentKey`, which `defaultContentKey` derives as `key.toString()`; `AppRoute` is a sealed interface of `data class`/`data object`, so two equal routes produce one key and, as `NavEntry`'s own documentation states, "NavEntries that share the same contentKey will be handled as sharing the same content and/or NavEntryDecorator state". `AppNavigator.push` appends unconditionally. Tracing every `navigator.push` call site in `App.kt` shows the hazard is currently unreachable: within one area, no destination reachable from a route can push that same route again, every attempt and result route carries a freshly generated `attemptId`, and the Practice Builder and Lesson reader are terminal with respect to the routes above them (`onNavigateLesson` replaces rather than pushes). The four areas hold independent stacks, so switching areas cannot collide either. | Leave as-is. The invariant holds today through the shape of the navigation graph rather than through a guard, and adding a duplicate check to `push` would be navigation work this chunk does not own. Recorded so that a future route addition — in particular any new path back to a Topic, Unit or Practice Builder route already on the stack — is understood to be a ViewModel-ownership change and not only a navigation one. | Accepted as-is |
+| `CQ-DI-003` | Navigation 3 / ViewModel store ownership | Low | High | `AppNavigator.kt`, `App.kt` | Two back-stack entries with an equal route would silently share one `ViewModelStore`, and `push` does not prevent one. | `ViewModelStoreNavEntryDecorator` scopes each store by `NavEntry.contentKey`, which `defaultContentKey` derives as `key.toString()`; `AppRoute` is a sealed interface of `data class`/`data object`, so two equal routes produce one key and, as `NavEntry`'s own documentation states, "NavEntries that share the same contentKey will be handled as sharing the same content and/or NavEntryDecorator state". `AppNavigator.push` appends unconditionally. Tracing every `navigator.push` call site in `App.kt` shows the hazard is currently unreachable: within one area, no destination reachable from a route can push that same route again, every attempt and result route carries a freshly generated `attemptId`, and the Practice Builder and Lesson reader are terminal with respect to the routes above them (`onNavigateLesson` replaces rather than pushes). The four areas hold independent stacks, so switching areas cannot collide either. | Leave as-is. The invariant holds today through the shape of the navigation graph rather than through a guard, and adding a duplicate check to `push` would be navigation work this chunk does not own. Recorded so that a future route addition — in particular any new path back to a Topic, Unit or Practice Builder route already on the stack — is understood to be a ViewModel-ownership change and not only a navigation one. **Part 6D coverage evidence:** the positive contract is now pinned directly. `NavEntryViewModelOwnershipTest` composes `NavDisplay` with the same two decorators `App` installs and real `AppRoute.ProgressTopic` keys: two coexisting entries of one destination receive distinct ViewModels, each with its own parameter; a covered entry is not cleared; returning to it yields the same instance; and popping clears only the removed entry. Removing the ViewModel decorator, or forcing both entries onto one content key (the equal-route case this row records), fails it. Removing the decorator from `App.kt` itself fails eight journey tests across five classes, so the production wiring was already protected, but only as content that never appears. The equal-route sharing is deliberately not asserted either way; nothing here changes the reasoning above. | Accepted as-is |
 | `CQ-DATA-012` | Bundled content / coverage governance | Medium | High | `docs/content/question-bank-coverage.md`, `tools/learning_question_coverage.py`, `.github/workflows/main.yml` | The question-bank coverage snapshot is stale and nothing gates it. | The document headlines 442 Questions, 401 ACTIVE, 1 774 answer options, 563 sources and 78 empty Subtopics; the bundle holds 478, 437, 1 918, 635 and 69 (71 without an ACTIVE Question). Its generator is a fenced Python block a human pastes into a shell, while the sibling learning snapshot is generated by `tools/` and CI-gated with `--check`, and is current. | Move the generator into `tools/` with `--write`/`--check` and add it to the CI step that already runs its sibling. | Open |
 | `CQ-DATA-013` | Curriculum validation / diagnostics | Medium | High | `InitialCurriculumSmokeTest.kt`, `CurriculumDataInitializer.kt`, `AppRoot.kt` | The precise validation errors are discarded at every point where they would be read. | `CurriculumValidator` produces an entity-identified error per defect; the initializer joins them into one exception, `AppStartupStateHolder` catches it as `catch (_: Exception)` and shows a generic string, and `commonMain` has no logging. The gate that actually fires is `assertTrue(validator.validate(...).isEmpty())` with no message, so CI reports `Expected value to be true.` and names no Question. | Assert on the rendered error list rather than on `isEmpty()`. Runtime reporting of a rejected bundle belongs to Part 5. **Part 5:** CI half fixed — `bundledInitialCurriculumPassesStructuralValidation` renders every error as `CODE [entityId] message`; falsified by blanking two explanations in a temporary copy (new assertion names `BLANK_EXPLANATION` and both Question IDs; the old `assertTrue(isEmpty())` printed only `Expected value to be true.`). Runtime half: the initializer's exception message already carries each validator message (which names the entity), and it is dropped only at `AppStartupStateHolder`'s catch because `commonMain` has no diagnostics sink. All startup failure classes inside `initialize()` — bundle decode, validation rejection, database open/migration, web storage/worker initialization, unexpected — share one Retry, and none needs different learner copy: decode and rejection are deterministic and gated by CI before a build ships. Keeping an unread `Throwable` on the holder would be dead state. | Fixed (CI gate); runtime reporting Deferred until the repository adopts a diagnostics sink |
 | `CQ-DATA-014` | Authored content / identity stability | Medium | High | `CurriculumValidator.kt`, `CurriculumImporter.kt`, `AssessmentReviewLoader.kt`, `docs/content/content-authoring.md` | Nothing compares one bundle revision to the next, so every identity-stability rule is convention-only. | The authoring contract requires a new `Question.id` or `AnswerOption.id` on a material change; the validator sees one document and the importer upserts by primary key without diffing. `AssessmentReviewLoader` reads `isCorrect` from the attempt and `isCorrectAnswer` from the current key, so a key changed under a stable ID makes review contradict itself. Four revisions of history show the convention kept — 0 Questions removed, 0 keys changed, 3 option texts refined under stable IDs. | Diff the bundle against its previous released revision at build time — ID sets, correct-answer sets, option-ID sets, `selectionMode` — and report a violation as an authoring error. | Open |
@@ -213,7 +213,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-TEST-008` | Interview record / state-distinction coverage | Low | High | `mixed_interview/InterviewHistoryStateHolder.kt`, `InterviewStartViewModelTest.kt` | The interview record's `Loading` state had no direct protection, although Part 5 had just fixed the same collapse for its `Failed` branch. | `Empty`, `Content` and `Unavailable` each had a test; the `AssessmentHistory.Loading` branch did not. Mapping it to `Empty` — the first-run "No interviews yet" note — passed the whole suite, because every test settled the history before asserting. `AssessmentHistoryStore` emits `Loading` first (`scan(Loading, …)`), so the collapse is observable before the first read settles. | One holder test with a gated history read: `Loading` until the read settles, then `Content`. | Fixed |
 | `CQ-TEST-009` | Progress dashboard / cancellation coverage | Low | High | `progress/ProgressStateHolder.kt`, `ProgressViewModelTest.kt` | `ProgressStateHolder`'s `CancellationException` rethrow had no test. | The sibling `MistakeReviewStateHolder` pins its rethrow; Progress did not. The pass first expected a swallowed cancellation to be unobservable through `map`/`stateIn`, and a throwaway probe refuted that: with the rethrow removed, cancelling the holder's scope mid-derivation published `Error`. Impact is low — the scope is the application's — but the rule is the repository-wide one and the regression ships silently. | One test that cancels the holder's real scope during a gated derivation and asserts it stays `Loading`; the test fixture's scope is hoisted to a property and the curriculum fake gains a default-null gate. | Fixed |
 | `CQ-TEST-010` | Saved-question holder / mirrored concurrency coverage | Low | High | `saved_questions/SavedQuestionStateHolder.kt`, `SavedQuestionStateHolderTest.kt` | The saved holder had no test for a successful write whose read-back fails, which the study holder pins for the identical algorithm. | `StudyProgressStateHolderTest.aSuccessfulWriteWhoseReadBackFailsKeepsTheLastKnownStateUntilTheNextRefresh` exists; `SavedQuestionStateHolderTest`'s only mutation failure is a failed *write*. Splitting the saved holder's catch so a failed read-back settled the state the write "would have" produced passed the whole suite. Recorded as evidence on `CQ-CROSS-005`. | Mirror the study test in the saved suite, cross-referenced. | Fixed |
-| `CQ-TEST-011` | Test isolation / main dispatcher | Observation | High | `SettingsNavigationIntegrationTest.kt` | One Compose journey installs `Dispatchers.Main` as `Unconfined` and never resets it. | Every other `setMain` site in `commonTest` and `jvmTest` resets in `@AfterTest` or `finally`; this one stops Koin in `finally` but leaves Main installed. No current test depends on an unset Main, since each installs its own, so nothing fails today. It is a journey-level test-environment concern, not a state-owner one. | Add `Dispatchers.resetMain()` beside the existing `stopKoin()` in Part 6D's test-environment review. | Deferred — Part 6D |
+| `CQ-TEST-011` | Test isolation / main dispatcher | Observation | High | `SettingsNavigationIntegrationTest.kt` | One Compose journey installs `Dispatchers.Main` as `Unconfined` and never resets it. | Every other `setMain` site in `commonTest` and `jvmTest` resets in `@AfterTest` or `finally`; this one stops Koin in `finally` but leaves Main installed. No current test depends on an unset Main, since each installs its own, so nothing fails today. It is a journey-level test-environment concern, not a state-owner one. | Add `Dispatchers.resetMain()` beside the existing `stopKoin()` in Part 6D's test-environment review. | **Fixed in Part 6D.** `resetMain()` now runs in the same `finally` as `stopKoin()`, inside the existing `appIntegrationMainDispatcherLock`. A temporary probe proved both directions: after a passing Settings test, and after one forced to throw through `runSettingsTest`, `Dispatchers.Main.isDispatchNeeded` returned `false` — `Unconfined`'s answer — before the fix, and after it `Dispatchers.Main` threw "accessed when the platform dispatcher was absent and the test dispatcher was unset". `jvmTest` has no platform Main, so the leak was not inert: a later test touching Main without installing one would have run on `Unconfined` instead of failing. |
 | `CQ-TEST-012` | Curriculum import / answer-option reactivation | Medium | High | `CurriculumImporterTest.kt`; `CurriculumPersistenceMapper.kt`, `CurriculumImporter.kt` | Nothing proved that a retired answer option authored again is offered again. | Part 3A records reactivation as a verified row of the reconciliation table, and the mapper's comment states it, but the retirement tests stop at "retained and DEPRECATED". An import that kept a persisted option's status — the natural shape of a "don't disturb history" refactor — passed all 1 840 jvm tests while leaving the option out of every new assessment; when that option is the keyed answer, the Question becomes unanswerable while history still reviews correctly. | Extend the retirement sequence one step: retire a historically selected option, author it again as the keyed answer, and assert active reads offer it with that key. **Part 6B:** `aRetiredAnswerOptionThatIsAuthoredAgainIsOfferedAgain` added; with the status-preserving probe applied it is the only failure of 1 844. | Fixed |
 | `CQ-TEST-013` | Learning content cache / failure memoisation | Low | High | `BundledLearningContentRepositoryTest.kt`; `BundledLearningContentRepository.kt` | The "failed load caches nothing" test could not tell a retried failure from a remembered one. | `aFailedLoadStaysAFailureAndCachesNothing` loads a document that is invalid on every attempt, so a cache that stored the exception — a shared `Deferred` does, and it also stores a cancellation — produced exactly the same five failures. Part 3A cited the test as proving retry. The repository is a process-lifetime `single`, so a remembered failure or a first caller's cancellation would keep every Learn surface failing until restart. | Pin the two observable consequences at the repository: a failed first load is retried and a later success is served and then cached; a first load cancelled by its caller leaves the next caller to load. **Part 6B:** both tests added in `commonTest`; with a memoising probe applied they are the only two failures of 1 844. | Fixed |
 | `CQ-TEST-014` | Assessment persistence / corrupt history | Low | High | `AssessmentAttemptStoreTest.kt`; `AssessmentAttemptStore.kt` | The documented "a corrupt attempt fails completed history as a whole" rule had no test at the history read. | Part 3B documented the policy and `persistence.md` states it, but the only corruption tests read one attempt by ID (malformed multi-Subtopic scope) or reject a write (foreign key). Wrapping each reconstruction in `getCompletedAttempts` with `runCatching … getOrNull()` — a plausible "resilience" edit — passed every test while silently undercounting the history that Progress, the mistake queue and unseen-practice selection derive from. | One representative corruption — an answered occurrence whose selected-answer rows are lost — must fail the history read, while an intact attempt still reads by ID. Do not enumerate the mapper's other `require`s; the domain constructor repeats them. **Part 6B:** `aCorruptCompletedAttemptFailsTheHistoryReadInsteadOfVanishingFromIt` added; the skipping probe fails only it. | Fixed |
@@ -224,6 +224,8 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-TEST-017` | Assessment launch dialog / failure wording | Low | High | `AssessmentLaunchDialogTest.kt`; `AssessmentLaunchDialog.kt` | Nothing rendered the dialog's `Unexpected` failure. | The one failure test covers `NoEligibleQuestions`. Mapping `Unexpected` to the no-questions string — which tells a learner whose database read failed to change a selection that was never the problem — passed the suite. | Render `Failed(Unexpected)` and assert its own sentence, the absence of the no-questions sentence, and Retry. **Part 6C:** added; the probe fails only it. | Fixed |
 | `CQ-TEST-018` | Custom clickable rows / control roles | Low | High | `LearningUnitScreenTest.kt`, `TopicBrowserScreenTest.kt`, `ProgressScreenTest.kt` | Three hand-built navigating rows had no test of their `Role.Button`. | `CQ-UI-004`'s Topic Detail rows, `PerformanceCard` and Interview rows are pinned (probed). Removing the role from the Learning Unit's Lesson rows or from the Topic Browser's continuation rows (`GuidanceRow`: Continue Studying and Continue Learning) failed nothing, and the Progress mistake row never had one (`CQ-UI-015`). | Assert the role where each row's click is already tested, rather than adding tests. **Part 6C:** four assertions added; each probe fails its own. | Fixed |
 | `CQ-TEST-019` | Adaptive layout / unexercised Expanded branches | Low | High | `MistakeReviewScreenTest.kt`, `TopicBrowserScreenTest.kt`; `MistakeReviewScreen.kt`, `TopicBrowserScreen.kt` | No test composed Mistake Review's two-pane arrangement or the Topic Browser's guidance pane. | Both screens branch on `isExpanded` and build the panes separately from the compact list. Every other adaptive screen has an Expanded test; these two had none, so dropping the remediation block (and its practice action) from the expanded pane, or the guidance cards from the browser's pane, passed the suite — on the window size the desktop host opens at. | One Expanded test each: both panes present, each holding its own content, and the action in each still reaching its callback. **Part 6C:** added; the two drop probes and a one-column fallback probe each fail only the new test. | Fixed |
+| `CQ-TEST-020` | Browser test runner / failure reporting | Low | High | `shared/karma.config.d/cross-origin-isolation.js` | A browser test that never settled disconnected Karma rather than failing as one test: no report was written, the hung test was not named, and every later test in the run went unreported. | The repository sets Mocha's per-test timeout to 30 s; Karma's `browserNoActivityTimeout` default is also 30 s and was not set, so the two raced and Karma dropped the browser first. Reproduced with a temporary `runTest` that awaited forever followed by a marker test: on JS and Wasm, `Disconnected (0 times), because no message in 30000 ms.` and no XML report (Wasm printed the marker, yet still wrote nothing). This was Part 4C's observation, whose trigger was a database request that never settles (`CQ-KMP-004`). Five other failure shapes — synchronous `error`, a `runTest` failure, a `GlobalScope` failure during the test, one after the test, and a JavaScript `setTimeout` throw — never disconnected on either target. The build still exited non-zero, so this was never a false green. | Order the two timeouts: set Karma's no-activity window above Mocha's per-test timeout so Mocha reports the hang as that test's failure. Do not raise the per-test timeout. | **Fixed.** `browserNoActivityTimeout: 60000`. The same probe on JS and Wasm now reports `Error: Timeout of 30000ms exceeded` against the hung test, runs the marker, and writes the report. |
+| `CQ-TEST-021` | Web host startup / coverage | Low | High | `WebLocalData.kt`, new `WebLocalDataGraphTest.kt` | No test ran `startWebLocalDataGraph`, so a missing or wrong web platform binding would pass CI. | Koin resolves at runtime. `SharedHostStartupTest` proves the shared modules with JVM platform bindings, `WebCurriculumDatabaseTest` the builder, `WebAppPreferenceStorageTest` the store from its own module — but nothing installed the two web modules beside the shared ones, while `:webApp:assemble` only compiles. Every criterion for a new platform test held: platform-specific, a realistic drop of one module line, invisible to every current check, testable in the existing browser suite, and one small file. | A browser-side graph smoke test that starts the real web graph, resolves what `webApp`'s `main` reaches before composing, never opens the database, and closes it and stops Koin afterwards. | **Fixed.** `WebLocalDataGraphTest` (JS and Wasm, in CI through `:shared:check`). Dropping `webAppearanceModule` fails it at `AppearanceStateHolder`; dropping `webCurriculumDataModule` fails it at `CurriculumDataInitializer`. |
 
 ## Audit Pass Log
 
@@ -256,6 +258,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 6A | Presentation/state behavior coverage | Complete | `f19e05a` (merge of PR #449) plus the working tree | 25 presentation/state owners; 22 direct test files read for their assertions (`AppShellViewModelTest`, `AssessmentLaunchViewModelTest`, `AssessmentRetakeControllerTest`, `AssessmentTakingViewModelTest`, `FocusedResultViewModelTest`, `MixedInterviewResultViewModelTest`, `InterviewStartViewModelTest`, `ProgressViewModelTest`, `ProgressTopicViewModelTest`, `MistakeReviewViewModelTest`, `MistakeStudyLessonMappingTest`, `SavedQuestionStateHolderTest`, `StudyProgressStateHolderTest`, `SavedQuestionsViewModelTest`, `TopicBrowserViewModelTest`, `TopicDetailViewModelTest`, `LearningUnitViewModelTest`, `LearningLessonViewModelTest`, `PracticeBuilderViewModelTest`, `KmpContentPreferenceTest`, `AppearancePreferenceTest`, `AppRootTest`); 6 visibility/integration suites read (`ResultVisibilityTest`, `DestinationVisibilityGuardTest`, `SavedAndSessionVisibilityTest`, `CurriculumVisibilityIntegrationTest`, `TopicBrowserVisibilityTest`, `TopicDetailVisibilityTest`) and 3 consulted by search | 5 new (Low 4, Observation 1) plus 3 existing re-evaluated | 5 tests added (`CQ-TEST-005`, `CQ-TEST-007` – `CQ-TEST-010`); 0 production changes | Narrow owner suites throughout; 8 falsification runs, two of them over the whole jvm suite; `:shared:jvmTest`; `:shared:allTests`; `:shared:check`; `git diff --check` | High 0, Medium 0, Low 4, Observation 1. The suite already protected almost every owner's contract; five unprotected contracts each passed the whole suite when deliberately broken. `CQ-TEST-011` deferred to Part 6D. See review record below. |
 | Part 6B | Repository/persistence/content coverage | Complete | `1560386ef2da97e02c92052047be374dccf30779` (merge of PR #450) plus the working tree | 27 production boundaries (assessment start, completion, retake, session and review loading, attempt store and repository, history store and visible projection; both codecs, validators, the importer and initializer, local and visible curriculum repositories; the learning loader, cache and visible repository; both learner-owned repositories; migrations; the web database; both bundled documents). About 45 test files read for their assertions, chiefly `AssessmentAttemptStoreTest`, `LocalAssessmentRepositoryTest`, `CompleteAssessmentTest`, `AssessmentRetakeServiceTest`, `AssessmentSessionLoaderTest`, `AssessmentReviewLoaderTest`, `AnswerOrderTest`, `AssessmentEngineIntegrationTest`, `AssessmentHistoryStoreTest`, `VisibleAssessmentHistoryTest`, `VisibleHistoryProjectionTest`, `CurriculumJsonCodecTest`, `CurriculumValidatorTest`, `CurriculumImporterTest`, `CurriculumLocalDataPathTest`, `LocalCurriculumRepositoryTest`, `VisibleCurriculumRepositoryTest`, `CurriculumDatabaseTest`, `CurriculumDatabaseMigrationTest`, `LearningCurriculumJsonCodecTest`, `LearningCurriculumValidatorTest`, `LearningContentLoaderTest`, `BundledLearningContentRepositoryTest`, `VisibleLearningContentRepositoryTest`, both learner-owned repository suites, `InitialCurriculumSmokeTest`, `InitialCurriculumContentQualityTest`, `BundledLearningCurriculumTest`, `LearningContentEndToEndTest`, the KMP boundary suites and `WebCurriculumDatabaseTest` | 3 new (Medium 1, Low 2) plus main-ledger `CQ-TEST-001` | 4 fixed (`CQ-TEST-001`, `-012`, `-013`, `-014`); tests and authoring docs only | Targeted suites; `:shared:jvmTest` (1 844); `:shared:allTests`; `:shared:check`; `git diff --check` | Every validator error code is pinned by an exact ordered code list; every claimed transaction, deferred-foreign-key, validate-before-write, historical-correctness, migration-chain and identity-versus-eligibility contract was broken in production and its named test failed. Three documented guarantees had no failing test (reactivation, failure memoisation, corrupt history). No production code changed. `CQ-DATA-016` and `CQ-DATA-019` gained test evidence and stay Open. See review record. |
 | Part 6C | Compose UI/navigation/accessibility coverage | Complete | `44f9d66ad8d4068ec27c61b75b23cad2900f54c7` (merge of PR #451) plus the working tree | 44 Compose test files enumerated mechanically at the baseline (46 after the pass) and all 588 of their test names plus the four pure navigation suites mapped to Part 1 contracts; the shell, navigation bar and rail, back handling, every screen of Learn, Assessment, Interview, Progress, Mistake Review and Saved Questions, the shared status, hierarchy, metric, performance and adaptive primitives, and `timestampText` audited. Direct suites read for their assertions included `AppNavigationBarTest`, `SettingsScreenTest`, `TopicBrowserScreenTest`, `TopicBrowserSectionsScreenTest`, `TopicDetailScreenTest`, `LearningUnitScreenTest`, `LearningLessonScreenTest`, `PracticeBuilderScreenTest`, `AssessmentTakingScreenTest`, `AssessmentReviewComponentsTest`, the result, interview, progress, mistake and saved suites, `AdaptiveLayoutTest` and `LargeFontScaleTest`; navigation: `AppNavigatorTest`, `AppNavigationTest`, `AppNavigatorRestorationTest`, `AppNavigationTransitionsTest`, `AppRouteVisibilityTest`; journeys: the seven that compose `App()` or the reader | 7 new (Medium 1, Low 6) plus Stage 4F `CQ-TEST-004` | 8 fixed (`CQ-TEST-004`, `-015` to `-019`, `CQ-UI-014`, `-015`); two one-modifier production fixes | Targeted suites; `:shared:jvmTest` (1 854); `:shared:allTests`; `:shared:check`; `:androidApp:assembleDebug`; `git diff --check` | Every `CQ-UI-*` fix that changed behaviour re-verified by reverting it. With all ten new-test regressions applied at once, 12 of 1 852 failed — exactly the new and strengthened assertions. Found and fixed one production accessibility defect (the rail's unannounced badge) and one missing role. No screenshot infrastructure justified. See review record. |
+| Part 6D | Platform/integration coverage and final synthesis | Complete | `b9bb2e7b411aa56edf18ea86041fbe53a6fdc6f0` (merge of PR #452) plus the working tree | 4 host startup paths (Android `KmpLearningApplication`/`MainActivity`, desktop and web `main`, iOS Swift bridge and `MainViewController`) and their 4 graph-start files; 20 platform actual files read for coverage; every test source set inventoried mechanically (commonTest 43, jvmTest 126→127, webTest 3→4, androidHostTest and iosTest empty) with per-target counts from JUnit XML; 4 web tests, 6 desktop/JVM platform tests and the Karma config read in full; 15 integration and journey files classified; mechanical scans for `setMain`, `startKoin`, `TimeZone.setDefault`, `System.setProperty`, `localStorage`, OPFS names and test `object`s; `main.yml`, `ci.md`, `validation.md`, `testing.md` | 2 new (`CQ-TEST-020`, `CQ-TEST-021`), both Low, both fixed; `CQ-TEST-011` fixed; `CQ-DI-003` evidence appended, still Accepted as-is | 3 | Python gates; `:shared:jvmTest` (1 855); `:shared:allTests`; the CI Gradle line; JS/Wasm browser probes before and after; one iOS simulator test run and withdrawn; `xcodebuild` plus a simulator launch; `git diff --check` | Desktop and Web now have automated startup or graph coverage; Android and iOS keep a few inspected lines each and have both been launched at least once. New `NavEntryViewModelOwnershipTest` pins entry-scoped ViewModel ownership, falsified two ways; a hung browser test no longer disconnects Karma (reproduced on JS and Wasm, fixed by ordering the timeouts); the web graph is resolved in a browser for the first time. No journey added, no production code changed. **Repository-wide audit complete**; residuals grouped by owner in the Final Synthesis. |
 
 ### Part 1A Review Record
 
@@ -5452,6 +5455,501 @@ navigator's rules, the Expanded branch beside the compact list, the `Unexpected`
 `CQ-UI-004` fixed. Following that shape found the pass's one material accessibility defect, the
 rail's silent badge, on the window size the desktop host opens at.
 
+## Part 6D Review Record
+
+- **Commit reviewed:** `b9bb2e7b411aa56edf18ea86041fbe53a6fdc6f0` (merge of PR #452) plus the
+  working tree.
+- **Question:** which platform and host contracts the earlier passes established have regression
+  protection that would actually fail, and which rest on compilation, inspection or a manual run —
+  and, after six parts, what remains and who owns it.
+- **Not re-audited:** platform implementation correctness (Part 4C), and the presentation,
+  persistence and Compose coverage of 6A–6C. `CQ-KMP-003` and `CQ-KMP-004` were not reopened as
+  production fixes.
+
+### Methodology
+
+Every claim below comes from one of four kinds of evidence, and the record says which: a test that
+was read *and* seen to fail when the contract was broken; a temporary probe run and then deleted; a
+local build, launch or screenshot; or source inspection only. The test-source inventory, the
+per-target test counts and the residual ledger were produced mechanically — `find` over the source
+sets, the JUnit XML each target wrote, and a parser over the Finding Ledger table — not by reading.
+
+### Test-source-set inventory
+
+| Source set | Files at `b9bb2e7` | After 6D | Notes |
+| --- | ---: | ---: | --- |
+| `shared/src/commonTest` | 43 | 43 | 538 tests, compiled and run on every target |
+| `shared/src/jvmTest` | 126 | 127 | +`NavEntryViewModelOwnershipTest` |
+| `shared/src/webTest` | 3 | 4 | +`WebLocalDataGraphTest`; runs under both JS and Wasm |
+| `shared/src/androidHostTest` | 0 | 0 | Configured by `withHostTest`; no sources |
+| `shared/src/iosTest` | 0 | 0 | A test was written, probed and withdrawn (see below) |
+| `androidDeviceTest` | — | — | `withDeviceTestBuilder` and `AndroidJUnitRunner` are configured, but the catalogue holds no `androidx.test` runner, rule or JUnit-extension artifact — `CQ-DEP-001` removed the unused wizard ones — so a device test needs new dependencies and an emulator CI does not have |
+| `androidApp`, `desktopApp`, `webApp` | `main` only | unchanged | No host-module tests |
+
+Per-target execution from the final `:shared:allTests`:
+
+| Target | Tests | Common | Platform-specific source | Real platform API exercised | Real app host launched |
+| --- | ---: | ---: | --- | --- | --- |
+| JVM | 1 855 | 538 | 1 317 (`jvmTest`) | Desktop database path, `java.util.TimeZone`, properties-file store, desktop selection menu | No (`DesktopLocalDataPathTest` runs the host *start function*, not `main`) |
+| Android host | 538 | 538 | none | none — the host JVM sees `android.jar` stubs | No |
+| iOS simulator | 538 | 538 | none | none beyond what common code touches | Not by a test; launched manually once in 6D |
+| JS browser | 546 | 538 | 8 (`webTest`) | Room + worker + sqlite-wasm + OPFS, `localStorage`, `Date` offset, Koin web graph | No |
+| Wasm browser | 546 | 538 | the same 8 | the same | No |
+
+"538 common tests ran on iOS" does not mean `IosAppPreferenceStorage` was tested, and neither means
+`MainViewController` was launched. The 8 browser tests are **one source compiled twice**, not 16
+independent checks; what the second compilation adds is the per-target `js()` interop and worker
+constructor, which differ between JS and Wasm (Part 4C).
+
+### Host coverage matrix
+
+| Host | Startup path | Automated | Manual / local | Classification |
+| --- | --- | --- | --- | --- |
+| Desktop | `main` → `startDesktopLocalDataGraph` → `DesktopAppRoot` → `AppRoot` | `DesktopLocalDataPathTest` runs the real start function and initializer against a temporary `user.home`: persistent Room file created, bundled curriculum imported, visibility decorator hiding KMP by default. `SharedHostStartupTest` composes `AppRoot` to the Topic Browser over the shared graph | The developer's own run target | **Direct runtime startup tested**, short of `main`, `Window`, close, title and icon rendering. Title and icon *inputs* are pinned structurally by `ProductIdentityTest` |
+| Web (JS, Wasm) | `main` → `startWebLocalDataGraph` → `ComposeViewport` → `WebAppRoot` → `AppRoot` | **New:** `WebLocalDataGraphTest` starts the real web graph in the browser and resolves the startup initializer, the appearance holder and the visibility decorator. Platform adapters and the real database path run in `webTest` | None this pass; Part 4C started a dev server once, unused | **Platform graph tested; app host not launched.** `ComposeViewport` and `WebAppRoot` are compiled only |
+| Android | `KmpLearningApplication.onCreate` → `startAndroidLocalDataGraph(application)`; `MainActivity` → `androidAppStartupInitializer()` → `AppRoot` | None. Build and shell lint (`:androidApp:lintDebug`) in CI | Part 4C installed and ran the app on a Pixel 9a emulator | **Compiled, linted, manually launched (4C).** The start function is never executed by a test |
+| iOS | `iOSApp` → `ContentView` → `MainViewController` → `startIosLocalDataGraph` → `IosAppRoot` → `AppRoot` | Common tests on the simulator; no `iosMain` code is executed by a test | **Launched in 6D:** built with `xcodebuild` (Debug, simulator), installed and launched on an iPhone 17 simulator (iOS 26.3.1); a screenshot showed the Learn screen with Recommended Next, Next Lesson and the imported Android Engineering Topics, i.e. `AppRoot` reached `Ready` over the real Documents-directory database | **Compiled; simulator common tests; manual smoke launch.** Local macOS only |
+
+The shared parts of every start — the eight shared modules, `strictOverride`, one initializer, the
+`AppRoot` state machine — are pinned once in `SharedHostStartupTest` and are not re-run per host.
+What differs per host is two platform bindings and the entry point. That residue is now tested on
+Desktop and Web, and is a few lines of inspected code on Android and iOS.
+
+### Platform adapter coverage
+
+| Adapter | Android | iOS | Web | Desktop |
+| --- | --- | --- | --- | --- |
+| Preference store | Compiled; `CQ-KMP-001`'s no-throw guard by inspection. `androidHostTest` cannot exercise `SharedPreferences` without Robolectric, and a fake map would only re-test the common store | Compiled; thin `NSUserDefaults` passthrough with no policy of its own | `WebAppPreferenceStorageTest` against real `localStorage` (round trip, key isolation, empty value) | `JvmAppPreferenceStorageTest` against a real properties file |
+| UTC offset | The same `TimeZone.getDefault().getOffset(instant)` call as the JVM, which `UtcOffsetJvmTest` pins under three fixed zones. An Android test would be tautological, and on the host JVM it would run the JDK's `TimeZone` anyway | Compiled. **Probe:** a simulator test installing `NSTimeZone.setDefaultTimeZone` read `0s` for Berlin and St John's in both seasons — `localTimeZone` did not follow the default in the test process — so the actual cannot be driven deterministically without changing production. Withdrawn; source verification (4C) stands | `UtcOffsetWebTest` against the browser's own `Date` reading (proves less on a UTC CI runner, as its KDoc says) | `UtcOffsetJvmTest` |
+| Database builder | Compiled; application context and `getDatabasePath`, canonical driver and migrations by inspection | Exercised once, by the manual launch | `WebCurriculumDatabaseTest`: production builder, foreign keys, rollback, non-interleaving, in headless Chrome | `DesktopLocalDataPathTest` |
+| Selection copy | Manual emulator run (4C); `CQ-KMP-003` deferred | Inspection | No toolbar on web (`CQ-KMP-003`) | `SelectionCopyDesktopTest` |
+
+Against the five-part threshold for a new platform test — platform-specific, a realistic
+regression, invisible to current tests, testable with the existing toolchain, proportionate —
+Android fails the fourth on every adapter, the iOS preference store fails the second, and the iOS
+offset failed the fourth by probe. Only the web graph start passed all five (`CQ-TEST-021`).
+
+### Navigation 3 / ViewModel-store result
+
+Before writing anything, `rememberViewModelStoreNavEntryDecorator()` was removed from `App.kt` and
+the whole JVM suite run: **8 tests in 5 journey classes failed** (Focused, Mixed, Progress, Reader,
+Production-content), each as content that never appeared — a retake showing the previous attempt,
+a builder showing another Subtopic. So the production wiring was already protected, but nothing
+stated the contract and nothing would say *why* it failed.
+
+`NavEntryViewModelOwnershipTest` now pins it with the real `NavDisplay`, the two decorators `App`
+installs in `App`'s order, and real `AppRoute.ProgressTopic` keys:
+
+- two coexisting entries of one destination receive distinct ViewModels, each built with its own
+  entry's parameter;
+- covering an entry does not clear its ViewModel; returning to it yields the same instance;
+- popping clears exactly the removed entry (`onCleared` observed directly, no GC).
+
+Falsified both ways: without the ViewModel decorator, and with both entries forced onto one
+`clazzContentKey`, the second entry renders the first entry's ViewModel and the test fails.
+Equal-route sharing is deliberately not asserted. Nothing contradicted Part 4A, so `CQ-DI-003`
+keeps *Accepted as-is* with this evidence appended. The test uses `viewModel { }` rather than
+`koinViewModel`: both resolve against the same `LocalViewModelStoreOwner`, and keeping global Koin
+out keeps the test free of shared state.
+
+### Browser failure-reporting result
+
+Reproduced with a temporary two-test suite per failure shape — a failing test A, then a marker B:
+
+| Shape | JS | Wasm |
+| --- | --- | --- |
+| Synchronous `error()` | A fails, named; B runs | same |
+| `runTest { error() }` | A fails, named; B runs | same |
+| `GlobalScope` failure while A is still running | A fails, named; B runs | same |
+| `GlobalScope` failure after A returned | **B** fails with A's exception; B ran | same |
+| JavaScript `setTimeout` throw during A | A fails, named; B runs | same |
+| A never settles | **`Disconnected (0 times), because no message in 30000 ms.`** No XML report; A not named; B never reported; Gradle exit 1 | same disconnect and no report, although the marker printed — the two timeouts raced |
+
+So the Karma observation was real but narrower than "an exception escaping `runTest`": exceptions
+of every shape are reported, and the disconnect needs a test that never settles — which is what a
+`CQ-KMP-004` hang produces. The cause is the repository's own configuration: Mocha's per-test
+timeout and Karma's default `browserNoActivityTimeout` were both 30 s. `CQ-TEST-020` orders them
+(Karma 60 s); after the fix the hang fails as `Error: Timeout of 30000ms exceeded` against A, B
+runs, and the report is written, on both targets. Mocha's timeout was not raised.
+
+The after-the-test row is a mitigation rule, not a fix: work that outlives its test is blamed on
+whichever test is running when it fails. No current browser test launches unstructured work; the
+rule is recorded in `docs/development/testing.md`.
+
+### Cross-feature journey matrix
+
+The fourteen files named for this pass are three different kinds of test, and only the first kind
+composes the application:
+
+- **Compose journeys through real `App()`** — `FocusedLearningJourneyIntegrationTest`,
+  `MixedInterviewJourneyIntegrationTest`, `ProgressLearningJourneyIntegrationTest`,
+  `SettingsNavigationIntegrationTest`, `TopicDiscoveryIntegrationTest`,
+  `LearningReaderJourneyIntegrationTest`, `LearningProductionContentJourneyTest`, plus
+  `AppShellBackNavigationTest`.
+- **ViewModel/domain integration over a real in-memory Room graph, no UI** —
+  `LearningNavigationIntegrationTest`, `LearningUnitPracticeIntegrationTest`,
+  `TargetedPracticeLifecycleIntegrationTest`, `GuidedLearningPracticePresetIntegrationTest`,
+  `SavedQuestionCaptureIntegrationTest`, `SavedQuestionLifecycleIntegrationTest`.
+- **Visibility integration** — `CurriculumVisibilityIntegrationTest`, with
+  `TopicBrowserVisibilityIntegrationTest` and the visibility guard and projection suites.
+
+| Product flow | Test(s) | Real boundaries | Fakes | Deliberately does not prove |
+| --- | --- | --- | --- | --- |
+| Discover Topic → details | `TopicDiscoveryIntegrationTest` (compact and wide, search, failure recovery) | `App`, navigator, Topic Browser and detail ViewModels, Room | Authored fixture curriculum, failing repository for the error case | Production catalogue size |
+| Topic → Unit → Lesson | `LearningReaderJourneyIntegrationTest`, `LearningProductionContentJourneyTest`, `LearningNavigationIntegrationTest` | Shipped learning document, reader, Back leaving the reader for its Unit | None for content | Every Lesson end to end (rendering of every block is covered; navigation of every Lesson is the ViewModel suite) |
+| Lesson / Unit → Practice Builder → focused assessment | `LearningProductionContentJourneyTest` (builder handoff from both), `FocusedLearningJourneyIntegrationTest`, `LearningUnitPracticeIntegrationTest`, `TargetedPracticeLifecycleIntegrationTest` | Builder, selector, engine, attempt store; one durable retake | Fixture bank in the Compose journey; real bank in the ViewModel suites | That every Unit's pool is reachable through the UI (the ViewModel suite proves the pools) |
+| Mixed interview → result | `MixedInterviewJourneyIntegrationTest` | Real selection, persistence, result, durable retake | Fixture bank, URI handler | Distribution quality beyond the fixture's balance |
+| Completed assessment → Progress | `ProgressLearningJourneyIntegrationTest`, `TargetedPracticeLifecycleIntegrationTest` | Shared `AssessmentHistoryStore`, derivations, Progress navigation | Fixture bank | — |
+| Progress → Mistake Review | `ProgressLearningJourneyIntegrationTest` (`realHistoryMakesAMistakeResolveAndReappear…`) | Mistakes area selected from Progress, resolution from latest occurrence | Fixture bank | — |
+| Saved Question capture → Saved Questions | `SavedQuestionCaptureIntegrationTest`, `SavedQuestionLifecycleIntegrationTest` (`sharedSavedStateFlowsAcrossReviewAndBrowsingSurfaces`) | One `SavedQuestionStateHolder` across review and browsing, Room, reimport | — | The save tap inside a Compose journey (6C covers the control) |
+| Settings → KMP visibility updates live Learn | `SettingsNavigationIntegrationTest` (`theLiveLearnScreenFollowsTheSwitchAcrossSettingsRoundTrips`), `CurriculumVisibilityIntegrationTest`, `TopicBrowserVisibilityIntegrationTest` | `App`, real preference store contract, decorators, history projection, pruning | Map-backed preference storage | — |
+| Back and restoration | `AppShellBackNavigationTest`, `AppNavigatorRestorationTest`, 6C's back-handler tests, reader Back in the journeys | Real back dispatch through `App` | — | Process death on a device |
+
+Shared app-scoped state is proven across consumers at least once per owner: history
+(completion → Progress → Mistakes), saved state (review ↔ browsing), visibility (Settings → retained
+Topic Browser), appearance (`theChoiceOutlivesTheSettingsEntryThatMadeIt`), study progress
+(`studyActionsOnNewLessonsUpdateTheExistingUnitAndTopicScreens`). KMP visibility is the model
+example: one feature crossing Settings, repositories, history projection, navigation pruning and
+learner state, each crossing pinned at the boundary that owns it. **No cross-feature seam was found
+without protection, so no journey was added**, and the one-giant-journey alternative was rejected.
+
+### Test isolation
+
+Mechanical scans over all three test source sets:
+
+| Global | Sites | Cleanup | Result |
+| --- | --- | --- | --- |
+| `Dispatchers.setMain` | 43 files | All 43 now reset in `@AfterTest` or `finally`; before 6D `SettingsNavigationIntegrationTest` did not (`CQ-TEST-011`, fixed) | `SharedHostStartupTest.sharedHostModulesResolveTheWholeProductGraph` leaves `Unconfined` installed **on purpose**, documented in place: it resolves ViewModels outside a composition, and resetting under their late Room resumptions throws into the next test. Every test that uses Main installs its own, so this is accepted rather than "fixed" into a flake |
+| `startKoin` / host start functions | 4 JVM files (+1 web after 6D) | `stopKoin()` in `finally` in each, and each also stops Koin first — except `DesktopLocalDataPathTest`, whose start function would no-op over a leaked graph; its persistent-file assertion would then fail, so a leak cannot make it pass | Local `koinApplication { }` users close their own application and need no `stopKoin` |
+| `TimeZone.setDefault` | `TimestampTextTest`, `UtcOffsetJvmTest` | Restored in `finally` | Clean |
+| `System.setProperty("user.home")` | `DesktopLocalDataPathTest`, `JvmAppPreferenceStorageTest` | Restored in `finally`, temporary directory deleted | Clean; no `clearProperty`, no `Locale.setDefault` |
+| Browser `localStorage` | `WebAppPreferenceStorageTest` | Keys cleared in `@AfterTest` | Karma runs a throwaway profile per target |
+| OPFS database names | `WebCurriculumDatabaseTest` | Random names, except the one production-builder test | `WebLocalDataGraphTest` never opens the database, so it cannot hold the production file's OPFS handle |
+| Shared mutable `object`s in tests | 21 `object` declarations | None holds a `var` or mutable collection | Clean |
+
+Gradle runs one test JVM with no parallel forks, so `appIntegrationMainDispatcherLock` is defensive
+rather than load-bearing.
+
+**Open databases.** `SharedHostStartupTest` and `SettingsNavigationIntegrationTest` leave their
+in-memory Room databases open because disposed ViewModel coroutines can still be settling; the
+other app-level journeys close theirs after `stopKoin()`. The pattern was measured, not assumed:
+with the Settings test now resetting Main, the clean full JVM run passed, and the full run made with
+the decorator removed failed only the eight expected journeys — no late-resumption failure leaked
+into another test either time. An
+in-memory database lives no longer than the test JVM, so this is a pragmatic test constraint and is
+left documented. Settings' comment wrongly said it followed "the other app-level tests"; it now
+names `SharedHostStartupTest`.
+
+### CI coverage classification
+
+| Surface | CI (Linux) | Local macOS | Manual / runtime |
+| --- | --- | --- | --- |
+| common / JVM | `:shared:check` runs both | same | — |
+| Android shell | `assembleDebug`, `lintDebug` (shell only) | same | 4C emulator run |
+| Android shared actuals | Compiled; common tests on the host JVM only | same | 4C emulator run |
+| Desktop | `:desktopApp:assemble`; desktop start function in `jvmTest` | same | Developer's run target |
+| JS | `jsBrowserTest` in headless Chrome | same | — |
+| Wasm | `wasmJsBrowserTest` in headless Chrome | same | — |
+| iOS common tests | **None** — Kotlin/Native is disabled on Linux | `iosSimulatorArm64Test` (538) | — |
+| iOS actuals | **None** | Compiled and linked | 6D simulator launch |
+| Browser worker / OPFS | Yes: `customHeaders` in `shared/karma.config.d` give the Karma page COOP/COEP, and `WebCurriculumDatabaseTest`'s first test opens OPFS through the production builder | same | — |
+| App UI journeys | JVM Compose journeys only | same | — |
+
+A green CI run means: the Python authoring and backlog gates passed; Android shell built and its
+lint passed; Desktop and Web built; common, JVM, Android-host, JS and Wasm shared tests passed; the
+build left no uncommitted output (so Room schemas are committed). It does **not** mean iOS was
+compiled or tested, any Android instrumentation ran, any browser application ran end to end, or any
+shared Kotlin was linted — `ci.md` already says all four, and nothing here contradicts it.
+
+Product metadata cannot drift between hosts without a test failing: every host reads one generated
+`ProductMetadata` or `product.properties` itself, and `ProductIdentityTest` pins that the generated
+file is the canonical one, that Xcode defines no release values of its own, and that each host's
+icon and web title point at what exists. That is structural, and stronger than per-host literals.
+
+### Meaningful gaps
+
+| Gap | Risk | Disposition |
+| --- | --- | --- |
+| Main dispatcher leaked by one journey | Silent `Unconfined` for a later test | `CQ-TEST-011` fixed |
+| Hung browser test drops the browser and the report | Lost diagnostics on the targets hardest to reproduce locally | `CQ-TEST-020` fixed |
+| Web host graph never resolved | A dropped web binding ships green | `CQ-TEST-021` fixed |
+| Android start function and adapters never executed | A broken Android-only line ships green | Accepted: thin, inspected, manually launched in 4C; needs new test dependencies and an emulator CI lacks |
+| iOS actuals only compiled in CI | No iOS signal at all in CI | Accepted, already documented; local macOS check plus one manual launch |
+
+### Candidates investigated and rejected
+
+- **`androidHostTest` for the Android adapters** — `android.jar` stubs, no Robolectric; adding a
+  framework for three thin adapters fails proportionality.
+- **`androidDeviceTest` smoke** — requires `androidx.test` dependencies and an emulator; the one
+  Android-only behaviour with a known defect (`CQ-KMP-003`) is a product decision, and was already
+  reproduced on an emulator.
+- **iOS `NSUserDefaults` test** — a passthrough with no policy; it would re-test Foundation.
+- **iOS offset test** — written, probed, withdrawn (non-deterministic zone control).
+- **iOS database-builder test** — a test binary's Documents directory is not the app sandbox; the
+  manual launch exercised the real one.
+- **Desktop window launch test** — `main` is three lines over the tested start function; no risk
+  justifies Compose-window automation.
+- **macOS CI runner** — an infrastructure decision with runner cost; out of scope for an audit fix.
+- **New end-to-end journey** — no unprotected seam.
+- **Separate JS-only and Wasm-only tests** — one `webTest` source already runs the real worker
+  under both outputs, which is what protects the constructor seam.
+- **Raising Mocha's timeout** — would hide hangs for longer without changing the race.
+
+### Changes
+
+- `SettingsNavigationIntegrationTest.kt` — `Dispatchers.resetMain()` in `finally`; one comment
+  corrected.
+- `NavEntryViewModelOwnershipTest.kt` — new.
+- `shared/karma.config.d/cross-origin-isolation.js` — `browserNoActivityTimeout: 60000`, with the
+  ordering explained.
+- `WebLocalDataGraphTest.kt` — new.
+- `docs/development/testing.md` — browser-test timeout and structured-async rule; platform
+  coverage levels.
+- This ledger.
+
+No production Kotlin changed.
+
+### Falsification
+
+| Change | Break | Observed |
+| --- | --- | --- |
+| `CQ-TEST-011` | Probe before the fix, after a passing and a forced-failing Settings test | `isDispatchNeeded = false` (leaked `Unconfined`) both times; after: Main unset both times |
+| `NavEntryViewModelOwnershipTest` | No ViewModel decorator; both entries on one content key | Fails at `showing second` both ways |
+| Production decorator wiring | Decorator removed from `App.kt` | 8 journey tests fail (existing protection) |
+| `CQ-TEST-020` | Original config, hang probe | Disconnect, no report (JS, Wasm); fixed config: named timeout, B runs, report written (JS, Wasm) |
+| `CQ-TEST-021` | Drop `webAppearanceModule`; drop `webCurriculumDataModule` | `InstanceCreationException` at `AppearanceStateHolder`; at `CurriculumDataInitializer` |
+
+Every probe file was deleted and every break restored with `git checkout` or a saved copy; the
+final `git status --short` shows only the intended files.
+
+### Validation
+
+| Command | Result |
+| ------- | ------ |
+| `python3 -m unittest discover -s tools -p 'test_*.py'` | PASS — 21 tests |
+| `python3 tools/learning_question_coverage.py --check` | PASS — snapshot current |
+| `./gradlew :shared:jvmTest` | PASS — 1 855 tests, 0 failures |
+| `./gradlew :shared:allTests` | PASS — JVM 1 855, Android host 538, iOS simulator 538, JS 546, Wasm 546 |
+| `./gradlew :androidApp:assembleDebug :androidApp:lintDebug :desktopApp:assemble :webApp:assemble :shared:check` | PASS — the exact CI Gradle line; its shared test tasks were up to date from the `allTests` run over the same tree |
+| `./gradlew :shared:jsBrowserTest` (whole suite, after adding `WebLocalDataGraphTest`) | PASS — 546 tests, including the production-builder database test after the new graph test |
+| `:shared:jsBrowserTest` / `:shared:wasmJsBrowserTest` with the temporary probes | Before/after results in the failure-reporting table above |
+| `:shared:iosSimulatorArm64Test --tests '*UtcOffsetIosTest*'` | FAIL as recorded (`0s` in every zone); test withdrawn |
+| `xcodebuild -scheme iosApp -configuration Debug` for an iPhone 17 simulator; `simctl install` / `launch`; screenshot | BUILD SUCCEEDED; app launched to the Learn screen with imported content |
+| `git diff --check` | Clean |
+| `git status --short` | Only the files listed under Changes |
+
+Not run: `./gradlew check` or `./gradlew build` repository-wide (the CI line above is the CI-defined
+subset), any Android device or emulator run (no Android source changed), and a desktop window launch.
+No GitHub Actions run was observed; everything above is local, on macOS.
+
+### Residual findings
+
+Mechanically enumerated from the Finding Ledger, plus the Stage-local tables whose IDs never
+entered it. The grouped table is in the final synthesis below.
+
+### Part 6D assessment
+
+The platform boundaries are protected in proportion to how much platform-specific logic they hold.
+Desktop and Web now have automated startup or graph coverage; Android and iOS keep a few inspected
+lines each, both of which have now been launched at least once. The three gaps that were real —
+a leaked dispatcher, a runner that lost reports on a hang, and a web graph nothing resolved — are
+fixed and falsified. The Navigation 3 lifetime contract is now stated by a test rather than implied
+by eight journeys. No production defect was found and no production code changed.
+
+## Repository-wide Code-quality Audit — Final Synthesis
+
+**Status: Complete.** Parts 0–6 are complete, together with two addenda (Part 3A content, Part 4A
+graph) and the unplanned Stage 4A–4G fix passes that ran between planned chunks. Every planned
+production and test boundary was reviewed, every finding has a disposition, and every remaining
+item has an owner and a reason. That is what complete means here; it does not mean zero findings.
+The planned audit is complete, all reviewed areas now have a documented disposition, and the
+remaining findings are explicitly separated into follow-up work below.
+
+### Scope completed
+
+| Part | Covered |
+| --- | --- |
+| 1 — Compose/UI | Shell, navigation, discovery, reader, assessment, results, progress, saved questions: state identity, effects, accessibility, duplication |
+| 2 — State/lifecycle | Every ViewModel and state holder: ownership, cancellation, supersession, retry, events |
+| 3 — Data/domain/persistence | Curriculum import and reconciliation, the shipped dataset as production data, attempts, learner-owned state, preferences |
+| 4 — DI/hosts/platforms | The common Koin graph and lifetimes, four host composition roots, every `expect`/`actual` family |
+| 5 — Cross-cutting | The repository as one application: dead code, error fallbacks, API friction, abstractions, startup failure map |
+| 6 — Tests | Presentation/state (6A), persistence/content (6B), Compose/navigation/accessibility (6C), platform/integration and this synthesis (6D) |
+
+### Ledger totals
+
+Main Finding Ledger, counted by a parser over the table: **104 findings.**
+
+| Severity | Count |
+| --- | ---: |
+| Critical | 0 |
+| High | 3 |
+| Medium | 26 |
+| Low | 61 |
+| Observation | 14 |
+
+| Status | Count |
+| --- | ---: |
+| Fixed | 79 |
+| Accepted as-is | 10 |
+| Not a defect | 1 |
+| Open | 7 |
+| Deferred | 6 |
+| Split: fixed and deferred | 1 (`CQ-DATA-013`: CI gate fixed, runtime reporting deferred) |
+| Needs measurement | 0 (`CQ-DATA-010` was measured and fixed in Stage 4E) |
+
+| Family | Rows | Fixed | Remaining |
+| --- | ---: | ---: | --- |
+| `CQ-UI` | 15 | 15 | — |
+| `CQ-BUG` | 6 | 6 | — |
+| `CQ-STATE` | 14 | 12 | 1 deferred, 1 accepted |
+| `CQ-DATA` | 22 | 8 | 7 open, 1 deferred, 1 split, 5 accepted |
+| `CQ-DI` | 10 | 7 | 2 accepted, 1 not a defect |
+| `CQ-TEST` | 17 | 17 | — |
+| `CQ-KMP` | 6 | 4 | 2 deferred |
+| `CQ-CROSS` | 13 | 9 | 2 deferred, 2 accepted |
+| `CQ-DOC` | 1 | 1 | — |
+
+**Stage-local tables.** Stages 4C, 4F and 4G kept their own tables. 22 rows never entered the main
+ledger: 14 fixed (`CQ-STATE-015`, `CQ-STATE-016` after its Part 5 reopening, Stage 4F's
+`CQ-TEST-001`–`005`, `CQ-CI-001`–`005`, `CQ-DEP-001`, `CQ-DOC-001`), one not a defect
+(`CQ-STATE-017`), one accepted (`CQ-STATE-018`), and **six deferred**, which are listed with the
+residuals below. Stage 4F's `CQ-TEST-001` duplicates a main-ledger ID, as Part 5 already noted.
+Stage 4E referred to four unnumbered performance candidates "listed under 4F candidates", but no
+such list was ever written. They were never findings: Part 5 measured the dominant cost
+(`CQ-DI-008`, accepted at about 110–150 ms per completed assessment on the JVM). Anyone revisiting
+derivation cost starts from that measurement, not from those candidates.
+
+### Major defect classes found
+
+- **State and cancellation races** — superseded reads landing, `CancellationException` folded into
+  failure, duplicate actions persisting twice (Part 2, Stage 4A, the 4F regression set).
+- **Retry and cache invalidation** — a Retry that did not reach what failed (`CQ-STATE-012`, High),
+  a `StateFlow` that dropped an equal re-read (`CQ-STATE-013`).
+- **Navigation and scroll identity** — list state shared across queries or Questions (`CQ-UI-003`,
+  `CQ-UI-007`).
+- **Historical content and reconciliation** — importer and engine gaps against authored rules
+  (`CQ-BUG-004`, `CQ-BUG-005`), per-ID historical reads (`CQ-DATA-010`).
+- **Platform contract drift** — a preference store that could throw above the error screen
+  (`CQ-KMP-001`), an empty value read as absence (`CQ-KMP-005`), hand-copied module and migration
+  lists (`CQ-DI-010`, `CQ-KMP-002`), a worker that hung on failed initialization (`CQ-BUG-006`).
+- **Accessibility semantics** — missing roles, headings and badge announcements (`CQ-UI-004`,
+  `CQ-UI-005`, `CQ-UI-014`).
+- **Second branches without tests** — the sibling, the Expanded layout, the other target, the
+  other host (most of `CQ-TEST-*`).
+- **Documentation that overstated behaviour** — DI narrative, preference durability, lint reach,
+  copy confirmation (`CQ-DI-001`, `CQ-DI-006`, `CQ-DI-007`, `CQ-DOC-001`, `CQ-DOC-002`).
+
+### Architecture that proved sound
+
+These were examined and deliberately not redesigned:
+
+- **MVVM with explicit ownership.** Entry-scoped ViewModels under Navigation 3 stores, app-scoped
+  holders for state several surfaces share (history, saved, study, visibility, appearance), and no
+  domain or data class touching the container.
+- **Room aggregate persistence.** Whole-snapshot attempt saves in one transaction, persisted
+  historical correctness rather than recomputation, insert-ignore learner records keyed by stable
+  ID with no foreign key to publisher content.
+- **Never delete assessment curriculum.** Retired content stays resolvable by ID, so history and
+  saved questions survive re-authoring.
+- **Separate assessment and learning content pipelines.** Relational import and reconciliation
+  versus an immutable in-memory document.
+- **One common Koin graph.** One `sharedApplicationModules()` for every host and the graph test,
+  under `strictOverride`, plus exactly two platform bindings per host.
+- **Focused and mixed results kept separate**, with only the retake state machine shared.
+- **Feature-specific repository boundaries**, decorated for visibility rather than filtered at
+  every caller.
+- **No generic mega-abstractions.** See the decisions below.
+
+### Abstraction decisions — do not re-litigate without new evidence
+
+| Candidate | Decision | Reason (Part 5) |
+| --- | --- | --- |
+| Generic repository-backed state holder | Not yet; `CQ-CROSS-005` | The two holders share one concurrency algorithm, but extracting it means migrating two public state types read by about ten consumers |
+| Generic timestamped-identity repository | No | Each invariant lives in its own DAO and table; nothing has been fixed twice |
+| Generic content pipeline | No | Relational reconciliation and an immutable document are different problems |
+| Merged focused/mixed result owner | No | The only thing fixed twice, the retake machine, is already shared |
+| Splitting `topicStudyPresentationModule` | No | Additive one-definition growth; duplicates fail at startup under `strictOverride` |
+
+### Known architectural debts
+
+| Finding | Why it remains | Reconsider when |
+| --- | --- | --- |
+| `CQ-CROSS-005` | Two copies of one concurrency algorithm with mirrored tests; extraction is a type migration across about ten consumers | The next concurrency change to either learner-owned holder — make it once, in a shared owner |
+| `CQ-STATE-014` | Attempt creation is both durable state and a one-shot event. The state-only design is decided; it spans three result surfaces | It is scheduled as its own task, or any result surface's event handling next changes |
+| `CQ-TYPE-001` | Identifiers are plain `String`s; every same-type call was checked correct (Part 5) | A real identifier mix-up, or an API redesign touching many identifiers — not theoretical safety alone |
+| `CQ-CROSS-010` | Two unused `isSaved`/`isStudied` queries | The next change to either repository |
+
+### Test architecture
+
+The test suite is now proportionate to the product. Evidence for that:
+
+- **Common tests** (538) carry domain, policy, codec and validator logic and run on all five
+  targets.
+- **JVM Compose tests** carry the UI, with journeys through the real `App()` at the seams that
+  cross features; 6C mapped every Part 1 fix to an assertion that fails without it.
+- **Room on the JVM** carries persistence, migrations and import, with every claimed transactional
+  guarantee broken and seen to fail (6B).
+- **Browser tests** carry what only a browser can prove — the worker, OPFS, `localStorage`, the
+  offset interop, and now the web graph — on both targets in CI.
+- **Cross-feature journeys** sit at different boundaries on purpose; every shared app-scoped owner
+  is proven across at least two consumers.
+- **Android and iOS** have no platform-specific automated tests. That is a measured decision: the
+  platform-specific code is a few lines per adapter, the toolchain cannot exercise most of it
+  without new dependencies, and both apps have been launched at least once.
+- **No screenshot tests** — 6C found no visual regression that semantics assertions miss.
+- **No line-coverage quota** — every pass evaluated behavioural risk directly, and a percentage
+  would reward exactly the test-count padding the audit's principles reject.
+
+### Platform limitations
+
+- Linux CI gives no iOS signal; iOS is a local macOS check (`docs/workflows/ci.md`).
+- Android Lint cannot see `:shared` (Stage 4G).
+- `sqlite-web` hangs every request after a worker-load failure (`CQ-KMP-004`, upstream). A hung
+  browser test is now at least reported by name (`CQ-TEST-020`).
+- Android and web never show the copy confirmation (`CQ-KMP-003`, product decision).
+
+### Residual findings and ownership
+
+Every finding not *Fixed*, *Accepted as-is* or *Not a defect* — 14 in the main ledger and 6
+Stage-local, enumerated by parser, not memory:
+
+| Finding | Severity | Status | Owner / category | Why still open or deferred | Trigger / next action |
+| --- | --- | --- | --- | --- | --- |
+| `CQ-DATA-003` | Low | Deferred | Product/content decision | Whether retiring a Topic retires the Units homed on it is undecided | Decide the authoring rule, then add one validator fixture |
+| `CQ-DATA-015` | Low | Open | Product/content decision | Review fidelity after an option-set change; the KDoc claim exceeds the guarantee | Bound the KDoc; decide whether saved review hides retired options |
+| `CQ-DATA-016` | Low | Open | Product/content decision | `TOPIC_WITHOUT_QUESTIONS` is status-blind; no test pins either reading | Decide, then count ACTIVE Questions in that rule |
+| `CQ-DATA-017` | Low | Open | Product/content decision | Search surfaces Subtopics Topic detail hides | Index only practicable Subtopics, or label them |
+| `CQ-KMP-003` | Medium | Deferred | Product decision | No copy confirmation on Android or web | Decide whether keyboard copies should announce; the clipboard-level seam is identified |
+| `CQ-DATA-012` | Medium | Open | Content/tooling | The question-bank coverage snapshot is stale and ungated | Move its generator into `tools/` with `--check` beside the learning one |
+| `CQ-DATA-014` | Medium | Open | Content/tooling | Nothing compares one bundle revision to the next, so stable-ID rules are convention | A build-time diff against the previous released bundle |
+| `CQ-DATA-019` | Observation | Open | Content/tooling | Array-position ordering is unstated; the testable half is pinned | Write the rule into `Curriculum`'s KDoc and the authoring contract |
+| `CQ-DATA-020` | Observation | Open | Content/tooling | Learning sources are ungated by design | Record the policy; pin raw GitHub citations to a commit |
+| `CQ-DATA-013` (runtime half) | Medium | Deferred | Diagnostics/infrastructure | No diagnostics sink exists to report a rejected bundle at runtime | Adopting any runtime diagnostics |
+| `CQ-STATE-014` | Low | Deferred | Separate production refactor | See debts above | Its own task |
+| `CQ-TYPE-001` | Low | Deferred (Stage 4C) | Separate production refactor | See debts above | A real identifier mix-up |
+| `CQ-CROSS-005` | Low | Deferred | Separate production refactor | See debts above | Next concurrency change to either holder |
+| `CQ-CROSS-010` | Observation | Deferred | Separate production refactor | No runtime benefit to removing alone | Next change to either repository |
+| `CQ-KMP-004` | Low | Deferred | Upstream dependency | `sqlite-web` terminal-failure state | Re-check on each `sqlite` upgrade |
+| `CQ-HYG-001` | — | Deferred (Stage 4G) | Diagnostics/infrastructure | `kotlin-js-store/` lockfile ignored, so npm resolution is not reproducible | A JS/Wasm build that breaks on a runner but not locally, or a decision to adopt the lockfile |
+| `CQ-DEP-003` | — | Deferred (Stage 4G) | Diagnostics/infrastructure | `compose-uiTooling` is `implementation` in `androidMain`; the KMP Android plugin has no debug scope | An AGP change offering debug-scoped dependencies, or release-APK size work |
+| `CQ-CI-006` | — | Deferred (Stage 4G) | Diagnostics/infrastructure | Action versions differ between the two workflows | The next workflow edit, with current tags verified |
+| `CQ-GRADLE-002` | — | Deferred (Stage 4G) | Diagnostics/infrastructure | `setup-java` installs Temurin, but the daemon pin downloads Zulu | The next CI JDK change |
+| `CQ-DEP-002` | — | Deferred (Stage 4G) | Diagnostics/infrastructure | Two redundant test-dependency declarations | The next edit to `shared/build.gradle.kts` dependencies |
+
+No residual is accepted architectural risk. The one accepted risk of that kind, `CQ-DI-003`, is
+*Accepted as-is* rather than residual, and it now has a positive-contract test.
+
+By existing severity, the content-governance debts that matter most are the two Medium ones —
+`CQ-DATA-014` (stable-ID evolution has no enforcement) and `CQ-DATA-012` (a stale, ungated
+coverage snapshot) — ahead of the Low and Observation documentation and source-policy items.
+
+### How to continue
+
+There is no Part 7. Future work is chosen from the table above, or from a newly scoped project,
+not by continuing the audit's numbering. A future pass that re-opens an area should start from
+that area's review record here, so it does not re-derive what is already recorded.
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -5718,6 +6216,10 @@ Compose behavior and Part 6 for UI coverage. Reuse the existing finding ID when 
 seen again; do not create duplicate findings.
 
 ## Planned Audit Passes
+
+Every planned chunk below is complete (Part 6D closed the sequence). This section is the original
+plan, kept as history. Future work comes from the residual table in the Final Synthesis, not from
+continuing this numbering.
 
 ### Part 0 — Baseline and inventory
 
@@ -6176,8 +6678,61 @@ Re-verified by probe, still protected: CQ-UI-002 to CQ-UI-010
 Protected by structure, no test justified: CQ-UI-001, CQ-UI-006 (mapping pinned), CQ-UI-011, CQ-UI-012, CQ-UI-013 (latent)
 Unchanged: CQ-TEST-011, CQ-DI-003 (Part 6D); CQ-KMP-003 (Deferred)
 
-Part 6D — Next
+Part 6D — Complete
+
+High: 0
+Medium: 0
+Low: 2
+Observations: 0
+
+Fixed: 2
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Existing findings re-evaluated in Part 6D:
+Fixed: CQ-TEST-011
+Positive-contract test added, status unchanged: CQ-DI-003 (Accepted as-is)
+Re-verified still present, unchanged: Stage 4G CQ-CI-006, CQ-GRADLE-002, CQ-DEP-002, CQ-DEP-003, CQ-HYG-001 (Deferred)
+Not reopened: CQ-KMP-003, CQ-KMP-004 (Deferred)
+
+Part 6 — Complete
+
+Repository-wide code-quality audit — Complete
+
+Main Finding Ledger: 104
+Critical 0, High 3, Medium 26, Low 61, Observation 14
+Fixed 79, Accepted as-is 10, Not a defect 1, Open 7, Deferred 6,
+fixed-and-deferred split 1 (CQ-DATA-013), Needs measurement 0
+Stage-local rows outside the main ledger: 22 (14 fixed, 1 not a defect, 1 accepted, 6 deferred)
+
+Residual findings: 20
+Product/content decision: CQ-DATA-003, CQ-DATA-015, CQ-DATA-016, CQ-DATA-017, CQ-KMP-003
+Content/tooling: CQ-DATA-012, CQ-DATA-014, CQ-DATA-019, CQ-DATA-020
+Diagnostics/infrastructure: CQ-DATA-013 (runtime half), CQ-HYG-001, CQ-DEP-003, CQ-CI-006,
+  CQ-GRADLE-002, CQ-DEP-002
+Separate production refactor: CQ-STATE-014, CQ-TYPE-001, CQ-CROSS-005, CQ-CROSS-010
+Upstream dependency: CQ-KMP-004
 ```
+
+Part 6D is complete, and with it Part 6 and the **repository-wide code-quality audit**. Platform
+coverage was classified from mechanical evidence rather than target counts: 538 common tests run on
+Android host and the iOS simulator, but no Android or iOS actual is executed by any test, while
+Desktop's start function and the web database, preference and offset actuals are. Three real gaps
+were closed and falsified. `CQ-TEST-011` is fixed: a probe showed the leaked `Unconfined` Main after
+both passing and failing Settings tests, and `jvmTest` has no platform Main to fall back to.
+`CQ-TEST-020`: Part 4C's Karma observation was reproduced on JS and Wasm — not "any escaping
+exception", which five probes showed is always attributed, but a test that never settles, which
+dropped the browser and wrote no report because Mocha's timeout and Karma's no-activity window were
+both 30 seconds; ordering them fixes it. `CQ-TEST-021`: no test had ever resolved the web host
+graph, and `WebLocalDataGraphTest` now does on both targets. `NavEntryViewModelOwnershipTest` pins
+entry-scoped ViewModel ownership directly — the production decorator was already guarded by eight
+journeys, but only as missing content — and `CQ-DI-003` keeps its disposition. The iOS app was
+built and launched on a simulator for the first time in this audit; an iOS offset test was probed
+and withdrawn because the zone cannot be controlled. No journey was added and no production code
+changed. **No further numbered audit chunk is planned. Remaining work is tracked by the residual
+findings in the ledger** — see the Final Synthesis.
 
 Part 6C is complete. The Compose test surface was enumerated from `44f9d66` — 44 files that
 compose UI, 588 tests — and every Part 1 contract was mapped to the assertion that would fail if it

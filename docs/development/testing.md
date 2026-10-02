@@ -26,6 +26,20 @@ COOP/COEP headers as the development server, so the real database worker can ope
 raises Mocha's per-test timeout to fit a worker start. A test that waits on real browser events
 must not use a virtual-time `withTimeout` inside `runTest`.
 
+Keep Karma's `browserNoActivityTimeout` longer than Mocha's per-test timeout. With the two equal,
+a test that never settles disconnects the browser: no report is written and no later test is
+reported. Ordered, Mocha fails that one test by name. Keep asynchronous work structurally inside
+its test, too. A coroutine or callback that fails after its test has returned is reported against
+whichever test is running at that moment.
+
+`androidHostTest` and `iosTest` are empty by decision, not omission. Android's host tests see
+`android.jar` stubs, so `SharedPreferences` and an `Application` cannot run there without adding
+Robolectric. The iOS UTC-offset actual reads `localTimeZone`, which a simulator test cannot set.
+Both platforms run every `commonTest` test, and neither runs a platform `actual`; their adapters
+are protected by compilation, inspection and manual launches. The coverage level of each host is
+recorded in the Part 6D review record of the
+[code quality audit](../quality/code-quality-audit.md).
+
 ## Test Design
 
 - Add or update tests for meaningful behavior changes.

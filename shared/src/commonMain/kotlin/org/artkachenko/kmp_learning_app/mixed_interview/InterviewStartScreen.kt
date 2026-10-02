@@ -479,6 +479,8 @@ private fun LazyListScope.historySection(
                     )
                 }
                 InterviewHistoryUiState.Empty -> FirstInterviewNote()
+                // Unknown history: nothing is said about it either way.
+                InterviewHistoryUiState.Unavailable -> Unit
                 is InterviewHistoryUiState.Content -> InterviewRecord(
                     history = state.history,
                     onOpenResult = onOpenResult,
@@ -488,11 +490,12 @@ private fun LazyListScope.historySection(
     }
 }
 
-/** Which of the three record states this is, so a refresh within one of them is not a transition. */
+/** Which record state this is, so a refresh within one of them is not a transition. */
 private val InterviewHistoryUiState.transitionKey: String
     get() = when (this) {
         InterviewHistoryUiState.Loading -> "loading"
         InterviewHistoryUiState.Empty -> "empty"
+        InterviewHistoryUiState.Unavailable -> "unavailable"
         is InterviewHistoryUiState.Content -> "content"
     }
 

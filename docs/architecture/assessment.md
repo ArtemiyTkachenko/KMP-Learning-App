@@ -167,7 +167,9 @@ attempt as the latest.
 A first visit is a state rather than a gap. `InterviewHistoryUiState` keeps `Loading` and
 `Empty` distinct so the record area shows a spinner while the read is in flight and a short
 "No interviews yet" note afterwards, explaining what will appear there. No empty table and no
-zeroed score: a `0 of 20` would be a result the learner never got.
+zeroed score: a `0 of 20` would be a result the learner never got. History that could not be
+read or projected is `Unavailable`, which omits the record area entirely: it is unknown rather
+than empty, so it neither shows "No interviews yet" nor blocks starting an interview.
 
 Starting an interview passes `AssessmentConfig.Mixed` to the Interview destination's
 launch coordinator. Balanced selection and initial persistence finish before

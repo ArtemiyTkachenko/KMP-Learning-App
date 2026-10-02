@@ -12,7 +12,6 @@ import org.artkachenko.kmp_learning_app.assessment.session.CompleteAssessment
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.data.local.assessment.repository.LocalAssessmentRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
-import org.artkachenko.kmp_learning_app.learning_progress.LearningPerformanceDerivation
 import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.koin.dsl.module
 
@@ -32,12 +31,6 @@ internal val assessmentDataModule = module {
     single { AppCoroutineScope() }
 
     single {
-        LearningPerformanceDerivation(
-            curriculumRepository = get(),
-        )
-    }
-
-    single {
         AssessmentHistoryStore(
             assessmentRepository = get(),
             scope = get<AppCoroutineScope>(),
@@ -54,7 +47,6 @@ internal val assessmentDataModule = module {
             // same refresh Progress does — and, being projected, never ranks or selects evidence
             // from a hidden Topic.
             completedHistory = get<VisibleAssessmentHistory>(),
-            performanceDerivation = get(),
         )
     }
 
@@ -99,7 +91,6 @@ internal val assessmentDataModule = module {
             // The visible projection, so a caller that supplies no attempts cannot bypass it.
             completedHistory = get<VisibleAssessmentHistory>(),
             curriculumRepository = get(),
-            performanceDerivation = get(),
         )
     }
 }

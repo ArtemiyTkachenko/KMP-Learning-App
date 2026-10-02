@@ -196,6 +196,30 @@ internal class InterviewStartScreenTest {
     }
 
     /**
+     * An unreadable history says nothing about the record: neither the first-run note, which would
+     * tell a learner who has finished interviews that they have none, nor a record, nor a spinner
+     * that never resolves. Starting an interview does not depend on it.
+     */
+    @Test
+    fun anUnavailableRecordIsOmittedRatherThanReportedAsNoInterviews() = runComposeUiTest {
+        var started = 0
+        setContent {
+            MaterialTheme {
+                InterviewStartScreen(
+                    onStartMixedInterview = { started += 1 },
+                    history = InterviewHistoryUiState.Unavailable,
+                )
+            }
+        }
+
+        onNodeWithText("No interviews yet").assertDoesNotExist()
+        onNodeWithText("Your interview record").assertDoesNotExist()
+        onNodeWithTag(InterviewHistoryLoadingTag).assertDoesNotExist()
+        onNodeWithTag(InterviewStartButtonTag).performClick()
+        assertEquals(1, started)
+    }
+
+    /**
      * The expanded arrangement is still an invitation beside a record.
      *
      * Asserted on the information each pane carries rather than on the panes themselves, because

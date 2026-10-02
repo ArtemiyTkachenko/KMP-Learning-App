@@ -318,15 +318,14 @@ or foreign Unit reaching a Topic aggregate would be silent rather than obvious. 
 functions filter with `List.filter` and `List.map`, so authored Unit and Lesson order
 survives the removal of ineligible items.
 
-`StudyProgressService` is the thin IO half: it takes `LessonStudyRepository`, reads
-`getStudiedLessons()` once per snapshot, collapses it to identities, and delegates. It
-deliberately does **not** take `LearningContentRepository`. The Learn surfaces already own
-their content reads, and the two failures must stay apart: an unreadable learning document
-is a content error, while unreadable study state costs only the studied indicator over
-content that still reads perfectly well. Its `isLessonStudied(lessonId)` answers
-persistence's question — does a stored claim exist for this stable ID — and stays true for a
-DEPRECATED or unresolvable Lesson; whether such a Lesson counts toward current progress is
-decided by the content-aware derivation, which never rewrites or deletes the stored fact.
+The derivation's IO counterpart is the app-scoped `StudyProgressStateHolder` described below:
+it reads `getStudiedLessons()` once per snapshot and publishes identities. It deliberately does
+**not** read learning content. The Learn surfaces already own their content reads, and the two
+failures must stay apart: an unreadable learning document is a content error, while unreadable
+study state costs only the studied indicator over content that still reads perfectly well. A
+stored claim stays readable by stable ID for a DEPRECATED or unresolvable Lesson; whether such a
+Lesson counts toward current progress is decided by the content-aware derivation, which never
+rewrites or deletes the stored fact.
 
 Nothing here is registered in Koin yet. The derivation is an `object`, and the service has no
 consumer until E22-04, which owns the presentation loading behaviour and is therefore the
@@ -602,12 +601,12 @@ StudyProgressStateHolder.state -> Loaded.studiedLessonIds
   -> StudyProgressDerivation.deriveUnit / deriveTopic
 ```
 
-`StudyProgressService` is deliberately not on this path and remains unregistered. Its
-methods read `LessonStudyRepository` themselves, so calling it on every holder emission
-would query Room again for every screen and every mark — several independent samples of one
-fact, which is how a Unit and its Topic come to disagree. The service stays as the
-single-IO boundary for a caller that has no shared projection, which E22-05 may well be; it
-was not redesigned or deleted for this issue.
+No other path reads study state. An earlier `StudyProgressService` read `LessonStudyRepository`
+itself on every call; calling it on every holder emission would have queried Room again for
+every screen and every mark — several independent samples of one fact, which is how a Unit and
+its Topic come to disagree. It was kept unregistered for a possible caller without a shared
+projection; Continue Learning (E22-05) turned out to use the holder too, so it was removed in the
+code-quality audit's Part 5.
 
 The Unit overview and Topic Detail therefore retain the domain objects they need:
 `LearningUnitViewModel` keeps the resolved `LearningUnit`, and `TopicDetailViewModel` keeps

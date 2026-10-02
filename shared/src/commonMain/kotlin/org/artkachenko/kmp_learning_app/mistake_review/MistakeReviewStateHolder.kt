@@ -20,12 +20,17 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.repository.LearningC
  * scratch on every visit: the ViewModel is destroyed on a tab switch, so returning always started at
  * a spinner. Holding the last queue here means it is on screen for the first frame, with the re-read
  * happening behind it.
+ *
+ * [learningContentRepository] is required rather than optional: it is the source of every study
+ * link on the queue, and an omitted one would remove those links from every entry without failing
+ * anything. Learning content that cannot be read is still optional enrichment — the queue is shown
+ * without links — but that is a runtime outcome, not a mode a constructor call can select.
  */
 internal class MistakeReviewStateHolder(
     private val mistakeReviewService: MistakeReviewService,
     visibleHistory: VisibleAssessmentHistory,
     scope: CoroutineScope,
-    private val learningContentRepository: LearningContentRepository? = null,
+    private val learningContentRepository: LearningContentRepository,
 ) {
     /**
      * Re-derives the queue on every settled refresh of the shared history, which is what makes one
@@ -66,11 +71,11 @@ internal class MistakeReviewStateHolder(
     private suspend fun attachStudyLessons(
         mistakes: List<UnresolvedMistake>,
     ): List<UnresolvedMistake> {
-        val units = runCatching { learningContentRepository?.getActiveUnits() }
+        val units = runCatching { learningContentRepository.getActiveUnits() }
             .getOrElse { failure ->
                 if (failure is CancellationException) throw failure
                 return mistakes
-            } ?: return mistakes
+            }
         return mistakes.withStudyLessons(units)
     }
 }

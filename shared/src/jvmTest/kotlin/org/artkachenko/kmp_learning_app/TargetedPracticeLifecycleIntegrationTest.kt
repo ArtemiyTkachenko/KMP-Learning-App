@@ -579,7 +579,6 @@ private fun runPracticeTest(block: suspend PracticeGraph.() -> Unit) = runTest {
                     AssessmentQuestionSelector(
                         curriculumRepository = get(),
                         completedHistory = get<AssessmentHistoryStore>(),
-                        performanceDerivation = get(),
                         randomize = { it },
                     )
                 }
@@ -738,9 +737,7 @@ private suspend fun AssessmentTakingViewModel.awaitQuestion(
         is AssessmentTakingUiState.Content ->
             !state.isSubmitting && state.questionNumber == questionNumber
         is AssessmentTakingUiState.ReadyToComplete -> !state.isCompleting
-        AssessmentTakingUiState.NoQuestions,
-        AssessmentTakingUiState.Error,
-        -> error("Assessment taking reached $state instead of question $questionNumber.")
+        AssessmentTakingUiState.Error -> error("Assessment taking reached $state instead of question $questionNumber.")
         else -> false
     }
 }

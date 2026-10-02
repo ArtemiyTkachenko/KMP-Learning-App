@@ -20,9 +20,11 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
 internal class LearningProgressService(
     private val completedHistory: CompletedAssessmentHistory,
     private val curriculumRepository: CurriculumRepository,
-    private val performanceDerivation: LearningPerformanceDerivation =
-        LearningPerformanceDerivation(curriculumRepository),
 ) {
+    // Built over this service's own repository rather than injected: the derivation is stateless,
+    // and performance must be attributed through the same curriculum coverage is measured against.
+    private val performanceDerivation = LearningPerformanceDerivation(curriculumRepository)
+
     /**
      * [completedAttempts] lets a caller that already holds newest-first completed history reuse it,
      * as [MistakeReviewService] does, so the shared cache is read once per derivation rather than

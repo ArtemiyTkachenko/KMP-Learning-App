@@ -26,6 +26,14 @@ import org.artkachenko.kmp_learning_app.lesson_study.repository.LessonStudyRepos
  * the identities published here is presentation's job, through the pure
  * [StudyProgressDerivation] — one persisted snapshot feeding every visible figure, rather than each
  * screen sampling Room again and letting a Unit disagree with its Topic.
+ *
+ * The concurrency rules below — a coalesced refresh, a read-back serialised against every other
+ * read, a refresh failure that keeps earlier loaded state, a per-ID pending set — are the same
+ * rules [org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder] follows. They
+ * have already drifted once: the serialised read-back existed in the study holder before the saved
+ * holder had it, and the race it prevents was found in the saved holder later (audit
+ * `CQ-STATE-001`). A fix to one of these rules belongs in both until they share an owner
+ * (`CQ-CROSS-005`).
  */
 internal class StudyProgressStateHolder(
     private val repository: LessonStudyRepository,

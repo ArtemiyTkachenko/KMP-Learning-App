@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 
 @Composable
-public fun IosAppRoot() {
+internal fun IosAppRoot() {
     val startupInitializer = remember { iosAppStartupInitializer() }
     AppRoot(startupInitializer)
 }

@@ -324,23 +324,8 @@ internal class AssessmentTakingScreenTest {
     }
 
     @Test
-    fun noQuestionsAndStartErrorRemainActionable() = runComposeUiTest {
+    fun startErrorRemainsActionable() = runComposeUiTest {
         var retryCount = 0
-        setContent {
-            MaterialTheme {
-                AssessmentTakingScreen(
-                    title = "Assessment",
-                    state = AssessmentTakingUiState.NoQuestions,
-                    onAnswerClick = {},
-                    onSubmit = {},
-                    onRetry = { retryCount += 1 },
-                    onBack = {},
-                    onComplete = {},
-                )
-            }
-        }
-        onNodeWithText("No practice questions are currently available.").assertIsDisplayed()
-
         setContent {
             MaterialTheme {
                 AssessmentTakingScreen(

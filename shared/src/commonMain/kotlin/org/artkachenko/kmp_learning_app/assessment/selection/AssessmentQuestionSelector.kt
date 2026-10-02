@@ -23,10 +23,12 @@ import org.artkachenko.kmp_learning_app.learning_progress.WeakArea
 internal class AssessmentQuestionSelector(
     private val curriculumRepository: CurriculumRepository,
     private val completedHistory: CompletedAssessmentHistory,
-    private val performanceDerivation: LearningPerformanceDerivation =
-        LearningPerformanceDerivation(curriculumRepository),
     private val randomize: (List<Question>) -> List<Question> = { it.shuffled() },
 ) {
+    // Built over this selector's own repository rather than injected: the derivation is stateless,
+    // and weak-area selection must attribute evidence through the same curriculum it selects from.
+    private val performanceDerivation = LearningPerformanceDerivation(curriculumRepository)
+
     suspend fun select(config: AssessmentConfig): AssessmentSelectionResult =
         when (config) {
             is AssessmentConfig.Focused -> selectPracticeQuestions(config)

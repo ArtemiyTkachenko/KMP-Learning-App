@@ -112,7 +112,15 @@ internal class InitialCurriculumSmokeTest {
     fun bundledInitialCurriculumPassesStructuralValidation() = runTest {
         val initialCurriculum = BundledCurriculumSource.load()
 
-        assertTrue(CurriculumValidator().validate(initialCurriculum).isEmpty())
+        val errors = CurriculumValidator().validate(initialCurriculum)
+
+        // The validator already names the rule and the entity for every defect; a bare isEmpty()
+        // would reduce all of that to "Expected value to be true" in CI.
+        assertTrue(
+            errors.isEmpty(),
+            "Bundled curriculum failed validation with ${errors.size} error(s):\n" +
+                errors.joinToString("\n") { "${it.code} [${it.entityId ?: "curriculum"}] ${it.message}" },
+        )
     }
 
     @Test

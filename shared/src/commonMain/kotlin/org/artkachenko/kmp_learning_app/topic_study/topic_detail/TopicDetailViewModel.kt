@@ -330,10 +330,10 @@ internal class TopicDetailViewModel(
                 },
                 learningUnits = learningUnits,
                 learningContext = contexts?.forTopic(curriculum.topic.id),
-                // Derived here, from the studied identities the shared holder already read, rather
-                // than through StudyProgressService: the holder performs the one canonical read for
-                // the whole Learn stack, and going back to the service would query Room again for
-                // every screen and every mark. One persisted snapshot, all derived figures.
+                // Derived here, from the studied identities the shared holder already read: the
+                // holder performs the one canonical read for the whole Learn stack, and reading
+                // study state again would query Room for every screen and every mark. One
+                // persisted snapshot, all derived figures.
                 studyProgress = studyState.toUiState { loaded ->
                     StudyProgressDerivation.deriveTopic(
                         topicId = curriculum.topic.id,

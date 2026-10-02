@@ -42,7 +42,7 @@ import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun App() {
+internal fun App() {
     // The same theme entry point AppRoot uses, so composing App() directly — a test, a preview —
     // follows the saved appearance exactly as the running application does, rather than making a
     // second, independent decision from isSystemInDarkTheme().

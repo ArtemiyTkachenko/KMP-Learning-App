@@ -6,6 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -118,6 +119,24 @@ internal class InterviewStartViewModelTest {
     }
 
     /**
+     * History that has not been read yet is not a learner with no interviews. Until the read
+     * settles the record is Loading, never the first-run note — the same collapse as reporting an
+     * unreadable history as Empty, only for the moments before the first read.
+     */
+    @Test
+    fun anUnsettledHistoryIsLoadingRatherThanNoInterviews() = runTest(dispatcher) {
+        val read = CompletableDeferred<List<TestAttempt>>()
+        val state = interviewState(GatedRepository(read))
+        testScheduler.advanceUntilIdle()
+
+        assertIs<InterviewHistoryUiState.Loading>(state.value)
+
+        read.complete(listOf(mixedAttempt("only", correct = 7, total = 20)))
+        testScheduler.advanceUntilIdle()
+        assertIs<InterviewHistoryUiState.Content>(state.value)
+    }
+
+    /**
      * The record is derived by [InterviewHistoryStateHolder], which outlives the ViewModel; the
      * ViewModel only republishes it, so the behaviour is exercised on the holder.
      */
@@ -192,4 +211,14 @@ private object FailingRepository : AssessmentRepository {
 
     override suspend fun getCompletedAttempts(): List<TestAttempt> =
         throw IllegalStateException("database unavailable")
+}
+
+private class GatedRepository(
+    private val read: CompletableDeferred<List<TestAttempt>>,
+) : AssessmentRepository {
+    override suspend fun save(attempt: TestAttempt) = Unit
+
+    override suspend fun getById(attemptId: String): TestAttempt? = null
+
+    override suspend fun getCompletedAttempts(): List<TestAttempt> = read.await()
 }

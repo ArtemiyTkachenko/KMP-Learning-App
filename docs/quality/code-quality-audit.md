@@ -200,7 +200,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-CROSS-002` | Attempt result surfaces / state ownership | Low | High | `FocusedResultUiState.kt`, `MixedInterviewResultUiState.kt`, both screens | Retake state was stored inside the result content it is not part of. | `Content.repeatPracticeState` / `Content.repeatInterviewState` put a running action inside a record of a settled fact: the score and the transcript of a completed attempt cannot change while the screen is open, and the retake state changes on every press. The conflation forced every transition through a `setRepeatState` that cast to `Content` and silently dropped the write otherwise — unreachable in practice, but a transition that can disappear is not a state machine anyone can reason about. | Publish retake state as its own `StateFlow` beside `uiState`, and pass it to the screen as its own parameter. The "only retake a loaded result" rule becomes an explicit guard in the ViewModel rather than an implicit consequence of a cast. | Fixed |
 | `CQ-CROSS-003` | Mixed interview result / derivation placement | Low | High | `mixed_interview/MixedInterviewResultViewModel.kt`, `mixed_interview/TopicAnswerCounts.kt` | Per-Topic aggregation was a suspending ViewModel method built on a mutable counter class. | `loadTopicPerformance` grouped the transcript by `topicId`, counted with a `private class TopicCounts(var questionCount, var correctCount)`, computed percentages, and resolved Topic names, all in one method. The counting is a deterministic transformation with no I/O in it, but it could only be exercised through the ViewModel, a fake curriculum repository and a fake review loader; the mutable holder existed only because the derivation was written imperatively in the wrong layer. | Extract the pure `List<ReviewQuestionItem>.topicAnswerCounts()` and an immutable `TopicAnswerCounts` that requires a positive denominator. The ViewModel keeps the name resolution, which is the only part that needs a repository. | Fixed |
 | `CQ-CROSS-004` | Review surfaces / mutation boundary | Low | High | `FocusedResultViewModel.kt`, `MixedInterviewResultViewModel.kt`, `MistakeReviewViewModel.kt`, `assessment_review/AssessmentReviewModels.kt` | One mutation-boundary rule, written three times over three traversals. | "A review surface may only toggle a Question it currently shows as `Available`" was implemented independently in all three `toggleSaved` methods, twice over `content.questions` and once over `content.mistakes.reviewItem`, and documented three times. The three surfaces share one saved-state holder, so accepting a save on one that the others would refuse is a real inconsistency the duplication makes possible. | One `ReviewQuestionItem.isAvailableFor(questionId)` predicate in `assessment_review`, called by all three. | Fixed |
-| `CQ-CROSS-005` | Learner-owned state holders / repeated algorithm | Low | High | `lesson_study/StudyProgressStateHolder.kt`, `saved_questions/SavedQuestionStateHolder.kt` | Two app-scoped holders carry one concurrency algorithm in two copies, and a rule established in one has already failed to reach the other. | The two classes are now line-for-line the same algorithm: `tryLock`-coalesced refresh, a read-back taken under the same `reading` mutex, a refresh failure that keeps earlier `Loaded` state, a per-ID pending set and a settle that clears it. History shows the drift this invites: the serialised read-back existed in `StudyProgressStateHolder` (E24-07) while `SavedQuestionStateHolder` lacked it until Part 2D found the race there (`CQ-STATE-001`); cancellation had to be fixed in each separately (`CQ-STATE-005`, `CQ-STATE-010`). That is new evidence against Part 2's "coincidence of requirements" conclusion. Extraction is still not cheap: the two public state types (`StudyProgressState`, `SavedQuestionsState`, with `studiedLessonIds`/`savedQuestionIds` and their pending sets) are read by about ten consumers, so a shared owner means either one generic state type adopted by all of them or a mapping layer whose `StateFlow.value` lags the synchronous reads the ViewModels' guards rely on. | Fixed locally: each holder's KDoc now names the other and the rules they share, so the next fix lands in both. Extract a shared owner (`load`, `add`, `remove`, `keyOf` — four inputs, not seven) together with a generic state type as its own task if either holder needs another concurrency change. | Deferred |
+| `CQ-CROSS-005` | Learner-owned state holders / repeated algorithm | Low | High | `lesson_study/StudyProgressStateHolder.kt`, `saved_questions/SavedQuestionStateHolder.kt` | Two app-scoped holders carry one concurrency algorithm in two copies, and a rule established in one has already failed to reach the other. | The two classes are now line-for-line the same algorithm: `tryLock`-coalesced refresh, a read-back taken under the same `reading` mutex, a refresh failure that keeps earlier `Loaded` state, a per-ID pending set and a settle that clears it. History shows the drift this invites: the serialised read-back existed in `StudyProgressStateHolder` (E24-07) while `SavedQuestionStateHolder` lacked it until Part 2D found the race there (`CQ-STATE-001`); cancellation had to be fixed in each separately (`CQ-STATE-005`, `CQ-STATE-010`). That is new evidence against Part 2's "coincidence of requirements" conclusion. Extraction is still not cheap: the two public state types (`StudyProgressState`, `SavedQuestionsState`, with `studiedLessonIds`/`savedQuestionIds` and their pending sets) are read by about ten consumers, so a shared owner means either one generic state type adopted by all of them or a mapping layer whose `StateFlow.value` lags the synchronous reads the ViewModels' guards rely on. | Fixed locally: each holder's KDoc now names the other and the rules they share, so the next fix lands in both. Extract a shared owner (`load`, `add`, `remove`, `keyOf` — four inputs, not seven) together with a generic state type as its own task if either holder needs another concurrency change. **Part 6A evidence:** the two test suites had drifted as the code once did — the read-back-failure rule was pinned only for study progress (now mirrored, `CQ-TEST-010`), refresh coalescing is pinned only for study progress, and the two-mutation read-back race only for saved Questions. The algorithm has fifteen observable rules; each suite now pins fourteen of them independently (the Part 6A review record lists them), and every future concurrency change must be written, and tested, twice. That strengthens the case for extraction without changing its trigger. | Deferred |
 | `CQ-CROSS-006` | Study progress / dead code | Low | High | `lesson_study/StudyProgressService.kt` (deleted), `StudyProgressServiceTest.kt` (deleted), `docs/architecture/study-progress.md`, `TopicDetailViewModel.kt` | `StudyProgressService` had no production construction. | Never registered in Koin, never constructed outside its own test. `study-progress.md` kept it "as the single-IO boundary for a caller that has no shared projection, which E22-05 may well be"; E22-05 (Continue Learning, merged in #293) reads the app-scoped `StudyProgressStateHolder` instead, so the stated reason has expired. Its three tests covered only its own I/O; `StudyProgressDerivationTest` covers the derivation. | Deleted the class and its test; corrected the architecture document and the Topic Detail comment that named it. `docs/content/architecture-units-1-6-plan.md` still lists it among example services in a dated verification table; the shipped lessons do not mention it. | Fixed |
 | `CQ-CROSS-007` | Assessment taking / unreachable state | Low | High | `AssessmentTakingUiState.kt`, `AssessmentTakingScreen.kt`, `strings.xml`, `AssessmentTakingScreenTest.kt`, two integration tests | `AssessmentTakingUiState.NoQuestions` had no producer. | `AssessmentTakingViewModel` maps every load result to `Loading`, `Error`, `Unavailable`, `Content`, `ReadyToComplete` or `CompletionSucceeded`; an `AssessmentSession` requires a non-empty question list and attempts are only created from non-empty selections, so no input reaches "no questions". Only a screen test constructed it synthetically, and two integration helpers listed it as a failure branch. | Removed the state, its screen branch and the `assessment_taking_no_questions` string; the screen test keeps its start-error half. | Fixed |
 | `CQ-CROSS-008` | Theme / dead code | Low | High | `ui/theme/AppSpacing.kt` | `AppScreenVerticalPadding` was unused, and its KDoc claimed every scrolling screen applies it. | Introduced in E19-01 and never referenced; screens apply the theme scale value `AppSpacing.Comfortable` directly, which `material-design.md` permits. A reader trusting the KDoc would edit a value nothing reads. | Deleted. | Fixed |
@@ -209,6 +209,11 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-CROSS-011` | Assessment persistence / forwarding layer | Observation | High | `LocalAssessmentRepository.kt`, `AssessmentAttemptStore.kt` | `LocalAssessmentRepository` forwards all three methods to `AssessmentAttemptStore` and owns nothing itself. | The store holds the whole aggregate mapping and transactions; the repository is a pass-through, and `docs/architecture/assessment.md` presents the store as the layer that keeps Room "below the repository". The other two learner-owned repositories put Room calls in the repository directly. No logic exists in the wrapper that could drift. | Leave; merging the two would cost documentation and two test files for no behavioural gain. | Accepted as-is |
 | `CQ-CROSS-012` | Practice selection / unproduced case | Observation | High | `AssessmentSelectionResult.kt`, `AssessmentQuestionSelector.kt`, `PracticeBuilderUiState.kt`, `PracticeBuilderScreen.kt` | `NoContent.SourceNotSupported` is never produced and `isSourceSupported` always returns `true`. | Every `PracticeQuestionSource` now has a policy. `PracticeSourceOption`'s KDoc states the reason it is kept: "keeping this distinction lets future source values be represented before implementation without conflating that state with an empty eligible pool", and `AssessmentQuestionSelectorTest` pins the two answers agreeing. That is a documented extension point, not abandoned scaffolding. | Leave. Remove only if the product decides new sources will always ship with their policy. | Accepted as-is |
 | `CQ-CROSS-013` | Practice Builder / runtime parameter | Low | High | `TopicStudyPresentationModule.kt` | The module comment said opening the builder from content "passes a scope alone". | Every production path goes through `PracticeBuilderDestination`, which always passes `initialSource` (the route's preset or its own `ALL` default); only three graph tests resolve the ViewModel with a target alone, and `TopicStudyPresentationModuleTest` pins that optional read deliberately. The fallback is reachable only from tests, and the comment described a production path that does not exist. | Comment corrected; behaviour and defaults unchanged. | Fixed |
+| `CQ-TEST-007` | Assessment taking / failure-domain coverage | Low | High | `assessment_taking/AssessmentTakingViewModel.kt`, `AssessmentTakingViewModelTest.kt` | Nothing pinned that a missing attempt, or an in-progress attempt whose stored Question no longer resolves, is `Error` rather than hidden-content `Unavailable`. | `AssessmentTakingUiState.Unavailable`'s KDoc states it is distinct from a missing attempt, and the ViewModel maps `AttemptNotFound` and `MissingQuestion` to `Error`. `AssessmentSessionLoaderTest` proves the loader's results; no ViewModel or journey test loaded either case. With both results mapped to `Unavailable`, all 1 839 jvm tests still passed — the learner would have been told the attempt resumes once its content is shown, and every visibility change would reload it. | Pin the mapping at the ViewModel with one direct test over both cases. | Fixed |
+| `CQ-TEST-008` | Interview record / state-distinction coverage | Low | High | `mixed_interview/InterviewHistoryStateHolder.kt`, `InterviewStartViewModelTest.kt` | The interview record's `Loading` state had no direct protection, although Part 5 had just fixed the same collapse for its `Failed` branch. | `Empty`, `Content` and `Unavailable` each had a test; the `AssessmentHistory.Loading` branch did not. Mapping it to `Empty` — the first-run "No interviews yet" note — passed the whole suite, because every test settled the history before asserting. `AssessmentHistoryStore` emits `Loading` first (`scan(Loading, …)`), so the collapse is observable before the first read settles. | One holder test with a gated history read: `Loading` until the read settles, then `Content`. | Fixed |
+| `CQ-TEST-009` | Progress dashboard / cancellation coverage | Low | High | `progress/ProgressStateHolder.kt`, `ProgressViewModelTest.kt` | `ProgressStateHolder`'s `CancellationException` rethrow had no test. | The sibling `MistakeReviewStateHolder` pins its rethrow; Progress did not. The pass first expected a swallowed cancellation to be unobservable through `map`/`stateIn`, and a throwaway probe refuted that: with the rethrow removed, cancelling the holder's scope mid-derivation published `Error`. Impact is low — the scope is the application's — but the rule is the repository-wide one and the regression ships silently. | One test that cancels the holder's real scope during a gated derivation and asserts it stays `Loading`; the test fixture's scope is hoisted to a property and the curriculum fake gains a default-null gate. | Fixed |
+| `CQ-TEST-010` | Saved-question holder / mirrored concurrency coverage | Low | High | `saved_questions/SavedQuestionStateHolder.kt`, `SavedQuestionStateHolderTest.kt` | The saved holder had no test for a successful write whose read-back fails, which the study holder pins for the identical algorithm. | `StudyProgressStateHolderTest.aSuccessfulWriteWhoseReadBackFailsKeepsTheLastKnownStateUntilTheNextRefresh` exists; `SavedQuestionStateHolderTest`'s only mutation failure is a failed *write*. Splitting the saved holder's catch so a failed read-back settled the state the write "would have" produced passed the whole suite. Recorded as evidence on `CQ-CROSS-005`. | Mirror the study test in the saved suite, cross-referenced. | Fixed |
+| `CQ-TEST-011` | Test isolation / main dispatcher | Observation | High | `SettingsNavigationIntegrationTest.kt` | One Compose journey installs `Dispatchers.Main` as `Unconfined` and never resets it. | Every other `setMain` site in `commonTest` and `jvmTest` resets in `@AfterTest` or `finally`; this one stops Koin in `finally` but leaves Main installed. No current test depends on an unset Main, since each installs its own, so nothing fails today. It is a journey-level test-environment concern, not a state-owner one. | Add `Dispatchers.resetMain()` beside the existing `stopKoin()` in Part 6D's test-environment review. | Deferred — Part 6D |
 
 ## Audit Pass Log
 
@@ -238,6 +243,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 4B | Host composition roots | Complete | `efb38ace99c81685f99bba4b8f3200d14d898096` plus the working tree | 2 Android shell files (`KmpLearningApplication`, `MainActivity`) and the manifest; `desktopApp` and `webApp` `main.kt`; the iOS Swift bridge (`iOSApp.swift`, `ContentView.swift`) and `MainViewController`; 4 graph-start files, 3 platform roots and the common `AppRoot`/`AppStartupInitializer`; 8 platform modules and 4 database builders; `AppearanceTheme`, `AppearanceModule`, `CurriculumDataModule`, `CurriculumDataInitializer`, `CurriculumVisibilityModule`; both web worker factories; `koin-core`, `koin-compose` 4.2.2 and `sqlite-web` 2.7.0 read from source; 5 host/startup test files plus 19 Koin-touching test files classified | 6 (2 new, 4 re-evaluated) | 4 | Targeted host/theme/startup suites (22 tests); three falsification runs; `:shared:jvmTest` (1832 tests); `:shared:allTests` (iOS simulator, JS, Wasm and Android host 538 each, JVM 1832); `:androidApp:assembleDebug`; `:shared:check`; `git diff --check`; `git status --short` | High 0, Medium 3, Low 3, Observation 0 among the six. All four host families install the same eight shared modules and exactly one `CurriculumDatabase` and one `AppPreferenceStorage` binding, resolve the same app-scoped `CurriculumDataInitializer`, start the graph before any composition, and pass platform context only on Android. `CQ-DI-010` (new) is fixed by declaring the shared list once; `CQ-DI-004` is fixed with `strictOverride()` in every host and graph test; `CQ-DI-006` and `CQ-DI-007` are fixed documentation; `CQ-DI-005` is re-classified *Not a defect* on the `koin-compose` source; `CQ-KMP-002` (new) records the same hand-copied-list risk in the four database builders' migration chains and is deferred to Part 4C. No iOS or web runtime was observed. Part 4C is next. See review record below. |
 | Part 4C | Platform capability implementations | Complete | `7f935ece4e50e1745005c3fb6b5bf38a12d258aa` plus the working tree | 4 database builders and their modules, `CurriculumDatabase`, `CurriculumMigrations`; `AppPreferenceStorage`, 4 preference stores, both preference consumers and `AppearanceStateHolder`; 3 common selection files and 4 selection actuals; `UtcOffset`, 4 offset actuals, `LocalTimestamp`; both worker actuals, `worker.js`, its `package.json`, the worker and web build/webpack config; `room3-runtime` 3.0.1, `sqlite-web` 2.7.0 (JS and Wasm), `sqlite-wasm` 3.50.1, Compose foundation 1.11.1 (web, iOS) and AndroidX foundation 1.11.2 read from source; 5 existing test classes | 9 (7 new, 2 re-evaluated) | 6 | Targeted migration, offset, preference and web database tests with 12 falsification runs; an Android emulator check; `:shared:jvmTest` (1837); `:shared:allTests` (JS/Wasm 545 each, iOS simulator and Android host 538); `:androidApp:assembleDebug`; `:shared:check`; `:sqliteWasmWorker`, `:webApp`, `:desktopApp` assemble; `git diff --check` | High 0, Medium 3, Low 5, Observation 0 among the eight that changed status; `CQ-KMP-001` re-verified and left Fixed. `CQ-KMP-002` fixed with one `curriculumDatabaseMigrations` list and a builder-level test. `CQ-BUG-006` (worker hung forever when SQLite failed to initialize), `CQ-KMP-005` (web empty value read as absence), `CQ-DOC-002` (durability wording), `CQ-KMP-006` (worker re-install trap) and `CQ-TEST-006` (no test ran the web database path or any platform offset) fixed; the first `webTest` sources run the real worker on OPFS in both browsers. `CQ-KMP-003` (copy confirmation never fires on Android — emulator-confirmed — or the web) and `CQ-KMP-004` (`sqlite-web` hangs after a worker load failure — browser-reproduced) deferred. No web app launch and no iOS app launch. Part 4 is complete; Part 5 is next. See review record below. |
 | Part 5 | Cross-cutting production quality | Complete | `2749766c96113e46bb91f90ac71424140da15fd6` plus the working tree | All `:shared` production source sets by mechanical scan (unreferenced declarations, unproduced sealed cases, every error fallback, numeric literals, forwarding functions, multi-Boolean APIs, cross-feature presentation imports), host modules and Swift for public-API callers, and about 25 owner, module and pipeline files read in full | 9 new (Low 6, Observation 3) plus 9 existing re-evaluated | 5 new fixed; 3 existing fixed or partly fixed (`CQ-DI-009`, `CQ-DATA-013` CI half, `CQ-STATE-016` reopened) | Targeted suites; `:shared:jvmTest` (1 835); `:shared:allTests`; `:androidApp:assembleDebug`; `:shared:check`; desktop and web host compiles; `git diff --check` | `CQ-DI-008` measured on JVM and in Wasm and accepted; `CQ-DATA-018` accepted; `CQ-STATE-014`, `CQ-TYPE-001`, `CQ-KMP-003`, `CQ-KMP-004` stay deferred with stated reasons. Falsified: smoke-test diagnostics both ways, the interview record (2 of 17 fail on the old mapping). Dead code removed: `StudyProgressService`, `AssessmentTakingUiState.NoQuestions`, `AppScreenVerticalPadding`. See review record. |
+| Part 6A | Presentation/state behavior coverage | Complete | `f19e05a` (merge of PR #449) plus the working tree | 25 presentation/state owners; 22 direct test files read for their assertions (`AppShellViewModelTest`, `AssessmentLaunchViewModelTest`, `AssessmentRetakeControllerTest`, `AssessmentTakingViewModelTest`, `FocusedResultViewModelTest`, `MixedInterviewResultViewModelTest`, `InterviewStartViewModelTest`, `ProgressViewModelTest`, `ProgressTopicViewModelTest`, `MistakeReviewViewModelTest`, `MistakeStudyLessonMappingTest`, `SavedQuestionStateHolderTest`, `StudyProgressStateHolderTest`, `SavedQuestionsViewModelTest`, `TopicBrowserViewModelTest`, `TopicDetailViewModelTest`, `LearningUnitViewModelTest`, `LearningLessonViewModelTest`, `PracticeBuilderViewModelTest`, `KmpContentPreferenceTest`, `AppearancePreferenceTest`, `AppRootTest`); 6 visibility/integration suites read (`ResultVisibilityTest`, `DestinationVisibilityGuardTest`, `SavedAndSessionVisibilityTest`, `CurriculumVisibilityIntegrationTest`, `TopicBrowserVisibilityTest`, `TopicDetailVisibilityTest`) and 3 consulted by search | 5 new (Low 4, Observation 1) plus 3 existing re-evaluated | 5 tests added (`CQ-TEST-005`, `CQ-TEST-007` – `CQ-TEST-010`); 0 production changes | Narrow owner suites throughout; 8 falsification runs, two of them over the whole jvm suite; `:shared:jvmTest`; `:shared:allTests`; `:shared:check`; `git diff --check` | High 0, Medium 0, Low 4, Observation 1. The suite already protected almost every owner's contract; five unprotected contracts each passed the whole suite when deliberately broken. `CQ-TEST-011` deferred to Part 6D. See review record below. |
 
 ### Part 1A Review Record
 
@@ -3634,8 +3640,8 @@ checklist has no finding attached to it.
 | `CQ-TEST-001` | `AppShellViewModel` | `SharedHostStartupTest` asserts Koin resolves it; `ProgressLearningJourneyIntegrationTest` asserts the literal text `"2"` in the unmerged tree of one full-app run | The badge's whole mapping from `AssessmentHistory`: `Loading`/`Failed` badge nothing (the `CQ-STATE-017` adjudication), the count is the mistake queue's rule over the *shared* read, it moves on completion, and a rebuilt shell takes the replayed history | A shell that badges an error indicator, that recounts by reading the attempt table itself on every rebuild, or that stops following `invalidate()`. Only the one integration assertion stands between any of those and shipping, and it survives the first two | ViewModel | **High** | **Fixed** **Ledger note (Part 5):** this ID was issued twice. The main Finding Ledger already holds a different `CQ-TEST-001` (bundled-content tests / coupling, Open). Both rows are kept to preserve the trail; refer to this one as "Stage 4F `CQ-TEST-001`". |
 | `CQ-TEST-002` | `PracticeBuilderViewModel.refreshAvailability()` | `availabilityRefreshesWhenTheLevelSelectionChanges` (sequential; its two toggles are not separated by a scheduler advance, so the superseded check never starts), `aFailedEligibilityCheckIsAnErrorThatRetryCanRecoverFrom` | The documented supersession rule — *"Held so a superseded eligibility read cannot land after the one that replaced it"* — and the documented cancellation rethrow beside it | Dropping `availabilityJob?.cancel()` leaves the learner looking at the eligible count *and the offered run lengths* of a level selection they have already moved off; folding the cancellation into `Error` puts "could not check" on a screen whose newer check is still running. `refreshAvailability()` runs on every level and source tap, so this is the most frequently exercised cancellation in the app | ViewModel | **High** | **Fixed** |
 | `CQ-TEST-003` | `LearningLessonViewModel`, `LearningUnitViewModel`, `ProgressTopicViewModel` | Each has a failure-and-retry test; none has a cancellation test | All three `loadJob?.cancel()`, publish `Loading`, then relaunch, and all three rethrow `CancellationException` so the abandoned load publishes nothing. Eight comparable owners in the repository have this test; these three do not | A double-tapped Retry, or a Lesson opened while the previous document read is outstanding, leaves `Error` on screen over a reload that is going to succeed — and on the Progress drill-down `Error` is the state that offers Retry, so the learner is invited to retry the retry | ViewModel | Medium | **Fixed** |
-| `CQ-TEST-004` | `timestampText` | `LocalTimestampTest` covers the pure day-and-offset arithmetic; nothing covers the wording layer, and the one integration assertion deliberately avoids it | The `TODAY`/`YESTERDAY`/dated branch selection and the twelve-entry `shortMonthResource` table | A month mis-mapped in that table dates every Progress history row and every interview record wrongly, silently. A mid-month instant keeps such a test timezone-independent, so it is writable without flakiness | Compose UI | Medium | **Deferred to 4G** |
-| `CQ-TEST-005` | `AssessmentLaunchViewModel` | Four tests over success, no-eligible-questions, retry and re-entry | Its `CancellationException` rethrow, which keeps a dismissed launch dialog from settling as `Failed(Unexpected)` | Lower than `CQ-TEST-003`: the state belongs to a dialog that is going away, so a swallowed cancellation is largely unobservable | ViewModel | Low | **Deferred to 4G** |
+| `CQ-TEST-004` | `timestampText` | `LocalTimestampTest` covers the pure day-and-offset arithmetic; nothing covers the wording layer, and the one integration assertion deliberately avoids it | The `TODAY`/`YESTERDAY`/dated branch selection and the twelve-entry `shortMonthResource` table | A month mis-mapped in that table dates every Progress history row and every interview record wrongly, silently. A mid-month instant keeps such a test timezone-independent, so it is writable without flakiness | Compose UI | Medium | **Deferred to 4G**; Part 6A assigned it to **Part 6C** (Compose wording, not state) |
+| `CQ-TEST-005` | `AssessmentLaunchViewModel` | Four tests over success, no-eligible-questions, retry and re-entry | Its `CancellationException` rethrow, which keeps a dismissed launch dialog from settling as `Failed(Unexpected)` | Lower than `CQ-TEST-003`: the state belongs to a dialog that is going away, so a swallowed cancellation is largely unobservable | ViewModel | Low | **Deferred to 4G**; **Fixed in Part 6A** |
 
 Two candidates were investigated and **not** raised. `AppShellViewModel`'s `catch (_: Exception) -> 0`
 around `countUnresolved` is unreachable from its only call site — the shell always supplies the
@@ -4652,6 +4658,247 @@ one to the other, which is recorded as `CQ-CROSS-005` with the extraction deferr
 cross-referenced. `CQ-DI-008`'s performance concern was measured and does not exist at any
 realistic scale. Dead production code was removed where its stated justification had expired.
 
+## Part 6A Review Record
+
+**Pass:** Presentation/state behavior coverage. **Baseline:** `f19e05a` (merge of PR #449), on
+branch `task/code-quality-part-6`, plus the working tree described below. Part 6A asked, for every
+presentation/state owner Part 2 reviewed: *if this owner regressed in a way that matters, would a
+test fail?* It started from the Stage 4F record and did not re-derive its inventory or reopen its
+three fixed findings.
+
+### Ownership of test findings at the start of the pass
+
+| Finding | Owner | Why |
+| --- | --- | --- |
+| Stage 4F `CQ-TEST-005` (launch cancellation) | **Part 6A** | A ViewModel's coroutine contract. |
+| Stage 4F `CQ-TEST-004` (`timestampText` wording) | **Part 6C** | Compose wording and resource mapping, not state. |
+| Main-ledger `CQ-TEST-001` (bundled-content test coupling) | **Part 6B** | Content and import tests. |
+| `CQ-TEST-006` (web persistence) | Fixed in Part 4C | No action. |
+| Stage 4F `CQ-TEST-001`–`003` | Fixed in Stage 4F | Re-verified below, not re-implemented. |
+
+### Method
+
+Production owners were enumerated from the tree (every `*ViewModel`, `*StateHolder`, `*Controller`
+and `*Coordinator` in `commonMain`), which matched the brief's list plus `AppStartupStateHolder`
+inside `AppRoot.kt`: 25 owners. For each one the direct suite was read for what it actually asserts,
+then the visibility and integration suites that construct it. A contract became a finding only when
+all five of these held: it matters, production has a realistic way to regress it, no existing test
+fails when it is broken, a deterministic test can be written, and the test belongs in 6A. The third
+condition was never assumed. Each candidate was broken in production and the **whole** jvm suite
+was run against it (see Falsification).
+
+### What the suite already protects well
+
+These are guarantees, not test counts, and later passes should not re-derive them.
+
+- **A superseded or cancelled read cannot reach the learner as an answer.** Every
+  cancel-and-relaunch owner has a gated supersession test: Topic Browser and Topic Detail (by
+  visibility generation, `aSlowLoadFromTheOldVisibilityCannotOverwriteTheNewOne`), Learning Unit,
+  Learning Lesson and the Progress drill-down (Stage 4F), Practice Builder eligibility (Stage 4F),
+  Saved Questions resolution (`aSupersededResolutionDoesNotReportItsOwnCancellationAsAFailure`),
+  the Progress dashboard (`aStaleReadCompletingLateDoesNotOverwriteTheNewerResult`), and both
+  learner-owned holders (stale refresh against read-back).
+- **Retry reaches the operation that failed.** Every history-derived owner has both halves: an
+  unreadable attempt table, and a derivation that failed over history that read perfectly well
+  (`retryRecoversADerivationFailureEvenThoughHistoryIsUnchanged` in Progress and Mistakes;
+  `retryRerunsADerivationThatFailedOverHistoryThatReadSuccessfully` in Browser and Detail). The
+  identity-read owners each pair failure with retry.
+- **Optional enrichment degrades; primary content blocks.** Browser and Detail keep the catalogue
+  through history, recommendation, Continue Studying, learning-content and study-record failures,
+  and each of those failures is asserted separately; Mistakes keeps the queue through a study-link
+  failure; result screens keep content through an unreadable saved state.
+- **Visibility is live, both ways, on the same owner.** Every owner that observes visibility has an
+  OFF→ON→OFF test on one live instance rather than two fresh instances: shell badge, Browser,
+  Detail, Unit, Lesson, Practice Builder, Progress drill-down, both result screens, assessment
+  taking, Saved Questions; Progress, Interview and Mistakes through the production-graph round trip
+  in `CurriculumVisibilityIntegrationTest`, which also asserts the stored attempts, saved and study
+  rows never change (hide-not-delete).
+- **Duplicate actions persist once.** Launch, retake (controller and both result integrations),
+  answer submission, completion, retry-while-reloading and per-ID learner mutations all have gated
+  re-entry tests.
+- **Coroutine-test hygiene still holds.** No `Thread.sleep`, no timing `delay`, no `GlobalScope`,
+  no clock or timezone dependence in any state-owner test; Main is installed per test and reset in
+  `@AfterTest`, with the one journey-level exception recorded as `CQ-TEST-011`.
+
+### One-shot events
+
+| Channel | Producer | Consumer | Buffer | Durable state behind it | Acknowledgement | Coverage |
+| --- | --- | --- | --- | --- | --- | --- |
+| `AssessmentLaunchViewModel.events` | `launch` after persistence | `AssessmentLaunchCoordinator`'s `LaunchedEffect` | `BUFFERED` | `Created(attemptId)` state, terminal | `onCreatedEventHandled(id)`, identity-matched | one persistence, re-entry while starting and while pending, wrong-identity ack, retry, cancellation (new) |
+| `AssessmentRetakeController.createdAttempts` | `start` after persistence | each result destination | `BUFFERED` | `Created(attemptId)`, terminal | `onCreatedAttemptHandled(id)`, identity-matched | all of the above, once, in `AssessmentRetakeControllerTest` |
+| `PracticeBuilderViewModel.events` | `startPractice` | the builder destination, which hands the config to the launch coordinator | `BUFFERED` | none — the config is a value | none; the launch ViewModel's `Idle` guard absorbs a duplicate | complete typed config, edited config, no event while start is disabled |
+
+**`CQ-STATE-014` coverage conclusion.** Every guarantee the current handoff claims is pinned at its
+owner: one persistence creates one handoff and a second press cannot create another attempt
+(`successfulStartPersistsOnceAndBlocksReentryWhileNavigationIsPending`, retake
+`createdIsTerminalUntilTheSameIdentityIsConfirmedNavigated`); the action stays locked until that
+identity is acknowledged and a wrong identity does not release it (both suites); retry after failure
+works (`unexpectedFailureCanRetryTheSameConfiguration`, `everyFailureIsDistinctAndLeavesTheActionAvailableAgain`).
+No test was added and the finding's production disposition is unchanged.
+
+### Coverage matrix
+
+| Owner | Direct tests | Journey / integration | Classification |
+| --- | --- | --- | --- |
+| `AppShellViewModel` | `AppShellViewModelTest` (6): shared count, visibility both ways, unsettled and failed badge nothing, completion, rebuilt shell replays | `ProgressLearningJourneyIntegrationTest` | Direct coverage sufficient (Stage 4F `CQ-TEST-001` re-verified, including the visibility test added since) |
+| `AssessmentLaunchCoordinator` | `coordinatorReportsOnlyTheCreatedAttemptIdentity` (Compose, in the ViewModel suite) | five destinations | Direct coverage sufficient |
+| `AssessmentLaunchViewModel` | 5 tests: success, re-entry in both windows, wrong and right ack, no eligible, retry, **cancellation** | — | **Gap fixed** (`CQ-TEST-005`) |
+| `AssessmentRetakeController` | 6 tests: terminal `Created`, duplicate start, three failures, none navigates, cancellation, source identity | — | Direct coverage sufficient |
+| `AssessmentTakingViewModel` | 26 tests: selection, submission, completion, each with failure, duplicate and cancellation; load cancellation; retry; resume; **missing identity** | `SavedAndSessionVisibilityTest` (hidden attempt Unavailable and resumed; live session withdrawn; core unaffected) | **Gap fixed** (`CQ-TEST-007`) |
+| `FocusedResultViewModel` | 12 tests: content, missing Question, `NotCompleted`/`AttemptNotFound`, cancellation, retry, retake integration, saved state | `ResultVisibilityTest` (all-hidden, partial, live) | Direct coverage sufficient |
+| `MixedInterviewResultViewModel` | 12 tests: score and Topic order, retake integration, explicit states, retry, cancellation, saved state | `ResultVisibilityTest` (projected score, hidden count, visible Topic breakdown, live), `MixedInterviewResultIntegrationTest` | Direct coverage sufficient |
+| `InterviewHistoryStateHolder` | 7 tests through `InterviewStartViewModelTest`: Empty, focused excluded, Content, Unavailable, **Loading** | `CurriculumVisibilityIntegrationTest` (live round trip) | **Gap fixed** (`CQ-TEST-008`) |
+| `InterviewStartViewModel` | republishes the holder's `StateFlow` | `SharedHostStartupTest` | No additional test justified (no logic) |
+| `ProgressStateHolder` | 19 tests through `ProgressViewModelTest`: Loading → Empty, mapping, history and derivation failure, retry over unchanged history, stale read, **cancellation** | `CurriculumVisibilityIntegrationTest`, `ProgressLearningJourneyIntegrationTest` | **Gap fixed** (`CQ-TEST-009`) |
+| `ProgressViewModel` | `refresh()` forwarding exercised by every dashboard test | — | Direct coverage sufficient |
+| `ProgressTopicViewModel` | 9 tests incl. Empty, error and retry, supersession | `DestinationVisibilityGuardTest` (hidden Unavailable vs visible Empty, live both ways) | Direct coverage sufficient |
+| `MistakeReviewStateHolder` | through `MistakeReviewViewModelTest`: Loading, Empty, Content order, history failure and retry, derivation retry, queue and study-link cancellation, study-link failure degrades | `MistakeStudyLessonMappingTest` (unambiguous link), `CurriculumVisibilityIntegrationTest` (KMP mistakes and link hidden and restored) | Direct coverage sufficient |
+| `MistakeReviewViewModel` | retry, saved-state mutation guard, unreadable saved state | `MistakeReviewDestinationTest` | Direct coverage sufficient |
+| `SavedQuestionStateHolder` | 13 tests (see the mirrored-rule table) | `SavedQuestionLifecycleIntegrationTest`, `SavedQuestionCaptureIntegrationTest` | **Gap fixed** (`CQ-TEST-010`) |
+| `StudyProgressStateHolder` | 16 tests | consumer suites (Browser, Detail, Unit, Lesson) | Direct coverage sufficient |
+| `SavedQuestionsViewModel` | 12 tests: Loading, Error, raw Empty, order, deprecated and missing kept, pending removal, last-removal Empty, retry over unchanged IDs, cross-surface save, superseded resolution | `SavedAndSessionVisibilityTest` (all-hidden → Empty and restored, unchanged IDs re-resolved, pending survives hiding) | Direct coverage sufficient |
+| `TopicBrowserViewModel` | 66 tests | `TopicBrowserVisibilityTest` (sections, live both ways, query kept, slow old-visibility load, guidance withheld until reprojection), `TopicBrowserVisibilityIntegrationTest` | Direct coverage sufficient |
+| `TopicDetailViewModel` | 29 tests | `TopicDetailVisibilityTest` (hidden NotFound live, slow old-visibility load) | Direct coverage sufficient |
+| `LearningUnitViewModel` | 12 tests incl. supersession (Stage 4F) | `DestinationVisibilityGuardTest` (live both ways, direct route) | Direct coverage sufficient |
+| `LearningLessonViewModel` | 27 tests incl. Unit/Lesson pairing (`aLessonBelongingToAnotherUnitIsNotFoundEvenThoughItResolvesGlobally`), pending, supersession | `DestinationVisibilityGuardTest` | Direct coverage sufficient |
+| `PracticeBuilderViewModel` | 33 tests incl. supersession and cancellation (Stage 4F), Unit targets, presets | `DestinationVisibilityGuardTest` (TargetUnavailable live both ways) | Direct coverage sufficient |
+| `AppearanceStateHolder` | `AppearancePreferenceTest` (14) | `AppearanceThemeTest`, `SettingsNavigationIntegrationTest` | Direct coverage sufficient; unknown tokens stay the store's |
+| `CurriculumVisibilityStateHolder` | `KmpContentPreferenceTest` (12): default OFF, both tokens, write-through, restore, derived visibility both ways | consumers above | Direct coverage sufficient |
+| `AppStartupStateHolder` | `AppRootTest` (6): loading, failure and retry, same initializer seeds Ready without re-running, fresh initializer, cancellation | — | Direct coverage sufficient |
+
+### Mirrored concurrency rules (`CQ-CROSS-005`)
+
+The two learner-owned holders are the same algorithm, so the question was whether each suite
+protects it independently.
+
+| Rule | Saved | Study |
+| --- | --- | --- |
+| Loaded keeps repository order | ✓ | ✓ |
+| Unreadable first read is `Error`, not empty | ✓ | ✓ |
+| A failed first read recovers on a later refresh | ✓ | ✓ |
+| A failed re-read keeps earlier `Loaded` | ✓ | ✓ |
+| Cancelled refresh is not `Error` | ✓ | ✓ |
+| Concurrent refreshes share one read | — | ✓ |
+| Add, then shows | ✓ | ✓ |
+| Remove, then shows | ✓ | ✓ |
+| Failed write keeps persisted state and clears pending | ✓ | ✓ |
+| Successful write whose read-back fails keeps the last read | ✓ (new) | ✓ |
+| Cancelled mutation is not settled as a failure | ✓ | ✓ |
+| Same-ID second tap ignored, other IDs usable | ✓ | ✓ |
+| A refresh issued before a write cannot overwrite it | ✓ | ✓ |
+| An older read-back cannot restore what a later mutation removed | ✓ | (same lock; see rejected) |
+| Toggle ignored while state is unknown | ✓ | ✓ |
+
+Each suite now pins fourteen of fifteen rules on its own. That every rule needs two tests because
+the algorithm has two copies is evidence for the extraction; it is appended to `CQ-CROSS-005`, whose
+status stays Deferred.
+
+### Meaningful gaps
+
+Each passed the whole jvm suite when broken in production.
+
+| Owner | Missing contract | Regression that would have shipped | Test level |
+| --- | --- | --- | --- |
+| `AssessmentLaunchViewModel` (`CQ-TEST-005`) | Cancellation stays cancellation | Clearing the launch dialog's ViewModel mid-write settles `Failed(Unexpected)` | ViewModel, cleared through a real `ViewModelStore` rather than a thrown exception |
+| `AssessmentTakingViewModel` (`CQ-TEST-007`) | A missing attempt or missing stored Question is `Error`, not `Unavailable` | The learner is told a vanished attempt resumes when content is shown, and every visibility change reloads it | ViewModel |
+| `InterviewHistoryStateHolder` (`CQ-TEST-008`) | Unsettled history is `Loading`, not `Empty` | "No interviews yet" for a learner whose history has not been read — the `CQ-STATE-016` collapse on the other branch | Holder, gated read |
+| `ProgressStateHolder` (`CQ-TEST-009`) | Cancellation is not `Error` | The dashboard settles `Error` when its scope ends mid-derivation | Holder, real scope cancellation |
+| `SavedQuestionStateHolder` (`CQ-TEST-010`) | Read-back failure keeps the last read and clears pending | A failed read-back fabricates the state the write "would have" produced — already forbidden, and pinned, in the study copy | Holder |
+
+### Candidates investigated and rejected
+
+- **Swallowed cancellation in `ProgressStateHolder` is unobservable.** The pass's first hypothesis was
+  that `map`/`stateIn` would drop the swallowed value once the scope was cancelled, making a test
+  pointless. A throwaway probe refuted it (the state became `Error`), so the candidate became
+  `CQ-TEST-009` instead. Recorded because the reasoning was plausible and wrong.
+- **Mirroring "an older read-back cannot restore a removal" into the study suite.** Removing the
+  study holder's read-back lock already fails `aReadIssuedBeforeAWriteDoesNotOverwriteItAfterwards`;
+  the second scenario exercises the same mutex, so no realistic regression separates them.
+- **Mirroring refresh coalescing into the saved suite.** Replacing `tryLock` with a queued `lock()`
+  passes all 13 saved tests, so the rule is unprotected there — but the only consequence is an extra
+  indexed read per overlapping open, and the ordering guarantee is pinned separately. Not
+  learner-visible.
+- **`MistakeReviewViewModel.refresh()` also refreshing saved state.** Dropping it matters only when
+  both the attempt table and the saved table failed, and saved state is re-read on the next visit
+  anyway.
+- **`CurriculumVisibilityStateHolder` atomicity.** Its two `StateFlow`s are written synchronously on
+  the caller's thread; no coroutine observer can run between the writes, so a concurrency test would
+  test the platform, not the holder.
+- **Removing the retake tests that predate `AssessmentRetakeController`.** Both result suites still
+  contain re-entry, failure and cancellation tests from before the extraction. They overlap the
+  controller suite, but each also proves its ViewModel delegates to the controller rather than
+  reimplementing it, and `practiseAgainBeforeTheResultLoadsCreatesNothing` is ViewModel-owned. Kept;
+  no new duplicates added.
+- **Retry with an active search query in the Browser.** Search is synchronous filtering over the
+  loaded catalogue; query preservation across an asynchronous reload is already pinned by the
+  visibility suite.
+
+### Fakes and isolation
+
+No misleading fake was found. The new tests extend existing fakes with default-null gates — the
+Stage 4F pattern — so no existing call site changed: `FakeAssessmentRepository.saveGate` (launch),
+`FakeCurriculumRepository.activeQuestionsGate` and a hoisted `TestContext.scope` (Progress), and one
+new `GatedRepository` (interview). `testCacheScope()` builds app-like scopes that tests never
+cancel; they run on a per-test `StandardTestDispatcher` whose scheduler is discarded, so nothing
+leaks across tests. `SettingsNavigationIntegrationTest` leaves `Dispatchers.Main` installed
+(`CQ-TEST-011`, deferred to Part 6D).
+
+### Falsification
+
+Each probe was reverted immediately; `git status --short` showed no production change afterwards.
+
+| Probe | Result |
+| --- | --- |
+| Launch: `CancellationException` rethrow removed | only `clearingTheOwnerWhileStartingDoesNotSettleAsAFailedLaunch` failed (1 of 5): `expected Launching but was Failed(…, Unexpected)` |
+| Taking: `AttemptNotFound` → `Unavailable` | only the new test failed (1 of 26) |
+| Taking: `MissingQuestion` → `Unavailable` | only the new test failed (1 of 26) |
+| Whole jvm suite with four regressions applied (launch, taking, interview `Loading → Empty`, saved read-back fabrication) | 4 of 1 839 failed — exactly the four new tests |
+| Progress throwaway probe, rethrow removed | published `Error` (hypothesis refuted) |
+| Progress: rethrow removed, against the real test | only `aDerivationCancelledByItsOwnerEndingDoesNotBecomeAnError` failed (1 of 19) |
+| Whole jvm suite with all five regressions | 5 of 1 840 failed — exactly the five new tests |
+| Study read-back lock removed; saved refresh coalescing removed | study: only `aReadIssuedBeforeAWriteDoesNotOverwriteItAfterwards` failed; saved: 13 of 13 passed |
+
+### Fixes
+
+Tests only; no production code changed. Five tests were added: one each in
+`AssessmentLaunchViewModelTest`, `AssessmentTakingViewModelTest`, `InterviewStartViewModelTest`,
+`ProgressViewModelTest` (jvmTest), and `SavedQuestionStateHolderTest` (commonTest). No test was
+removed or renamed.
+
+### Handoffs
+
+- **Part 6B:** main-ledger `CQ-TEST-001`. The session loader's own results (`AssessmentSessionLoaderTest`)
+  stay there; 6A tested only their presentation.
+- **Part 6C:** Stage 4F `CQ-TEST-004`.
+- **Part 6D:** `CQ-TEST-011`; the Part 4A addendum's ViewModel-scoping gap (two `NavEntry`s receive
+  distinct ViewModels), which is a composition-level lifetime property rather than an owner contract.
+- **Separate production follow-ups, unchanged:** `CQ-STATE-014`, `CQ-TYPE-001`, `CQ-KMP-003`,
+  `CQ-KMP-004`, `CQ-CROSS-005`.
+
+### Validation
+
+- Targeted, during the pass: each changed owner suite after its edit (`AssessmentLaunchViewModelTest`,
+  `AssessmentTakingViewModelTest`, `InterviewStartViewModelTest`, `SavedQuestionStateHolderTest`,
+  `ProgressViewModelTest`), plus the falsification runs above.
+- `./gradlew :shared:jvmTest` — 1 840 tests, 0 failures (1 835 at Part 5, plus the five added).
+- `./gradlew :shared:allTests` — run because `commonTest` changed: Android host 536, iOS simulator
+  arm64 536, JS browser 543, Wasm browser 543, JVM 1 840; 0 failures. Each common target gained
+  exactly the one commonTest addition.
+- `./gradlew :shared:check` — successful.
+- `:androidApp:assembleDebug` was not run: no production or Android-visible declaration changed.
+- `git diff --check` — clean. `git status --short` — the five test files and this ledger only.
+
+### Part 6A assessment
+
+The presentation layer's test suite is in better shape than its size alone suggests: the hard
+rules — supersession, retry reaching the failed operation, optional enrichment never blocking
+primary content, live visibility both ways, and duplicate actions persisting once — are each pinned
+at the owner that implements them, and the cross-surface lifetime properties at the integration
+level where they actually live. The five gaps share one shape: a *state distinction* or a
+*cancellation branch* that one sibling pinned and another did not. None revealed a production
+defect. `CQ-TEST-005` is fixed. The learner-owned holders now carry fourteen mirrored tests each,
+which is the clearest evidence yet for `CQ-CROSS-005`.
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -5318,8 +5565,49 @@ Fixed: CQ-DI-009, CQ-STATE-016 (reopened), CQ-DATA-013 (CI half)
 Accepted as-is: CQ-DI-008 (measured), CQ-DATA-018
 Deferred: CQ-STATE-014, CQ-TYPE-001, CQ-KMP-003, CQ-KMP-004, CQ-DATA-013 (runtime half)
 
-Part 6A — Next
+Part 6A — Complete
+
+High: 0
+Medium: 0
+Low: 4
+Observations: 1
+
+Fixed: 4
+Deferred: 1
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Existing findings re-evaluated in Part 6A:
+Fixed: Stage 4F CQ-TEST-005
+Reassigned: Stage 4F CQ-TEST-004 → Part 6C; main-ledger CQ-TEST-001 → Part 6B
+Re-verified, still fixed: Stage 4F CQ-TEST-001, CQ-TEST-002, CQ-TEST-003
+Evidence appended, status unchanged: CQ-CROSS-005 (Deferred)
+Coverage confirmed, production disposition unchanged: CQ-STATE-014 (Deferred)
+
+Part 6B — Next
+Part 6C — Pending
+Part 6D — Pending
 ```
+
+Part 6A is complete. Every presentation and state owner Part 2 reviewed — 25 of them, against
+`f19e05a` — was mapped to the tests that would fail if it regressed, by reading assertions rather
+than file names, and each claimed gap was proven by breaking production and running the whole jvm
+suite. The suite already pins the rules that matter most at the owner that implements them:
+superseded reads cannot land, retry reaches the operation that failed, optional enrichment never
+blocks primary content, visibility propagates live in both directions without deleting learner
+state, and duplicate actions persist once. Five contracts were unprotected, and all five shared a
+shape — a state distinction or cancellation branch one sibling pinned and another did not. Stage 4F's
+`CQ-TEST-005` is fixed with a real `ViewModelStore` clear rather than a thrown exception;
+`CQ-TEST-007` pins that a missing attempt is an error rather than hidden content; `CQ-TEST-008`
+closes the interview record's `Loading` branch, the other half of Part 5's `CQ-STATE-016`;
+`CQ-TEST-009` exists because the pass's own hypothesis that the regression was unobservable was
+refuted by a probe; and `CQ-TEST-010` mirrors a rule the study holder pinned and the saved holder
+did not, which is appended to `CQ-CROSS-005` as evidence. `CQ-TEST-011` (a leaked main dispatcher in
+one Compose journey) is deferred to Part 6D. No production code changed and no production defect
+was found. `CQ-STATE-014`, `CQ-TYPE-001`, `CQ-KMP-003`, `CQ-KMP-004` and `CQ-CROSS-005` keep their
+dispositions. The exact next planned chunk is **Part 6B — Repository/persistence/content coverage**.
+Do not begin it automatically.
 
 Part 5 is complete. The repository was read as one application rather than feature by feature,
 against `2749766`. The two oldest open questions were measured rather than argued.

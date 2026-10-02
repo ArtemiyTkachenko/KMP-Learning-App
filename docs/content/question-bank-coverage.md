@@ -543,11 +543,12 @@ trade-offs.
   blog.cleancoder.com, docs.cloud.google.com, google.aip.dev, source.android.com,
   sqlite.org, ktor.io, jetbrains.com.
 - **Pinned count tests to update** whenever the bank changes:
-  `InitialCurriculumSmokeTest` (totals, status split, selection-mode split, and
-  the per-topic map), `CurriculumImporterTest` (`countQuestions`), and
-  `CurriculumLocalDataPathTest` (`countQuestions`, the `lifecycle_navigation`
-  count, and `RowCounts`). Update the exact numbers; do not relax them into
-  inequalities.
+  `InitialCurriculumSmokeTest` only (taxonomy, status split, selection-mode
+  split, level distribution, and the per-topic map). Update the exact numbers;
+  do not relax them into inequalities. The import and repository tests
+  (`CurriculumImporterTest`, `CurriculumLocalDataPathTest`) derive their
+  expected rows from the loaded bundle, so they need no edit when a Question is
+  added — if one fails after a content change, the import is wrong, not the pin.
 
 ## Subtopic index
 

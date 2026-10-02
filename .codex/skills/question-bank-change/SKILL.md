@@ -49,9 +49,10 @@ never validated anything.
    explanation, and source changes. Keep an `AnswerOption.id` when only its wording
    changes, and issue a new one when the claim itself changes — historical attempts store
    selected answer IDs, so reusing an ID for a different assertion corrupts them.
-6. **Update the pinned counts** the tests assert (question totals per topic, level
-   distribution, `questionSources`) in the same change, and regenerate the coverage tables
-   when the bank's shape changes.
+6. **Update the pinned counts** in `InitialCurriculumSmokeTest` (taxonomy, status and
+   selection-mode split, level distribution, per-topic ACTIVE counts) in the same change,
+   and regenerate the coverage tables when the bank's shape changes. Import and repository
+   tests derive their expectations from the bundle; do not add bank totals to them.
 7. **Record a bank-wide audit** in `docs/content/question-audit-log.yml`. A single new
    question does not need an entry; a review or remediation pass does.
 

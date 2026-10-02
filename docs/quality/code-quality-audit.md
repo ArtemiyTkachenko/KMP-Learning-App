@@ -169,11 +169,11 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-DATA-013` | Curriculum validation / diagnostics | Medium | High | `InitialCurriculumSmokeTest.kt`, `CurriculumDataInitializer.kt`, `AppRoot.kt` | The precise validation errors are discarded at every point where they would be read. | `CurriculumValidator` produces an entity-identified error per defect; the initializer joins them into one exception, `AppStartupStateHolder` catches it as `catch (_: Exception)` and shows a generic string, and `commonMain` has no logging. The gate that actually fires is `assertTrue(validator.validate(...).isEmpty())` with no message, so CI reports `Expected value to be true.` and names no Question. | Assert on the rendered error list rather than on `isEmpty()`. Runtime reporting of a rejected bundle belongs to Part 5. **Part 5:** CI half fixed — `bundledInitialCurriculumPassesStructuralValidation` renders every error as `CODE [entityId] message`; falsified by blanking two explanations in a temporary copy (new assertion names `BLANK_EXPLANATION` and both Question IDs; the old `assertTrue(isEmpty())` printed only `Expected value to be true.`). Runtime half: the initializer's exception message already carries each validator message (which names the entity), and it is dropped only at `AppStartupStateHolder`'s catch because `commonMain` has no diagnostics sink. All startup failure classes inside `initialize()` — bundle decode, validation rejection, database open/migration, web storage/worker initialization, unexpected — share one Retry, and none needs different learner copy: decode and rejection are deterministic and gated by CI before a build ships. Keeping an unread `Throwable` on the holder would be dead state. | Fixed (CI gate); runtime reporting Deferred until the repository adopts a diagnostics sink |
 | `CQ-DATA-014` | Authored content / identity stability | Medium | High | `CurriculumValidator.kt`, `CurriculumImporter.kt`, `AssessmentReviewLoader.kt`, `docs/content/content-authoring.md` | Nothing compares one bundle revision to the next, so every identity-stability rule is convention-only. | The authoring contract requires a new `Question.id` or `AnswerOption.id` on a material change; the validator sees one document and the importer upserts by primary key without diffing. `AssessmentReviewLoader` reads `isCorrect` from the attempt and `isCorrectAnswer` from the current key, so a key changed under a stable ID makes review contradict itself. Four revisions of history show the convention kept — 0 Questions removed, 0 keys changed, 3 option texts refined under stable IDs. | Diff the bundle against its previous released revision at build time — ID sets, correct-answer sets, option-ID sets, `selectionMode` — and report a violation as an authoring error. | Open |
 | `CQ-DATA-015` | Assessment review / content evolution | Low | High | `assessment/session/AnswerOrder.kt`, `AssessmentReviewLoader.kt`, `SavedQuestionContentResolver.kt` | Review fidelity degrades silently when a Question's option set changes. | `withAnswersOrderedFor` shuffles the *current* option list from an `(attemptId, questionId)` seed while the KDoc claims the arrangement the learner actually answered; `getQuestionById` returns retired options too. Adding an option changes both set and order, so an older attempt shows an option the learner never saw, marked unselected. Unreachable on a fresh install. | Bound the KDoc claim to a stable option set, and decide whether the saved-question surface should exclude retired options. | Open |
-| `CQ-DATA-016` | Curriculum validation / status semantics | Low | High | `CurriculumValidator.kt` | `TOPIC_WITHOUT_QUESTIONS` is status-blind, so it cannot catch the case it exists to prevent. | `validateMinimumCoverage` builds `questionTopicIds` from every Question regardless of `status`, so a Topic whose Questions are all DEPRECATED passes. The bank shows the shape one level down: `notification_channels` and `dependency_configurations` are ACTIVE Subtopics whose only Questions are DEPRECATED. `LearningCurriculumValidator` makes the equivalent rules ACTIVE-only. | Count ACTIVE Questions in that one rule. Do not add a Subtopic equivalent — an empty ACTIVE Subtopic is recorded product state. | Open |
+| `CQ-DATA-016` | Curriculum validation / status semantics | Low | High | `CurriculumValidator.kt` | `TOPIC_WITHOUT_QUESTIONS` is status-blind, so it cannot catch the case it exists to prevent. | `validateMinimumCoverage` builds `questionTopicIds` from every Question regardless of `status`, so a Topic whose Questions are all DEPRECATED passes. The bank shows the shape one level down: `notification_channels` and `dependency_configurations` are ACTIVE Subtopics whose only Questions are DEPRECATED. `LearningCurriculumValidator` makes the equivalent rules ACTIVE-only. | Count ACTIVE Questions in that one rule. Do not add a Subtopic equivalent — an empty ACTIVE Subtopic is recorded product state. **Part 6B (test implications only):** no test pins either reading. `deprecatedContentIsNotRejectedSolelyForStatus` uses a DEPRECATED *Topic*, so an ACTIVE-only rule fails it only if implemented naively for retired Topics too; no test asserts that an ACTIVE Topic with only DEPRECATED Questions passes. `content-authoring.md` and `question-validation.md` state no rule. Still a content decision — whether a retired Topic is exempt is part of it. | Open |
 | `CQ-DATA-017` | Topic discovery / content coverage | Low | High | `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt`, `TopicDetailScreen.kt` | Subtopic search surfaces Subtopics that Topic detail deliberately hides. | `readCatalog` indexes every ACTIVE Subtopic; `readCurriculum` keeps only Subtopics with an ACTIVE Question. 71 of 361 have none, so about a fifth of Subtopic hits push a route whose `targetIndex` resolves to `-1` and leaves the learner on the Subtopics tab with no row and no explanation. It degrades safely. | Index only practicable Subtopics, or say on the result row that the Subtopic has no questions yet. | Open |
-| `CQ-TEST-001` | Bundled-content tests / coupling | Low | High | `InitialCurriculumSmokeTest.kt`, `CurriculumLocalDataPathTest.kt`, `CurriculumImporterTest.kt` | Snapshot assertions mix content policy with incidental derived totals. | Three files independently pin bank-wide counts; adding one Question means editing about nine literals. Per-Topic ACTIVE targets, the SINGLE/MULTIPLE split and the first-row IDs are policy; `1_918`, `528`, `635` and `bundledQuestionsHaveReviewedE1503LevelDistribution` freeze consequence. | Keep the policy assertions. Re-express the derived totals as invariants against the authored collections instead of frozen numbers. | Open |
+| `CQ-TEST-001` | Bundled-content tests / coupling | Low | High | `InitialCurriculumSmokeTest.kt`, `CurriculumLocalDataPathTest.kt`, `CurriculumImporterTest.kt` | Snapshot assertions mix content policy with incidental derived totals. | Three files independently pin bank-wide counts; adding one Question means editing about nine literals. Per-Topic ACTIVE targets, the SINGLE/MULTIPLE split and the first-row IDs are policy; `1_918`, `528`, `635` and `bundledQuestionsHaveReviewedE1503LevelDistribution` freeze consequence. | Keep the policy assertions. Re-express the derived totals as invariants against the authored collections instead of frozen numbers. **Part 6B:** re-measured on `1560386` (17 Topics, 361 Subtopics, 480 Questions, 439/41, 433/47, 1 926 options, 530 keys, 643 sources — every literal checked against the JSON). The pins were classified rather than deleted. `InitialCurriculumSmokeTest` stays the one deliberate bank-shape pin, because `question-bank-coverage.md` and the `question-bank-change` skill name it as the change detector a content batch must restate; its two arithmetic duplicates (the `480` total and the all-status level distribution) are removed and the issue-key name is dropped. The import and data-path tests now derive their expectations from the loaded bundle: row counts equal the authored sums, every Topic, Subtopic and Question is compared field by field with its authored position, options and sources in order. The learning-side `138` Lesson total, the sum of 32 per-Unit Lesson lists already pinned by id, is removed too. Falsified: four mapper regressions that keep every row count valid (Question status, source title, option order, dropped sources) each fail the new fidelity test; adding one harmless ACTIVE Question now fails only the three smoke pins, against six failures across three files before. | Fixed |
 | `CQ-DATA-018` | Content pipelines / failure modelling | Observation | High | `CurriculumImporter.kt`, `LearningContentLoader.kt` | The assessment pipeline models validation failure as data but lets decode failure escape untyped. | `LearningContentLoader` translates `SerializationException` into a typed `Decode` failure and explains why; the importer returns `Rejected(errors)` for validation only, and `CurriculumLocalDataPathTest` pins the raw `SerializationException` escaping. Both end at the same generic startup screen today. | Record only. Revisit with startup error reporting in Part 5. **Part 5:** revisited with startup reporting. Typing decode separately from rejection in `CurriculumImporter` would change no caller: `AppStartupStateHolder` treats every failure as Error-with-Retry, and the learning pipeline's typed `Decode` failure also ends in one generic state. Without a diagnostics sink there is nothing to route the distinction to, so it would be modelling for its own sake. The two pipelines were also re-compared for a generic abstraction and stay separate: relational import, reconciliation and historical identity on one side, an immutable in-memory document on the other. | Accepted as-is |
-| `CQ-DATA-019` | Authored content / ordering contract | Observation | High | `curriculum/Curriculum.kt`, `CurriculumPersistenceMapper.kt`, `docs/content/question-audit-log.yml` | Array position is an ordering contract the assessment model never states. | `LearningCurriculum` documents it; `Curriculum` and its types do not, and `sortOrder` appears only as `mapIndexed`. Across four revisions 79 Questions were appended with zero index changes, which is what keeps `sort_order` stable on installed devices and the audit log's `n:` index valid. A mid-array insert would renumber every later row with no test failing. | Write the rule into `Curriculum`'s KDoc and `content-authoring.md`. | Open |
+| `CQ-DATA-019` | Authored content / ordering contract | Observation | High | `curriculum/Curriculum.kt`, `CurriculumPersistenceMapper.kt`, `docs/content/question-audit-log.yml` | Array position is an ordering contract the assessment model never states. | `LearningCurriculum` documents it; `Curriculum` and its types do not, and `sortOrder` appears only as `mapIndexed`. Across four revisions 79 Questions were appended with zero index changes, which is what keeps `sort_order` stable on installed devices and the audit log's `n:` index valid. A mid-array insert would renumber every later row with no test failing. | Write the rule into `Curriculum`'s KDoc and `content-authoring.md`. **Part 6B:** the testable half — authored position becomes `sort_order` and survives to repository reads — is now pinned for every bundled Topic, Subtopic and Question by `realBundledCurriculumPopulatesFreshDatabase`, and for options and sources by fixtures whose authored order is deliberately not alphabetical (`LocalCurriculumRepositoryTest`). The append-only authoring rule remains documentation work. | Open |
 | `CQ-DATA-020` | Learning content / source governance | Observation | High | `LearningCurriculumValidator.kt`, `InitialCurriculumContentQualityTest.kt`, `learning_curriculum.json` | Learning sources are ungated by design, and secondary sources are no longer exceptional. | The question bank has a 16-host allowlist; the learning document deliberately has none. Of 443 learning sources, 17 cite `martinfowler.com`, 7 cite `raw.githubusercontent.com` at the moving `androidx-main` branch, 2 `staltz.com`, 2 `blog.ploeh.dk`. Several are plainly primary for the claim. | Record the position deliberately; pin the raw GitHub citations to a tag or commit so the cited text cannot move. | Open |
 | `CQ-DATA-021` | Shared history cache / generation atomicity | Medium | High | `AssessmentHistoryStore.kt` | The failed-read retry bumped the refresh generation with a read-modify-write that `invalidate()` could overwrite. | `invalidate()` is atomic (`reloads.update { it + 1 }`) and deliberately takes no lock, but `generationForOneShotRead()` read `reloads.value`, then assigned `currentGeneration + 1` — an *absolute* value. The `failedReadRetry` mutex serialises one-shot readers against each other and not against `invalidate()`, so two invalidations landing between that read and that write were both lost, and because the write was absolute rather than an increment the generation could move *backwards*. A later `completedAttempts()` requiring generation *n* could then be satisfied by a `Settled(n)` produced by a read that started before its own call, which is precisely the stale-history answer the generation exists to prevent. Reaching it needs a failed read plus two concurrent invalidations, so it is an edge case rather than a live defect. | Bump with `reloads.updateAndGet { it + 1 }`, which is atomic against `invalidate()` and monotonic whatever else is incrementing. No deterministic regression test is possible: on a single-threaded test dispatcher nothing can interleave between two non-suspending `MutableStateFlow.value` accesses, and the brief forbids producing the race with timing. The two existing coalescing and retry regressions pin that behaviour is unchanged. | Fixed |
 | `CQ-DATA-022` | Assessment completion / operation boundary | Medium | High | `CompleteAssessment.kt`, `AssessmentTakingViewModel.kt`, `AssessmentDataModule.kt`, `CompleteAssessmentTest.kt` | Persisting a completed attempt and marking the shared history cache stale were two statements in a ViewModel, and the second was both cancellable and forgettable. | `assessmentRepository.save(attempt)` is one atomic write transaction, but `historyStore.invalidate()` sat after it as a separate step reached by *resuming a continuation* — and a cancelled job throws at that resumption. The learner leaving the taking destination as the transaction commits was enough to leave the attempt `COMPLETED` in SQLite while the app-scoped cache still held the list from before it, so Progress, the mistake queue, the Mistakes badge, the interview record, Topic learning context and unseen-practice selection all silently omitted a finished assessment for the rest of the process, recoverable only by a manual Retry or a restart. The structural half matters more than the window: nothing in `AssessmentRepository.save`'s signature says a completed write obliges a second call, which is the exact shape of `CQ-STATE-012` and `CQ-STATE-013` — both of which became real bugs because a caller forgot. | Introduce `CompleteAssessment` beside the existing `StartAssessment`, owning scoring, the write and the invalidation as one operation, with the invalidation in `finally`. Unconditional invalidation is correct because the costs are asymmetric: a needless one costs a single re-read that returns the cached attempts, which `history` documents as a normal emission, while a missing one costs correctness. No `NonCancellable` is needed — `invalidate()` does not suspend. The repository cannot own the call itself, because `AssessmentHistoryStore` is built on the repository and the dependency would be a cycle. | Fixed |
@@ -214,6 +214,9 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-TEST-009` | Progress dashboard / cancellation coverage | Low | High | `progress/ProgressStateHolder.kt`, `ProgressViewModelTest.kt` | `ProgressStateHolder`'s `CancellationException` rethrow had no test. | The sibling `MistakeReviewStateHolder` pins its rethrow; Progress did not. The pass first expected a swallowed cancellation to be unobservable through `map`/`stateIn`, and a throwaway probe refuted that: with the rethrow removed, cancelling the holder's scope mid-derivation published `Error`. Impact is low — the scope is the application's — but the rule is the repository-wide one and the regression ships silently. | One test that cancels the holder's real scope during a gated derivation and asserts it stays `Loading`; the test fixture's scope is hoisted to a property and the curriculum fake gains a default-null gate. | Fixed |
 | `CQ-TEST-010` | Saved-question holder / mirrored concurrency coverage | Low | High | `saved_questions/SavedQuestionStateHolder.kt`, `SavedQuestionStateHolderTest.kt` | The saved holder had no test for a successful write whose read-back fails, which the study holder pins for the identical algorithm. | `StudyProgressStateHolderTest.aSuccessfulWriteWhoseReadBackFailsKeepsTheLastKnownStateUntilTheNextRefresh` exists; `SavedQuestionStateHolderTest`'s only mutation failure is a failed *write*. Splitting the saved holder's catch so a failed read-back settled the state the write "would have" produced passed the whole suite. Recorded as evidence on `CQ-CROSS-005`. | Mirror the study test in the saved suite, cross-referenced. | Fixed |
 | `CQ-TEST-011` | Test isolation / main dispatcher | Observation | High | `SettingsNavigationIntegrationTest.kt` | One Compose journey installs `Dispatchers.Main` as `Unconfined` and never resets it. | Every other `setMain` site in `commonTest` and `jvmTest` resets in `@AfterTest` or `finally`; this one stops Koin in `finally` but leaves Main installed. No current test depends on an unset Main, since each installs its own, so nothing fails today. It is a journey-level test-environment concern, not a state-owner one. | Add `Dispatchers.resetMain()` beside the existing `stopKoin()` in Part 6D's test-environment review. | Deferred — Part 6D |
+| `CQ-TEST-012` | Curriculum import / answer-option reactivation | Medium | High | `CurriculumImporterTest.kt`; `CurriculumPersistenceMapper.kt`, `CurriculumImporter.kt` | Nothing proved that a retired answer option authored again is offered again. | Part 3A records reactivation as a verified row of the reconciliation table, and the mapper's comment states it, but the retirement tests stop at "retained and DEPRECATED". An import that kept a persisted option's status — the natural shape of a "don't disturb history" refactor — passed all 1 840 jvm tests while leaving the option out of every new assessment; when that option is the keyed answer, the Question becomes unanswerable while history still reviews correctly. | Extend the retirement sequence one step: retire a historically selected option, author it again as the keyed answer, and assert active reads offer it with that key. **Part 6B:** `aRetiredAnswerOptionThatIsAuthoredAgainIsOfferedAgain` added; with the status-preserving probe applied it is the only failure of 1 844. | Fixed |
+| `CQ-TEST-013` | Learning content cache / failure memoisation | Low | High | `BundledLearningContentRepositoryTest.kt`; `BundledLearningContentRepository.kt` | The "failed load caches nothing" test could not tell a retried failure from a remembered one. | `aFailedLoadStaysAFailureAndCachesNothing` loads a document that is invalid on every attempt, so a cache that stored the exception — a shared `Deferred` does, and it also stores a cancellation — produced exactly the same five failures. Part 3A cited the test as proving retry. The repository is a process-lifetime `single`, so a remembered failure or a first caller's cancellation would keep every Learn surface failing until restart. | Pin the two observable consequences at the repository: a failed first load is retried and a later success is served and then cached; a first load cancelled by its caller leaves the next caller to load. **Part 6B:** both tests added in `commonTest`; with a memoising probe applied they are the only two failures of 1 844. | Fixed |
+| `CQ-TEST-014` | Assessment persistence / corrupt history | Low | High | `AssessmentAttemptStoreTest.kt`; `AssessmentAttemptStore.kt` | The documented "a corrupt attempt fails completed history as a whole" rule had no test at the history read. | Part 3B documented the policy and `persistence.md` states it, but the only corruption tests read one attempt by ID (malformed multi-Subtopic scope) or reject a write (foreign key). Wrapping each reconstruction in `getCompletedAttempts` with `runCatching … getOrNull()` — a plausible "resilience" edit — passed every test while silently undercounting the history that Progress, the mistake queue and unseen-practice selection derive from. | One representative corruption — an answered occurrence whose selected-answer rows are lost — must fail the history read, while an intact attempt still reads by ID. Do not enumerate the mapper's other `require`s; the domain constructor repeats them. **Part 6B:** `aCorruptCompletedAttemptFailsTheHistoryReadInsteadOfVanishingFromIt` added; the skipping probe fails only it. | Fixed |
 
 ## Audit Pass Log
 
@@ -244,6 +247,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | Part 4C | Platform capability implementations | Complete | `7f935ece4e50e1745005c3fb6b5bf38a12d258aa` plus the working tree | 4 database builders and their modules, `CurriculumDatabase`, `CurriculumMigrations`; `AppPreferenceStorage`, 4 preference stores, both preference consumers and `AppearanceStateHolder`; 3 common selection files and 4 selection actuals; `UtcOffset`, 4 offset actuals, `LocalTimestamp`; both worker actuals, `worker.js`, its `package.json`, the worker and web build/webpack config; `room3-runtime` 3.0.1, `sqlite-web` 2.7.0 (JS and Wasm), `sqlite-wasm` 3.50.1, Compose foundation 1.11.1 (web, iOS) and AndroidX foundation 1.11.2 read from source; 5 existing test classes | 9 (7 new, 2 re-evaluated) | 6 | Targeted migration, offset, preference and web database tests with 12 falsification runs; an Android emulator check; `:shared:jvmTest` (1837); `:shared:allTests` (JS/Wasm 545 each, iOS simulator and Android host 538); `:androidApp:assembleDebug`; `:shared:check`; `:sqliteWasmWorker`, `:webApp`, `:desktopApp` assemble; `git diff --check` | High 0, Medium 3, Low 5, Observation 0 among the eight that changed status; `CQ-KMP-001` re-verified and left Fixed. `CQ-KMP-002` fixed with one `curriculumDatabaseMigrations` list and a builder-level test. `CQ-BUG-006` (worker hung forever when SQLite failed to initialize), `CQ-KMP-005` (web empty value read as absence), `CQ-DOC-002` (durability wording), `CQ-KMP-006` (worker re-install trap) and `CQ-TEST-006` (no test ran the web database path or any platform offset) fixed; the first `webTest` sources run the real worker on OPFS in both browsers. `CQ-KMP-003` (copy confirmation never fires on Android — emulator-confirmed — or the web) and `CQ-KMP-004` (`sqlite-web` hangs after a worker load failure — browser-reproduced) deferred. No web app launch and no iOS app launch. Part 4 is complete; Part 5 is next. See review record below. |
 | Part 5 | Cross-cutting production quality | Complete | `2749766c96113e46bb91f90ac71424140da15fd6` plus the working tree | All `:shared` production source sets by mechanical scan (unreferenced declarations, unproduced sealed cases, every error fallback, numeric literals, forwarding functions, multi-Boolean APIs, cross-feature presentation imports), host modules and Swift for public-API callers, and about 25 owner, module and pipeline files read in full | 9 new (Low 6, Observation 3) plus 9 existing re-evaluated | 5 new fixed; 3 existing fixed or partly fixed (`CQ-DI-009`, `CQ-DATA-013` CI half, `CQ-STATE-016` reopened) | Targeted suites; `:shared:jvmTest` (1 835); `:shared:allTests`; `:androidApp:assembleDebug`; `:shared:check`; desktop and web host compiles; `git diff --check` | `CQ-DI-008` measured on JVM and in Wasm and accepted; `CQ-DATA-018` accepted; `CQ-STATE-014`, `CQ-TYPE-001`, `CQ-KMP-003`, `CQ-KMP-004` stay deferred with stated reasons. Falsified: smoke-test diagnostics both ways, the interview record (2 of 17 fail on the old mapping). Dead code removed: `StudyProgressService`, `AssessmentTakingUiState.NoQuestions`, `AppScreenVerticalPadding`. See review record. |
 | Part 6A | Presentation/state behavior coverage | Complete | `f19e05a` (merge of PR #449) plus the working tree | 25 presentation/state owners; 22 direct test files read for their assertions (`AppShellViewModelTest`, `AssessmentLaunchViewModelTest`, `AssessmentRetakeControllerTest`, `AssessmentTakingViewModelTest`, `FocusedResultViewModelTest`, `MixedInterviewResultViewModelTest`, `InterviewStartViewModelTest`, `ProgressViewModelTest`, `ProgressTopicViewModelTest`, `MistakeReviewViewModelTest`, `MistakeStudyLessonMappingTest`, `SavedQuestionStateHolderTest`, `StudyProgressStateHolderTest`, `SavedQuestionsViewModelTest`, `TopicBrowserViewModelTest`, `TopicDetailViewModelTest`, `LearningUnitViewModelTest`, `LearningLessonViewModelTest`, `PracticeBuilderViewModelTest`, `KmpContentPreferenceTest`, `AppearancePreferenceTest`, `AppRootTest`); 6 visibility/integration suites read (`ResultVisibilityTest`, `DestinationVisibilityGuardTest`, `SavedAndSessionVisibilityTest`, `CurriculumVisibilityIntegrationTest`, `TopicBrowserVisibilityTest`, `TopicDetailVisibilityTest`) and 3 consulted by search | 5 new (Low 4, Observation 1) plus 3 existing re-evaluated | 5 tests added (`CQ-TEST-005`, `CQ-TEST-007` – `CQ-TEST-010`); 0 production changes | Narrow owner suites throughout; 8 falsification runs, two of them over the whole jvm suite; `:shared:jvmTest`; `:shared:allTests`; `:shared:check`; `git diff --check` | High 0, Medium 0, Low 4, Observation 1. The suite already protected almost every owner's contract; five unprotected contracts each passed the whole suite when deliberately broken. `CQ-TEST-011` deferred to Part 6D. See review record below. |
+| Part 6B | Repository/persistence/content coverage | Complete | `1560386ef2da97e02c92052047be374dccf30779` (merge of PR #450) plus the working tree | 27 production boundaries (assessment start, completion, retake, session and review loading, attempt store and repository, history store and visible projection; both codecs, validators, the importer and initializer, local and visible curriculum repositories; the learning loader, cache and visible repository; both learner-owned repositories; migrations; the web database; both bundled documents). About 45 test files read for their assertions, chiefly `AssessmentAttemptStoreTest`, `LocalAssessmentRepositoryTest`, `CompleteAssessmentTest`, `AssessmentRetakeServiceTest`, `AssessmentSessionLoaderTest`, `AssessmentReviewLoaderTest`, `AnswerOrderTest`, `AssessmentEngineIntegrationTest`, `AssessmentHistoryStoreTest`, `VisibleAssessmentHistoryTest`, `VisibleHistoryProjectionTest`, `CurriculumJsonCodecTest`, `CurriculumValidatorTest`, `CurriculumImporterTest`, `CurriculumLocalDataPathTest`, `LocalCurriculumRepositoryTest`, `VisibleCurriculumRepositoryTest`, `CurriculumDatabaseTest`, `CurriculumDatabaseMigrationTest`, `LearningCurriculumJsonCodecTest`, `LearningCurriculumValidatorTest`, `LearningContentLoaderTest`, `BundledLearningContentRepositoryTest`, `VisibleLearningContentRepositoryTest`, both learner-owned repository suites, `InitialCurriculumSmokeTest`, `InitialCurriculumContentQualityTest`, `BundledLearningCurriculumTest`, `LearningContentEndToEndTest`, the KMP boundary suites and `WebCurriculumDatabaseTest` | 3 new (Medium 1, Low 2) plus main-ledger `CQ-TEST-001` | 4 fixed (`CQ-TEST-001`, `-012`, `-013`, `-014`); tests and authoring docs only | Targeted suites; `:shared:jvmTest` (1 844); `:shared:allTests`; `:shared:check`; `git diff --check` | Every validator error code is pinned by an exact ordered code list; every claimed transaction, deferred-foreign-key, validate-before-write, historical-correctness, migration-chain and identity-versus-eligibility contract was broken in production and its named test failed. Three documented guarantees had no failing test (reactivation, failure memoisation, corrupt history). No production code changed. `CQ-DATA-016` and `CQ-DATA-019` gained test evidence and stay Open. See review record. |
 
 ### Part 1A Review Record
 
@@ -4899,6 +4903,248 @@ level where they actually live. The five gaps share one shape: a *state distinct
 defect. `CQ-TEST-005` is fixed. The learner-owned holders now carry fourteen mirrored tests each,
 which is the clearest evidence yet for `CQ-CROSS-005`.
 
+## Part 6B Review Record
+
+**Pass:** Repository/persistence/content coverage. **Baseline:** `1560386ef2da97e02c92052047be374dccf30779`
+(merge of PR #450), on branch `task/code-quality-part-7`, plus the working tree described below.
+Local `main` was stale and the remote was unreachable, so the baseline was confirmed as the
+branch tip that contains PR #450. Part 6B asked one question of every data, persistence, import,
+serialization and bundled-content contract Part 3 established: *if this regressed, would a test
+fail at the boundary that owns it?* It did not re-review production behaviour; it used Parts 3A–3D
+as the statement of what the code is meant to do.
+
+### Method
+
+Production boundaries were taken from Parts 3A–3D and the later fix passes, then each was mapped
+to the assertions that protect it — by reading the assertions, not the test names. Validator
+coverage was inventoried mechanically: every `CurriculumValidationErrorCode` and
+`LearningCurriculumValidationErrorCode` constant was searched for in its test suite. Every bundled
+count a test pins was recomputed from the JSON. A contract became a finding only when all five
+held: it matters, a realistic production edit breaks it, no current test fails, the boundary is
+6B's, and a deterministic test can be written. The third condition was never assumed — each
+candidate was broken in production and the whole jvm suite run (see Falsification).
+
+### What the suite already protects well
+
+- **Whole-aggregate attempt persistence.** `AssessmentAttemptStoreTest` round-trips every config
+  shape (Mixed; Focused Topic, Subtopic, multi-Subtopic; levels; source; legacy rows), occurrence
+  order, selected IDs, persisted `isCorrect`, score and both timestamps. Replacing a selected set
+  across two saves fails if the child delete is dropped; removing the write transaction fails
+  `aFailedSaveLeavesThePreviouslyCommittedSnapshotIntact` (probed).
+- **Completion and start as operations.** `CompleteAssessmentTest` pins persist-and-invalidate,
+  invalidation after a committed write whose caller is cancelled, invalidation after a failed write,
+  idempotent retry, and no write for an unfinished session — over the real history store.
+  `StartAssessment` has no direct suite and needs none: the retake service runs it for real over
+  a fake repository (identity, config, selected order, all Unanswered, nothing saved on
+  NoEligible), and the launch ViewModel runs it for real (one persistence, save failure surfaces
+  as a failure rather than a `Created`).
+- **Historical correctness.** Review reports persisted `isCorrect` even when it disagrees with the
+  current key (recomputing it fails the test, probed); the retired-option integration test closes
+  the 3A/3B seam end to end; resume and review agree on answer order, and `AnswerOrderTest` pins
+  determinism, per-identity variation and that every option survives exactly once without freezing
+  a permutation.
+- **Session loading.** Every result has a concrete persisted cause: `Loaded` in persisted order,
+  `AttemptNotFound`, `NotInProgress`, `MissingQuestion` naming the first missing ID, a DEPRECATED
+  Question still loading, and — in `SavedAndSessionVisibilityTest`, at the loader itself —
+  `ContentUnavailable` for any hidden Question with no partial filtering, `MissingQuestion` not
+  mistaken for hidden, OFF→ON reload, and zero writes.
+- **Import reconciliation.** Every row of Part 3A's table has a test except reactivation
+  (`CQ-TEST-012`): new, renamed, deprecated, omitted-retained, re-homed (removing the deferred
+  foreign keys fails it, probed), stale option deleted or retained-and-DEPRECATED, keys and sources
+  replaced, idempotent reimport, invalid and malformed input leaving the database untouched
+  (skipping validation fails three tests, probed), and a commit-time failure leaving the previous
+  curriculum importable.
+- **Active versus historical reads.** `LocalCurriculumRepositoryTest` covers every active query
+  against parent statuses and every level variant, historical identity reads including DEPRECATED
+  parents, and the batch read's missing, duplicate, empty and active-plus-deprecated cases; its
+  fixtures author options and sources out of alphabetical order on purpose.
+  `VisibleCurriculumRepositoryTest` fails if an identity read is filtered (probed) — visibility
+  controls eligibility, not existence.
+- **Validators.** Every error code of both validators is asserted, through a helper that compares
+  the *exact ordered* code list, so a multi-rule fixture still names the rule that broke.
+- **Migrations.** One test per step plus 1→current through the installed list (dropping
+  `MIGRATION_7_8` fails two tests, probed); the saved and studied tables are asserted empty and
+  free of foreign keys; migrated attempts reconstruct through the store, including an unfinished one.
+- **Learner-owned repositories.** Both suites pin insert-ignore timestamps (sequential and
+  concurrent), delete-then-re-add, timestamp-then-ID ordering, orphan identities, and survival
+  across a closed and reopened file database. They are symmetrical; neither protects a persistence
+  rule the other lacks.
+
+### Main-ledger `CQ-TEST-001`
+
+Each hard-coded bundled value was classified against the current governance documents, not against
+the original finding's numbers.
+
+| Assertion | Classification | Action |
+| --- | --- | --- |
+| Smoke: 17 Topics, 361 Subtopics, 439 ACTIVE / 41 DEPRECATED, 433 SINGLE / 47 MULTIPLE, ACTIVE and DEPRECATED level distributions, per-Topic level map, per-Topic ACTIVE targets | Intentional governance: `question-bank-coverage.md` and the `question-bank-change` skill name these as the change detector a content batch must restate | Kept |
+| Smoke: 480 total | Duplicate — the sum of the two status counts | Removed |
+| Smoke: all-status level distribution | Duplicate — the sum of the ACTIVE and DEPRECATED distributions | Removed; test renamed from the issue key to `bundledQuestionsHaveReviewedLevelDistribution` |
+| Importer: 17 / 361 / 480 and two sampled Questions | Incidental derived totals for an import-fidelity test | Replaced by authored row sums plus field-by-field comparison of every Topic, Subtopic and Question, with authored position, options and sources |
+| Data path: 17 active Topics, 23 `lifecycle_navigation` Questions, `countQuestions` 480, `RowCounts` of six literals | Incidental totals | Derived from the loaded bundle; active lists now assert identity *and order* |
+| Data path: `android_platform`, `activity_lifecycle`, `activity_lifecycle_001` and its fields | Regression-sensitive representative fixture | Kept |
+| Learning: 138 Lessons | Duplicate — the sum of 32 per-Unit Lesson lists pinned by id in the next test | Removed |
+| Learning blueprint order, per-Unit Lessons, bridges; KMP boundary suites | Stable authored policy and content-boundary invariants | Kept, untouched |
+| `InitialCurriculumContentQualityTest` host allowlist, ratio, absolute words | Editorial rule, not an outcome | Kept |
+
+The two authoring documents that told authors to edit the import-test literals now name only the
+smoke test.
+
+### Coverage matrix
+
+| Boundary | Protection | Classification |
+| --- | --- | --- |
+| `AssessmentEngine` | `AssessmentEngineTest`, `AssessmentEngineIntegrationTest` | Direct coverage sufficient |
+| `StartAssessment` | real instance in `AssessmentRetakeServiceTest` and `AssessmentLaunchViewModelTest` | Integration coverage is the correct protection |
+| `CompleteAssessment` | `CompleteAssessmentTest` (5) | Direct coverage sufficient |
+| `AssessmentRetakeService` | `AssessmentRetakeServiceTest` (8), `retakeCreatesSeparatePersistedAttemptAndPreservesOriginal` on Room | Direct coverage sufficient |
+| `AssessmentSessionLoader` | `AssessmentSessionLoaderTest` (4) + loader-level visibility test | Direct coverage sufficient |
+| `AssessmentReviewLoader` | `AssessmentReviewLoaderTest` (7), retired-option integration | Direct coverage sufficient |
+| `AssessmentAttemptStore` / mapper | `AssessmentAttemptStoreTest` | **Gap fixed** (`CQ-TEST-014`) |
+| `LocalAssessmentRepository` | 5 forwarding tests on Room (`CQ-CROSS-011`) | No additional test justified |
+| `AssessmentHistoryStore` | 13 tests (Stage 4C) | Direct coverage sufficient |
+| `VisibleAssessmentHistory` / projection | 6 + 10 tests | Direct coverage sufficient |
+| `CurriculumJsonCodec` | 18 tests, small fixtures | Direct coverage sufficient |
+| `CurriculumValidator` | 22 tests, every code | Direct coverage sufficient |
+| `CurriculumImporter` | `CurriculumImporterTest` (23) | **Gap fixed** (`CQ-TEST-012`, `CQ-TEST-001`) |
+| `CurriculumDataInitializer` | `CurriculumLocalDataPathTest` (idempotent, concurrent, invalid, malformed) | **Gap fixed** (`CQ-TEST-001`) |
+| `LocalCurriculumRepository` | `LocalCurriculumRepositoryTest` (18), `CurriculumDatabaseTest` | Direct coverage sufficient |
+| `VisibleCurriculumRepository` | 8 tests | Direct coverage sufficient |
+| `LearningCurriculumJsonCodec` | 22 tests | Direct coverage sufficient |
+| `LearningCurriculumValidator` | 44 tests, every code, status-aware pairs | Direct coverage sufficient |
+| `LearningContentLoader` | 5 tests: decode, validation with every error, never partial | Direct coverage sufficient |
+| `BundledLearningContentRepository` | 13 tests | **Gap fixed** (`CQ-TEST-013`) |
+| `VisibleLearningContentRepository` | 3 tests: hidden Units leave active reads, identity still resolves | Direct coverage sufficient |
+| `LocalSavedQuestionRepository` | 10 tests | Direct coverage sufficient |
+| `LocalLessonStudyRepository` | 11 tests | Direct coverage sufficient |
+| Curriculum migrations | 9 tests | Direct coverage sufficient |
+| Web database capability | `WebCurriculumDatabaseTest` (3) | Gap deferred to another owner — classification of platform coverage is Part 6D's |
+| Bundled assessment curriculum | smoke, quality, KMP leak and vocabulary | **Gap fixed** (`CQ-TEST-001`) |
+| Bundled learning curriculum | `BundledLearningCurriculumTest`, `LearningContentEndToEndTest` | Direct coverage sufficient (one duplicate total removed) |
+
+**Real database versus fake.** Every guarantee SQLite supplies — transaction rollback, foreign keys,
+insert-ignore, ordering, child replacement, migration, reopen — is asserted against Room on the
+bundled driver. Fakes are used only where the contract is domain logic (selection, loaders,
+operations), and none bypasses what its test claims. Assessment durability across a restart is
+asserted by the migration tests, which reopen a file database and read attempts through the store.
+`WebCurriculumDatabaseTest` proves foreign keys, rollback and transaction isolation on the browser
+driver, which is what the common repositories assume; it is not a reason to rerun every JVM suite
+in a browser.
+
+### Meaningful gaps
+
+| Finding | Missing contract | Regression that would have shipped | Test level |
+| --- | --- | --- | --- |
+| `CQ-TEST-012` | A retired option authored again is offered again | An import that preserves persisted option status hides a re-authored keyed answer from every new assessment | Importer on Room |
+| `CQ-TEST-013` | A failed or cancelled first learning load is not remembered | A memoising cache keeps Learn failing for the process lifetime | Repository, `commonTest` |
+| `CQ-TEST-014` | A corrupt completed attempt fails the history read | A skipping read silently undercounts every history-derived figure | Store on Room |
+
+### Candidates investigated and rejected
+
+- **A direct `StartAssessment` suite.** Two real-instance consumers already fail on every
+  regression the brief lists; a third copy would test the same four lines.
+- **Shrinking an attempt's occurrence set.** No production path changes membership after creation,
+  and the child delete that would leave a stale occurrence is the same statement the selected-set
+  replacement test already protects.
+- **Enumerating the attempt mapper's corruption guards.** `TestAttempt`'s constructor repeats the
+  status/score/timestamp rules, so a row cannot become an invalid aggregate even if one `require`
+  were dropped; one representative read-boundary test (`CQ-TEST-014`) covers the policy.
+- **A missing selected answer option in review.** Not representable: the selected-answer foreign key
+  and the importer's `NOT EXISTS` guard prevent deleting a selected option.
+- **A new file-backed assessment reopen test.** The migration tests already close, reopen and read
+  attempts through the store; the store has no cache to defeat.
+- **A cancellation test per DAO wrapper or Room transaction.** No component outside the learning
+  cache owns cancellation behaviour here; Room's transaction cancellation is the library's.
+- **An `AssessmentHistoryStore` race test for `CQ-DATA-021`.** Every deterministic consequence —
+  Loading, settled re-emission on equal content, failure, retry, coalescing, a stale read not
+  satisfying a newer generation — is already pinned; a timing test would add flakiness, not proof.
+- **Removing `isSaved` / `isStudied` (`CQ-CROSS-010`).** Neither interface changed in this pass, so
+  the deferral stands.
+
+### Falsification
+
+Each probe was applied to production and reverted by script; `git status --short` showed only test
+and documentation files afterwards.
+
+| Probe | Result |
+| --- | --- |
+| Mapper writes every Question ACTIVE / source title := URL / option order reversed / one source per Question | each fails `realBundledCurriculumPopulatesFreshDatabase`; the first three keep every row count identical |
+| One harmless ACTIVE Question appended to the bundle, new tests | 3 failures, all deliberate smoke pins |
+| The same, pre-6B tests | 6 failures across three files (`480` three times, `RowCounts`, plus the smoke pins) |
+| Whole jvm suite with three regressions: option status preserved on import, corrupt history skipped, learning failure memoised | 4 of 1 844 failed — exactly the four new tests |
+| Attempt save without its write transaction | only `aFailedSaveLeavesThePreviouslyCommittedSnapshotIntact` |
+| Import without `defer_foreign_keys` | only `subtopicRehomedToAnotherTopicIsImportedIntoAnExistingDatabase` |
+| Import without validation | `invalidCurriculumIsRejectedBeforeWritingToFreshDatabase`, `invalidCurriculumDoesNotMutateExistingData`, `semanticallyInvalidContentFailsInitializationWithoutPersistingRows` |
+| Review recomputes `isCorrect` from the current key | `singleOccurrencePreservesPersistedCorrectnessWhenItDisagreesWithAuthoredAnswers` |
+| `MIGRATION_7_8` dropped from `curriculumDatabaseMigrations` | both chain tests |
+| `VisibleCurriculumRepository.getQuestionsByIds` filtered by visibility | `identityAndHistoricalReadsStillResolveHiddenContent` |
+
+### Changes
+
+Tests and authoring documentation only; no production code changed and no production defect was
+found. Four tests added (`CurriculumImporterTest`, `AssessmentAttemptStoreTest`, two in
+`BundledLearningContentRepositoryTest` in `commonTest`); `realBundledCurriculumPopulatesFreshDatabase`
+and three `CurriculumLocalDataPathTest` tests rewritten around derived invariants; two duplicate
+totals removed from `InitialCurriculumSmokeTest` and one from `BundledLearningCurriculumTest`.
+`docs/content/question-bank-coverage.md` and the `question-bank-change` skill now name only the
+smoke test as the pin to update.
+
+### Content-governance findings — test implications only
+
+| Finding | Test implication |
+| --- | --- |
+| `CQ-DATA-003` | A product rule to decide first; once decided it is one validator fixture |
+| `CQ-DATA-012` | Tooling and CI governance. Interacts with `CQ-TEST-001` only in that both concern pinned numbers: the snapshot is still stale and ungated |
+| `CQ-DATA-014` | Needs a previous-revision comparison; no single-bundle test can detect an ID silently re-pointed |
+| `CQ-DATA-015` | Tests correctly assert review against current content; no test claims snapshotted fidelity, so the gap is the KDoc claim |
+| `CQ-DATA-016` | No test pins either reading (see its row); still a content decision |
+| `CQ-DATA-017` | Product behaviour about discoverability; not a persistence contract |
+| `CQ-DATA-019` | Testable half now pinned for every bundled row; the append-only rule is documentation |
+| `CQ-DATA-020` | Source-governance policy; the learning document deliberately has no allowlist |
+
+### Handoffs
+
+- **Part 6C:** Stage 4F `CQ-TEST-004`.
+- **Part 6D:** `CQ-TEST-011`; the Navigation 3 ViewModel-store / `NavEntry` lifetime gap; Android and
+  iOS adapter and host-start coverage; the final classification of `WebCurriculumDatabaseTest`.
+- **Content/product decisions:** `CQ-DATA-003`, `CQ-DATA-015`, `CQ-DATA-016`, `CQ-DATA-017`.
+- **Content/tooling follow-ups:** `CQ-DATA-012`, `CQ-DATA-014`, `CQ-DATA-019` (authoring rule),
+  `CQ-DATA-020`, `CQ-DATA-013` (runtime half, needs a diagnostics sink).
+- **Upstream:** `CQ-KMP-004`.
+- **Separate production follow-ups:** `CQ-STATE-014`, `CQ-TYPE-001`, `CQ-CROSS-005`,
+  `CQ-KMP-003` (product decision), `CQ-CROSS-010` (with the next repository change).
+- **Accepted as-is, unchanged:** `CQ-DATA-004`, `CQ-DATA-005`, `CQ-DATA-007`, `CQ-DATA-008`,
+  `CQ-DATA-018`, `CQ-CROSS-011`, `CQ-CROSS-012`, `CQ-DI-003`, `CQ-DI-008`, `CQ-STATE-011`.
+
+### Validation
+
+- Targeted, during the pass: `:shared:jvmTest` filtered to `BundledLearningContentRepositoryTest`,
+  `CurriculumImporterTest`, `CurriculumLocalDataPathTest`, `InitialCurriculumSmokeTest`,
+  `AssessmentAttemptStoreTest` and `BundledLearningCurriculumTest` after the edits, plus the
+  falsification runs above (driven by a scratch script that restores every production file).
+- `./gradlew :shared:jvmTest` — 1 844 tests, 0 failures (1 840 at Part 6A, plus the four added).
+- `./gradlew :shared:allTests` — run because `commonTest` changed: Android host 538, iOS simulator
+  arm64 538, JS browser 545, Wasm browser 545, JVM 1 844; 0 failures. Each common target gained
+  exactly the two `commonTest` additions.
+- `./gradlew :shared:check` — successful.
+- `python3 tools/learning_question_coverage.py --check` — current (the edited coverage document is
+  not one it generates).
+- `:androidApp:assembleDebug` was not run: no production or Android-visible declaration changed.
+- `git diff --check` — clean. `git status --short` — six test files, two authoring documents and
+  this ledger.
+
+### Part 6B assessment
+
+The persistence and content suites are the strongest part of the test architecture. Every guarantee
+that SQLite supplies is asserted against SQLite, every validator rule is pinned with a diagnosis
+that names it, and each contract Part 3 called verified that was probed had a test that failed. The
+three gaps share one shape: a guarantee written down in Part 3 whose test stopped one step short —
+retirement asserted without restoration, "caches nothing" asserted with a document that fails
+identically every time, a corruption policy asserted on one attempt but not on the read that
+matters. `CQ-TEST-001` is resolved by classification rather than deletion: the bank's shape is
+still pinned, exactly once, where the authoring workflow expects it, and the import tests now prove
+every row rather than counting them.
+
 ## Baseline Health
 
 | Check | Result | Failures/warnings | Notes |
@@ -5585,10 +5831,47 @@ Re-verified, still fixed: Stage 4F CQ-TEST-001, CQ-TEST-002, CQ-TEST-003
 Evidence appended, status unchanged: CQ-CROSS-005 (Deferred)
 Coverage confirmed, production disposition unchanged: CQ-STATE-014 (Deferred)
 
-Part 6B — Next
-Part 6C — Pending
+Part 6B — Complete
+
+High: 0
+Medium: 1
+Low: 2
+Observations: 0
+
+Fixed: 3
+Deferred: 0
+Needs measurement: 0
+Accepted as-is: 0
+Not a defect: 0
+
+Existing findings re-evaluated in Part 6B:
+Fixed: main-ledger CQ-TEST-001
+Test evidence appended, status unchanged: CQ-DATA-016 (Open), CQ-DATA-019 (Open)
+Re-verified by probe, still protected: CQ-BUG-004, CQ-DATA-006, CQ-KMP-002
+Unchanged: CQ-CROSS-010 (Deferred), CQ-DATA-003, -012, -014, -015, -017, -020 (Open or Deferred)
+
+Part 6C — Next
 Part 6D — Pending
 ```
+
+Part 6B is complete. Every data, persistence, import, serialization and bundled-content contract
+Part 3 established was mapped, against `1560386`, to the assertions that would fail if it
+regressed, and each claimed protection that could be broken in production was broken and its test
+seen to fail: the attempt write transaction, the importer's deferred foreign keys and
+validate-before-write, persisted historical correctness, the canonical migration chain, and
+identity reads that ignore visibility. Every error code of both validators is pinned by an exact
+ordered list. Main-ledger `CQ-TEST-001` is fixed by classification rather than deletion: the
+bank's shape stays pinned once, in `InitialCurriculumSmokeTest`, where the authoring workflow
+expects it, minus two arithmetic duplicates; the import and data-path tests now derive their
+expectations from the loaded bundle and compare every authored row field by field, so adding a
+Question fails three deliberate pins instead of six scattered ones while four count-preserving
+mapper regressions are still caught. Three documented guarantees had no failing test and now do —
+reactivation of a re-authored answer option (`CQ-TEST-012`), a learning-content cache that must not
+remember a failure or a cancellation (`CQ-TEST-013`), and a corrupt completed attempt that must fail
+the history read rather than vanish from it (`CQ-TEST-014`); with all three regressions applied,
+exactly the four new tests fail out of 1 844. No production code changed and no production defect
+was found. `CQ-DATA-016` gained test evidence and stays a content decision. The exact next planned
+chunk is **Part 6C — Compose UI/navigation/accessibility coverage**. Do not begin it automatically.
 
 Part 6A is complete. Every presentation and state owner Part 2 reviewed — 25 of them, against
 `f19e05a` — was mapped to the tests that would fail if it regressed, by reading assertions rather

@@ -485,6 +485,32 @@ internal class AssessmentAttemptStoreTest {
         }
     }
 
+    /**
+     * A corrupt row is not an absent row. Completed history feeds every derived figure — Progress,
+     * the mistake queue, coverage, unseen-practice selection — so an attempt that cannot be
+     * reconstructed fails the whole read rather than being skipped: skipping it would publish
+     * history that silently undercounts what the learner did, with nothing to say it happened.
+     * The shape here is an answered occurrence whose selected-answer rows were lost.
+     */
+    @Test
+    fun aCorruptCompletedAttemptFailsTheHistoryReadInsteadOfVanishingFromIt() = runTest {
+        withTestDatabase { database ->
+            insertAttemptFixtureCurriculum(database)
+            val store = AssessmentAttemptStore(database)
+            val intact = completedAttempt(id = "attempt_intact", startedAt = StartedAt, completedAt = CompletedAt)
+            store.save(intact)
+            store.save(completedAttempt(id = "attempt_corrupt", startedAt = StartedAt, completedAt = CompletedAt))
+            assertEquals(2, store.getCompletedAttempts().size, "Precondition: both attempts reconstruct.")
+
+            database.assessmentAttemptDao().deleteSelectedAnswersForAttempt("attempt_corrupt")
+
+            assertFails { store.getCompletedAttempts() }
+            assertFails { store.getById("attempt_corrupt") }
+            // The policy is per aggregate: an identity read of an intact attempt is unaffected.
+            assertEquals(intact, store.getById("attempt_intact"))
+        }
+    }
+
     @Test
     fun savingUpdatedAttemptReplacesAttemptOwnedSnapshotOnly() = runTest {
         withTestDatabase { database ->

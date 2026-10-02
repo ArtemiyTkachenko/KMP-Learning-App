@@ -10,6 +10,16 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * The shipped bank's shape, pinned in one place on purpose.
+ *
+ * The exact counts below are not consequences that happen to be frozen: they are the change
+ * detector the authoring workflow relies on (`docs/content/question-bank-coverage.md`, "Pinned
+ * count tests"), so a content batch has to restate the taxonomy, status and selection-mode split,
+ * level distribution and per-Topic ACTIVE counts it intends. A total that is only the sum of two
+ * figures already pinned here is not pinned again, and tests elsewhere that import or read the
+ * bundle derive their expectations from the loaded document instead of repeating these.
+ */
 internal class InitialCurriculumSmokeTest {
     @Test
     fun bundledInitialCurriculumHasExpectedTopicTaxonomyAndQuestionCount() = runTest {
@@ -17,7 +27,7 @@ internal class InitialCurriculumSmokeTest {
 
         assertEquals(17, initialCurriculum.topics.size)
         assertEquals(361, initialCurriculum.subtopics.size)
-        assertEquals(480, initialCurriculum.questions.size)
+        // ACTIVE and DEPRECATED are the only statuses, so together they are the total.
         assertEquals(
             439,
             initialCurriculum.questions.count { it.status == ContentStatus.ACTIVE },
@@ -31,13 +41,10 @@ internal class InitialCurriculumSmokeTest {
     }
 
     @Test
-    fun bundledQuestionsHaveReviewedE1503LevelDistribution() = runTest {
+    fun bundledQuestionsHaveReviewedLevelDistribution() = runTest {
         val initialCurriculum = BundledCurriculumSource.load()
 
-        assertEquals(
-            LevelDistribution(foundation = 238, applied = 214, advanced = 28),
-            initialCurriculum.questions.levelDistribution(),
-        )
+        // The all-status distribution is the sum of these two and is not pinned separately.
         assertEquals(
             LevelDistribution(foundation = 204, applied = 207, advanced = 28),
             initialCurriculum.questions

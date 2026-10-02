@@ -34,6 +34,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import org.artkachenko.kmp_learning_app.getQuestionById
 
 internal class CurriculumImporterTest {
@@ -46,19 +47,30 @@ internal class CurriculumImporterTest {
 
             assertEquals(CurriculumImportResult.Imported, result)
             val dao = database.curriculumDao()
-            assertEquals(17, dao.countTopics())
-            assertEquals(361, dao.countSubtopics())
-            assertEquals(480, dao.countQuestions())
-
-            val singleAnswerQuestion = expectedCurriculum.questions.first {
-                it.selectionMode == AnswerSelectionMode.SINGLE
+            // Fidelity is stated against the document that was imported rather than against its
+            // current size, so a new authored Question needs no edit here while a dropped,
+            // duplicated or mis-mapped row still fails. The bank's shape itself is pinned once,
+            // deliberately, in InitialCurriculumSmokeTest.
+            assertEquals(expectedCurriculum.authoredRowCounts(), dao.countRows())
+            expectedCurriculum.topics.forEachIndexed { index, topic ->
+                val persisted = assertNotNull(dao.getTopicById(topic.id), topic.id)
+                assertEquals(
+                    listOf(topic.name, topic.status.name, index.toString()),
+                    listOf(persisted.name, persisted.status, persisted.sortOrder.toString()),
+                    topic.id,
+                )
             }
-            val multipleAnswerQuestion = expectedCurriculum.questions.first {
-                it.selectionMode == AnswerSelectionMode.MULTIPLE
+            expectedCurriculum.subtopics.forEachIndexed { index, subtopic ->
+                val persisted = assertNotNull(dao.getSubtopicById(subtopic.id), subtopic.id)
+                assertEquals(
+                    listOf(subtopic.topicId, subtopic.name, subtopic.status.name, index.toString()),
+                    listOf(persisted.topicId, persisted.name, persisted.status, persisted.sortOrder.toString()),
+                    subtopic.id,
+                )
             }
-
-            assertPersistedQuestionMatches(singleAnswerQuestion, dao)
-            assertPersistedQuestionMatches(multipleAnswerQuestion, dao)
+            expectedCurriculum.questions.forEachIndexed { index, question ->
+                assertPersistedQuestionMatches(question, index, dao)
+            }
         }
     }
 
@@ -792,6 +804,77 @@ internal class CurriculumImporterTest {
         }
     }
 
+    /**
+     * The last step of the retirement sequence above: a later bundle that authors a retired option
+     * again must offer it again. Every authored option is written ACTIVE and the upsert is what
+     * reactivates the retained row, so an import that kept a persisted option's status would leave
+     * it out of every new assessment — here the keyed answer, which would make the Question
+     * unanswerable while history still reviewed it correctly.
+     */
+    @Test
+    fun aRetiredAnswerOptionThatIsAuthoredAgainIsOfferedAgain() = runTest {
+        withTestDatabase { database ->
+            val threeAnswers = listOf(
+                AnswerOption("topic_a_answer_a", "topic_a answer A"),
+                AnswerOption("topic_a_answer_b", "topic_a answer B"),
+                AnswerOption("topic_a_answer_c", "topic_a answer C"),
+            )
+            CurriculumImporter(
+                database,
+                loadCurriculum = { curriculumOf(graph("topic_a", answers = threeAnswers)) },
+            ).importCurriculum()
+            AssessmentAttemptStore(database).save(
+                TestAttempt(
+                    id = "historical_attempt",
+                    config = AssessmentConfig.Focused(AssessmentScope.Topic("topic_a"), 1),
+                    questionAttempts = listOf(
+                        QuestionAttempt(
+                            questionId = "topic_a_question",
+                            answerState = QuestionAnswerState.Answered(
+                                selectedAnswerIds = setOf("topic_a_answer_c"),
+                                isCorrect = false,
+                            ),
+                        ),
+                    ),
+                    status = AssessmentStatus.COMPLETED,
+                    startedAt = Instant.fromEpochMilliseconds(1),
+                    completedAt = Instant.fromEpochMilliseconds(2),
+                    score = AssessmentScore(totalQuestions = 1, correctAnswers = 0),
+                ),
+            )
+            CurriculumImporter(
+                database,
+                loadCurriculum = { curriculumOf(graph("topic_a", answers = threeAnswers.take(2))) },
+            ).importCurriculum()
+            val repository = LocalCurriculumRepository(database)
+            assertEquals(
+                listOf("topic_a_answer_a", "topic_a_answer_b"),
+                repository.getActiveQuestionsByTopic("topic_a").single().answers.map { it.id },
+                "Precondition: the historically selected option was retired rather than deleted.",
+            )
+
+            assertEquals(
+                CurriculumImportResult.Imported,
+                CurriculumImporter(
+                    database,
+                    loadCurriculum = {
+                        curriculumOf(
+                            graph(
+                                "topic_a",
+                                answers = threeAnswers,
+                                correctAnswerIds = listOf("topic_a_answer_c"),
+                            ),
+                        )
+                    },
+                ).importCurriculum(),
+            )
+
+            val offered = repository.getActiveQuestionsByTopic("topic_a").single()
+            assertEquals(threeAnswers.map { it.id }, offered.answers.map { it.id })
+            assertEquals(listOf("topic_a_answer_c"), offered.correctAnswerIds)
+        }
+    }
+
     @Test
     fun curriculumImportLeavesLearnerOwnedStudyRecordsUntouched() = runTest {
         withTestDatabase { database ->
@@ -837,18 +920,59 @@ internal class CurriculumImporterTest {
         }
     }
 
+    /** Every authored field of [question] and its child rows, in authored order. */
     private suspend fun assertPersistedQuestionMatches(
         question: Question,
+        authoredIndex: Int,
         dao: CurriculumDao,
     ) {
-        assertEquals(question.text, dao.getQuestionById(question.id)?.text)
-        assertEquals(question.selectionMode.name, dao.getQuestionById(question.id)?.selectionMode)
-        assertEquals(question.level.name, dao.getQuestionById(question.id)?.level)
-        assertEquals(question.status.name, dao.getQuestionById(question.id)?.status)
-        assertEquals(question.answers.map { it.id }, dao.getAnswerOptionsForQuestion(question.id).map { it.id })
-        assertEquals(question.correctAnswerIds.sorted(), dao.getCorrectAnswerIdsForQuestion(question.id))
-        assertEquals(question.sources.map { it.url }, dao.getSourcesForQuestion(question.id).map { it.url })
+        val persisted = assertNotNull(dao.getQuestionById(question.id), question.id)
+        assertEquals(
+            listOf(
+                question.topicId,
+                question.subtopicId,
+                question.text,
+                question.selectionMode.name,
+                question.level.name,
+                question.explanation,
+                question.status.name,
+                authoredIndex.toString(),
+            ),
+            listOf(
+                persisted.topicId,
+                persisted.subtopicId,
+                persisted.text,
+                persisted.selectionMode,
+                persisted.level,
+                persisted.explanation,
+                persisted.status,
+                persisted.sortOrder.toString(),
+            ),
+            question.id,
+        )
+        assertEquals(
+            question.answers.map { it.id to it.text },
+            dao.getAnswerOptionsForQuestion(question.id).map { it.id to it.text },
+            question.id,
+        )
+        assertEquals(question.correctAnswerIds.sorted(), dao.getCorrectAnswerIdsForQuestion(question.id), question.id)
+        assertEquals(
+            question.sources.map { it.url to it.title },
+            dao.getSourcesForQuestion(question.id).map { it.url to it.title },
+            question.id,
+        )
     }
+
+    /** The row counts an exact import of this document produces: one row per authored value. */
+    private fun Curriculum.authoredRowCounts(): RowCounts =
+        RowCounts(
+            topics = topics.size,
+            subtopics = subtopics.size,
+            questions = questions.size,
+            answerOptions = questions.sumOf { it.answers.size },
+            correctAnswers = questions.sumOf { it.correctAnswerIds.size },
+            questionSources = questions.sumOf { it.sources.size },
+        )
 
     private suspend fun CurriculumDao.countRows(): RowCounts =
         RowCounts(

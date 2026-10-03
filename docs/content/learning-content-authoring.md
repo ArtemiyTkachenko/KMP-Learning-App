@@ -199,6 +199,40 @@ Primary and supporting relationships are therefore *not* required to stay inside
 Topic, and a blueprint that keeps every mapping inside its own Topic is usually a sign
 that bridging was avoided rather than that it was unnecessary.
 
+### Mappings target current taxonomy
+
+Crossing Topics is about *which* Topic owns a concept, not about whether that concept is
+still current. **ACTIVE learning content maps only to ACTIVE assessment taxonomy.**
+
+- **Home Topic.** An ACTIVE Unit must have an ACTIVE home Topic. A Unit browsed under a
+  retired Topic would stay visible in learning while assessment treats the Topic as gone.
+- **Primary and supporting mappings.** An ACTIVE Lesson may map across Topic boundaries,
+  but each mapped Subtopic must itself be current assessment taxonomy: the Subtopic is
+  ACTIVE *and* its owning Topic is ACTIVE. A Subtopic under a retired Topic is not current
+  even if its own status stayed ACTIVE, because assessment hides the descendants of a
+  retired parent.
+- **Historical content.** DEPRECATED Units and Lessons may keep references to retired
+  Topics and Subtopics, so their stable identities stay meaningful. Those references
+  must still resolve to an existing ID.
+
+Current taxonomy is the requirement, not current practice: an ACTIVE Subtopic with no
+ACTIVE Questions is a valid mapping. Question density is allowed to lag learning coverage
+(Rule 10).
+
+When retiring assessment taxonomy, resolve the learning content it would strand in the
+same change:
+
+- If retiring a Topic would strand an ACTIVE Unit, re-home the Unit to another suitable
+  ACTIVE Topic, or deprecate the Unit.
+- If retiring a Subtopic — directly or through its Topic — would strand an ACTIVE Lesson
+  mapping, remove the concept or remap it to an appropriate ACTIVE Subtopic, or deprecate
+  the Lesson if the Lesson itself is no longer current.
+
+Do not invent a replacement Subtopic merely to satisfy validation; a concept with no
+honest assessment Subtopic is a documented gap (Rule 1). `LearningCurriculumValidator`
+enforces this rule at content load, and `tools/learning_question_coverage.py` enforces it
+for the active content it reports.
+
 ## Rule 4 — Teach, Bridge, Reference, Exclude
 
 Every area a blueprint maps gets exactly one of four editorial decisions.
@@ -781,7 +815,8 @@ Before a blueprint is considered complete:
 - [ ] Every Unit divides into focused Lessons with stated learning objectives.
 - [ ] Every mapped area carries a Teach / Bridge / Reference / Exclude decision.
 - [ ] Every Lesson lists primary and supporting concepts separately.
-- [ ] Every Topic and Subtopic ID used is a real ID from the bundled curriculum.
+- [ ] Every Topic and Subtopic ID used is a real ID from the bundled curriculum, and
+      every one an ACTIVE Unit or Lesson uses is ACTIVE under an ACTIVE Topic.
 - [ ] Concepts with no exact assessment Subtopic are documented as gaps, not invented.
 - [ ] Exclusions carry a one-line reason.
 

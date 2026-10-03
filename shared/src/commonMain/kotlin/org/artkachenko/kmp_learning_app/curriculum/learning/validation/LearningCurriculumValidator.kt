@@ -3,6 +3,8 @@ package org.artkachenko.kmp_learning_app.curriculum.learning.validation
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
+import org.artkachenko.kmp_learning_app.curriculum.Subtopic
+import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningBlock
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningCurriculum
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningLesson
@@ -23,11 +25,16 @@ import org.artkachenko.kmp_learning_app.curriculum.validation.normalizedForCompa
  * text, de-duplicating ids, or padding a table would hide the defect instead of reporting
  * it. Results are deterministic and follow authored order.
  *
- * Two rules matter more than the rest because they encode product decisions:
+ * Three rules matter more than the rest because they encode product decisions:
  *
  * - A Unit's home Topic decides where the Unit is browsed, and deliberately does not
  *   constrain the Topics its Lessons may reference. Cross-Topic primary and supporting
  *   concepts are valid by design, never a mismatch.
+ * - Active learning content must reference current assessment taxonomy: an active Unit's
+ *   home Topic must be active, and an active Lesson's Subtopics must be active and owned by
+ *   an active Topic, mirroring how assessment hides the descendants of a retired parent.
+ *   Deprecated learning content may retain retired references for stable history, but
+ *   they must still resolve.
  * - Minimum-content requirements — primary concepts, Sections, blocks, Sources, and a
  *   Unit's Lessons — apply to [ContentStatus.ACTIVE] content only. Deprecated content is
  *   historical rather than currently teachable, but its identity, references, and whatever
@@ -39,8 +46,8 @@ internal class LearningCurriculumValidator {
         curriculum: Curriculum,
     ): List<LearningCurriculumValidationError> {
         val errors = mutableListOf<LearningCurriculumValidationError>()
-        val topicIds = curriculum.topics.map { it.id }.toSet()
-        val subtopicIds = curriculum.subtopics.map { it.id }.toSet()
+        val topicsById = curriculum.topics.associateBy { it.id }
+        val subtopicsById = curriculum.subtopics.associateBy { it.id }
 
         val lessons = learningCurriculum.units.flatMap { it.lessons }
         val lessonIds = lessons.map { it.id }.filter { it.isNotBlank() }.toSet()
@@ -50,9 +57,9 @@ internal class LearningCurriculumValidator {
         val duplicateLessonIds = duplicateNonBlankValues(lessons.map { it.id })
 
         learningCurriculum.units.forEach { unit ->
-            validateUnit(unit, topicIds, duplicateUnitIds, errors)
+            validateUnit(unit, topicsById, duplicateUnitIds, errors)
             unit.lessons.forEach { lesson ->
-                validateLesson(lesson, subtopicIds, lessonIds, duplicateLessonIds, errors)
+                validateLesson(lesson, topicsById, subtopicsById, lessonIds, duplicateLessonIds, errors)
             }
         }
 
@@ -61,7 +68,7 @@ internal class LearningCurriculumValidator {
 
     private fun validateUnit(
         unit: LearningUnit,
-        topicIds: Set<String>,
+        topicsById: Map<String, Topic>,
         duplicateUnitIds: Set<String>,
         errors: MutableList<LearningCurriculumValidationError>,
     ) {
@@ -83,8 +90,13 @@ internal class LearningCurriculumValidator {
         }
         if (unit.topicId.isBlank()) {
             errors.add(error(LearningCurriculumValidationErrorCode.BLANK_HOME_TOPIC_ID, unit.id, "Learning unit '${unit.id}' home topicId must not be blank."))
-        } else if (unit.topicId !in topicIds) {
-            errors.add(error(LearningCurriculumValidationErrorCode.UNKNOWN_HOME_TOPIC, unit.id, "Learning unit '${unit.id}' references unknown home topic '${unit.topicId}'."))
+        } else {
+            val homeTopic = topicsById[unit.topicId]
+            if (homeTopic == null) {
+                errors.add(error(LearningCurriculumValidationErrorCode.UNKNOWN_HOME_TOPIC, unit.id, "Learning unit '${unit.id}' references unknown home topic '${unit.topicId}'."))
+            } else if (unit.status == ContentStatus.ACTIVE && homeTopic.status != ContentStatus.ACTIVE) {
+                errors.add(error(LearningCurriculumValidationErrorCode.INACTIVE_HOME_TOPIC, unit.id, "Active learning unit '${unit.id}' references home topic '${unit.topicId}', which is ${homeTopic.status}."))
+            }
         }
         // An active Unit with nothing to study is an authoring defect; a deprecated Unit is
         // kept for stable identity, so it is allowed to be empty.
@@ -95,13 +107,14 @@ internal class LearningCurriculumValidator {
 
     private fun validateLesson(
         lesson: LearningLesson,
-        subtopicIds: Set<String>,
+        topicsById: Map<String, Topic>,
+        subtopicsById: Map<String, Subtopic>,
         lessonIds: Set<String>,
         duplicateLessonIds: Set<String>,
         errors: MutableList<LearningCurriculumValidationError>,
     ) {
         validateLessonFields(lesson, duplicateLessonIds, errors)
-        validateLessonConcepts(lesson, subtopicIds, errors)
+        validateLessonConcepts(lesson, topicsById, subtopicsById, errors)
         validateRelatedLessons(lesson, lessonIds, errors)
         validateSections(lesson, errors)
         validateSources(lesson, errors)
@@ -132,9 +145,11 @@ internal class LearningCurriculumValidator {
 
     private fun validateLessonConcepts(
         lesson: LearningLesson,
-        subtopicIds: Set<String>,
+        topicsById: Map<String, Topic>,
+        subtopicsById: Map<String, Subtopic>,
         errors: MutableList<LearningCurriculumValidationError>,
     ) {
+        val isActive = lesson.status == ContentStatus.ACTIVE
         if (lesson.status == ContentStatus.ACTIVE && lesson.primarySubtopicIds.isEmpty()) {
             errors.add(error(LearningCurriculumValidationErrorCode.NO_PRIMARY_SUBTOPICS, lesson.id, "Active lesson '${lesson.id}' must have at least one primary subtopic."))
         }
@@ -143,8 +158,15 @@ internal class LearningCurriculumValidator {
         lesson.primarySubtopicIds.forEach { subtopicId ->
             if (subtopicId.isBlank()) {
                 errors.add(error(LearningCurriculumValidationErrorCode.BLANK_PRIMARY_SUBTOPIC_ID, lesson.id, "Lesson '${lesson.id}' has a blank primary subtopic id."))
-            } else if (subtopicId !in subtopicIds) {
-                errors.add(error(LearningCurriculumValidationErrorCode.UNKNOWN_PRIMARY_SUBTOPIC, lesson.id, "Lesson '${lesson.id}' references unknown primary subtopic '$subtopicId'."))
+            } else {
+                val subtopic = subtopicsById[subtopicId]
+                if (subtopic == null) {
+                    errors.add(error(LearningCurriculumValidationErrorCode.UNKNOWN_PRIMARY_SUBTOPIC, lesson.id, "Lesson '${lesson.id}' references unknown primary subtopic '$subtopicId'."))
+                } else if (isActive) {
+                    retiredSubtopicReason(subtopic, topicsById)?.let { reason ->
+                        errors.add(error(LearningCurriculumValidationErrorCode.INACTIVE_PRIMARY_SUBTOPIC, lesson.id, "Active lesson '${lesson.id}' references primary subtopic '$subtopicId', $reason."))
+                    }
+                }
             }
             if (subtopicId in duplicatePrimaryIds) {
                 errors.add(error(LearningCurriculumValidationErrorCode.DUPLICATE_PRIMARY_SUBTOPIC_ID, lesson.id, "Lesson '${lesson.id}' lists primary subtopic '$subtopicId' more than once."))
@@ -156,8 +178,15 @@ internal class LearningCurriculumValidator {
         lesson.supportingSubtopicIds.forEach { subtopicId ->
             if (subtopicId.isBlank()) {
                 errors.add(error(LearningCurriculumValidationErrorCode.BLANK_SUPPORTING_SUBTOPIC_ID, lesson.id, "Lesson '${lesson.id}' has a blank supporting subtopic id."))
-            } else if (subtopicId !in subtopicIds) {
-                errors.add(error(LearningCurriculumValidationErrorCode.UNKNOWN_SUPPORTING_SUBTOPIC, lesson.id, "Lesson '${lesson.id}' references unknown supporting subtopic '$subtopicId'."))
+            } else {
+                val subtopic = subtopicsById[subtopicId]
+                if (subtopic == null) {
+                    errors.add(error(LearningCurriculumValidationErrorCode.UNKNOWN_SUPPORTING_SUBTOPIC, lesson.id, "Lesson '${lesson.id}' references unknown supporting subtopic '$subtopicId'."))
+                } else if (isActive) {
+                    retiredSubtopicReason(subtopic, topicsById)?.let { reason ->
+                        errors.add(error(LearningCurriculumValidationErrorCode.INACTIVE_SUPPORTING_SUBTOPIC, lesson.id, "Active lesson '${lesson.id}' references supporting subtopic '$subtopicId', $reason."))
+                    }
+                }
             }
             if (subtopicId in duplicateSupportingIds) {
                 errors.add(error(LearningCurriculumValidationErrorCode.DUPLICATE_SUPPORTING_SUBTOPIC_ID, lesson.id, "Lesson '${lesson.id}' lists supporting subtopic '$subtopicId' more than once."))
@@ -173,6 +202,25 @@ internal class LearningCurriculumValidator {
                     ),
                 )
             }
+        }
+    }
+
+    /**
+     * Why [subtopic] is not current assessment taxonomy, or null when it is. A Subtopic is
+     * current only while it and its owning Topic are both active: assessment hides the
+     * descendants of a retired Topic even when their own status was left active. A missing
+     * owner is the assessment validator's defect to report, not this one's.
+     */
+    private fun retiredSubtopicReason(
+        subtopic: Subtopic,
+        topicsById: Map<String, Topic>,
+    ): String? {
+        val owningTopic = topicsById[subtopic.topicId]
+        return when {
+            subtopic.status != ContentStatus.ACTIVE -> "which is ${subtopic.status}"
+            owningTopic != null && owningTopic.status != ContentStatus.ACTIVE ->
+                "but its owning topic '${owningTopic.id}' is ${owningTopic.status}"
+            else -> null
         }
     }
 

@@ -216,6 +216,59 @@ class DerivationTest(unittest.TestCase):
         with self.assertRaises(coverage.CoverageError):
             coverage.render_report(learning, self.curriculum)
 
+    def test_active_unit_with_deprecated_home_topic_fails(self) -> None:
+        curriculum = curriculum_fixture()
+        curriculum["topics"][0]["status"] = "DEPRECATED"
+
+        with self.assertRaisesRegex(coverage.CoverageError, "home topic 'topic_one'"):
+            coverage.render_report(self.learning, curriculum)
+
+    def test_active_lesson_mapped_to_deprecated_subtopic_fails(self) -> None:
+        curriculum = curriculum_fixture()
+        curriculum["subtopics"][2]["status"] = "DEPRECATED"  # supporting_a
+
+        with self.assertRaisesRegex(coverage.CoverageError, "'supporting_a'.*DEPRECATED"):
+            coverage.render_report(self.learning, curriculum)
+
+    def test_active_subtopic_under_deprecated_topic_fails(self) -> None:
+        curriculum = curriculum_fixture()
+        curriculum["topics"].append({"id": "topic_retired", "name": "Retired", "status": "DEPRECATED"})
+        curriculum["subtopics"].append(
+            {"id": "orphaned", "topicId": "topic_retired", "name": "Orphaned", "status": "ACTIVE"},
+        )
+        learning = copy.deepcopy(self.learning)
+        learning["units"][0]["lessons"][0]["primarySubtopicIds"] = ["orphaned"]
+
+        with self.assertRaisesRegex(coverage.CoverageError, "owning topic 'topic_retired' is DEPRECATED"):
+            coverage.render_report(learning, curriculum)
+
+    def test_excluded_deprecated_content_may_keep_retired_mappings(self) -> None:
+        curriculum = curriculum_fixture()
+        curriculum["topics"].append({"id": "topic_retired", "name": "Retired", "status": "DEPRECATED"})
+        curriculum["subtopics"].append(
+            {"id": "orphaned", "topicId": "topic_retired", "name": "Orphaned", "status": "ACTIVE"},
+        )
+        curriculum["subtopics"][3]["status"] = "DEPRECATED"  # unassessed
+        learning = copy.deepcopy(self.learning)
+        retired_lesson = lesson("lesson_retired", ["unassessed"], ["orphaned"])
+        retired_lesson["status"] = "DEPRECATED"
+        learning["units"][0]["lessons"].append(retired_lesson)
+        learning["units"].append(
+            {
+                "id": "unit_retired",
+                "topicId": "topic_retired",
+                "title": "Retired Unit",
+                "summary": "Summary.",
+                "lessons": [lesson("lesson_retired_unit", ["orphaned"])],
+                "status": "DEPRECATED",
+            },
+        )
+
+        report = coverage.render_report(learning, curriculum)
+
+        self.assertNotIn("lesson_retired", report)
+        self.assertNotIn("unit_retired", report)
+
     def test_report_is_deterministic(self) -> None:
         first = coverage.render_report(self.learning, self.curriculum)
         second = coverage.render_report(learning_fixture(), curriculum_fixture())

@@ -8,11 +8,14 @@ Why every screen's text is selectable, and why a copy is confirmed but never per
 wrapping sits around `NavDisplay` rather than around the whole shell so the four area-navigation
 labels stay out of any selection — they are controls, not content.
 
-Selecting text does nothing on its own. Copying is offered by the platform, through whichever menu
-that platform already shows: Android's floating toolbar, the desktop right-click menu, Ctrl/Cmd-C
-everywhere. The one thing this app adds is the confirmation — when a copy runs, a snackbar reads
-"Copied to clipboard". With the Compose versions currently resolved that confirmation appears on
-desktop and iOS only; see [the current reach](#current-reach) below.
+Selecting text does nothing on its own. Copying is offered by the platform, through whatever it
+already shows: Android's selection menu (with its own Select all and Read aloud), the iOS floating
+toolbar, the desktop and browser right-click menus, the copy shortcut. The app neither draws nor
+alters any of them.
+
+The one thing this app adds is the confirmation — when a copy from that content succeeds, a
+snackbar reads "Copied to clipboard" (`SnackbarDuration.Short`; a repeated copy replaces the
+message rather than queueing behind it).
 
 An earlier version of this feature drew a menu of its own next to the selection, with its own Copy.
 On desktop that put two menus offering the same word on screen at once, which is what a
@@ -21,50 +24,64 @@ observes.
 
 ## Where the copy is observed
 
-`ReportSelectionCopies` (`ui/selection/SelectionCopyReports.kt`) wraps the platform's copy action so
-the clipboard still receives exactly what the platform's Copy would have written. It is an `expect`
-because the menu that offers a copy differs by input device, and neither seam covers the other:
+At the clipboard, not at any menu. However a copy is asked for, `SelectionContainer`'s selection
+manager ends it the same way: it takes the selected text and writes it through the `LocalClipboard`
+the container was composed with. `SelectableContent` provides a `CopyReportingClipboard`
+(`ui/selection/CopyReportingClipboard.kt`) around the platform's clipboard at exactly that point:
 
-| | Android, iOS, web | desktop (JVM) |
-| --- | --- | --- |
-| the menu | the floating toolbar | the right-click context menu |
-| the seam | `LocalTextToolbar` | `LocalTextContextMenu` |
-| the wrapper | `CopyReportingTextToolbar` forwards every call untouched and wraps `onCopyRequested` | `CopyReportingTextManager` proxies the `TextManager` and wraps its `copy` action |
+```text
+Android menu ─┐
+iOS toolbar  ─┤
+desktop menu ─┼─ SelectionContainer copy → CopyReportingClipboard → platform Clipboard
+web menu     ─┤
+shortcut     ─┘   (except the browser's — see below)
+```
 
-The split is not a matter of taste. `SelectionManager` shows its toolbar only when `isInTouchMode`,
-which is `!event.isMouseOrTouchPad()`, so on desktop the toolbar seam is never called at all and a
-mouse selection would go unnoticed. `LocalTextContextMenu` is the desktop counterpart, and it ships
-only in the desktop artifact, so there is nothing to use in its place on the web targets — a browser
-selection made with a mouse copies normally and simply passes unannounced.
+The decorator forwards reads and `nativeClipboard` untouched, hands every write to the platform
+clipboard unchanged, and reports only after a **non-null** write has **returned**. A write that
+throws is not reported and still throws; `setClipEntry(null)` clears the clipboard rather than
+copying, so it is not reported either. The app never reconstructs the selection or writes text of
+its own.
 
-The same holds for a keyboard copy on any platform: `SelectionContainer` handles Ctrl/Cmd-C through
-its own clipboard handler rather than through either menu, so that copy is silent too. This is an
-accepted limitation rather than an oversight: the snackbar confirms a menu action the learner
-cannot otherwise see complete, and intercepting key events to announce a shortcut the learner chose
-deliberately is not worth a global input hook.
+The decorator is common code: there is no `expect`/`actual` and no per-platform hook, because the
+seam it observes is the same on every target.
 
-## Current reach
+### Input modality
 
-Which seam a platform's selection menu actually calls is decided by the Compose foundation build
-it resolves, not by this app, and the two have diverged:
+The confirmation is tied to a successful clipboard write from the selection, not to a menu. A
+keyboard copy that the selection handles itself crosses the same clipboard and is confirmed too:
+on desktop, Android and iOS, `SelectionManager` answers the copy shortcut by calling the same
+`copy()` the menus call.
 
-| | menu Copy reaches the seam? | why |
-| --- | --- | --- |
-| Desktop | yes | Compose Multiplatform's desktop menu goes through `LocalTextContextMenu`; `SelectionCopyDesktopTest` proves it end to end. |
-| iOS | yes, by source | Compose Multiplatform 1.11 leaves `ComposeFoundationFlags.isNewContextMenuEnabled` off and iOS is always in touch mode, so `SelectionManager` calls `LocalTextToolbar.showMenu`. Not run on a device. |
-| Android | **no** | AndroidX foundation 1.11 turns `isNewContextMenuEnabled` on. The selection toolbar is then an `ActionMode` built by the new context-menu provider, whose Copy calls `SelectionManager.copy()` directly; `LocalTextToolbar` is never asked. Confirmed on an emulator: no snackbar by default, and the snackbar returns when the flag is forced off. |
-| Web | **no** | `isInTouchMode` is the constant `false` on the web, so the toolbar is never shown, and the right-click menu is foundation's own `ContextMenuArea`, which also calls `SelectionManager.copy()` directly. |
+The browser is the exception. There Compose leaves Ctrl/Cmd-C to the browser and answers its `copy`
+event by writing to the event's `clipboardData`, which never touches `LocalClipboard`. A keyboard
+copy on the web therefore stays silent. That is accepted rather than worked around: there is no
+global keyboard listener and no synthesized clipboard event, because announcing a shortcut is not
+worth an input hook.
 
-Every copy, from any menu or the keyboard, still ends in `SelectionContainer`'s `onCopyHandler`
-writing to `LocalClipboard`, so the copy itself is correct everywhere — only the confirmation is
-missing. Restoring it on Android and the web is a design decision, not a one-line fix, and is
-recorded as `CQ-KMP-003` in the [code-quality audit](../quality/code-quality-audit.md).
+### Editable descendants
+
+`SelectableContent` wraps every routed screen, and some of them hold text fields — the Topic search
+field is one. A text field cuts, copies and pastes through `LocalClipboard` too, so a reporting
+clipboard visible to it would call a Cut "Copied".
+
+`SelectionContainer` reads `LocalClipboard` in its own body, before composing its children, so the
+reporting clipboard is provided only around the container and the platform clipboard is provided
+again inside it, around `content`. The selection writes through the reporting one; everything under
+it, including text fields, sees the platform's own.
 
 ## Validation this needs
 
-An earlier attempt hooked only the toolbar seam. Every target compiled, the unit tests passed, and
-the feature did nothing whatsoever in the desktop app, because a mouse never reaches that seam.
-`SelectionCopyDesktopTest` in `shared/src/jvmTest` now drives a real mouse drag and right-click with
-`performMouseInput`, clicks the platform menu's own Copy item, and asserts against a recording
-`Clipboard` and the shell's snackbar. Anything that claims to react to selection or copying has to
-be proven against the input device the learner actually uses.
+An earlier attempt hooked only the touch toolbar. Every target compiled, the unit tests passed, and
+the feature did nothing in the desktop app, because a mouse never reaches that seam; a later one
+hooked menus individually and missed Android's new context menu and the browser's. Anything that
+claims to react to copying has to be proven through the real selection, not only in isolation:
+
+- `CopyReportingClipboardTest` (`shared/src/jvmTest`) pins the decorator: exact entry delegated,
+  write before report, no report on failure or on a clear, reads and native clipboard delegated.
+- `SelectionCopyDesktopTest` drives a real mouse drag, then either the platform menu's own Copy or
+  the copy shortcut, and asserts against a recording `Clipboard` and the shell's snackbar. It also
+  cuts from a text field inside `SelectableContent` and asserts the cut is not confirmed.
+- Android has no UI test stack for its native menu; the selection-menu Copy and a search-field Cut
+  were checked by hand on an emulator when this seam was introduced (`CQ-KMP-003` in the
+  [code-quality audit](../quality/code-quality-audit.md)).

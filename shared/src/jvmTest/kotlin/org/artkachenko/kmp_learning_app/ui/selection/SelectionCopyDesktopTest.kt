@@ -2,11 +2,15 @@ package org.artkachenko.kmp_learning_app.ui.selection
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.Clipboard
 import androidx.compose.ui.platform.LocalClipboard
@@ -17,10 +21,14 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.rightClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.withKeysDown
 import androidx.compose.ui.unit.dp
 import java.awt.datatransfer.DataFlavor
 import kotlin.test.Test
@@ -31,11 +39,11 @@ import org.artkachenko.kmp_learning_app.AppTopLevelDestination
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 
 /**
- * Selecting and copying on desktop, driven with a real mouse.
+ * Selecting and copying on desktop, driven with a real mouse and keyboard.
  *
- * The desktop path is worth testing on its own because it shares no seam with the touch platforms:
- * `SelectionManager` shows its floating toolbar only in touch mode, so everything a mouse does here
- * goes through `LocalTextContextMenu` instead.
+ * Unlike `CopyReportingClipboardTest`, these go through a real `SelectionContainer` and the
+ * platform's own menu and shortcut, so they prove the selection's copy actually reaches the
+ * reporting clipboard rather than only that the clipboard reports what reaches it.
  */
 @OptIn(ExperimentalTestApi::class, ExperimentalComposeUiApi::class)
 internal class SelectionCopyDesktopTest {
@@ -65,7 +73,56 @@ internal class SelectionCopyDesktopTest {
             copied != null && copied.isNotEmpty() && SelectableText.contains(copied),
             "expected part of the rendered text on the clipboard, was $copied",
         )
-        onNodeWithText("Copied to clipboard").assertIsDisplayed()
+        onNodeWithText(CopiedMessage).assertIsDisplayed()
+    }
+
+    @Test
+    fun copyingWithTheKeyboardIsConfirmedWithASnackbar() = runComposeUiTest {
+        val clipboard = RecordingClipboard()
+        setContent { Shell(clipboard) }
+
+        onNodeWithTag(TextTag).performMouseInput {
+            moveTo(Offset(1f, centerY))
+            press()
+            moveTo(Offset(width / 2f, centerY))
+            moveTo(Offset(width - 1f, centerY))
+            release()
+        }
+        // The press focused the selection, which is where the shortcut is handled.
+        onRoot().performKeyInput { withKeysDown(listOf(ShortcutModifier)) { pressKey(Key.C) } }
+
+        waitUntil(timeoutMillis = TimeoutMillis) { clipboard.copiedText != null }
+        val copied = clipboard.copiedText
+        assertTrue(
+            copied != null && copied.isNotEmpty() && SelectableText.contains(copied),
+            "expected part of the rendered text on the clipboard, was $copied",
+        )
+        onNodeWithText(CopiedMessage).assertIsDisplayed()
+    }
+
+    @Test
+    fun cuttingFromATextFieldInsideTheContentIsNotReportedAsACopy() = runComposeUiTest {
+        val clipboard = RecordingClipboard()
+        val field = TextFieldState(FieldText)
+        setContent {
+            Shell(clipboard) {
+                BasicTextField(state = field, modifier = Modifier.testTag(FieldTag))
+            }
+        }
+
+        onNodeWithTag(FieldTag).performClick()
+        onNodeWithTag(FieldTag).performKeyInput {
+            withKeysDown(listOf(ShortcutModifier)) { pressKey(Key.A) }
+            withKeysDown(listOf(ShortcutModifier)) { pressKey(Key.X) }
+        }
+
+        // The cut happened, on the same clipboard, but it belongs to the field rather than the
+        // selection, and calling it a copy would describe something that did not happen.
+        waitUntil(timeoutMillis = TimeoutMillis) { clipboard.copiedText != null }
+        assertEquals(FieldText, clipboard.copiedText)
+        assertEquals("", field.text.toString())
+        mainClock.advanceTimeBy(TimeoutMillis)
+        onNodeWithText(CopiedMessage).assertDoesNotExist()
     }
 
     @Test
@@ -88,8 +145,13 @@ internal class SelectionCopyDesktopTest {
         assertEquals(null, clipboard.copiedText)
     }
 
-    @androidx.compose.runtime.Composable
-    private fun Shell(clipboard: Clipboard) {
+    @Composable
+    private fun Shell(
+        clipboard: Clipboard,
+        content: @Composable () -> Unit = {
+            Text(text = SelectableText, modifier = Modifier.testTag(TextTag))
+        },
+    ) {
         AppTheme {
             CompositionLocalProvider(LocalClipboard provides clipboard) {
                 // Through the real shell, because the snackbar host lives on its Scaffold and is
@@ -100,9 +162,7 @@ internal class SelectionCopyDesktopTest {
                         onSelect = {},
                         showsNavigation = false,
                     ) {
-                        SelectableContent {
-                            Text(text = SelectableText, modifier = Modifier.testTag(TextTag))
-                        }
+                        SelectableContent(content = content)
                     }
                 }
             }
@@ -112,10 +172,17 @@ internal class SelectionCopyDesktopTest {
     private companion object {
         const val TextTag = "selectable-text"
         const val SelectableText = "Coroutines suspend without blocking a thread"
+        const val FieldTag = "editable-field"
+        const val FieldText = "flow"
+        const val CopiedMessage = "Copied to clipboard"
 
         /** What Compose's own desktop context menu calls its copy item. */
         const val PlatformCopyLabel = "Copy"
         const val TimeoutMillis = 2_000L
+
+        /** The key Compose's desktop shortcuts are chorded with on the machine running the test. */
+        val ShortcutModifier: Key =
+            if (System.getProperty("os.name").startsWith("Mac")) Key.MetaLeft else Key.CtrlLeft
     }
 
     /**

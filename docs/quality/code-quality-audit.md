@@ -165,7 +165,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-DI-001` | Common Koin graph / startup timing | Low | High | `settings/AppearanceStateHolder.kt`, `ui/theme/AppearanceTheme.kt`, `AppRoot.kt`, `docs/architecture/overview.md` | Four written statements claimed the appearance preference is read while the host builds its Koin graph, which lazy `single` semantics make false. | Koin 4.2.2 declares `single(createdAtStart: Boolean = false)` and only definitions in `Module.eagerInstances` are instantiated by `createEagerInstances()`; no definition in this repository passes `createdAtStart`, and no host calls `koin.get<AppearanceStateHolder>()` during startup — the four `start*LocalDataGraph` functions resolve `CurriculumDataInitializer` and nothing else. The holder's first resolution is therefore `AppearanceTheme`'s own `remember { KoinPlatform.getKoinOrNull()?.getOrNull<AppearanceStateHolder>() }`, which makes `AppearanceTheme`'s "No storage I/O happens here" the exact opposite of what that composable does. The guarantee the comments were defending is unaffected: the read is synchronous inside `remember`, so it completes within the first composition and before the first frame, and there is still no light-to-dark flash and no startup step awaiting storage. | Restate all four to describe lazy first-resolution and say that *synchronous* rather than *early* is what prevents the flash. The graph is correct as it stands; only the explanation was wrong, and `StudyProgressStateHolder` and `SavedQuestionStateHolder` already describe their own laziness accurately. | Fixed |
 | `CQ-DI-002` | Common Koin graph / test coverage | Low | High | `SharedHostStartupTest.kt` | The graph test asserted singleton identity for three app-scoped holders but not for `AssessmentHistoryStore`, and never resolved two of the fifteen ViewModel bindings. | `sharedHostModulesResolveTheWholeProductGraph` already pinned one instance each of `SavedQuestionStateHolder`, `StudyProgressStateHolder` and `AppearanceStateHolder`, but not the completed-history cache that eleven consumers share and that the Part 2 and Part 3 conclusions rest on — so `single` becoming `factory` there would have left every history-derived surface with its own cache and no test would have failed. Switching the definition to `factory` was confirmed to leave the suite green before the assertion was added, and to fail at the new assertion afterwards. `AppShellViewModel` and `InterviewStartViewModel` were also the only two bindings no graph-level test resolved. | Assert one `AssessmentHistoryStore` beside the three existing identity assertions and resolve the two remaining ViewModels, in the one test that installs the real `assessmentDataModule`. No new test class; the existing graph check is the right owner. | Fixed |
 | `CQ-DI-003` | Navigation 3 / ViewModel store ownership | Low | High | `AppNavigator.kt`, `App.kt` | Two back-stack entries with an equal route would silently share one `ViewModelStore`, and `push` does not prevent one. | `ViewModelStoreNavEntryDecorator` scopes each store by `NavEntry.contentKey`, which `defaultContentKey` derives as `key.toString()`; `AppRoute` is a sealed interface of `data class`/`data object`, so two equal routes produce one key and, as `NavEntry`'s own documentation states, "NavEntries that share the same contentKey will be handled as sharing the same content and/or NavEntryDecorator state". `AppNavigator.push` appends unconditionally. Tracing every `navigator.push` call site in `App.kt` shows the hazard is currently unreachable: within one area, no destination reachable from a route can push that same route again, every attempt and result route carries a freshly generated `attemptId`, and the Practice Builder and Lesson reader are terminal with respect to the routes above them (`onNavigateLesson` replaces rather than pushes). The four areas hold independent stacks, so switching areas cannot collide either. | Leave as-is. The invariant holds today through the shape of the navigation graph rather than through a guard, and adding a duplicate check to `push` would be navigation work this chunk does not own. Recorded so that a future route addition — in particular any new path back to a Topic, Unit or Practice Builder route already on the stack — is understood to be a ViewModel-ownership change and not only a navigation one. **Part 6D coverage evidence:** the positive contract is now pinned directly. `NavEntryViewModelOwnershipTest` composes `NavDisplay` with the same two decorators `App` installs and real `AppRoute.ProgressTopic` keys: two coexisting entries of one destination receive distinct ViewModels, each with its own parameter; a covered entry is not cleared; returning to it yields the same instance; and popping clears only the removed entry. Removing the ViewModel decorator, or forcing both entries onto one content key (the equal-route case this row records), fails it. Removing the decorator from `App.kt` itself fails eight journey tests across five classes, so the production wiring was already protected, but only as content that never appears. The equal-route sharing is deliberately not asserted either way; nothing here changes the reasoning above. | Accepted as-is |
-| `CQ-DATA-012` | Bundled content / coverage governance | Medium | High | `docs/content/question-bank-coverage.md`, `tools/learning_question_coverage.py`, `.github/workflows/main.yml` | The question-bank coverage snapshot is stale and nothing gates it. | The document headlines 442 Questions, 401 ACTIVE, 1 774 answer options, 563 sources and 78 empty Subtopics; the bundle holds 478, 437, 1 918, 635 and 69 (71 without an ACTIVE Question). Its generator is a fenced Python block a human pastes into a shell, while the sibling learning snapshot is generated by `tools/` and CI-gated with `--check`, and is current. | Move the generator into `tools/` with `--write`/`--check` and add it to the CI step that already runs its sibling. | Open |
+| `CQ-DATA-012` | Bundled content / coverage governance | Medium | High | `docs/content/question-bank-coverage.md`, `tools/question_bank_coverage.py`, `tools/test_question_bank_coverage.py`, `.github/workflows/main.yml` | The question-bank coverage snapshot was regenerated by hand and nothing gated it. | At the Part 3A Content Addendum the document headlined 442 Questions, 401 ACTIVE, 1 774 answer options, 563 sources and 78 empty Subtopics while the bundle held 478, 437, 1 918, 635 and 69 (71 without an ACTIVE Question). By `c8b73fb` a later content pass had brought the structural tables back in line with the 480/439/41 bank, but only by hand: the generator was still two fenced Python blocks pasted into a shell, with no `--check` and no CI gate, so the next bank change could drift again unnoticed. Post-audit follow-up: `tools/question_bank_coverage.py` now owns five marker-fenced regions (headline numbers and depth distribution, Topic coverage, deprecated Questions, the empty-Subtopic count, the Subtopic index); `--write` replaces only those regions and preserves every byte outside them, `--check` runs in the CI data gate beside the learning snapshot, and the embedded scripts are gone. The first `--write` changed no number. Falsified: changing `480` to `481` inside a region failed `--check` and `--write` restored it byte-identically. The editorial prose — caveats, audit baselines, empty-Subtopic triage, concept coverage, expansion notes — intentionally stays outside automation and is not proved current by `--check`. | Done. Regenerate with `--write` in every PR that changes the bank, then re-read the prose. | Fixed |
 | `CQ-DATA-013` | Curriculum validation / diagnostics | Medium | High | `InitialCurriculumSmokeTest.kt`, `CurriculumDataInitializer.kt`, `AppRoot.kt` | The precise validation errors are discarded at every point where they would be read. | `CurriculumValidator` produces an entity-identified error per defect; the initializer joins them into one exception, `AppStartupStateHolder` catches it as `catch (_: Exception)` and shows a generic string, and `commonMain` has no logging. The gate that actually fires is `assertTrue(validator.validate(...).isEmpty())` with no message, so CI reports `Expected value to be true.` and names no Question. | Assert on the rendered error list rather than on `isEmpty()`. Runtime reporting of a rejected bundle belongs to Part 5. **Part 5:** CI half fixed — `bundledInitialCurriculumPassesStructuralValidation` renders every error as `CODE [entityId] message`; falsified by blanking two explanations in a temporary copy (new assertion names `BLANK_EXPLANATION` and both Question IDs; the old `assertTrue(isEmpty())` printed only `Expected value to be true.`). Runtime half: the initializer's exception message already carries each validator message (which names the entity), and it is dropped only at `AppStartupStateHolder`'s catch because `commonMain` has no diagnostics sink. All startup failure classes inside `initialize()` — bundle decode, validation rejection, database open/migration, web storage/worker initialization, unexpected — share one Retry, and none needs different learner copy: decode and rejection are deterministic and gated by CI before a build ships. Keeping an unread `Throwable` on the holder would be dead state. | Fixed (CI gate); runtime reporting Deferred until the repository adopts a diagnostics sink |
 | `CQ-DATA-014` | Authored content / identity stability | Medium | High | `CurriculumValidator.kt`, `CurriculumImporter.kt`, `AssessmentReviewLoader.kt`, `docs/content/content-authoring.md` | Nothing compares one bundle revision to the next, so every identity-stability rule is convention-only. | The authoring contract requires a new `Question.id` or `AnswerOption.id` on a material change; the validator sees one document and the importer upserts by primary key without diffing. `AssessmentReviewLoader` reads `isCorrect` from the attempt and `isCorrectAnswer` from the current key, so a key changed under a stable ID makes review contradict itself. Four revisions of history show the convention kept — 0 Questions removed, 0 keys changed, 3 option texts refined under stable IDs. | Diff the bundle against its previous released revision at build time — ID sets, correct-answer sets, option-ID sets, `selectionMode` — and report a violation as an authoring error. | Open |
 | `CQ-DATA-015` | Assessment review / content evolution | Low | High | `assessment/session/AnswerOrder.kt`, `AssessmentReviewLoader.kt`, `SavedQuestionContentResolver.kt` | Review fidelity degrades silently when a Question's option set changes. | `withAnswersOrderedFor` shuffles the *current* option list from an `(attemptId, questionId)` seed while the KDoc claims the arrangement the learner actually answered; `getQuestionById` returns retired options too. Adding an option changes both set and order, so an older attempt shows an option the learner never saw, marked unselected. Unreachable on a fresh install. | Bound the KDoc claim to a stable option set, and decide whether the saved-question surface should exclude retired options. | Open |
@@ -5765,6 +5765,13 @@ item has an owner and a reason. That is what complete means here; it does not me
 The planned audit is complete, all reviewed areas now have a documented disposition, and the
 remaining findings are explicitly separated into follow-up work below.
 
+**Post-audit follow-ups.** The totals and residual table below are kept current as residual
+findings are closed after the audit; they do not reopen it, and the Part 6D record keeps the
+numbers as they stood when the audit completed (Fixed 79, Open 7, 20 residuals).
+
+- `CQ-DATA-012` — Fixed. `tools/question_bank_coverage.py` owns the structural regions of
+  `docs/content/question-bank-coverage.md` and its `--check` runs in CI.
+
 ### Scope completed
 
 | Part | Covered |
@@ -5790,10 +5797,10 @@ Main Finding Ledger, counted by a parser over the table: **104 findings.**
 
 | Status | Count |
 | --- | ---: |
-| Fixed | 79 |
+| Fixed | 80 |
 | Accepted as-is | 10 |
 | Not a defect | 1 |
-| Open | 7 |
+| Open | 6 |
 | Deferred | 6 |
 | Split: fixed and deferred | 1 (`CQ-DATA-013`: CI gate fixed, runtime reporting deferred) |
 | Needs measurement | 0 (`CQ-DATA-010` was measured and fixed in Stage 4E) |
@@ -5803,7 +5810,7 @@ Main Finding Ledger, counted by a parser over the table: **104 findings.**
 | `CQ-UI` | 15 | 15 | — |
 | `CQ-BUG` | 6 | 6 | — |
 | `CQ-STATE` | 14 | 12 | 1 deferred, 1 accepted |
-| `CQ-DATA` | 22 | 8 | 7 open, 1 deferred, 1 split, 5 accepted |
+| `CQ-DATA` | 22 | 9 | 6 open, 1 deferred, 1 split, 5 accepted |
 | `CQ-DI` | 10 | 7 | 2 accepted, 1 not a defect |
 | `CQ-TEST` | 17 | 17 | — |
 | `CQ-KMP` | 6 | 4 | 2 deferred |
@@ -5911,7 +5918,7 @@ The test suite is now proportionate to the product. Evidence for that:
 
 ### Residual findings and ownership
 
-Every finding not *Fixed*, *Accepted as-is* or *Not a defect* — 14 in the main ledger and 6
+Every finding not *Fixed*, *Accepted as-is* or *Not a defect* — 13 in the main ledger and 6
 Stage-local, enumerated by parser, not memory:
 
 | Finding | Severity | Status | Owner / category | Why still open or deferred | Trigger / next action |
@@ -5921,7 +5928,6 @@ Stage-local, enumerated by parser, not memory:
 | `CQ-DATA-016` | Low | Open | Product/content decision | `TOPIC_WITHOUT_QUESTIONS` is status-blind; no test pins either reading | Decide, then count ACTIVE Questions in that rule |
 | `CQ-DATA-017` | Low | Open | Product/content decision | Search surfaces Subtopics Topic detail hides | Index only practicable Subtopics, or label them |
 | `CQ-KMP-003` | Medium | Deferred | Product decision | No copy confirmation on Android or web | Decide whether keyboard copies should announce; the clipboard-level seam is identified |
-| `CQ-DATA-012` | Medium | Open | Content/tooling | The question-bank coverage snapshot is stale and ungated | Move its generator into `tools/` with `--check` beside the learning one |
 | `CQ-DATA-014` | Medium | Open | Content/tooling | Nothing compares one bundle revision to the next, so stable-ID rules are convention | A build-time diff against the previous released bundle |
 | `CQ-DATA-019` | Observation | Open | Content/tooling | Array-position ordering is unstated; the testable half is pinned | Write the rule into `Curriculum`'s KDoc and the authoring contract |
 | `CQ-DATA-020` | Observation | Open | Content/tooling | Learning sources are ungated by design | Record the policy; pin raw GitHub citations to a commit |
@@ -5940,9 +5946,10 @@ Stage-local, enumerated by parser, not memory:
 No residual is accepted architectural risk. The one accepted risk of that kind, `CQ-DI-003`, is
 *Accepted as-is* rather than residual, and it now has a positive-contract test.
 
-By existing severity, the content-governance debts that matter most are the two Medium ones —
-`CQ-DATA-014` (stable-ID evolution has no enforcement) and `CQ-DATA-012` (a stale, ungated
-coverage snapshot) — ahead of the Low and Observation documentation and source-policy items.
+By existing severity, the content-governance debt that matters most is the one remaining Medium
+item — `CQ-DATA-014` (stable-ID evolution has no enforcement) — ahead of the Low and Observation
+documentation and source-policy items. `CQ-DATA-012`, the other Medium content-governance debt
+when the audit completed, was fixed as a post-audit follow-up.
 
 ### How to continue
 
@@ -6703,13 +6710,16 @@ Repository-wide code-quality audit — Complete
 
 Main Finding Ledger: 104
 Critical 0, High 3, Medium 26, Low 61, Observation 14
-Fixed 79, Accepted as-is 10, Not a defect 1, Open 7, Deferred 6,
+Fixed 80, Accepted as-is 10, Not a defect 1, Open 6, Deferred 6,
 fixed-and-deferred split 1 (CQ-DATA-013), Needs measurement 0
 Stage-local rows outside the main ledger: 22 (14 fixed, 1 not a defect, 1 accepted, 6 deferred)
 
-Residual findings: 20
+Post-audit follow-up: CQ-DATA-012 — Fixed
+(At audit completion: Fixed 79, Open 7, Residual findings 20.)
+
+Residual findings: 19
 Product/content decision: CQ-DATA-003, CQ-DATA-015, CQ-DATA-016, CQ-DATA-017, CQ-KMP-003
-Content/tooling: CQ-DATA-012, CQ-DATA-014, CQ-DATA-019, CQ-DATA-020
+Content/tooling: CQ-DATA-014, CQ-DATA-019, CQ-DATA-020
 Diagnostics/infrastructure: CQ-DATA-013 (runtime half), CQ-HYG-001, CQ-DEP-003, CQ-CI-006,
   CQ-GRADLE-002, CQ-DEP-002
 Separate production refactor: CQ-STATE-014, CQ-TYPE-001, CQ-CROSS-005, CQ-CROSS-010

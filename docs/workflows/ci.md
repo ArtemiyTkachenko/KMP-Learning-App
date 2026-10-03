@@ -15,14 +15,25 @@ Two standard-library-cheap Python steps ahead of the Gradle job, both failing in
 
 ```sh
 python3 -m unittest discover -s tools -p 'test_*.py'
+python3 tools/question_bank_coverage.py --check
 python3 tools/learning_question_coverage.py --check
 python3 .github/project/validate_backlog.py .github/project/backlog.yml
 ```
 
-`--check` compares the committed snapshot in `docs/content/learning-question-coverage.md`
-against what the two authored curricula currently derive, so a learning-mapping or
-Question change that leaves the snapshot stale fails the build. CI never regenerates the
-snapshot; `--write` stays an authoring step.
+The two `--check` commands gate two committed content snapshots with different scopes:
+
+- `question_bank_coverage.py` compares the marker-fenced structural regions of
+  `docs/content/question-bank-coverage.md` — headline counts, Topic density, deprecated
+  Questions, the empty-Subtopic count and the Subtopic index — against
+  `initial_curriculum.json`. Adding, deprecating or re-homing a Question, or changing the
+  taxonomy, fails the build until the regions are regenerated. The editorial prose around
+  them (triage, concept coverage, expansion notes) is human-owned and **not** checked.
+- `learning_question_coverage.py` compares the whole of
+  `docs/content/learning-question-coverage.md`, which relates learning Lessons to ACTIVE
+  Questions, against both authored curricula, so a learning-mapping or Question change
+  that leaves it stale fails the build.
+
+CI never regenerates either snapshot; `--write` stays an authoring step.
 
 The backlog validator is the same script `sync-backlog.yml` runs. That workflow is manual
 dispatch only, so before this gate existed a malformed `backlog.yml` merged freely and was

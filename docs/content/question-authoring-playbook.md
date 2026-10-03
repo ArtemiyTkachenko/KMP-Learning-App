@@ -545,21 +545,20 @@ Identity rules are in the contract; this is how they apply in practice.
 `<question_id>_a…_d`.
 
 **Editing an existing question.** Keep `Question.id` for wording, clarity,
-distractor, explanation, and source changes. A new ID plus deprecation of the old
-question is for a changed concept or changed correct answer, and should be rare —
-the 90-question review needed none.
-
-Changing between `SINGLE` and `MULTIPLE` can materially change how the candidate
-interacts with a question. Review stable identity in that case; adding explicit
-metadata for an interaction that was already intended does not itself require a
-new ID.
+explanation, and source changes, including rewording a distractor without changing
+its claim. A new ID plus deprecation of the old question is for a changed concept,
+a changed correct answer, a replaced or added or removed option, or a change
+between `SINGLE` and `MULTIPLE` — even one that only makes the intended mode
+explicit. CI rejects all of those under a shipped `Question.id`.
 
 **Editing an answer.** This is the rule most easily got wrong:
 
 - Keep the `AnswerOption.id` when only the wording changes and the claim is the
   same.
-- Issue a **new** ID when the claim changes — replacing an implausible distractor
-  with a different misconception is a new claim, even in the same slot.
+- When the claim changes, the option needs a **new** ID — replacing an implausible
+  distractor with a different misconception is a new claim, even in the same slot.
+  On a shipped question that also means a new `Question.id` (see below); only a
+  question not yet merged can take a new answer ID in place.
 
 Historical `QuestionAttempt` rows store selected answer IDs, so reusing an ID for
 a different assertion silently corrupts past attempts. The review issued 253 new

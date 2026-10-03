@@ -45,9 +45,8 @@ never validated anything.
    the source and confirm it states the claim → check the explanation against the source →
    run the deterministic checks → work the semantic rubric → fix → re-validate the final
    text.
-5. **Respect stable identity.** Keep `Question.id` for wording, clarity, distractor,
-   explanation, and source changes, and keep an `AnswerOption.id` when only its wording
-   changes. A shipped question's `selectionMode`, answer-ID set and correct-answer set are
+5. **Respect stable identity.** Keep `Question.id` for wording, clarity, explanation,
+   and source changes, and keep an `AnswerOption.id` when only its wording changes. A shipped question's `selectionMode`, answer-ID set and correct-answer set are
    fixed, and it is never deleted: when an option's claim or the key must change, add a
    new question with new IDs and mark the old one `DEPRECATED`. Historical attempts store
    selected answer IDs, so re-pointing an ID corrupts them.

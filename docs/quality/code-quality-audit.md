@@ -152,7 +152,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-BUG-004` | Curriculum import / reconciliation | High | High | `CurriculumImporter.kt`, `CurriculumImporterTest.kt`, `docs/architecture/persistence.md` | Re-homing a Subtopic to another Topic aborted the whole import on an existing installation. | `question` holds a composite foreign key onto `subtopic(topic_id, id)`, and the exported schema declares it immediate rather than `DEFERRABLE INITIALLY DEFERRED`, so SQLite checks it after every statement. `upsertSubtopics` runs before `upsertQuestions`, so updating `subtopic.topic_id` orphaned the persisted Question rows that still named the old pair, even though the very next statement moved those same Questions and the incoming curriculum passed validation. A fresh install accepted the identical bundle. A JVM probe against the real importer reproduced `SQLiteException: FOREIGN KEY constraint failed` on the second import; because the failure happens inside the startup importer, an upgrading user would have reached an unrecoverable startup error whose Retry could never succeed. | Open the import transaction with `PRAGMA defer_foreign_keys = ON` so the finished graph is checked once at `COMMIT` instead of after each statement, and keep every other write, ordering, and guard unchanged. Atomicity is preserved: a graph that is still inconsistent at `COMMIT` fails the same constraint, rolls back, and leaves the previous curriculum importable, which a second regression test pins. | Fixed |
 | `CQ-DATA-001` | Curriculum persistence / documentation | Low | High | `CurriculumDao.kt` | The delete-stale-options contract documented behavior the importer had stopped having. | `deleteAnswerOptionsForQuestionExcept` still stated that a historically referenced option "can still appear in a new assessment for that question", which was true before the answer-option status column existed. The importer now follows that delete with `deprecateAnswerOptionsForQuestionExcept`, and every active query reads through `getActiveAnswerOptionsForQuestions`, so the retained option is excluded from new assessments; `retiredAnswerOptionLeavesActiveQuestionsButStaysReviewable` already proves it. Runtime behavior was correct, only its documentation was not. | Correct the comment to describe the deprecate-and-filter behavior that exists, and open no functional finding. | Fixed |
 | `CQ-DATA-002` | Curriculum validation / authored sources | Medium | High | `CurriculumValidator.kt`, `CurriculumValidationErrorCode.kt`, `CurriculumValidatorTest.kt`, `docs/content/content-authoring.md` | A Question citing one source URL twice silently shipped one citation short. | `question_source` is keyed by `(question_id, url)`, but validation checked only presence, blankness, scheme and placeholder hosts. A DAO probe confirmed that upserting two authored sources with the same URL leaves exactly one row, carrying the second title and the second sort order; nothing reported the loss at decode, validation, import or read time. The bundled bank currently contains no such duplicate, so this is a latent authoring trap rather than a live defect. Duplicate answer text was already rejected for the same reason, so the gap was inconsistent as well as silent. | Reject a repeated source URL within a Question with a dedicated `DUPLICATE_SOURCE_URL` code, the way duplicate answer text is already rejected, and leave `LearningCurriculumValidator` alone: Lesson sources are never persisted relationally, so a repeated URL there is a visible duplicate rather than a silent loss. | Fixed |
-| `CQ-DATA-003` | Cross-document status consistency | Low | Medium | `LearningCurriculumValidator.kt`, `CurriculumValidator.kt` | Nothing rejects ACTIVE learning content homed on, or teaching, retired assessment taxonomy. | `LearningCurriculumValidator` checks that a Unit's `topicId` and a Lesson's primary and supporting Subtopic IDs *exist* in the assessment curriculum, never that they are ACTIVE. The assessment repository hides descendants of a deprecated parent by joining parent statuses, so a deprecated Topic is genuinely unreachable there; the learning repository filters on Unit and Lesson status only, so an ACTIVE Unit whose home Topic was retired still appears in `getActiveUnits()` and can still be offered by Continue Learning. The bundled content has no deprecated Topic, Subtopic or Unit today, so no instance exists. | Decide the authoring contract before writing a rule: whether retiring a Topic is meant to retire the Units homed on it, or whether such a Unit is deliberately still readable. Only then add the validator rule, because the two answers produce opposite rules and neither is currently stated anywhere. | Deferred |
+| `CQ-DATA-003` | Cross-document status consistency | Low | Medium | `LearningCurriculumValidator.kt`, `CurriculumValidator.kt` | Nothing rejects ACTIVE learning content homed on, or teaching, retired assessment taxonomy. | `LearningCurriculumValidator` checks that a Unit's `topicId` and a Lesson's primary and supporting Subtopic IDs *exist* in the assessment curriculum, never that they are ACTIVE. The assessment repository hides descendants of a deprecated parent by joining parent statuses, so a deprecated Topic is genuinely unreachable there; the learning repository filters on Unit and Lesson status only, so an ACTIVE Unit whose home Topic was retired still appears in `getActiveUnits()` and can still be offered by Continue Learning. The bundled content has no deprecated Topic, Subtopic or Unit today, so no instance exists. | Decide the authoring contract before writing a rule: whether retiring a Topic is meant to retire the Units homed on it, or whether such a Unit is deliberately still readable. Only then add the validator rule, because the two answers produce opposite rules and neither is currently stated anywhere. **Post-audit follow-up — product decision:** current learning content may only reference current assessment taxonomy; deprecated learning content may retain retired references. **Implementation:** an ACTIVE Unit's home Topic must be ACTIVE (`INACTIVE_HOME_TOPIC`); an ACTIVE Lesson's primary and supporting Subtopics must be ACTIVE and owned by an ACTIVE Topic (`INACTIVE_PRIMARY_SUBTOPIC`, `INACTIVE_SUPPORTING_SUBTOPIC`), so an ACTIVE Subtopic under a retired Topic is rejected as assessment's parent-status join would hide it, and the message names the retired owner. Existence still takes precedence: an unknown reference reports only its `UNKNOWN_*` code. DEPRECATED Units and Lessons may keep retired references, which must still resolve. Cross-Topic mappings remain valid, and Question availability is not part of this rule — an ACTIVE Subtopic with no ACTIVE Questions is a valid mapping. Kotlin runtime validation and Python authoring-time coverage validation now agree: `check_learning_references()` applies the same rule to the ACTIVE Units and Lessons the coverage report covers. Rule 3 of `learning-content-authoring.md` states the rule and what to do when retiring taxonomy would strand ACTIVE learning content. The shipped content already satisfied it (its one DEPRECATED Subtopic, `koin_multiplatform`, is mapped by no Lesson), so no curriculum JSON changed and the coverage snapshot is byte-identical. Falsified: disabling the home-Topic, Subtopic-status and owner-Topic checks each failed its focused validator test, and disabling the Python status checks failed the three new coverage fixtures. | Fixed |
 | `CQ-DATA-004` | Learning-content cache publication | Observation | High | `BundledLearningContentRepository.kt` | The cached document is published through a non-volatile field read outside the mutex. | The double-checked `content ?: mutex.withLock { content ?: ... }` is the standard shape, and a reader that observes the reference can only observe a fully constructed `LoadedLearningContent`: every one of its properties is a `val`, so JVM final-field semantics freeze them and everything reachable from them at the end of construction, and the reference is assigned only after the constructor returns. JS and Wasm are single-threaded, and Kotlin/Native's memory model follows the JVM's. No concurrency defect was found; the safety argument is simply not visible from the code. | Leave as-is. Record why the pattern is safe so a later reader does not "fix" it, and revisit only if `LoadedLearningContent` ever gains a mutable property, which would end the final-field guarantee. **Re-confirmed in the Stage 4D fix pass**, which independently re-derived this as an unsafe-publication defect, added `@Volatile`, and then reverted it: the final-field argument above is correct, and the annotation would have added a barrier per read for no correctness. The safety argument is now recorded in the repository's own KDoc rather than only here, which is what this disposition asked for and what its absence from the source made easy to miss. | Accepted as-is |
 | `CQ-DATA-005` | Validator ownership | Observation | High | `CurriculumValidator.kt`, `LearningCurriculumValidator.kt`, `tools/learning_question_coverage.py` | Kotlin and Python enforce a small overlapping set of authored-content rules. | The coverage tool independently rejects a duplicate Question ID, an unrecognised status or level, an unknown Unit home Topic and an unknown Lesson Subtopic. The boundaries differ legitimately: Python guards the authored repository files in CI before anything is built, the Kotlin validators guard the runtime import and load boundary on a device that may be running an older bundle. The overlapping rules agree today and were checked against each other during this pass. | Keep both. Record the overlap so a future change to one is checked against the other; neither should be deleted for overlapping, because they protect different moments. | Accepted as-is |
 | `CQ-BUG-005` | Assessment session / domain invariants | Medium | High | `AssessmentEngine.kt`, `AssessmentEngineTest.kt` | `submitAnswer` did not enforce the authored answer arity, so a SINGLE Question could record several selected answers. | The engine validated status, Question membership, non-emptiness, and that every selected ID belongs to the Question, but never compared the submission against `Question.selectionMode`. `CurriculumValidator` already rejects a SINGLE Question with several correct answers, and `AssessmentTakingViewModel` replaces rather than adds the pending ID for SINGLE, so the rule existed on both sides of the engine and not inside it. A non-UI caller could therefore persist an occurrence recording a choice the interaction never offered, and review, scoring and mistake derivation would read it as genuine. | Enforce `SINGLE` -> exactly one selected ID in `submitAnswer`, after the membership check so unknown IDs keep failing for their own reason. Leave MULTIPLE unconstrained beyond non-emptiness. | Fixed |
@@ -5787,6 +5787,10 @@ numbers as they stood when the audit completed (Fixed 79, Open 7, 20 residuals).
   claim-specific authority rather than a hostname allowlist, and that cited source code must be
   immutable. All 23 AndroidX citations moved off `androidx-main` to one full commit SHA, with a
   shipped-content test against regression; the `kotlinx.coroutines/1.11.0` links were already pinned.
+- `CQ-DATA-003` — Fixed. ACTIVE learning content maps only to current assessment taxonomy: an
+  ACTIVE Unit needs an ACTIVE home Topic, and an ACTIVE Lesson's Subtopics must be ACTIVE under an
+  ACTIVE Topic. Deprecated learning content may keep retired references. `LearningCurriculumValidator`
+  and the coverage tool's reference check enforce the same rule; cross-Topic mappings stay valid.
 
 ### Scope completed
 
@@ -5813,11 +5817,11 @@ Main Finding Ledger, counted by a parser over the table: **104 findings.**
 
 | Status | Count |
 | --- | ---: |
-| Fixed | 84 |
+| Fixed | 85 |
 | Accepted as-is | 10 |
 | Not a defect | 1 |
 | Open | 3 |
-| Deferred | 5 |
+| Deferred | 4 |
 | Split: fixed and deferred | 1 (`CQ-DATA-013`: CI gate fixed, runtime reporting deferred) |
 | Needs measurement | 0 (`CQ-DATA-010` was measured and fixed in Stage 4E) |
 
@@ -5826,7 +5830,7 @@ Main Finding Ledger, counted by a parser over the table: **104 findings.**
 | `CQ-UI` | 15 | 15 | — |
 | `CQ-BUG` | 6 | 6 | — |
 | `CQ-STATE` | 14 | 12 | 1 deferred, 1 accepted |
-| `CQ-DATA` | 22 | 12 | 3 open, 1 deferred, 1 split, 5 accepted |
+| `CQ-DATA` | 22 | 13 | 3 open, 1 split, 5 accepted |
 | `CQ-DI` | 10 | 7 | 2 accepted, 1 not a defect |
 | `CQ-TEST` | 17 | 17 | — |
 | `CQ-KMP` | 6 | 5 | 1 deferred |
@@ -5935,12 +5939,11 @@ The test suite is now proportionate to the product. Evidence for that:
 
 ### Residual findings and ownership
 
-Every finding not *Fixed*, *Accepted as-is* or *Not a defect* — 9 in the main ledger and 5
+Every finding not *Fixed*, *Accepted as-is* or *Not a defect* — 8 in the main ledger and 5
 Stage-local, enumerated by parser, not memory:
 
 | Finding | Severity | Status | Owner / category | Why still open or deferred | Trigger / next action |
 | --- | --- | --- | --- | --- | --- |
-| `CQ-DATA-003` | Low | Deferred | Product/content decision | Whether retiring a Topic retires the Units homed on it is undecided | Decide the authoring rule, then add one validator fixture |
 | `CQ-DATA-015` | Low | Open | Product/content decision | Review fidelity after an option-set change; the KDoc claim exceeds the guarantee | Bound the KDoc; decide whether saved review hides retired options |
 | `CQ-DATA-016` | Low | Open | Product/content decision | `TOPIC_WITHOUT_QUESTIONS` is status-blind; no test pins either reading | Decide, then count ACTIVE Questions in that rule |
 | `CQ-DATA-017` | Low | Open | Product/content decision | Search surfaces Subtopics Topic detail hides | Index only practicable Subtopics, or label them |
@@ -5960,7 +5963,7 @@ No residual is accepted architectural risk. The one accepted risk of that kind, 
 
 No Medium content-governance debt remains: `CQ-DATA-012` and `CQ-DATA-014`, the two Medium
 items when the audit completed, were fixed as post-audit follow-ups, and so were the
-content/tooling items `CQ-DATA-019` and `CQ-DATA-020`. What remains there is the four Low
+content/tooling items `CQ-DATA-019` and `CQ-DATA-020`. What remains there is the three Low
 product/content decisions.
 
 ### How to continue
@@ -6722,7 +6725,7 @@ Repository-wide code-quality audit — Complete
 
 Main Finding Ledger: 104
 Critical 0, High 3, Medium 26, Low 61, Observation 14
-Fixed 84, Accepted as-is 10, Not a defect 1, Open 3, Deferred 5,
+Fixed 85, Accepted as-is 10, Not a defect 1, Open 3, Deferred 4,
 fixed-and-deferred split 1 (CQ-DATA-013), Needs measurement 0
 Stage-local rows outside the main ledger: 22 (15 fixed, 1 not a defect, 1 accepted, 5 deferred)
 
@@ -6732,10 +6735,11 @@ Post-audit follow-up: Stage 4G CQ-CI-006 — Fixed
 Post-audit follow-up: CQ-KMP-003 — Fixed
 Post-audit follow-up: CQ-DATA-019 — Fixed
 Post-audit follow-up: CQ-DATA-020 — Fixed
+Post-audit follow-up: CQ-DATA-003 — Fixed
 (At audit completion: Fixed 79, Open 7, Residual findings 20.)
 
-Residual findings: 14
-Product/content decision: CQ-DATA-003, CQ-DATA-015, CQ-DATA-016, CQ-DATA-017
+Residual findings: 13
+Product/content decision: CQ-DATA-015, CQ-DATA-016, CQ-DATA-017
 Diagnostics/infrastructure: CQ-DATA-013 (runtime half), CQ-HYG-001, CQ-DEP-003,
   CQ-GRADLE-002, CQ-DEP-002
 Separate production refactor: CQ-STATE-014, CQ-TYPE-001, CQ-CROSS-005, CQ-CROSS-010

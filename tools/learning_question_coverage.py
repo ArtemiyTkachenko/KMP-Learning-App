@@ -66,11 +66,13 @@ class Subtopic:
     id: str
     name: str
     topic_id: str
+    status: str
 
 
 @dataclass(frozen=True)
 class CurriculumIndex:
     topic_names: dict[str, str]
+    topic_statuses: dict[str, str]
     subtopics: dict[str, Subtopic]
     active_questions_by_subtopic: dict[str, tuple[QuestionRef, ...]]
     active_question_count: int
@@ -101,6 +103,8 @@ def index_curriculum(curriculum: dict[str, Any]) -> CurriculumIndex:
     learning content, and duplicating it here would give two answers to one question.
     """
     topic_names = {topic["id"]: topic["name"] for topic in curriculum["topics"]}
+    # Kotlin decodes an omitted status as ACTIVE, so this mirrors that default.
+    topic_statuses = {topic["id"]: topic.get("status", ACTIVE) for topic in curriculum["topics"]}
 
     subtopics: dict[str, Subtopic] = {}
     for subtopic in curriculum["subtopics"]:
@@ -108,6 +112,7 @@ def index_curriculum(curriculum: dict[str, Any]) -> CurriculumIndex:
             id=subtopic["id"],
             name=subtopic["name"],
             topic_id=subtopic["topicId"],
+            status=subtopic.get("status", ACTIVE),
         )
 
     active_by_subtopic: dict[str, list[QuestionRef]] = {}
@@ -144,6 +149,7 @@ def index_curriculum(curriculum: dict[str, Any]) -> CurriculumIndex:
 
     return CurriculumIndex(
         topic_names=topic_names,
+        topic_statuses=topic_statuses,
         subtopics=subtopics,
         # Sorted by question id, which is the report's documented question ordering.
         active_questions_by_subtopic={
@@ -167,10 +173,22 @@ def check_learning_references(
     learning_curriculum: dict[str, Any],
     index: CurriculumIndex,
 ) -> None:
-    """Fail rather than report coverage for a concept the taxonomy does not contain."""
+    """Fail rather than report current coverage for a concept that is missing or retired.
+
+    Only the active content this report covers is checked. Active learning content must map
+    onto current taxonomy: an active home Topic, and Subtopics that are active and owned by
+    an active Topic. Deprecated learning content, which the report excludes, may keep
+    retired references; `LearningCurriculumValidator` owns the full rule set.
+    """
     for unit in active_units(learning_curriculum):
-        if unit["topicId"] not in index.topic_names:
-            fail(f"Learning unit '{unit['id']}' references unknown home topic '{unit['topicId']}'.")
+        topic_id = unit["topicId"]
+        if topic_id not in index.topic_names:
+            fail(f"Learning unit '{unit['id']}' references unknown home topic '{topic_id}'.")
+        if index.topic_statuses[topic_id] != ACTIVE:
+            fail(
+                f"Active learning unit '{unit['id']}' references home topic '{topic_id}', "
+                f"which is {index.topic_statuses[topic_id]}.",
+            )
 
         for lesson in active_lessons(unit):
             for role in ("primarySubtopicIds", "supportingSubtopicIds"):
@@ -179,6 +197,19 @@ def check_learning_references(
                         fail(
                             f"Lesson '{lesson['id']}' references unknown subtopic "
                             f"'{subtopic_id}' in {role}.",
+                        )
+                    subtopic = index.subtopics[subtopic_id]
+                    owner_status = index.topic_statuses.get(subtopic.topic_id)
+                    if subtopic.status != ACTIVE:
+                        fail(
+                            f"Active lesson '{lesson['id']}' references subtopic "
+                            f"'{subtopic_id}' in {role}, which is {subtopic.status}.",
+                        )
+                    if owner_status is not None and owner_status != ACTIVE:
+                        fail(
+                            f"Active lesson '{lesson['id']}' references subtopic "
+                            f"'{subtopic_id}' in {role}, but its owning topic "
+                            f"'{subtopic.topic_id}' is {owner_status}.",
                         )
 
 

@@ -68,20 +68,6 @@ internal class LearningCurriculumValidatorTest {
     }
 
     @Test
-    fun deprecatedHomeTopicIsAcceptedBecauseOnlyExistenceIsRequired() {
-        val curriculumWithDeprecatedTopic = baseCurriculum.copy(
-            topics = listOf(
-                Topic(id = "android_ui", name = "Android UI", status = ContentStatus.DEPRECATED),
-                Topic(id = "kotlin_coroutines", name = "Kotlin coroutines"),
-            ),
-        )
-
-        assertTrue(
-            validator.validate(learningCurriculum(), curriculumWithDeprecatedTopic).isEmpty(),
-        )
-    }
-
-    @Test
     fun activeUnitWithoutLessonsIsRejected() {
         assertCodes(
             learningCurriculum(units = listOf(unit(lessons = emptyList()))),
@@ -315,6 +301,219 @@ internal class LearningCurriculumValidatorTest {
         )
 
         assertTrue(validator.validate(learningCurriculum, baseCurriculum).isEmpty())
+    }
+
+    // endregion
+
+    // region Taxonomy status
+
+    @Test
+    fun activeUnitWithActiveHomeTopicIsAccepted() {
+        assertTrue(
+            validator.validate(learningCurriculum(units = listOf(unit(topicId = "android_ui"))), retiredTaxonomyCurriculum)
+                .isEmpty(),
+        )
+    }
+
+    @Test
+    fun activeUnitWithDeprecatedHomeTopicIsRejected() {
+        val errors = validator.validate(
+            learningCurriculum(units = listOf(unit(id = "unit_legacy", topicId = "legacy_ui"))),
+            retiredTaxonomyCurriculum,
+        )
+
+        assertEquals(listOf(LearningCurriculumValidationErrorCode.INACTIVE_HOME_TOPIC), errors.map { it.code })
+        assertEquals("unit_legacy", errors.single().entityId)
+        assertTrue(errors.single().message.contains("'legacy_ui'"))
+        assertTrue(errors.single().message.contains("DEPRECATED"))
+    }
+
+    @Test
+    fun deprecatedUnitMayKeepItsDeprecatedHomeTopic() {
+        // Historical identity: the Topic must still exist, but it need not be current.
+        assertTrue(
+            validator.validate(
+                learningCurriculum(units = listOf(unit(topicId = "legacy_ui", status = ContentStatus.DEPRECATED))),
+                retiredTaxonomyCurriculum,
+            ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun activeLessonWithActiveConceptsUnderActiveTopicsIsAccepted() {
+        // Status alignment is not same-Topic enforcement: the primary concept is owned by
+        // another active Topic than the Unit's home Topic.
+        val learningCurriculum = learningCurriculum(
+            units = listOf(
+                unit(
+                    topicId = "android_ui",
+                    lessons = listOf(
+                        lesson(
+                            primarySubtopicIds = listOf("flow_basics"),
+                            supportingSubtopicIds = listOf("compose_state"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue(validator.validate(learningCurriculum, retiredTaxonomyCurriculum).isEmpty())
+    }
+
+    @Test
+    fun activeLessonWithDeprecatedPrimarySubtopicIsRejected() {
+        val errors = validator.validate(
+            learningCurriculum(
+                units = listOf(unit(lessons = listOf(lesson(primarySubtopicIds = listOf("compose_legacy_api"))))),
+            ),
+            retiredTaxonomyCurriculum,
+        )
+
+        assertEquals(listOf(LearningCurriculumValidationErrorCode.INACTIVE_PRIMARY_SUBTOPIC), errors.map { it.code })
+        assertTrue(errors.single().message.contains("'compose_legacy_api', which is DEPRECATED"))
+    }
+
+    @Test
+    fun deprecatedLessonMayKeepDeprecatedPrimarySubtopic() {
+        assertTrue(
+            validator.validate(
+                learningCurriculum(
+                    units = listOf(
+                        unit(
+                            lessons = listOf(
+                                lesson(id = "lesson_current"),
+                                lesson(
+                                    id = "lesson_history",
+                                    primarySubtopicIds = listOf("compose_legacy_api"),
+                                    status = ContentStatus.DEPRECATED,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                retiredTaxonomyCurriculum,
+            ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun activeLessonWithDeprecatedSupportingSubtopicIsRejected() {
+        val errors = validator.validate(
+            learningCurriculum(
+                units = listOf(unit(lessons = listOf(lesson(supportingSubtopicIds = listOf("compose_legacy_api"))))),
+            ),
+            retiredTaxonomyCurriculum,
+        )
+
+        assertEquals(listOf(LearningCurriculumValidationErrorCode.INACTIVE_SUPPORTING_SUBTOPIC), errors.map { it.code })
+        assertTrue(errors.single().message.contains("'compose_legacy_api', which is DEPRECATED"))
+    }
+
+    @Test
+    fun deprecatedLessonMayKeepDeprecatedSupportingSubtopic() {
+        assertTrue(
+            validator.validate(
+                learningCurriculum(
+                    units = listOf(
+                        unit(
+                            lessons = listOf(
+                                lesson(id = "lesson_current"),
+                                lesson(
+                                    id = "lesson_history",
+                                    supportingSubtopicIds = listOf("compose_legacy_api"),
+                                    status = ContentStatus.DEPRECATED,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                retiredTaxonomyCurriculum,
+            ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun activeSubtopicUnderDeprecatedTopicIsRejectedForActiveLesson() {
+        // Assessment hides the descendants of a retired Topic, so a Subtopic whose own
+        // status stayed ACTIVE is still not current taxonomy.
+        val errors = validator.validate(
+            learningCurriculum(
+                units = listOf(
+                    unit(
+                        lessons = listOf(
+                            lesson(
+                                primarySubtopicIds = listOf("legacy_view_binding"),
+                                supportingSubtopicIds = listOf("legacy_xml_layouts"),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            retiredTaxonomyCurriculum,
+        )
+
+        assertEquals(
+            listOf(
+                LearningCurriculumValidationErrorCode.INACTIVE_PRIMARY_SUBTOPIC,
+                LearningCurriculumValidationErrorCode.INACTIVE_SUPPORTING_SUBTOPIC,
+            ),
+            errors.map { it.code },
+        )
+        assertTrue(errors.all { it.message.contains("owning topic 'legacy_ui' is DEPRECATED") })
+    }
+
+    @Test
+    fun deprecatedLessonMayKeepSubtopicsUnderDeprecatedTopic() {
+        assertTrue(
+            validator.validate(
+                learningCurriculum(
+                    units = listOf(
+                        unit(
+                            lessons = listOf(
+                                lesson(id = "lesson_current"),
+                                lesson(
+                                    id = "lesson_history",
+                                    primarySubtopicIds = listOf("legacy_view_binding"),
+                                    supportingSubtopicIds = listOf("legacy_xml_layouts"),
+                                    status = ContentStatus.DEPRECATED,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+                retiredTaxonomyCurriculum,
+            ).isEmpty(),
+        )
+    }
+
+    @Test
+    fun unknownReferencesAreNotAlsoReportedAsInactive() {
+        // Existence takes precedence: a missing identity has no status to judge.
+        val errors = validator.validate(
+            learningCurriculum(
+                units = listOf(
+                    unit(
+                        topicId = "topic_that_does_not_exist",
+                        lessons = listOf(
+                            lesson(
+                                primarySubtopicIds = listOf("subtopic_that_does_not_exist"),
+                                supportingSubtopicIds = listOf("other_subtopic_that_does_not_exist"),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            retiredTaxonomyCurriculum,
+        )
+
+        assertEquals(
+            listOf(
+                LearningCurriculumValidationErrorCode.UNKNOWN_HOME_TOPIC,
+                LearningCurriculumValidationErrorCode.UNKNOWN_PRIMARY_SUBTOPIC,
+                LearningCurriculumValidationErrorCode.UNKNOWN_SUPPORTING_SUBTOPIC,
+            ),
+            errors.map { it.code },
+        )
     }
 
     // endregion
@@ -1027,5 +1226,23 @@ internal class LearningCurriculumValidatorTest {
             Subtopic(id = "coroutine_scope", topicId = "kotlin_coroutines", name = "Coroutine scope"),
         ),
         questions = emptyList(),
+    )
+
+    /**
+     * [baseCurriculum] plus retired taxonomy: a deprecated Subtopic under an active Topic,
+     * and a deprecated Topic whose Subtopics kept their own ACTIVE status.
+     */
+    private val retiredTaxonomyCurriculum = baseCurriculum.copy(
+        topics = baseCurriculum.topics + Topic(id = "legacy_ui", name = "Legacy UI", status = ContentStatus.DEPRECATED),
+        subtopics = baseCurriculum.subtopics + listOf(
+            Subtopic(
+                id = "compose_legacy_api",
+                topicId = "android_ui",
+                name = "Legacy Compose API",
+                status = ContentStatus.DEPRECATED,
+            ),
+            Subtopic(id = "legacy_view_binding", topicId = "legacy_ui", name = "View binding"),
+            Subtopic(id = "legacy_xml_layouts", topicId = "legacy_ui", name = "XML layouts"),
+        ),
     )
 }

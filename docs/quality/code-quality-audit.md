@@ -173,7 +173,7 @@ trail. Finding IDs are stable, grouped by area, never renumbered, and never reus
 | `CQ-DATA-017` | Topic discovery / content coverage | Low | High | `TopicBrowserViewModel.kt`, `TopicDetailViewModel.kt`, `TopicDetailScreen.kt` | Subtopic search surfaces Subtopics that Topic detail deliberately hides. | `readCatalog` indexes every ACTIVE Subtopic; `readCurriculum` keeps only Subtopics with an ACTIVE Question. 71 of 361 have none, so about a fifth of Subtopic hits push a route whose `targetIndex` resolves to `-1` and leaves the learner on the Subtopics tab with no row and no explanation. It degrades safely. | Index only practicable Subtopics, or say on the result row that the Subtopic has no questions yet. | Open |
 | `CQ-TEST-001` | Bundled-content tests / coupling | Low | High | `InitialCurriculumSmokeTest.kt`, `CurriculumLocalDataPathTest.kt`, `CurriculumImporterTest.kt` | Snapshot assertions mix content policy with incidental derived totals. | Three files independently pin bank-wide counts; adding one Question means editing about nine literals. Per-Topic ACTIVE targets, the SINGLE/MULTIPLE split and the first-row IDs are policy; `1_918`, `528`, `635` and `bundledQuestionsHaveReviewedE1503LevelDistribution` freeze consequence. | Keep the policy assertions. Re-express the derived totals as invariants against the authored collections instead of frozen numbers. **Part 6B:** re-measured on `1560386` (17 Topics, 361 Subtopics, 480 Questions, 439/41, 433/47, 1 926 options, 530 keys, 643 sources — every literal checked against the JSON). The pins were classified rather than deleted. `InitialCurriculumSmokeTest` stays the one deliberate bank-shape pin, because `question-bank-coverage.md` and the `question-bank-change` skill name it as the change detector a content batch must restate; its two arithmetic duplicates (the `480` total and the all-status level distribution) are removed and the issue-key name is dropped. The import and data-path tests now derive their expectations from the loaded bundle: row counts equal the authored sums, every Topic, Subtopic and Question is compared field by field with its authored position, options and sources in order. The learning-side `138` Lesson total, the sum of 32 per-Unit Lesson lists already pinned by id, is removed too. Falsified: four mapper regressions that keep every row count valid (Question status, source title, option order, dropped sources) each fail the new fidelity test; adding one harmless ACTIVE Question now fails only the three smoke pins, against six failures across three files before. | Fixed |
 | `CQ-DATA-018` | Content pipelines / failure modelling | Observation | High | `CurriculumImporter.kt`, `LearningContentLoader.kt` | The assessment pipeline models validation failure as data but lets decode failure escape untyped. | `LearningContentLoader` translates `SerializationException` into a typed `Decode` failure and explains why; the importer returns `Rejected(errors)` for validation only, and `CurriculumLocalDataPathTest` pins the raw `SerializationException` escaping. Both end at the same generic startup screen today. | Record only. Revisit with startup error reporting in Part 5. **Part 5:** revisited with startup reporting. Typing decode separately from rejection in `CurriculumImporter` would change no caller: `AppStartupStateHolder` treats every failure as Error-with-Retry, and the learning pipeline's typed `Decode` failure also ends in one generic state. Without a diagnostics sink there is nothing to route the distinction to, so it would be modelling for its own sake. The two pipelines were also re-compared for a generic abstraction and stay separate: relational import, reconciliation and historical identity on one side, an immutable in-memory document on the other. | Accepted as-is |
-| `CQ-DATA-019` | Authored content / ordering contract | Observation | High | `curriculum/Curriculum.kt`, `CurriculumPersistenceMapper.kt`, `docs/content/question-audit-log.yml` | Array position is an ordering contract the assessment model never states. | `LearningCurriculum` documents it; `Curriculum` and its types do not, and `sortOrder` appears only as `mapIndexed`. Across four revisions 79 Questions were appended with zero index changes, which is what keeps `sort_order` stable on installed devices and the audit log's `n:` index valid. A mid-array insert would renumber every later row with no test failing. | Write the rule into `Curriculum`'s KDoc and `content-authoring.md`. **Part 6B:** the testable half — authored position becomes `sort_order` and survives to repository reads — is now pinned for every bundled Topic, Subtopic and Question by `realBundledCurriculumPopulatesFreshDatabase`, and for options and sources by fixtures whose authored order is deliberately not alphabetical (`LocalCurriculumRepositoryTest`). The append-only authoring rule remains documentation work. | Open |
+| `CQ-DATA-019` | Authored content / ordering contract | Observation | High | `curriculum/Curriculum.kt`, `CurriculumPersistenceMapper.kt`, `docs/content/question-audit-log.yml` | Array position is an ordering contract the assessment model never states. | `LearningCurriculum` documents it; `Curriculum` and its types do not, and `sortOrder` appears only as `mapIndexed`. Across four revisions 79 Questions were appended with zero index changes, which is what keeps `sort_order` stable on installed devices and the audit log's `n:` index valid. A mid-array insert would renumber every later row with no test failing. | Write the rule into `Curriculum`'s KDoc and `content-authoring.md`. **Part 6B:** the testable half — authored position becomes `sort_order` and survives to repository reads — is now pinned for every bundled Topic, Subtopic and Question by `realBundledCurriculumPopulatesFreshDatabase`, and for options and sources by fixtures whose authored order is deliberately not alphabetical (`LocalCurriculumRepositoryTest`). The append-only authoring rule remains documentation work. **Post-audit follow-up:** `Curriculum`'s KDoc now states that `topics`, `subtopics` and `questions` are ordered authored sequences whose positions are persisted as `sortOrder`, with the stable ID as identity. `content-authoring.md` gains "Stable Authored Order": existing Topic, Subtopic and Question positions are append-stable and new entries append; deprecation and taxonomy re-homing (`topicId`/`subtopicId` changes) do not move an accepted entry; sorting, regrouping and mid-array inserts are not routine maintenance; the audit log's `n:` is a positional reference, not identity, kept meaningful by the append-only convention; and a deliberate reorder would need its own migration and governance task. The rule is a review rule — the identity gate does not check array order. Part 6B's existing persistence tests already pin the runtime half, so no test was added and no runtime code or curriculum JSON changed. | Fixed |
 | `CQ-DATA-020` | Learning content / source governance | Observation | High | `LearningCurriculumValidator.kt`, `InitialCurriculumContentQualityTest.kt`, `learning_curriculum.json` | Learning sources are ungated by design, and secondary sources are no longer exceptional. | The question bank has a 16-host allowlist; the learning document deliberately has none. Of 443 learning sources, 17 cite `martinfowler.com`, 7 cite `raw.githubusercontent.com` at the moving `androidx-main` branch, 2 `staltz.com`, 2 `blog.ploeh.dk`. Several are plainly primary for the claim. | Record the position deliberately; pin the raw GitHub citations to a tag or commit so the cited text cannot move. | Open |
 | `CQ-DATA-021` | Shared history cache / generation atomicity | Medium | High | `AssessmentHistoryStore.kt` | The failed-read retry bumped the refresh generation with a read-modify-write that `invalidate()` could overwrite. | `invalidate()` is atomic (`reloads.update { it + 1 }`) and deliberately takes no lock, but `generationForOneShotRead()` read `reloads.value`, then assigned `currentGeneration + 1` — an *absolute* value. The `failedReadRetry` mutex serialises one-shot readers against each other and not against `invalidate()`, so two invalidations landing between that read and that write were both lost, and because the write was absolute rather than an increment the generation could move *backwards*. A later `completedAttempts()` requiring generation *n* could then be satisfied by a `Settled(n)` produced by a read that started before its own call, which is precisely the stale-history answer the generation exists to prevent. Reaching it needs a failed read plus two concurrent invalidations, so it is an edge case rather than a live defect. | Bump with `reloads.updateAndGet { it + 1 }`, which is atomic against `invalidate()` and monotonic whatever else is incrementing. No deterministic regression test is possible: on a single-threaded test dispatcher nothing can interleave between two non-suspending `MutableStateFlow.value` accesses, and the brief forbids producing the race with timing. The two existing coalescing and retry regressions pin that behaviour is unchanged. | Fixed |
 | `CQ-DATA-022` | Assessment completion / operation boundary | Medium | High | `CompleteAssessment.kt`, `AssessmentTakingViewModel.kt`, `AssessmentDataModule.kt`, `CompleteAssessmentTest.kt` | Persisting a completed attempt and marking the shared history cache stale were two statements in a ViewModel, and the second was both cancellable and forgettable. | `assessmentRepository.save(attempt)` is one atomic write transaction, but `historyStore.invalidate()` sat after it as a separate step reached by *resuming a continuation* — and a cancelled job throws at that resumption. The learner leaving the taking destination as the transaction commits was enough to leave the attempt `COMPLETED` in SQLite while the app-scoped cache still held the list from before it, so Progress, the mistake queue, the Mistakes badge, the interview record, Topic learning context and unseen-practice selection all silently omitted a finished assessment for the rest of the process, recoverable only by a manual Retry or a restart. The structural half matters more than the window: nothing in `AssessmentRepository.save`'s signature says a completed write obliges a second call, which is the exact shape of `CQ-STATE-012` and `CQ-STATE-013` — both of which became real bugs because a caller forgot. | Introduce `CompleteAssessment` beside the existing `StartAssessment`, owning scoring, the write and the invalidation as one operation, with the invalidation in `finally`. Unconditional invalidation is correct because the costs are asymmetric: a needless one costs a single re-read that returns the cached attempts, which `history` documents as a normal emission, while a missing one costs correctness. No `NonCancellable` is needed — `invalidate()` does not suspend. The repository cannot own the call itself, because `AssessmentHistoryStore` is built on the repository and the dependency would be a cycle. | Fixed |
@@ -5780,6 +5780,9 @@ numbers as they stood when the audit completed (Fixed 79, Open 7, 20 residuals).
   selectable content; one common `CopyReportingClipboard` provided only to `SelectionContainer`
   replaces the four platform menu wrappers, so Android's native context menu and the web
   right-click menu now confirm without being replaced (Android checked on an emulator).
+- `CQ-DATA-019` — Fixed. `Curriculum`'s KDoc and `content-authoring.md` now state that the
+  top-level `topics`, `subtopics` and `questions` arrays are append-stable: accepted entries keep
+  their positions, new entries append, and deprecation or re-homing never moves an entry.
 
 ### Scope completed
 
@@ -5806,10 +5809,10 @@ Main Finding Ledger, counted by a parser over the table: **104 findings.**
 
 | Status | Count |
 | --- | ---: |
-| Fixed | 82 |
+| Fixed | 83 |
 | Accepted as-is | 10 |
 | Not a defect | 1 |
-| Open | 5 |
+| Open | 4 |
 | Deferred | 5 |
 | Split: fixed and deferred | 1 (`CQ-DATA-013`: CI gate fixed, runtime reporting deferred) |
 | Needs measurement | 0 (`CQ-DATA-010` was measured and fixed in Stage 4E) |
@@ -5819,7 +5822,7 @@ Main Finding Ledger, counted by a parser over the table: **104 findings.**
 | `CQ-UI` | 15 | 15 | — |
 | `CQ-BUG` | 6 | 6 | — |
 | `CQ-STATE` | 14 | 12 | 1 deferred, 1 accepted |
-| `CQ-DATA` | 22 | 10 | 5 open, 1 deferred, 1 split, 5 accepted |
+| `CQ-DATA` | 22 | 11 | 4 open, 1 deferred, 1 split, 5 accepted |
 | `CQ-DI` | 10 | 7 | 2 accepted, 1 not a defect |
 | `CQ-TEST` | 17 | 17 | — |
 | `CQ-KMP` | 6 | 5 | 1 deferred |
@@ -5928,7 +5931,7 @@ The test suite is now proportionate to the product. Evidence for that:
 
 ### Residual findings and ownership
 
-Every finding not *Fixed*, *Accepted as-is* or *Not a defect* — 11 in the main ledger and 5
+Every finding not *Fixed*, *Accepted as-is* or *Not a defect* — 10 in the main ledger and 5
 Stage-local, enumerated by parser, not memory:
 
 | Finding | Severity | Status | Owner / category | Why still open or deferred | Trigger / next action |
@@ -5937,7 +5940,6 @@ Stage-local, enumerated by parser, not memory:
 | `CQ-DATA-015` | Low | Open | Product/content decision | Review fidelity after an option-set change; the KDoc claim exceeds the guarantee | Bound the KDoc; decide whether saved review hides retired options |
 | `CQ-DATA-016` | Low | Open | Product/content decision | `TOPIC_WITHOUT_QUESTIONS` is status-blind; no test pins either reading | Decide, then count ACTIVE Questions in that rule |
 | `CQ-DATA-017` | Low | Open | Product/content decision | Search surfaces Subtopics Topic detail hides | Index only practicable Subtopics, or label them |
-| `CQ-DATA-019` | Observation | Open | Content/tooling | Array-position ordering is unstated; the testable half is pinned | Write the rule into `Curriculum`'s KDoc and the authoring contract |
 | `CQ-DATA-020` | Observation | Open | Content/tooling | Learning sources are ungated by design | Record the policy; pin raw GitHub citations to a commit |
 | `CQ-DATA-013` (runtime half) | Medium | Deferred | Diagnostics/infrastructure | No diagnostics sink exists to report a rejected bundle at runtime | Adopting any runtime diagnostics |
 | `CQ-STATE-014` | Low | Deferred | Separate production refactor | See debts above | Its own task |
@@ -6716,7 +6718,7 @@ Repository-wide code-quality audit — Complete
 
 Main Finding Ledger: 104
 Critical 0, High 3, Medium 26, Low 61, Observation 14
-Fixed 82, Accepted as-is 10, Not a defect 1, Open 5, Deferred 5,
+Fixed 83, Accepted as-is 10, Not a defect 1, Open 4, Deferred 5,
 fixed-and-deferred split 1 (CQ-DATA-013), Needs measurement 0
 Stage-local rows outside the main ledger: 22 (15 fixed, 1 not a defect, 1 accepted, 5 deferred)
 
@@ -6724,11 +6726,12 @@ Post-audit follow-up: CQ-DATA-012 — Fixed
 Post-audit follow-up: CQ-DATA-014 — Fixed
 Post-audit follow-up: Stage 4G CQ-CI-006 — Fixed
 Post-audit follow-up: CQ-KMP-003 — Fixed
+Post-audit follow-up: CQ-DATA-019 — Fixed
 (At audit completion: Fixed 79, Open 7, Residual findings 20.)
 
-Residual findings: 16
+Residual findings: 15
 Product/content decision: CQ-DATA-003, CQ-DATA-015, CQ-DATA-016, CQ-DATA-017
-Content/tooling: CQ-DATA-019, CQ-DATA-020
+Content/tooling: CQ-DATA-020
 Diagnostics/infrastructure: CQ-DATA-013 (runtime half), CQ-HYG-001, CQ-DEP-003,
   CQ-GRADLE-002, CQ-DEP-002
 Separate production refactor: CQ-STATE-014, CQ-TYPE-001, CQ-CROSS-005, CQ-CROSS-010

@@ -16,6 +16,10 @@ The repository review skill is `kmp-code-review` because Claude Code ships a bui
 should follow this repository's rules, and the built-in `/code-review` for its own effort
 levels and multi-agent `ultra` mode.
 
+`.claude/agents/code-reviewer.md` defines the project `code-reviewer` subagent: a
+read-only, one-pass independent review of a finished implementation against its task
+contract and a recorded base revision. It reuses the `code-review` rules above.
+
 ## Context Efficiency
 
 `AGENTS.md` is the only project documentation loaded automatically. Everything under
@@ -31,6 +35,11 @@ map in `AGENTS.md`, and stop there rather than reading the neighbouring document
 - Use a subagent only for a genuinely broad, independent investigation — a coverage
   survey, a repository-wide audit. A single search or a known-file read is cheaper
   inline.
+- The project `code-reviewer` subagent is the one routine subagent exception: when an
+  implementation task requests the standard post-implementation review, invoke it exactly
+  once after the implementing Claude's own validation, as a fresh subagent rather than a
+  fork. It reviews only; the original Claude triages and fixes accepted findings. Do not
+  run a second reviewer round unless the user asks.
 - Start a fresh context for an unrelated task rather than carrying an old one forward.
 
 ## Repository Behavior

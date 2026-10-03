@@ -543,6 +543,55 @@ same rule.
 
 Do not use list position or index as answer identity.
 
+## Stable Authored Order
+
+The top-level `topics`, `subtopics`, and `questions` arrays in
+`initial_curriculum.json` are ordered authored sequences, not arbitrary
+serialization order. On import, each entry's array index is persisted as its
+`sortOrder`, and the app reads Topics, Subtopics, and Questions back in that
+order. Stable IDs remain the identity; array position is ordering metadata.
+
+Once an entry has been accepted into the bundled curriculum, its position is
+stable:
+
+- **Topics.** Existing Topic positions do not change. A new Topic is appended to
+  the end of `topics`.
+- **Subtopics.** Existing Subtopic positions do not change. A new Subtopic is
+  appended to the end of `subtopics`. Changing a Subtopic's `topicId` does not
+  move it: taxonomy and authored array order are separate concerns.
+- **Questions.** Existing Question positions do not change. A new Question is
+  appended to the end of `questions`, never inserted beside conceptually related
+  Questions in the middle of the array. Classify it with `topicId` and
+  `subtopicId`; physical proximity in the JSON is not taxonomy.
+
+`DEPRECATED` does not remove an entry from its authored position. A deprecated
+Question, Subtopic, or Topic stays exactly where it was; do not move deprecated
+entries to a separate section at the end.
+
+Re-homing is supported and does not touch order. When a Question moves to a
+different Topic or Subtopic, its `topicId` and `subtopicId` change and its index
+in `questions` stays the same. Classification relationships are carried by IDs.
+
+Routine content maintenance therefore never:
+
+- sorts an array alphabetically or by any other key;
+- groups or regroups entries by Topic or Subtopic;
+- inserts a new entry before an accepted one;
+- moves an accepted entry to make the JSON look tidier.
+
+A mid-array insert or move renumbers the persisted `sortOrder` of every later
+entry. For Questions it also invalidates the positional `n:` references in
+`docs/content/question-audit-log.yml`. `n:` is a convenient position reference,
+not identity — `Question.id` is canonical — and the append-only convention is
+what keeps historical `n:` values meaningful. This rule is a review rule: the
+identity gate in [Enforced Identity Rules](#enforced-identity-rules) does not
+check array order.
+
+Reordering an already-accepted Topic, Subtopic, or Question is not routine
+content maintenance. If product ordering genuinely needs to change, handle it as
+an explicit migration and governance task that accounts for the persisted sort
+order and the positional audit metadata.
+
 ## Topic and Subtopic Assignment
 
 - Every question must use the most appropriate existing `topicId` and
@@ -694,6 +743,8 @@ approximate them with keyword heuristics.
 - Mechanism, scenario, and trade-off depth support the proposed classification.
 - Topic and subtopic assignment is correct.
 - Stable `Question.id` and `AnswerOption.id` handling is appropriate.
+- New Topics, Subtopics, and Questions are appended; no accepted entry moved
+  position (see [Stable Authored Order](#stable-authored-order)).
 - Distractors are plausible and similar in style to the correct answer.
 - No correct answer is defensibly wrong under the question as written, and
   every clause of the question stem is itself true.

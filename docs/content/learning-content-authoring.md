@@ -463,12 +463,15 @@ Prefer, depending on the subject:
 - official library or framework documentation for Room, Ktor, Koin, Retrofit, OkHttp,
   kotlinx.serialization, and similar;
 - official project repositories, release notes, and design documents where those are the
-  authoritative statement of behavior.
+  authoritative statement of behavior;
+- specifications and API reference documentation;
+- versioned library source, where the implementation itself is the evidence for the claim;
+- the original or canonical writing for an architectural concept.
 
-The source-quality philosophy of `docs/content/content-authoring.md` applies unchanged: a
-source must support the specific claim being made rather than merely be a page about the
-same subject; secondary sources are exceptional; SEO interview-question collections and
-anonymous forum answers are not authoritative.
+The source-quality philosophy of `docs/content/content-authoring.md` applies: a source must
+support the specific claim being made rather than merely be a page about the same subject,
+and SEO interview-question collections, anonymous forum answers, and content farms are not
+technical authority.
 
 Sources serve two purposes here. They support the claims the Lesson makes, and they remain
 available to a learner who needs exact reference detail the Lesson deliberately did not
@@ -486,6 +489,29 @@ A blueprint is not required to author production Sources — that is the job of 
 A blueprint should, where useful, identify the likely authoritative **source families** for
 each area so the author does not start from a blank search.
 
+### Authority is claim-specific
+
+Whether a source is authoritative depends on the claim it supports, not on who hosts it.
+Learning material spans Android, Kotlin, Compose, coroutines, architecture, Room, Koin,
+Dagger and Hilt, Kotlin Multiplatform, and the subjects the curriculum grows into, so the
+authoritative source for one claim is often not vendor documentation at all. A secondary
+source is acceptable when it is itself the authoritative or canonical source for the concept
+being cited — the writing of the person who named or originated an architectural pattern is
+the primary statement of that pattern, not an inferior substitute for Android
+documentation. Primary sources remain preferred wherever one exists for the claim.
+
+### Source code is cited at an immutable revision
+
+When a Lesson links directly to repository source because the implementation or its KDoc
+supports the claim, the citation must identify immutable source: a full 40-character commit
+SHA, or an explicitly immutable release or version tag (for example
+`kotlinx.coroutines/1.11.0`). Never cite a moving branch such as `main`, `master`, or
+`androidx-main` for source the Lesson relies on — the file can change after the Lesson
+ships, and the citation would then silently stop supporting the claim. This applies to raw
+(`raw.githubusercontent.com`) and rendered (`github.com/.../blob/...`) links alike. When
+re-pinning, resolve the branch tip once, use the same SHA for every citation updated
+together, and re-read each file at that revision to confirm it still supports the claim.
+
 ### What validation can and cannot check
 
 `LearningCurriculumValidator` (`shared/.../curriculum/learning/validation/`) enforces the
@@ -498,7 +524,14 @@ attached to is an editorial judgement and stays with the author and reviewer. It
 deliberately not expressed as a hostname allowlist: authoritative documentation for
 Android, Kotlin, Room, Ktor, Koin, and every library the curriculum grows into lives on
 hosts no fixed list could enumerate, so an allowlist would reject valid sources while
-proving nothing about the ones it admits.
+proving nothing about the ones it admits. Learning Sources are therefore editorially
+reviewed rather than hostname-gated, unlike the question bank's source-host allowlist.
+
+One structural rule is machine-checked in the shipped-content suite rather than the
+validator: `BundledLearningCurriculumTest` requires every AndroidX source citation to pin a
+full commit SHA, because AndroidX citations are where a moving branch actually shipped. The
+test checks the committed URL shape only and never reaches the network; confirming that a
+pinned file exists and supports the claim is the author's job at pinning time.
 
 ## Rule 10 — Relationship to the Question Bank
 
@@ -769,6 +802,8 @@ Before a Lesson is considered ready to ship:
 - [ ] The Unit and Lesson summaries state the idea, not the Lesson plan, an objective, a
       recap or a preview.
 - [ ] Sources are authoritative and support the specific claims made.
+- [ ] Source-code citations pin a full commit SHA or an immutable release tag, never a
+      moving branch.
 - [ ] The questions for its primary Subtopics are answerable by a reader who understood
       it — verified by reading them, not by mapping them.
 - [ ] The Lesson teaches the concept rather than the phrasing of any question.

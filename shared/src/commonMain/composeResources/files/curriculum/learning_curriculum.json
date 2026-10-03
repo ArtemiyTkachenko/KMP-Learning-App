@@ -2697,11 +2697,11 @@
             },
             {
               "title": "Stable annotation source",
-              "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime-annotation/src/commonMain/kotlin/androidx/compose/runtime/Stable.kt"
+              "url": "https://raw.githubusercontent.com/androidx/androidx/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime-annotation/src/commonMain/kotlin/androidx/compose/runtime/Stable.kt"
             },
             {
               "title": "Immutable annotation source",
-              "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime-annotation/src/commonMain/kotlin/androidx/compose/runtime/Immutable.kt"
+              "url": "https://raw.githubusercontent.com/androidx/androidx/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime-annotation/src/commonMain/kotlin/androidx/compose/runtime/Immutable.kt"
             }
           ],
           "status": "ACTIVE"
@@ -3471,7 +3471,7 @@
             },
             {
               "title": "Compose runtime source: Snapshot.kt",
-              "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/snapshots/Snapshot.kt"
+              "url": "https://raw.githubusercontent.com/androidx/androidx/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/snapshots/Snapshot.kt"
             }
           ],
           "status": "ACTIVE"
@@ -3687,11 +3687,11 @@
             },
             {
               "title": "Compose runtime source: SnapshotFlow.kt",
-              "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
+              "url": "https://raw.githubusercontent.com/androidx/androidx/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
             },
             {
               "title": "Compose runtime source: SnapshotStateList.kt",
-              "url": "https://raw.githubusercontent.com/androidx/androidx/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/snapshots/SnapshotStateList.kt"
+              "url": "https://raw.githubusercontent.com/androidx/androidx/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/snapshots/SnapshotStateList.kt"
             }
           ],
           "status": "ACTIVE"
@@ -4340,7 +4340,7 @@
             },
             {
               "title": "Compose runtime SnapshotState source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotState.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotState.kt"
             }
           ],
           "status": "ACTIVE"
@@ -4453,7 +4453,7 @@
             },
             {
               "title": "Compose runtime SnapshotFlow source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
             },
             {
               "title": "Flow context",
@@ -4578,7 +4578,7 @@
           "sources": [
             {
               "title": "Compose runtime SnapshotFlow source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotFlow.kt"
             },
             {
               "title": "Flow cancellation checks",
@@ -4753,7 +4753,7 @@
             },
             {
               "title": "Lifecycle runtime Compose Flow extensions source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/lifecycle/lifecycle-runtime-compose/src/commonMain/kotlin/androidx/lifecycle/compose/FlowExt.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/lifecycle/lifecycle-runtime-compose/src/commonMain/kotlin/androidx/lifecycle/compose/FlowExt.kt"
             }
           ],
           "status": "ACTIVE"
@@ -5012,7 +5012,7 @@
             },
             {
               "title": "Compose runtime Effects source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
             },
             {
               "title": "Cancellation and timeouts",
@@ -5139,11 +5139,11 @@
             },
             {
               "title": "Compose runtime Composables source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Composables.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Composables.kt"
             },
             {
               "title": "Compose runtime Effects source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
             },
             {
               "title": "Strong skipping mode",
@@ -5269,11 +5269,11 @@
             },
             {
               "title": "Compose runtime Composables source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Composables.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Composables.kt"
             },
             {
               "title": "Compose runtime Effects source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
             },
             {
               "title": "Strong skipping mode",
@@ -5408,7 +5408,7 @@
             },
             {
               "title": "Compose runtime SnapshotState source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotState.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/SnapshotState.kt"
             }
           ],
           "status": "ACTIVE"
@@ -5527,7 +5527,7 @@
             },
             {
               "title": "Compose runtime Effects source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
             },
             {
               "title": "Cancellation and timeouts",
@@ -5656,7 +5656,7 @@
             },
             {
               "title": "Compose runtime Effects source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
             },
             {
               "title": "Cancellation and timeouts",
@@ -5851,7 +5851,7 @@
             },
             {
               "title": "Compose runtime Effects source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
             }
           ],
           "status": "ACTIVE"
@@ -5992,7 +5992,7 @@
             },
             {
               "title": "Compose runtime Effects source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/Effects.kt"
             }
           ],
           "status": "ACTIVE"
@@ -6129,7 +6129,7 @@
             },
             {
               "title": "Compose runtime ProduceState source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/ProduceState.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/ProduceState.kt"
             }
           ],
           "status": "ACTIVE"
@@ -6288,7 +6288,7 @@
             },
             {
               "title": "Compose runtime ProduceState source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/ProduceState.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/compose/runtime/runtime/src/commonMain/kotlin/androidx/compose/runtime/ProduceState.kt"
             }
           ],
           "status": "ACTIVE"
@@ -21737,7 +21737,7 @@
             },
             {
               "title": "viewModelScope construction source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/lifecycle/lifecycle-viewmodel/src/commonMain/kotlin/androidx/lifecycle/viewmodel/internal/CloseableCoroutineScope.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/lifecycle/lifecycle-viewmodel/src/commonMain/kotlin/androidx/lifecycle/viewmodel/internal/CloseableCoroutineScope.kt"
             },
             {
               "title": "Dispatchers.Main (1.11.0)",
@@ -21885,7 +21885,7 @@
             },
             {
               "title": "Lifecycle runtime Compose Flow extensions source",
-              "url": "https://github.com/androidx/androidx/blob/androidx-main/lifecycle/lifecycle-runtime-compose/src/commonMain/kotlin/androidx/lifecycle/compose/FlowExt.kt"
+              "url": "https://github.com/androidx/androidx/blob/11ece46a49d485c7644e53cb0684a611d7a0ec10/lifecycle/lifecycle-runtime-compose/src/commonMain/kotlin/androidx/lifecycle/compose/FlowExt.kt"
             }
           ],
           "status": "ACTIVE"

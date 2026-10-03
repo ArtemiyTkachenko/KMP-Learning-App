@@ -3547,6 +3547,31 @@ internal class BundledLearningCurriculumTest {
     }
 
     @Test
+    fun androidxSourceCitationsArePinnedToImmutableRevisions() = runTest {
+        // A Lesson citing AndroidX source relies on that file's contents, so the citation must
+        // not track a moving branch such as androidx-main. Other repositories may pin a
+        // release tag instead (kotlinx.coroutines cites 1.11.0); this guards only AndroidX.
+        val androidxSourceRef = Regex(
+            """^https://(?:raw\.githubusercontent\.com/androidx/androidx|github\.com/androidx/androidx/(?:blob|raw))/([^/]+)/""",
+        )
+        val fullCommitSha = Regex("[0-9a-f]{40}")
+        val citations = units().flatMap { it.lessons }.flatMap { lesson ->
+            lesson.sources.mapNotNull { source ->
+                androidxSourceRef.find(source.url)?.let { Triple(lesson.id, source.url, it.groupValues[1]) }
+            }
+        }
+
+        assertTrue(citations.isNotEmpty())
+        val moving = citations.filterNot { (_, _, ref) -> fullCommitSha.matches(ref) }
+        if (moving.isNotEmpty()) {
+            fail(
+                "AndroidX source citations must pin a full commit SHA:\n" +
+                    moving.joinToString("\n") { (lessonId, url, _) -> "- $lessonId: $url" },
+            )
+        }
+    }
+
+    @Test
     fun relatedLessonReferencesResolveWithinTheShippedDocument() = runTest {
         // Forward links are invalid until their target ships, so this is what stops a Lesson
         // pointing at a Unit that is still only planned.

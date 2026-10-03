@@ -569,6 +569,14 @@ kept their ID because only their wording changed.
 Never treat list position as identity. Reordering options is safe; renaming IDs
 to match a new order is not.
 
+**On a shipped question the answer-ID set is now frozen.** That review predates
+`tools/question_bank_identity.py`, which CI runs against the revision a change
+replaces: it rejects an added, removed or renamed option, a changed key, or a
+changed `selectionMode` under an existing `Question.id`. A distractor or key whose
+claim must change on a shipped question therefore means a new question with new
+IDs, with the old one marked `DEPRECATED`. Within a pull request, options of a
+question that is new in that pull request may still change freely.
+
 **Renaming an answer ID is a data migration, not just an edit.** The old row does
 not disappear when the bundle stops authoring it: if any past attempt selected it,
 the import must keep it to preserve the foreign key from
@@ -800,7 +808,8 @@ Editorial (human review — the validator cannot check these):
       including the sentences about distractors
 - [ ] Neighbour scan (Part 9) read; no pair disagrees
 - [ ] Every source establishes its specific claim and returns 200
-- [ ] Answer IDs: preserved for wording changes, new for changed claims
+- [ ] Answer IDs: preserved for wording changes, new for changed claims; a shipped
+      question's option and key sets unchanged (`question_bank_identity.py --against HEAD`)
 - [ ] Question count and per-topic distribution match the pinned tests, or those
       tests were updated deliberately
 

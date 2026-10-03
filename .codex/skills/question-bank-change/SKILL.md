@@ -46,9 +46,13 @@ never validated anything.
    run the deterministic checks → work the semantic rubric → fix → re-validate the final
    text.
 5. **Respect stable identity.** Keep `Question.id` for wording, clarity, distractor,
-   explanation, and source changes. Keep an `AnswerOption.id` when only its wording
-   changes, and issue a new one when the claim itself changes — historical attempts store
-   selected answer IDs, so reusing an ID for a different assertion corrupts them.
+   explanation, and source changes, and keep an `AnswerOption.id` when only its wording
+   changes. A shipped question's `selectionMode`, answer-ID set and correct-answer set are
+   fixed, and it is never deleted: when an option's claim or the key must change, add a
+   new question with new IDs and mark the old one `DEPRECATED`. Historical attempts store
+   selected answer IDs, so re-pointing an ID corrupts them.
+   `python3 tools/question_bank_identity.py --against HEAD` checks this; CI runs it
+   against the replaced revision.
 6. **Update the pinned counts** in `InitialCurriculumSmokeTest` (taxonomy, status and
    selection-mode split, level distribution, per-topic ACTIVE counts) in the same change.
    Import and repository tests derive their expectations from the bundle; do not add bank
@@ -71,6 +75,9 @@ never validated anything.
 
 # Everything that touches curriculum data.
 ./gradlew :shared:jvmTest
+
+# Cross-revision identity: no shipped question removed or re-pointed.
+python3 tools/question_bank_identity.py --against HEAD
 ```
 
 Source liveness and anchor resolution need the network and are not automated — run both

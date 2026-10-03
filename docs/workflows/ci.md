@@ -11,12 +11,13 @@ that invocation produced.
 
 ### 1. Data gates
 
-Two standard-library-cheap Python steps ahead of the Gradle job, both failing in seconds:
+Cheap Python steps ahead of the Gradle job, all failing in seconds:
 
 ```sh
 python3 -m unittest discover -s tools -p 'test_*.py'
 python3 tools/question_bank_coverage.py --check
 python3 tools/learning_question_coverage.py --check
+python3 tools/question_bank_identity.py --against "$baseline"
 python3 .github/project/validate_backlog.py .github/project/backlog.yml
 ```
 
@@ -34,6 +35,19 @@ The two `--check` commands gate two committed content snapshots with different s
   that leaves it stale fails the build.
 
 CI never regenerates either snapshot; `--write` stays an authoring step.
+
+`question_bank_identity.py` is a cross-revision gate rather than a snapshot. Persisted
+attempts reference Questions and AnswerOptions by ID, so it fails when, against the revision
+being replaced, a Question disappeared or an existing Question's `selectionMode`,
+AnswerOption-ID set or correct-answer set changed. Status, level, Topic/Subtopic placement
+and all wording may change. The baseline is the pull request's base SHA, the push's
+`github.event.before`, or `main`'s parent commit on manual dispatch. There is no tag or
+release to compare against (see [versioning](../development/versioning.md)), and comparing
+every accepted revision is the stronger guarantee anyway. The checkout is shallow, so the
+step fetches that one commit before comparing; an unknown event, an all-zero `before`, an
+unfetchable commit or a baseline without the curriculum fails the step instead of skipping
+it. The rules themselves are in
+[content authoring](../content/content-authoring.md#enforced-identity-rules).
 
 The backlog validator is the same script `sync-backlog.yml` runs. That workflow is manual
 dispatch only, so before this gate existed a malformed `backlog.yml` merged freely and was

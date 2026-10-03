@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -47,6 +47,40 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_*.py'
           python3 tools/question_bank_coverage.py --check
           python3 tools/learning_question_coverage.py --check
+
+      # Persisted attempts reference Questions and AnswerOptions by ID, so an accepted
+      # revision of the bank must not remove a Question or change what an existing ID
+      # means: its selectionMode, its AnswerOption IDs or its correct answers. A single
+      # document cannot show that, so the gate compares the working tree against the
+      # revision this change replaces — the pull request's base, the previous `main` tip
+      # on push, or `main`'s parent on manual dispatch. Git history is the baseline; there
+      # is no tag or release to compare against yet (docs/development/versioning.md). The
+      # checkout is shallow, so the baseline commit is fetched explicitly, and a missing
+      # baseline fails the step rather than skipping it.
+      - name: Check question-bank identity against the replaced revision
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          case "$EVENT_NAME" in
+            pull_request) baseline="$PR_BASE_SHA" ;;
+            push) baseline="$PUSH_BEFORE_SHA" ;;
+            workflow_dispatch)
+              git fetch --no-tags --quiet --depth=2 origin main
+              baseline="$(git rev-parse FETCH_HEAD~1)"
+              ;;
+            *)
+              echo "::error::No identity baseline is defined for '$EVENT_NAME'."
+              exit 1
+              ;;
+          esac
+          if [ -z "$baseline" ] || [ "$baseline" = "0000000000000000000000000000000000000000" ]; then
+            echo "::error::No accepted revision to compare the question bank against."
+            exit 1
+          fi
+          git fetch --no-tags --quiet --depth=1 origin "$baseline"
+          python3 tools/question_bank_identity.py --against "$baseline"
 
       # The backlog validator is the same one `sync-backlog.yml` runs, but that workflow is
       # manual dispatch only, so before this step a malformed `backlog.yml` could merge and

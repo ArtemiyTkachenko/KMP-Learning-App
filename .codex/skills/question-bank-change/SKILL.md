@@ -50,9 +50,16 @@ never validated anything.
    changes, and issue a new one when the claim itself changes — historical attempts store
    selected answer IDs, so reusing an ID for a different assertion corrupts them.
 6. **Update the pinned counts** in `InitialCurriculumSmokeTest` (taxonomy, status and
-   selection-mode split, level distribution, per-topic ACTIVE counts) in the same change,
-   and regenerate the coverage tables when the bank's shape changes. Import and repository
-   tests derive their expectations from the bundle; do not add bank totals to them.
+   selection-mode split, level distribution, per-topic ACTIVE counts) in the same change.
+   Import and repository tests derive their expectations from the bundle; do not add bank
+   totals to them. Then regenerate the committed coverage snapshots — CI checks both:
+   - `python3 tools/question_bank_coverage.py --write` whenever the bank's shape changes
+     (a Question added, deprecated or re-homed, a selection mode, answer-option or source
+     count changed). It rewrites only the generated regions of
+     `docs/content/question-bank-coverage.md`; re-read the prose around them yourself and
+     correct whatever the new numbers contradict.
+   - `python3 tools/learning_question_coverage.py --write` whenever an ACTIVE Question
+     changes, because `docs/content/learning-question-coverage.md` maps Lessons to them.
 7. **Record a bank-wide audit** in `docs/content/question-audit-log.yml`. A single new
    question does not need an entry; a review or remediation pass does.
 

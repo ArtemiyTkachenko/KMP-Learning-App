@@ -29,8 +29,10 @@ process. Prior review verdicts are recorded in `docs/content/question-audit-log.
 `docs/content/question-bank-coverage.md` records the current *state* of the bank: what
 each subtopic already holds, which gaps are real and which are deliberate, and
 the audit baselines a new batch must not degrade. Read it before planning an
-expansion so the coverage review does not have to be repeated, and regenerate
-its tables in the same PR that changes the bank.
+expansion so the coverage review does not have to be repeated. In the same PR that
+changes the bank, run `python3 tools/question_bank_coverage.py --write` to regenerate its
+structural tables (CI fails while they are stale), then re-read its editorial prose, which
+no tool checks. That document explains which parts are generated and which are not.
 
 ## Model Context
 

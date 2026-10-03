@@ -545,21 +545,20 @@ Identity rules are in the contract; this is how they apply in practice.
 `<question_id>_a…_d`.
 
 **Editing an existing question.** Keep `Question.id` for wording, clarity,
-distractor, explanation, and source changes. A new ID plus deprecation of the old
-question is for a changed concept or changed correct answer, and should be rare —
-the 90-question review needed none.
-
-Changing between `SINGLE` and `MULTIPLE` can materially change how the candidate
-interacts with a question. Review stable identity in that case; adding explicit
-metadata for an interaction that was already intended does not itself require a
-new ID.
+explanation, and source changes, including rewording a distractor without changing
+its claim. A new ID plus deprecation of the old question is for a changed concept,
+a changed correct answer, a replaced or added or removed option, or a change
+between `SINGLE` and `MULTIPLE` — even one that only makes the intended mode
+explicit. CI rejects all of those under a shipped `Question.id`.
 
 **Editing an answer.** This is the rule most easily got wrong:
 
 - Keep the `AnswerOption.id` when only the wording changes and the claim is the
   same.
-- Issue a **new** ID when the claim changes — replacing an implausible distractor
-  with a different misconception is a new claim, even in the same slot.
+- When the claim changes, the option needs a **new** ID — replacing an implausible
+  distractor with a different misconception is a new claim, even in the same slot.
+  On a shipped question that also means a new `Question.id` (see below); only a
+  question not yet merged can take a new answer ID in place.
 
 Historical `QuestionAttempt` rows store selected answer IDs, so reusing an ID for
 a different assertion silently corrupts past attempts. The review issued 253 new
@@ -568,6 +567,14 @@ kept their ID because only their wording changed.
 
 Never treat list position as identity. Reordering options is safe; renaming IDs
 to match a new order is not.
+
+**On a shipped question the answer-ID set is now frozen.** That review predates
+`tools/question_bank_identity.py`, which CI runs against the revision a change
+replaces: it rejects an added, removed or renamed option, a changed key, or a
+changed `selectionMode` under an existing `Question.id`. A distractor or key whose
+claim must change on a shipped question therefore means a new question with new
+IDs, with the old one marked `DEPRECATED`. Within a pull request, options of a
+question that is new in that pull request may still change freely.
 
 **Renaming an answer ID is a data migration, not just an edit.** The old row does
 not disappear when the bundle stops authoring it: if any past attempt selected it,
@@ -800,7 +807,8 @@ Editorial (human review — the validator cannot check these):
       including the sentences about distractors
 - [ ] Neighbour scan (Part 9) read; no pair disagrees
 - [ ] Every source establishes its specific claim and returns 200
-- [ ] Answer IDs: preserved for wording changes, new for changed claims
+- [ ] Answer IDs: preserved for wording changes, new for changed claims; a shipped
+      question's option and key sets unchanged (`question_bank_identity.py --against HEAD`)
 - [ ] Question count and per-topic distribution match the pinned tests, or those
       tests were updated deliberately
 

@@ -499,9 +499,31 @@ changes:
 - Historical answers would no longer mean the same thing after the rewrite.
 
 Changing a question between `SINGLE` and `MULTIPLE` changes its interaction
-semantics and should be considered when deciding whether its stable identity is
-still appropriate. Merely making the previously intended mode explicit does not
-require ID churn.
+semantics, so it requires a new `Question.id`.
+
+Never delete a question that has shipped. Mark it `DEPRECATED` instead; a
+deprecated question can return to `ACTIVE` later under the same ID. Status,
+`level`, and `topicId`/`subtopicId` placement may change under a stable ID —
+they describe where the question sits now, not what a historical answer meant.
+
+### Enforced Identity Rules
+
+Part of this contract is mechanical and CI enforces it.
+`python3 tools/question_bank_identity.py --against <git-ref>` compares the
+working-tree curriculum with the same file at an accepted revision and fails if,
+for any question present in that revision:
+
+- its `Question.id` is gone;
+- its `selectionMode` changed;
+- its set of `AnswerOption.id`s changed (an option added, removed, or renamed);
+- its set of `correctAnswerIds` changed.
+
+New questions, reordered options, status, level, placement, and every text,
+explanation, and source edit pass. CI compares a pull request with its base and
+a push with the previous `main` tip; locally, `--against HEAD` checks uncommitted
+work. Git history is the baseline, so there is no baseline file to regenerate.
+Passing the gate does not make a wording change minor — whether an edit is
+material under the same ID stays a review judgement under the rules above.
 
 ## Stable Answer Identity
 
@@ -512,10 +534,12 @@ Preserve the existing answer ID for:
 - Spelling or grammar corrections.
 - Clarifying wording that does not change the answer's meaning.
 
-Use a new answer ID when:
-
-- The answer's semantic meaning changes materially.
-- The assertion represented by the answer becomes a different answer.
+When an answer's semantic meaning changes materially, or the assertion it
+represents becomes a different answer, the question's option set changes. The
+set of answer IDs is part of the question's enforced identity, so that edit
+requires a new `Question.id` with fresh answer IDs, and the old question becomes
+`DEPRECATED`. Adding or removing an option on a shipped question follows the
+same rule.
 
 Do not use list position or index as answer identity.
 

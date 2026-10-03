@@ -48,9 +48,11 @@ Run automatically. They catch structure, never meaning.
 | `CurriculumValidator` (`shared/.../curriculum/validation/`) | Required fields present and non-blank; unique topic, subtopic, question, and answer IDs; valid topic/subtopic references and hierarchy consistency; at least two answers; `correctAnswerIds` referencing real options; `SINGLE` not carrying several correct answers; answer options within a question not repeating the same text; at least one source with a non-blank title and a syntactically valid `http(s)` URL; no authoring placeholder (`TODO`, `TBD`, `FIXME`, `XXX`, `lorem ipsum`) in any authored text, and no unreachable host in a source URL. It runs at import time, so a malformed bundle is rejected rather than persisted. |
 | `InitialCurriculumSmokeTest` | The bundled bank's shape: topic taxonomy, question counts per topic, level distribution, and structural validity. |
 | `InitialCurriculumContentQualityTest` | Editorial invariants of the bundled bank: no duplicated stems; every `MULTIPLE` question says "Select all that apply."; every source cites an approved primary documentation host; no keyed answer exceeds its longest distractor by more than 10%; absolute words appear in keyed answers and not only in distractors. |
+| `tools/question_bank_identity.py` | Cross-revision identity against an accepted Git revision: no shipped `Question.id` removed, and no change to an existing question's `selectionMode`, answer-ID set or correct-answer set. CI runs it against the revision a change replaces. See [content authoring](content-authoring.md#enforced-identity-rules). |
 
 ```sh
 ./gradlew :shared:jvmTest --tests '*InitialCurriculum*' --tests '*CurriculumValidator*'
+python3 tools/question_bank_identity.py --against HEAD
 ```
 
 Two limits are deliberate.

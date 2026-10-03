@@ -7,6 +7,14 @@ the Android interview question bank, in whole or in phases.
 It is self-contained: it carries the findings of the 2026-08-30 audit inline, so
 no prior session context or scratchpad file is needed.
 
+**It predates the identity gate.** CI now runs `tools/question_bank_identity.py`,
+which rejects any added, removed or renamed option, changed key or changed
+`selectionMode` under a shipped `Question.id`. Every distractor replacement this
+prompt describes therefore needs a replacement question with new IDs and the
+old one `DEPRECATED`, not a new answer ID in place. Rule 2 below is updated; the
+phase instructions are not, so read them through that rule. See
+[content authoring](content-authoring.md#enforced-identity-rules).
+
 **How to scope a run.** The prompt defaults to one phase at a time. Replace the
 `SCOPE` block with the phases you want, e.g. `PHASE 1` only, or `PHASE 1-3`, or
 `ALL PHASES`. Phases are ordered by value per unit of effort and are independent
@@ -76,13 +84,15 @@ wrong, STOP and report it rather than editing it.
 2. IDENTITY SEMANTICS.
 
 ```
-Question.id       kept for wording, clarity, distractor, explanation, and
-                  source changes. A new id + deprecation of the old question is
-                  only for a changed concept or changed correct answer.
+Question.id       kept for wording, clarity, explanation, and source changes.
+                  A new id + deprecation of the old question for a changed
+                  concept, a changed correct answer, a replaced, added or
+                  removed option, or a SINGLE/MULTIPLE change. CI enforces this.
 
 AnswerOption.id   KEPT when only the wording changes and the claim is the same.
-                  NEW when the claim changes. Replacing a distractor with a
-                  different misconception is a NEW claim, even in the same slot.
+                  A changed claim is a NEW option. Replacing a distractor with a
+                  different misconception is a NEW claim, even in the same slot,
+                  so on a shipped question it needs a new Question.id.
 ```
 
 Historical `QuestionAttempt` rows store selected answer IDs. Reusing an ID for a

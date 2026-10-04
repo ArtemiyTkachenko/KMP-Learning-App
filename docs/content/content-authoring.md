@@ -475,6 +475,19 @@ library API discussed by a question is itself deprecated. A question about
 Fragments, RxJava, SharedPreferences, legacy Views, or another older technology
 may remain `ACTIVE` if it is still relevant to Android interviews.
 
+An `ACTIVE` Topic must have at least one `ACTIVE` Question, because an active Topic must
+be able to support a new assessment. `CurriculumValidator` reports
+`TOPIC_WITHOUT_QUESTIONS` otherwise.
+
+- `DEPRECATED` Questions do not satisfy that minimum. A Topic whose Questions are all
+  `DEPRECATED` is empty for current assessment, even though its Questions remain for
+  historical attempts.
+- `DEPRECATED` Topics are exempt. They exist for stable identity and historical
+  references, not for new assessment selection, so they need no current Question.
+- The rule stops at the Topic. An `ACTIVE` Subtopic may have zero `ACTIVE` Questions —
+  for example when its only Questions were retired — and that is valid content state. Do
+  not generalize the Topic minimum down to Subtopics.
+
 ## Stable Question Identity
 
 `Question.id` identifies the meaning of the question, not its current wording.
@@ -714,7 +727,8 @@ deterministic subset at import time — unique IDs, valid topic and subtopic ref
 hierarchy consistency, `correctAnswerIds` referencing real answers, `SINGLE` not carrying
 several correct answers, non-empty required fields, answer options not repeating the same
 text, source presence with a syntactically valid URL, one question never citing the same
-source URL twice, and no authoring placeholder left in any authored text. `InitialCurriculumContentQualityTest` enforces the bundled bank's
+source URL twice, no authoring placeholder left in any authored text, and every `ACTIVE`
+Topic having at least one `ACTIVE` Question (see [Content Status](#content-status)). `InitialCurriculumContentQualityTest` enforces the bundled bank's
 editorial invariants: unique stems, the `MULTIPLE` prompt, approved source hosts, and the
 anti-cue length and absolute-word audits.
 

@@ -446,6 +446,100 @@ internal class CurriculumValidatorTest {
     }
 
     @Test
+    fun activeTopicWhoseQuestionsAreAllDeprecatedHasNoQuestions() {
+        val curriculum = validCurriculum(
+            questions = listOf(
+                question(id = "question_1", status = ContentStatus.DEPRECATED),
+                question(id = "question_2", status = ContentStatus.DEPRECATED),
+            ),
+        )
+
+        val errors = validator.validate(curriculum)
+
+        assertEquals(listOf(CurriculumValidationErrorCode.TOPIC_WITHOUT_QUESTIONS), errors.map { it.code })
+        assertEquals("topic_1", errors.single().entityId)
+    }
+
+    @Test
+    fun oneActiveQuestionCoversAnActiveTopicAlongsideDeprecatedQuestions() {
+        val curriculum = validCurriculum(
+            questions = listOf(
+                question(id = "question_1", status = ContentStatus.DEPRECATED),
+                question(id = "question_2"),
+                question(id = "question_3", status = ContentStatus.DEPRECATED),
+            ),
+        )
+
+        assertTrue(validator.validate(curriculum).isEmpty())
+    }
+
+    @Test
+    fun topicCoverageIsCheckedPerActiveTopic() {
+        val curriculum = validCurriculum(
+            topics = listOf(
+                Topic(id = "topic_1", name = "Topic"),
+                Topic(id = "topic_2", name = "Other topic"),
+            ),
+            subtopics = listOf(
+                Subtopic(id = "subtopic_1", topicId = "topic_1", name = "Subtopic"),
+                Subtopic(id = "subtopic_2", topicId = "topic_2", name = "Other subtopic"),
+            ),
+            questions = listOf(
+                question(id = "question_1"),
+                question(
+                    id = "question_2",
+                    topicId = "topic_2",
+                    subtopicId = "subtopic_2",
+                    status = ContentStatus.DEPRECATED,
+                ),
+            ),
+        )
+
+        val errors = validator.validate(curriculum)
+
+        assertEquals(listOf(CurriculumValidationErrorCode.TOPIC_WITHOUT_QUESTIONS), errors.map { it.code })
+        assertEquals("topic_2", errors.single().entityId)
+    }
+
+    @Test
+    fun deprecatedTopicIsExemptFromMinimumQuestionCoverage() {
+        val curriculum = validCurriculum(
+            topics = listOf(
+                Topic(id = "topic_1", name = "Topic"),
+                Topic(id = "retired_topic", name = "Retired topic", status = ContentStatus.DEPRECATED),
+            ),
+            subtopics = listOf(
+                Subtopic(id = "subtopic_1", topicId = "topic_1", name = "Subtopic"),
+                Subtopic(
+                    id = "retired_subtopic",
+                    topicId = "retired_topic",
+                    name = "Retired subtopic",
+                    status = ContentStatus.DEPRECATED,
+                ),
+            ),
+            questions = listOf(question()),
+        )
+
+        assertTrue(validator.validate(curriculum).isEmpty())
+    }
+
+    @Test
+    fun activeSubtopicWithoutActiveQuestionsIsAccepted() {
+        val curriculum = validCurriculum(
+            subtopics = listOf(
+                Subtopic(id = "subtopic_1", topicId = "topic_1", name = "Subtopic"),
+                Subtopic(id = "subtopic_2", topicId = "topic_1", name = "Practice-free subtopic"),
+            ),
+            questions = listOf(
+                question(id = "question_1"),
+                question(id = "question_2", subtopicId = "subtopic_2", status = ContentStatus.DEPRECATED),
+            ),
+        )
+
+        assertTrue(validator.validate(curriculum).isEmpty())
+    }
+
+    @Test
     fun returnsMultipleErrorsWithoutFailingFast() {
         val errors = validator.validate(
             validCurriculum(

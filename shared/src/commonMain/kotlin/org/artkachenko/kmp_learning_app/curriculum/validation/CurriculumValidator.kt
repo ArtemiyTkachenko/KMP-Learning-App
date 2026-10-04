@@ -2,6 +2,7 @@ package org.artkachenko.kmp_learning_app.curriculum.validation
 
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
+import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Curriculum
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.SourceReference
@@ -37,14 +38,20 @@ internal class CurriculumValidator {
             return
         }
 
-        val questionTopicIds = curriculum.questions.map { it.topicId }.toSet()
+        // Only current content counts: an ACTIVE Topic needs an ACTIVE Question to support new
+        // assessments, while a DEPRECATED Topic is kept for historical identity alone.
+        val activeQuestionTopicIds = curriculum.questions
+            .asSequence()
+            .filter { it.status == ContentStatus.ACTIVE }
+            .map { it.topicId }
+            .toSet()
         curriculum.topics.forEach { topic ->
-            if (topic.id.isNotBlank() && topic.id !in questionTopicIds) {
+            if (topic.status == ContentStatus.ACTIVE && topic.id.isNotBlank() && topic.id !in activeQuestionTopicIds) {
                 errors.add(
                     error(
                         CurriculumValidationErrorCode.TOPIC_WITHOUT_QUESTIONS,
                         topic.id,
-                        "Topic '${topic.id}' must have at least one question.",
+                        "Active topic '${topic.id}' must have at least one active question.",
                     ),
                 )
             }

@@ -347,7 +347,10 @@ names only, in memory, against the catalog already loaded, so learning context i
 display metadata that no query can match and typing still issues no repository
 read. Topic search results reuse the enriched Topic row rather than deriving a
 second one; Subtopic results stay compact and parent-contextual, with their full
-learning context living on Topic Detail.
+learning context living on Topic Detail. Only Subtopics with at least one ACTIVE
+Question are indexed — Topic Detail's rule for its practice rows — so every Subtopic
+result has a row to land on. Which ones qualify comes from one read of the visible
+ACTIVE bank while the catalogue loads, not from typing.
 
 Presentation keeps the two figures visibly different concepts. Coverage is always
 a count ("12 of 28 explored"), never a bare percentage that could be mistaken for

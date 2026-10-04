@@ -319,20 +319,38 @@ internal class TopicBrowserViewModel(
         render()
     }
 
+    /**
+     * Reads the Topics to browse and the Subtopics search may offer as shortcuts.
+     *
+     * Topics are browsed and searched as the repository returns them. A Subtopic is searchable only
+     * when at least one ACTIVE Question belongs to it, because a Subtopic result opens Topic Detail
+     * on that Subtopic's practice row, and Topic Detail makes rows only for Subtopics that can be
+     * practised. Search mirrors that rule rather than promising a row the destination omits. An
+     * ACTIVE Subtopic with no ACTIVE Question is still valid curriculum; it is just not a practice
+     * destination yet.
+     *
+     * Availability comes from one read of the visible ACTIVE bank, not one read per Subtopic. It is
+     * required: if it fails the whole catalogue fails, since indexing every Subtopic would bring the
+     * unreachable results back and indexing none would present a partial catalogue as complete.
+     */
     private suspend fun readCatalog(): TopicCatalog {
         val topics = curriculumRepository.getActiveTopics()
         if (topics.isEmpty()) return TopicCatalog.Empty
+        val practicableSubtopicIds = curriculumRepository.getActiveQuestions()
+            .mapTo(mutableSetOf()) { it.subtopicId }
         return TopicCatalog.Loaded(
             topics = topics,
             searchableSubtopics = topics.flatMap { topic ->
-                curriculumRepository.getActiveSubtopics(topic.id).map { subtopic ->
-                    SubtopicSearchResult(
-                        subtopicId = subtopic.id,
-                        subtopicName = subtopic.name,
-                        parentTopicId = topic.id,
-                        parentTopicName = topic.name,
-                    )
-                }
+                curriculumRepository.getActiveSubtopics(topic.id)
+                    .filter { it.id in practicableSubtopicIds }
+                    .map { subtopic ->
+                        SubtopicSearchResult(
+                            subtopicId = subtopic.id,
+                            subtopicName = subtopic.name,
+                            parentTopicId = topic.id,
+                            parentTopicName = topic.name,
+                        )
+                    }
             },
         )
     }

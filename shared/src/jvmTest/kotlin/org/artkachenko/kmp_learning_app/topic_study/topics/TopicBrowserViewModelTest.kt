@@ -91,6 +91,12 @@ internal class TopicBrowserViewModelTest {
                     listOf(Subtopic("subtopic_a", "topic_a", "A One")),
                 ),
             ),
+            // Listed against repository order, so the catalogue cannot be taking it from here.
+            questions = listOf(
+                question("q_a", "topic_a", "subtopic_a"),
+                question("q_b1", "topic_b", "subtopic_b1"),
+                question("q_b2", "topic_b", "subtopic_b2"),
+            ),
         )
         val viewModel = viewModel(repository)
 
@@ -237,11 +243,14 @@ internal class TopicBrowserViewModelTest {
         val history = historyRepository()
         val viewModel = viewModel(repository, history)
         advanceUntilIdle()
-        // One ACTIVE question read for the whole coverage derivation, and one history read behind
-        // the shared cache. Neither is per Topic card.
-        val readsAfterLoad = repository.questionReadCount
-        assertEquals(1, readsAfterLoad)
+        // Two deliberate ACTIVE-bank reads: one while loading the catalogue, for which Subtopics
+        // search may offer, and one for the whole coverage derivation. Plus one history read
+        // behind the shared cache. None is per Topic card or per Subtopic.
+        assertEquals(2, repository.questionReadCount)
         assertEquals(1, history.readCount)
+        val topicReadsAfterLoad = repository.topicReadCount
+        val subtopicReadsAfterLoad = repository.subtopicReadTopicIds.size
+        val questionReadsAfterLoad = repository.questionReadCount
 
         viewModel.onSearchQueryChange("c")
         viewModel.onSearchQueryChange("co")
@@ -249,9 +258,10 @@ internal class TopicBrowserViewModelTest {
         viewModel.onSearchQueryChange("")
         advanceUntilIdle()
 
-        assertEquals(1, repository.topicReadCount)
-        assertEquals(3, repository.subtopicReadTopicIds.size)
-        assertEquals(readsAfterLoad, repository.questionReadCount)
+        // Typing filters the catalogue already in memory: it reads nothing at all.
+        assertEquals(topicReadsAfterLoad, repository.topicReadCount)
+        assertEquals(subtopicReadsAfterLoad, repository.subtopicReadTopicIds.size)
+        assertEquals(questionReadsAfterLoad, repository.questionReadCount)
         assertEquals(1, history.readCount)
     }
 
@@ -279,6 +289,7 @@ internal class TopicBrowserViewModelTest {
                     ),
                 ),
             ),
+            questions = listOf(question("q_a", topic.id, "subtopic_a")),
         )
         val viewModel = viewModel(repository)
 
@@ -306,6 +317,104 @@ internal class TopicBrowserViewModelTest {
         advanceUntilIdle()
 
         assertEquals(TopicBrowserUiState.Loading, viewModel.uiState.value)
+    }
+
+    /**
+     * A Subtopic result opens Topic Detail on that Subtopic's practice row, and Topic Detail makes
+     * rows only for Subtopics with an ACTIVE Question. A Subtopic without one is valid curriculum
+     * but no destination, so search does not offer it — and the rest keep repository order.
+     */
+    @Test
+    fun onlySubtopicsWithActiveQuestionsAreSearchableInRepositoryOrder() = runViewModelTest {
+        val viewModel = viewModel(practicabilityRepository())
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(
+            listOf(
+                SubtopicSearchResult(
+                    subtopicId = "structured_concurrency",
+                    subtopicName = "Structured concurrency",
+                    parentTopicId = "coroutines",
+                    parentTopicName = "Coroutines",
+                ),
+                SubtopicSearchResult(
+                    subtopicId = "flow_operators",
+                    subtopicName = "Flow operators",
+                    parentTopicId = "coroutines",
+                    parentTopicName = "Coroutines",
+                ),
+            ),
+            state.searchableSubtopics,
+        )
+    }
+
+    @Test
+    fun aSubtopicWithoutActiveQuestionsIsNeverASearchResult() = runViewModelTest {
+        val viewModel = viewModel(practicabilityRepository())
+        advanceUntilIdle()
+
+        viewModel.onSearchQueryChange("channels")
+        val unpracticable = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertTrue(unpracticable.topicMatches.isEmpty())
+        assertTrue(unpracticable.subtopicMatches.isEmpty())
+
+        listOf("structured" to "structured_concurrency", "flow" to "flow_operators")
+            .forEach { (query, subtopicId) ->
+                viewModel.onSearchQueryChange(query)
+                val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+                assertEquals(listOf(subtopicId), state.subtopicMatches.map { it.subtopicId })
+                assertEquals(listOf("coroutines"), state.subtopicMatches.map { it.parentTopicId })
+            }
+    }
+
+    /**
+     * Subtopic eligibility is not Topic eligibility. `testing` has no searchable Subtopic in this
+     * fixture, yet it is still browsed and still found by its own name.
+     */
+    @Test
+    fun topicsStaySearchableWhateverTheirSubtopicsPracticability() = runViewModelTest {
+        val viewModel = viewModel(practicabilityRepository())
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(listOf("coroutines", "testing"), state.allTopics.map { it.topicId })
+
+        viewModel.onSearchQueryChange("testing")
+        val search = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(listOf("testing"), search.topicMatches.map { it.topicId })
+        assertTrue(search.subtopicMatches.isEmpty())
+    }
+
+    /**
+     * Without the ACTIVE bank the catalogue cannot say which Subtopics are destinations. Indexing
+     * all of them would bring back unreachable results and indexing none would pass a partial
+     * catalogue off as complete, so the load fails like any other catalogue read, and Retry reads
+     * the bank again with the rest of the catalogue.
+     */
+    @Test
+    fun aFailedCatalogueQuestionReadBecomesErrorAndRetryRecoversSearch() = runViewModelTest {
+        // The catalogue's read of the ACTIVE bank is the first one.
+        val repository = retryableCatalogRepository(loads = 2, failingActiveQuestionReads = setOf(1))
+        val viewModel = viewModel(repository)
+
+        advanceUntilIdle()
+        assertEquals(TopicBrowserUiState.Error, viewModel.uiState.value)
+
+        viewModel.retry()
+        advanceUntilIdle()
+
+        val state = assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+        assertEquals(
+            listOf("compose_runtime", "viewmodel_lifecycle"),
+            state.searchableSubtopics.map { it.subtopicId },
+        )
+        viewModel.onSearchQueryChange("viewmodel")
+        assertEquals(
+            listOf("viewmodel_lifecycle"),
+            assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
+                .subtopicMatches.map { it.subtopicId },
+        )
     }
 
     @Test
@@ -456,12 +565,14 @@ internal class TopicBrowserViewModelTest {
 
     @Test
     fun retryRerunsADerivationThatFailedOverHistoryThatReadSuccessfully() = runViewModelTest {
-        // The attempt table reads perfectly; the ACTIVE bank the derivation needs does not.
-        val repository = retryableCatalogRepository(loads = 2, activeQuestionFailures = 1)
+        // The attempt table reads perfectly; the ACTIVE bank the derivation needs does not. The
+        // catalogue's own read of that bank comes first and succeeds, so only the derivation fails.
+        val repository = retryableCatalogRepository(loads = 2, failingActiveQuestionReads = setOf(2))
         val history = historyRepository(answer("q_compose_1", true))
         val viewModel = viewModel(repository, history)
         advanceUntilIdle()
 
+        assertIs<TopicBrowserUiState.Content>(viewModel.uiState.value)
         assertNull(topic(viewModel, "compose").learningContext)
 
         viewModel.retry()
@@ -853,9 +964,10 @@ internal class TopicBrowserViewModelTest {
         assertNotNull(state.allTopics.first().learningContext)
         assertNotNull(state.recommendedNext)
         // Topic rows and the recommendation share one LearningProgressSnapshot. The derivation
-        // reads the ACTIVE bank exactly once, so a second load would show as a second read — and
-        // the two surfaces could then describe the same history differently.
-        assertEquals(1, repository.questionReadCount)
+        // reads the ACTIVE bank exactly once, so a second load would show as a third read — and
+        // the two surfaces could then describe the same history differently. The other read is
+        // the catalogue's, for Subtopic search eligibility.
+        assertEquals(2, repository.questionReadCount)
         assertEquals(1, history.readCount)
     }
 
@@ -1706,10 +1818,11 @@ internal class TopicBrowserViewModelTest {
             mutableMapOf(),
         private val questions: List<Question> = emptyList(),
         /**
-         * Failures for the ACTIVE-bank read alone, which is how a derivation over history that read
-         * perfectly well is made to fail without touching the catalogue read above it.
+         * 1-based ordinals of the ACTIVE-bank reads that fail. Two reads share this method — the
+         * catalogue's, for Subtopic search eligibility, which runs first, and the learning-progress
+         * derivation's — so a test picks which one fails by its position.
          */
-        private var activeQuestionFailures: Int = 0,
+        private val failingActiveQuestionReads: Set<Int> = emptySet(),
         /**
          * Identity lookups, which Continue Studying resolves its historical scope IDs against.
          * Empty by default so tests that are only about the catalogue keep the previous behaviour
@@ -1739,13 +1852,13 @@ internal class TopicBrowserViewModelTest {
             return subtopicResults[topicId]?.removeFirst()?.getOrThrow().orEmpty()
         }
 
-        /** LearningProgressService reads the ACTIVE bank once per derivation, for coverage. */
+        /**
+         * Read once per catalogue load, for which Subtopics search may offer, and once per
+         * LearningProgressService derivation, for coverage.
+         */
         override suspend fun getActiveQuestions(): List<Question> {
             questionReadCount += 1
-            if (activeQuestionFailures > 0) {
-                activeQuestionFailures -= 1
-                error("Question bank unavailable")
-            }
+            if (questionReadCount in failingActiveQuestionReads) error("Question bank unavailable")
             return questions
         }
 
@@ -1961,6 +2074,31 @@ internal class TopicBrowserViewModelTest {
         ).associateBy(Question::id)
 
         /**
+         * `coroutines` authors three Subtopics, and the middle one, `channels`, has no ACTIVE
+         * Question. `testing`'s only Subtopic has none either; the Topic itself is still
+         * catalogue, because Subtopic practicability says nothing about Topics.
+         */
+        fun practicabilityRepository() = FakeCurriculumRepository(
+            topicResults = resultsOf(
+                listOf(Topic("coroutines", "Coroutines"), Topic("testing", "Testing")),
+            ),
+            subtopicResults = mutableMapOf(
+                "coroutines" to resultsOf(
+                    listOf(
+                        Subtopic("structured_concurrency", "coroutines", "Structured concurrency"),
+                        Subtopic("channels", "coroutines", "Channels"),
+                        Subtopic("flow_operators", "coroutines", "Flow operators"),
+                    ),
+                ),
+                "testing" to resultsOf(listOf(Subtopic("fakes", "testing", "Fakes"))),
+            ),
+            questions = listOf(
+                question("q_flow", "coroutines", "flow_operators"),
+                question("q_structured", "coroutines", "structured_concurrency"),
+            ),
+        )
+
+        /**
          * The same catalogue, with the identity lookups a weak-area rationale is named from. The
          * name is resolved by the existing performance derivation, not by the recommendation.
          */
@@ -2100,7 +2238,7 @@ internal class TopicBrowserViewModelTest {
          */
         fun retryableCatalogRepository(
             loads: Int,
-            activeQuestionFailures: Int = 0,
+            failingActiveQuestionReads: Set<Int> = emptySet(),
         ) = FakeCurriculumRepository(
             topicResults = ArrayDeque(List(loads) { Result.success(CatalogTopics) }),
             subtopicResults = mutableMapOf(
@@ -2129,7 +2267,7 @@ internal class TopicBrowserViewModelTest {
                 ),
             ),
             questions = ActiveQuestions,
-            activeQuestionFailures = activeQuestionFailures,
+            failingActiveQuestionReads = failingActiveQuestionReads,
         )
     }
 }

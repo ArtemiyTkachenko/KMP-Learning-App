@@ -192,6 +192,10 @@ internal sealed interface ContinueLearningUiModel {
     data object Complete : ContinueLearningUiModel
 }
 
+/**
+ * A Subtopic search shortcut into Topic Detail. Only Subtopics with at least one ACTIVE Question
+ * become results, so every instance names a practice row its destination actually shows.
+ */
 internal data class SubtopicSearchResult(
     val subtopicId: String,
     val subtopicName: String,

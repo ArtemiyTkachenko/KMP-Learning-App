@@ -384,7 +384,8 @@ internal class TopicBrowserVisibilityTest {
         override suspend fun getActiveSubtopics(topicId: String): List<Subtopic> =
             Subtopics.filter { it.topicId == topicId }
 
-        override suspend fun getActiveQuestions(): List<Question> = emptyList()
+        /** What decides which Subtopics the catalogue may offer in search. */
+        override suspend fun getActiveQuestions(): List<Question> = Questions
         override suspend fun getActiveQuestionsByTopic(topicId: String): List<Question> = emptyList()
         override suspend fun getActiveQuestionsBySubtopic(subtopicId: String): List<Question> = emptyList()
         override suspend fun getActiveQuestionsByLevels(levels: Set<QuestionLevel>): List<Question> = emptyList()
@@ -451,7 +452,10 @@ internal class TopicBrowserVisibilityTest {
             Subtopic("koin_shared_graph", "kmp", "Koin in a shared graph"),
             Subtopic("state_hoisting", "compose", "State hoisting"),
         )
-        /** Resolvable only through the historical lookup, which the history projection uses. */
+        /**
+         * The ACTIVE bank, and the historical lookup the history projection uses. One Question per
+         * Koin Subtopic makes both searchable — the KMP one only while KMP is visible.
+         */
         val Questions = listOf(question("d1", Subtopics[0]), question("k1", Subtopics[1]))
         val Units = listOf(
             unit("unit_di", "di", "lesson_di"),

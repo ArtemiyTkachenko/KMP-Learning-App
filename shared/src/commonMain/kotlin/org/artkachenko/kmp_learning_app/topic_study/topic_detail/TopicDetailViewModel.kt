@@ -303,7 +303,8 @@ internal class TopicDetailViewModel(
             topic = topic,
             questionCount = questions.size,
             questionIds = questions.mapTo(mutableSetOf()) { it.id },
-            // Only Subtopics that can actually be practised become rows.
+            // Only Subtopics that can actually be practised become rows. Topic Browser search
+            // offers Subtopic results under the same rule, so a result always has a row here.
             subtopics = subtopics.mapNotNull { subtopic ->
                 questionCounts[subtopic.id]
                     ?.takeIf { it > 0 }

@@ -53,7 +53,6 @@ import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeButtonTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicPracticeTabTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyTabTag
-import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsListTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicSubtopicsTabTag
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFieldTag
 import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserHeaderTag
@@ -187,25 +186,6 @@ internal class TopicDiscoveryIntegrationTest {
             // not begin practice on it.
             onNodeWithText(QuestionText, substring = true).assertDoesNotExist()
 
-            onNodeWithContentDescription("Back").performClick()
-            waitForTag(TopicBrowserSearchFieldTag)
-
-            // A Subtopic with no questions is searchable but is not one of the Topic's practice
-            // rows, so there is nothing to scroll to. The Topic must still open normally.
-            onNodeWithContentDescription("Clear search").performClick()
-            waitForText(UiTopicName)
-            onNodeWithTag(TopicBrowserSearchFieldTag).performTextInput("flow bridging")
-            waitForText(UnpopulatedSubtopicName)
-            onNodeWithText(UnpopulatedSubtopicName).performClick()
-            // A target that is not one of the Topic's practice rows resolves to nothing to scroll
-            // to. That fails gracefully rather than crashing: the Subtopics page still opens and
-            // is still usable, showing the Subtopics the Topic does have.
-            waitForBackControl()
-            onNodeWithTag(TopicSubtopicsTabTag).assertIsSelected()
-            // The list is present and populated; nothing was scrolled to, so which row happens to
-            // be above the fold is not the claim.
-            waitForTag(TopicSubtopicsListTag)
-
             // And the Topic's study material is one tab away, read from the real bundled learning
             // curriculum through the app's own wiring.
             selectTopicDetailTab(TopicStudyTabTag)
@@ -222,6 +202,18 @@ internal class TopicDiscoveryIntegrationTest {
             // untouched, with no question begun.
             selectTopicDetailTab(TopicPracticeTabTag)
             assertNoPracticeQuestionOnScreen()
+
+            onNodeWithContentDescription("Back").performClick()
+            waitForTag(TopicBrowserSearchFieldTag)
+
+            // A Subtopic with no ACTIVE questions is valid curriculum but not one of the Topic's
+            // practice rows, so search does not offer it as a destination. Nothing else matches
+            // either, so the learner gets the ordinary no-results state.
+            onNodeWithContentDescription("Clear search").performClick()
+            waitForText(UiTopicName)
+            onNodeWithTag(TopicBrowserSearchFieldTag).performTextInput("flow bridging")
+            waitForText("No topics or subtopics match \"flow bridging\"")
+            onNodeWithText(UnpopulatedSubtopicName).assertDoesNotExist()
         }
 
     @Test
@@ -242,9 +234,10 @@ internal class TopicDiscoveryIntegrationTest {
             onNodeWithText("explored", substring = true).assertDoesNotExist()
             onNodeWithText("0%").assertDoesNotExist()
             val readsAfterLoad = repository.reads()
-            // Coverage costs one read of the ACTIVE bank for the whole screen, not one per Topic
-            // card: three Topics are on screen.
-            assertEquals(1, repository.questionReads)
+            // Two reads of the ACTIVE bank for the whole screen, neither per Topic card nor per
+            // Subtopic: one while the catalogue loads, for which Subtopics search may offer, and
+            // one for coverage. Three Topics are on screen.
+            assertEquals(2, repository.questionReads)
 
             // Question text is deliberately outside search: this word appears only in the
             // fixture's question text, and searching it must find nothing. Typed one character at
@@ -638,8 +631,8 @@ private fun discoveryCurriculum(): Curriculum {
     }
     val subtopics = uiBlocks +
         Subtopic(StateSubtopicId, UiTopicId, StateSubtopicName) +
-        // Active and therefore searchable, but with no questions it is not one of the Topic's
-        // practice rows: the missing-scroll-target case.
+        // Active and valid, but with no questions it is not one of the Topic's practice rows, so
+        // search does not offer it either.
         Subtopic(UnpopulatedSubtopicId, UiTopicId, UnpopulatedSubtopicName) +
         Subtopic("http_clients", NetworkingTopicId, HttpSubtopicName) +
         Subtopic("expect_actual", KmpTopicId, "expect and actual declarations")

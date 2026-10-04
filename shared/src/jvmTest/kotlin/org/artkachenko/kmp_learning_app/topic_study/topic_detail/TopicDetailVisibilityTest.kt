@@ -215,6 +215,10 @@ internal class TopicDetailVisibilityTest {
         override suspend fun getTopicById(topicId: String): Topic? = Topics.firstOrNull { it.id == topicId }
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
             Subtopics.firstOrNull { it.id == subtopicId }
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = getQuestionsByIds(questionIds)
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
             Questions.filter { it.id in questionIds }.associateBy(Question::id)
     }

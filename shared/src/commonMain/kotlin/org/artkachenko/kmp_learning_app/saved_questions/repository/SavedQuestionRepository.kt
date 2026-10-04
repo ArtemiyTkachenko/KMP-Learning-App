@@ -6,8 +6,9 @@ import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestion
  * Stores saved Question identity only; content remains owned by CurriculumRepository.
  *
  * Saving an existing id is a no-op, including preserving its original timestamp. A saved id may
- * resolve through `CurriculumRepository.getQuestionsByIds` to ACTIVE or DEPRECATED content, or to
- * null when that content is no longer available. None of those outcomes changes saved state.
+ * resolve through `CurriculumRepository.getQuestionsByIdsForCurrentContent` to ACTIVE or DEPRECATED
+ * content, or to null when that content is no longer available. None of those outcomes changes
+ * saved state.
  */
 internal interface SavedQuestionRepository {
     suspend fun save(questionId: String)

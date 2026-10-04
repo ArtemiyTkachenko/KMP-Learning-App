@@ -479,6 +479,10 @@ private class RecordingCurriculumRepository(
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
         error("Subtopic lookup is not needed.")
 
+    override suspend fun getQuestionsByIdsForCurrentContent(
+        questionIds: Collection<String>,
+    ): Map<String, Question> = getQuestionsByIds(questionIds)
+
     override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
         questionReads += 1
         questionLookups += questionIds

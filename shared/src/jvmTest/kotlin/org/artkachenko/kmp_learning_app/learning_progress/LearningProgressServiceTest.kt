@@ -1043,6 +1043,10 @@ private class FakeCurriculumRepository(
         return subtopicsById[subtopicId]
     }
 
+    override suspend fun getQuestionsByIdsForCurrentContent(
+        questionIds: Collection<String>,
+    ): Map<String, Question> = getQuestionsByIds(questionIds)
+
     override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
         batchedQuestionReads += questionIds.toSet()
         return questionIds.toSet().mapNotNull { id -> questionsById[id]?.let { id to it } }.toMap()

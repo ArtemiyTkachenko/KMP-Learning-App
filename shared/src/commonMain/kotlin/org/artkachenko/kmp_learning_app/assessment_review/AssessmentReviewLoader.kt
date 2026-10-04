@@ -10,8 +10,11 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
 /**
  * One persisted occurrence to reconstruct: the attempt it belongs to, and the answer it recorded.
  *
- * [attemptId] is what orders the answers exactly as they were ordered while the attempt was being
- * taken, so review shows the learner the options in the arrangement they actually answered. It is
+ * [attemptId] and the Question id seed a deterministic order over the resolved answer set. While
+ * that set is the one the attempt was taken against — guaranteed for revisions accepted under the
+ * question-bank identity gate — review shows the options in the arrangement the learner answered.
+ * A legacy attempt whose option set changed before the gate keeps every option it selected
+ * readable, retired ones included, but its exact original arrangement is not promised. It is
  * carried per occurrence rather than per batch because the mistake queue reviews one Question from
  * each of many attempts.
  */
@@ -30,7 +33,8 @@ internal class AssessmentReviewLoader(
 
     /**
      * Maps persisted occurrences, in the order given, resolving every stable ID they reference in
-     * one historical read.
+     * one historical read — [CurriculumRepository.getQuestionsByIds], never the current-content
+     * read, so an option an attempt selected and the curriculum later retired is still shown.
      *
      * Callers that review one Question across attempts, rather than a whole attempt, use this
      * directly so historical mapping lives in one place. The read is hoisted out of the mapping

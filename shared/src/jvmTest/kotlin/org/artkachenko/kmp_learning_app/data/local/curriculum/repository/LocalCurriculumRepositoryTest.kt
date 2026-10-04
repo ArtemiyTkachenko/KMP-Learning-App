@@ -361,11 +361,58 @@ internal class LocalCurriculumRepositoryTest {
         }
     }
 
+    /**
+     * The current-content read is not an ACTIVE listing under another name: a saved DEPRECATED
+     * Question must still resolve, with the answer options its content authors now.
+     */
+    @Test
+    fun getQuestionsByIdsForCurrentContentReturnsDeprecatedQuestion() = runTest {
+        val deprecatedQuestion = question(
+            id = "deprecated_question",
+            topicId = "deprecated_topic",
+            subtopicId = "deprecated_subtopic",
+            status = ContentStatus.DEPRECATED,
+        )
+        withRepository(
+            Curriculum(
+                topics = listOf(
+                    Topic("deprecated_topic", "Deprecated topic", ContentStatus.DEPRECATED),
+                ),
+                subtopics = listOf(
+                    Subtopic("deprecated_subtopic", "deprecated_topic", "Deprecated subtopic", ContentStatus.DEPRECATED),
+                ),
+                questions = listOf(deprecatedQuestion),
+            ),
+        ) { repository ->
+            val question = assertNotNull(
+                repository.getQuestionsByIdsForCurrentContent(listOf("deprecated_question"))["deprecated_question"],
+            )
+
+            assertEquals(ContentStatus.DEPRECATED, question.status)
+            assertEquals(deprecatedQuestion.answers.map { it.id }, question.answers.map { it.id })
+            assertEquals(deprecatedQuestion.correctAnswerIds, question.correctAnswerIds)
+            assertEquals(deprecatedQuestion.sources.map { it.url }, question.sources.map { it.url })
+        }
+    }
+
     @Test
     fun getQuestionsByIdsOmitsUnknownQuestionsAndReadsNothingForAnEmptyRequest() = runTest {
         withRepository(curriculumOf(graph("topic_a"))) { repository ->
             assertEquals(emptyMap(), repository.getQuestionsByIds(listOf("missing_question")))
             assertEquals(emptyMap(), repository.getQuestionsByIds(emptyList()))
+        }
+    }
+
+    @Test
+    fun getQuestionsByIdsForCurrentContentOmitsUnknownCollapsesDuplicatesAndReadsNothingForEmpty() = runTest {
+        withRepository(curriculumOf(graph("topic_a"))) { repository ->
+            assertEquals(
+                setOf("topic_a_question"),
+                repository.getQuestionsByIdsForCurrentContent(
+                    listOf("topic_a_question", "missing_question", "topic_a_question"),
+                ).keys,
+            )
+            assertEquals(emptyMap(), repository.getQuestionsByIdsForCurrentContent(emptyList()))
         }
     }
 

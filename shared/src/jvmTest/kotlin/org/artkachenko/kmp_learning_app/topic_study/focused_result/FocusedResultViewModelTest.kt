@@ -468,6 +468,10 @@ internal class FocusedResultViewModelTest {
         ): List<Question> = questions.filter { it.level in levels }
         override suspend fun getTopicById(topicId: String): Topic? = null
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = getQuestionsByIds(questionIds)
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
             lookups += questionIds
             return questions.filter { it.id in questionIds }.associateBy(Question::id)

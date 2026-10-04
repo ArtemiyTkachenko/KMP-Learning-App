@@ -27,8 +27,9 @@ internal data class AnswerOptionEntity(
     /**
      * DEPRECATED marks an option the bundled curriculum no longer authors but that a
      * historical attempt still selected, so it cannot be deleted without breaking the
-     * foreign key from question_attempt_selected_answer. Active curriculum queries
-     * exclude these; getQuestionsByIds keeps them so past attempts remain reviewable.
+     * foreign key from question_attempt_selected_answer. Active curriculum queries and
+     * the current-content identity read exclude these; only the historical
+     * getQuestionsByIds keeps them, so past attempts remain reviewable.
      */
     @ColumnInfo(name = "status")
     val status: String = ContentStatus.ACTIVE.name,

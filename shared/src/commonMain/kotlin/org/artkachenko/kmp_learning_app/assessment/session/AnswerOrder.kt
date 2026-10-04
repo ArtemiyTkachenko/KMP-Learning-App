@@ -10,15 +10,23 @@ import org.artkachenko.kmp_learning_app.curriculum.Question
  * before could recall the position of the correct option instead of reading the options. Ordering
  * per attempt removes that cue.
  *
- * The order is *derived* from the attempt and Question ids rather than stored, which is what makes
- * it stable everywhere it has to agree: resuming an in-progress attempt, re-rendering after a
- * configuration change or process death, and reviewing the attempt afterwards all produce the same
- * order, while a second attempt at the same Question orders it differently. Storing it would mean a
- * schema change and a migration for a value that can simply be recomputed.
+ * The order is *derived* from the attempt and Question ids rather than stored: it is
+ * deterministic for a given `(attemptId, questionId)` and answer set. That is what makes it agree
+ * wherever it is recomputed — resuming an in-progress attempt, re-rendering after a configuration
+ * change or process death, and reviewing the attempt afterwards — while a second attempt at the
+ * same Question orders it differently. Storing it would mean a schema change and a migration for a
+ * value that can simply be recomputed.
+ *
+ * Review therefore reproduces the arrangement the learner answered only while the Question's
+ * AnswerOption identity set is unchanged. The question-bank identity gate guarantees that for every
+ * revision accepted under a stable Question id. An attempt from before that gate may resolve
+ * against a changed set — current options plus a retired one it selected — and the same seed then
+ * shuffles a different list, so its exact original arrangement is not promised.
  *
  * Nothing downstream depends on the order. [AssessmentEngine] validates and scores a submission as
- * sets, and an attempt records the answer ids that were selected, so attempts taken before this
- * existed stay readable and correctly scored.
+ * sets, and an attempt records the answer ids that were selected and its own verdict, so the
+ * selected answers, the recorded correctness, and the selected options' text stay readable whatever
+ * order review shows them in.
  */
 internal fun Question.withAnswersOrderedFor(attemptId: String): Question =
     copy(answers = answers.shuffled(Random(answerOrderSeed(attemptId, id))))

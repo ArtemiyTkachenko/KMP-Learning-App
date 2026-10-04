@@ -114,6 +114,19 @@ internal class VisibleCurriculumRepositoryTest {
         assertEquals(kmpQuestions, kmpQuestions.map { assertNotNull(resolved[it.id]) })
     }
 
+    /**
+     * The current-content identity read passes through too: a saved Question under a hidden Topic
+     * must still resolve, so that `SavedQuestionContentResolver` — not this decorator — decides it
+     * is hidden rather than missing.
+     */
+    @Test
+    fun currentContentIdentityReadStillResolvesHiddenContent() = runTest {
+        val ids = kmpQuestions.map { it.id } + "a1"
+        val resolved = repository.getQuestionsByIdsForCurrentContent(ids)
+        assertEquals(ids.toSet(), resolved.keys)
+        assertEquals(kmpQuestions, kmpQuestions.map { assertNotNull(resolved[it.id]) })
+    }
+
     @Test
     fun returnedCoreObjectsAreTheUnderlyingInstancesUnchanged() = runTest {
         val underlying = raw.getActiveQuestions()

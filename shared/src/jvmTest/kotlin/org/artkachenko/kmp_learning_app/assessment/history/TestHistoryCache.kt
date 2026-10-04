@@ -62,4 +62,5 @@ private object UnreadHistoryCurriculum : CurriculumRepository {
     override suspend fun getTopicById(topicId: String) = unread()
     override suspend fun getSubtopicById(subtopicId: String) = unread()
     override suspend fun getQuestionsByIds(questionIds: Collection<String>) = unread()
+    override suspend fun getQuestionsByIdsForCurrentContent(questionIds: Collection<String>) = unread()
 }

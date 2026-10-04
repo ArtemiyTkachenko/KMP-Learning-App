@@ -15,10 +15,12 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
  *
  * - Every `getActive*` read drops content whose Topic is hidden, so selection, coverage and
  *   browsing see a smaller curriculum and need no visibility logic of their own.
- * - [getTopicById], [getSubtopicById] and [getQuestionsByIds] pass through unchanged. They resolve
- *   stored references — an attempt's Questions, a saved Question, a focused scope — and a hidden
- *   Topic must stay readable there, or hiding content would make history unreadable rather than
- *   hidden. Whether a destination may *show* a hidden identity is a route decision, not this one.
+ * - [getTopicById], [getSubtopicById] and both stable-ID Question reads — the historical
+ *   [getQuestionsByIds] and [getQuestionsByIdsForCurrentContent] — pass through unchanged. They
+ *   resolve stored references — an attempt's Questions, a saved Question, a focused scope — and a
+ *   hidden Topic must stay readable there, or hiding content would make history unreadable rather
+ *   than hidden. Whether a destination may *show* a hidden identity is a route decision, not this
+ *   one.
  *
  * Every function is written out rather than delegated with `by`: a delegated member added to the
  * interface later would silently bypass the filter, which is the failure the interface's own
@@ -74,6 +76,11 @@ internal class VisibleCurriculumRepository(
 
     override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
         delegate.getQuestionsByIds(questionIds)
+
+    override suspend fun getQuestionsByIdsForCurrentContent(
+        questionIds: Collection<String>,
+    ): Map<String, Question> =
+        delegate.getQuestionsByIdsForCurrentContent(questionIds)
 
     /**
      * One rule for every Question-returning eligibility read: a Question is visible when its Topic

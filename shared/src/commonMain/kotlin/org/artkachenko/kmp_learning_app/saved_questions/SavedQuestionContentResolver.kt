@@ -13,9 +13,12 @@ import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibili
  * what those IDs currently resolve to. Keeping the resolution here rather than in the ViewModel is
  * what makes the three outcomes — ACTIVE, DEPRECATED, and gone — testable on their own.
  *
- * The lookup is deliberately [CurriculumRepository.getQuestionsByIds], the historical resolver, and
- * never an ACTIVE listing: a saved identity is learner-owned and outlives the Question's place in
- * the current catalogue, so a DEPRECATED Question stays reviewable exactly like an ACTIVE one.
+ * The lookup is deliberately [CurriculumRepository.getQuestionsByIdsForCurrentContent] and never an
+ * ACTIVE listing: a saved identity is learner-owned and outlives the Question's place in the
+ * current catalogue, so Question status is not filtered and a DEPRECATED Question stays reviewable
+ * exactly like an ACTIVE one. It is not the historical [CurriculumRepository.getQuestionsByIds]
+ * either: a saved Question is current authored content, not an attempt transcript, so a DEPRECATED
+ * AnswerOption — one retained only because a past attempt selected it — is not shown.
  *
  * It is also where the learner's [CurriculumVisibility] applies to saved content. The saved
  * identities themselves are never filtered — [SavedQuestionStateHolder] keeps every one, and nothing
@@ -49,7 +52,7 @@ internal class SavedQuestionContentResolver(
         // The whole saved list is resolved in one read rather than one per identity. Every unsave
         // changes the saved list and so re-runs this for everything still on it, which is what
         // makes the per-id cost repeat rather than being paid once when the screen opens.
-        val questionsById = curriculumRepository.getQuestionsByIds(
+        val questionsById = curriculumRepository.getQuestionsByIdsForCurrentContent(
             savedQuestions.mapTo(mutableSetOf(), SavedQuestion::questionId),
         )
         return savedQuestions.mapNotNull { saved ->

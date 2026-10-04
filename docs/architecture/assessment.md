@@ -192,6 +192,17 @@ longer holds has no Topic to attribute it to and is counted in no Topic, while t
 score above the breakdown still counts it — the projection keeps unresolved answers.
 Topic performance is derived in memory and is not persisted.
 
+Historical review resolves through `getQuestionsByIds` because it must keep stored answer IDs
+readable: an AnswerOption a completed attempt selected and a later bundle retired is kept in Room as
+DEPRECATED and is still returned there, with its text. Each review card orders its options with
+`withAnswersOrderedFor(attemptId)`, which is deterministic for an `(attemptId, questionId)` pair and
+answer set, so it reproduces the arrangement the learner answered whenever the Question's
+AnswerOption set is unchanged. The question-bank identity gate guarantees that for every revision
+accepted under a stable Question ID. An attempt from before that gate may resolve against a
+changed set, so its exact original arrangement — and agreement between the current answer key and
+what it was scored against — is not promised. Its selected options stay readable, and the persisted
+`Answered.isCorrect` remains the attempt's verdict; review never re-scores against the current key.
+
 Mixed interview repeats follow the same persisted-retake boundary as focused
 practice. The Mixed result delegates creation to `AssessmentRetakeService`,
 keeps the completed source result in the back stack, and pushes
@@ -301,7 +312,7 @@ browsing saved content is review rather than an assessment in progress.
 surfaces observe; it never reads `SavedQuestionRepository` itself, which is what makes a Question
 saved on a result screen appear here, and one removed here disappear there. It adds exactly one
 thing: `SavedQuestionContentResolver` maps each saved identity through
-`CurriculumRepository.getQuestionsByIds` — the historical resolver, never an ACTIVE listing — into
+`CurriculumRepository.getQuestionsByIdsForCurrentContent` — never an ACTIVE listing — into
 `SavedQuestionItem.Available` or `SavedQuestionItem.Missing`, preserving the repository's saved
 order (`saved_at_epoch_millis DESC, question_id ASC`) exactly. The resolver also applies the
 learner's current [curriculum visibility](#curriculum-visibility): a resolved Question of a
@@ -311,6 +322,12 @@ removable, because the learner still owns that identity; a *failing* lookup is a
 Retry, since a curriculum that cannot be read is not evidence that a Question was retired. Retry
 re-runs resolution against the loaded saved list explicitly, because a refresh that re-reads an
 equal saved list produces no new `StateFlow` emission to react to.
+
+The current-content read is the historical one minus retired AnswerOptions. Like assessment review
+it leaves Question status unfiltered, so a DEPRECATED Question stays saved and reviewable. Unlike
+review it returns only the options the curriculum authors now: a saved Question shows current
+authored content for a stable identity, not an attempt transcript, so an option retained only
+because some past attempt selected it has nothing to explain there.
 
 `SavedQuestionContentUiModel` deliberately is not `ReviewQuestionUiModel`: that model describes one
 historical attempt, and a saved Question has none — the learner may have saved it having answered it

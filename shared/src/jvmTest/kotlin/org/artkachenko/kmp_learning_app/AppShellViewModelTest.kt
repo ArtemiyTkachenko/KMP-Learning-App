@@ -321,6 +321,10 @@ internal class AppShellViewModelTest {
 
         override suspend fun getTopicById(topicId: String): Topic? = refuse()
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = refuse()
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = refuse()
+
         override suspend fun getQuestionsByIds(
             questionIds: Collection<String>,
         ): Map<String, Question> = refuse()

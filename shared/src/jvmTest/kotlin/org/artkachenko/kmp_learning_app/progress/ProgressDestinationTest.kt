@@ -209,6 +209,10 @@ private class StubCurriculumRepository : CurriculumRepository {
     ): List<Question> = emptyList()
     override suspend fun getTopicById(topicId: String): Topic? = Topic(topicId, "Kotlin")
     override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
+    override suspend fun getQuestionsByIdsForCurrentContent(
+        questionIds: Collection<String>,
+    ): Map<String, Question> = emptyMap()
+
     override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
         emptyMap()
 }

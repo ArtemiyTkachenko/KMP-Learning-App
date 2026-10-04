@@ -1203,6 +1203,10 @@ internal class TopicDetailViewModelTest {
 
         // Used by LearningProgressService to resolve each answered question back to its topic
         // and subtopic when the screen shows observed accuracy.
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = getQuestionsByIds(questionIds)
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
             questionIds.mapNotNull { questionsById[it] }.associateBy(Question::id)
     }

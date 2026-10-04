@@ -801,6 +801,20 @@ internal class CurriculumImporterTest {
                 listOf("topic_a_answer_a", "topic_a_answer_b", "topic_a_answer_c", "topic_a_answer_e"),
                 repository.getQuestionById("topic_a_question")?.answers?.map { it.id }?.sorted(),
             )
+
+            // The same identity, read side by side: the historical resolver keeps the retired
+            // option for the attempt that selected it, while the current-content read — what a
+            // saved Question shows — carries only what the curriculum authors now.
+            assertEquals(
+                listOf("topic_a_answer_a", "topic_a_answer_b", "topic_a_answer_c", "topic_a_answer_e"),
+                repository.getQuestionsByIds(listOf("topic_a_question"))
+                    .getValue("topic_a_question").answers.map { it.id }.sorted(),
+            )
+            assertEquals(
+                listOf("topic_a_answer_a", "topic_a_answer_b", "topic_a_answer_e"),
+                repository.getQuestionsByIdsForCurrentContent(listOf("topic_a_question"))
+                    .getValue("topic_a_question").answers.map { it.id },
+            )
         }
     }
 

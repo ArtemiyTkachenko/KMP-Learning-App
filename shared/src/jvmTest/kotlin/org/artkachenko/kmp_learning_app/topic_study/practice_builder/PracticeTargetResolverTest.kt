@@ -264,6 +264,10 @@ internal class PracticeTargetResolverTest {
             return Subtopic(subtopicId, "topic_a", "Subtopic A")
         }
 
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = emptyMap()
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
             emptyMap()
     }

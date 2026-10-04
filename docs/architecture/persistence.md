@@ -349,8 +349,9 @@ nothing references it, and marked `DEPRECATED` when a historical
 `question_attempt_selected_answer` row still does. Retiring rather than deleting
 matters because renaming an `AnswerOption` id is a content edit but a data
 migration in the database: without a status the retired row would keep appearing
-as an extra choice in new assessments. Active curriculum queries therefore read
-through `getActiveAnswerOptionsForQuestions`, while
+as an extra choice in new assessments. Active curriculum queries and the
+current-content identity read `CurriculumRepository.getQuestionsByIdsForCurrentContent`
+therefore read through `getActiveAnswerOptionsForQuestions`, while the historical
 `CurriculumRepository.getQuestionsByIds` reads every option so a past attempt is
 still reviewable with the answer text the user actually saw. Re-adding an option
 in a later bundle reactivates it, because the import upserts every authored
@@ -685,9 +686,10 @@ reads order newest first and use the stable ID as a deterministic tie-breaker.
 
 The table deliberately has no foreign key to `question`. Saved identity survives independently
 when curriculum content is removed, while display content is resolved separately through
-`CurriculumRepository.getQuestionsByIds`. That historical resolver may return ACTIVE or DEPRECATED
-content, and simply has no entry for a missing ID; none of those results automatically changes the
-saved row. It resolves a whole list of identities in one read, which is what keeps re-resolving the
+`CurriculumRepository.getQuestionsByIdsForCurrentContent`. That read leaves Question status
+unfiltered — it may return ACTIVE or DEPRECATED content, and simply has no entry for a missing ID —
+but returns only the currently authored AnswerOptions, never one retained solely for attempt
+history; none of those results automatically changes the saved row. It resolves a whole list of identities in one read, which is what keeps re-resolving the
 saved list after each unsave to a single query rather than one per saved Question.
 
 ## Lesson Study State
@@ -729,7 +731,8 @@ Introducing optional-content visibility required:
 
 Room keeps the full curriculum and the full history whatever the setting. Hidden Topics,
 Subtopics and Questions stay in their tables, and no SQL query filters them out. The
-identity reads (`getTopicById`, `getSubtopicById`, `getQuestionsByIds`) resolve them, which
+identity reads (`getTopicById`, `getSubtopicById`, `getQuestionsByIds`,
+`getQuestionsByIdsForCurrentContent`) resolve them, which
 is what lets a stored attempt, a saved Question or a restored route still name something
 real. Visibility is applied above the repository, as an application projection over this
 persisted state: `VisibleCurriculumRepository` filters ACTIVE reads, and

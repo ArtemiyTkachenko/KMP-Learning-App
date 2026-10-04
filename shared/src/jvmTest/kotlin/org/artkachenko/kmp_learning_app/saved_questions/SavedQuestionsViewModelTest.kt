@@ -270,8 +270,9 @@ private fun savedRepository(vararg saved: Pair<String, Long>): FakeSavedQuestion
     FakeSavedQuestionRepository(saved.map { (id, savedAt) -> SavedQuestion(id, savedAt) })
 
 /**
- * Resolves every ID unless it is withheld, and only through the historical stable-ID lookup: an
- * ACTIVE listing here would mean saved identity had been resolved through the current catalogue.
+ * Resolves every ID unless it is withheld, and only through the current-content stable-ID lookup:
+ * an ACTIVE listing here would mean saved identity had been resolved through the current catalogue,
+ * and the historical lookup would mean it had been resolved as an attempt transcript.
  */
 private class VmCurriculumRepository(
     private val available: Set<String>? = null,
@@ -280,7 +281,12 @@ private class VmCurriculumRepository(
     /** When set, every lookup suspends on it, so a resolution can be held open and superseded. */
     var lookupGate: CompletableDeferred<Unit>? = null
 
-    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        error("Saved Questions read current content, not attempt history.")
+
+    override suspend fun getQuestionsByIdsForCurrentContent(
+        questionIds: Collection<String>,
+    ): Map<String, Question> {
         lookupGate?.await()
         if (failing) error("Curriculum unavailable.")
         return questionIds

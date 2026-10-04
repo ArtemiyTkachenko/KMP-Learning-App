@@ -142,6 +142,41 @@ internal class SavedQuestionContentResolverTest {
         assertEquals(listOf(setOf("q3", "q2", "q1")), repository.batchedReads)
         assertEquals(listOf("q3", "q2", "q1"), items.map { it.questionId })
     }
+
+    /**
+     * A saved Question is current authored content, not an attempt transcript. An option the
+     * curriculum retired but kept only because an old attempt selected it belongs to that
+     * attempt's review, not here — so resolving through the historical read would be wrong even
+     * though it finds the same identity.
+     */
+    @Test
+    fun retiredAnswerOptionsKeptForAttemptHistoryAreNotShown() = runTest {
+        val current = question("q1", answerIds = listOf("a", "b", "e"))
+        val repository = FakeContentRepository(
+            questions = listOf(current),
+            historicalQuestions = listOf(question("q1", answerIds = listOf("a", "b", "c", "e"))),
+        )
+
+        val item = assertIs<SavedQuestionItem.Available>(
+            SavedQuestionContentResolver(repository).resolve(listOf(savedQuestion("q1")), allVisible).single(),
+        )
+
+        assertEquals(listOf("a", "b", "e"), item.question.answers.map { it.id })
+    }
+
+    @Test
+    fun aDeprecatedQuestionResolvedAsCurrentContentStaysAvailable() = runTest {
+        val repository = FakeContentRepository(
+            questions = listOf(question("q2", status = ContentStatus.DEPRECATED, answerIds = listOf("a", "b"))),
+            historicalQuestions = emptyList(),
+        )
+
+        val item = assertIs<SavedQuestionItem.Available>(
+            SavedQuestionContentResolver(repository).resolve(listOf(savedQuestion("q2")), allVisible).single(),
+        )
+
+        assertEquals(listOf("a", "b"), item.question.answers.map { it.id })
+    }
 }
 
 private val allVisible = CurriculumVisibility(hiddenTopicIds = emptySet())
@@ -152,20 +187,17 @@ private fun savedQuestion(questionId: String, savedAt: Long = 1_000): SavedQuest
 private fun question(
     id: String,
     status: ContentStatus = ContentStatus.ACTIVE,
+    answerIds: List<String> = listOf("${id}_a", "${id}_b", "${id}_c"),
 ): Question =
     Question(
         id = id,
         topicId = "kotlin",
         subtopicId = "coroutines",
         text = "Question $id",
-        answers = listOf(
-            AnswerOption("${id}_a", "Answer A"),
-            AnswerOption("${id}_b", "Answer B"),
-            AnswerOption("${id}_c", "Answer C"),
-        ),
+        answers = answerIds.map { answerId -> AnswerOption(answerId, "Answer $answerId") },
         selectionMode = AnswerSelectionMode.MULTIPLE,
         level = QuestionLevel.FOUNDATION,
-        correctAnswerIds = listOf("${id}_a", "${id}_c"),
+        correctAnswerIds = listOf(answerIds.first(), answerIds.last()),
         explanation = "Explanation $id",
         sources = listOf(
             SourceReference("Source B", "https://example.com/$id/b"),
@@ -175,12 +207,17 @@ private fun question(
     )
 
 /**
- * Only the historical resolver answers. Every ACTIVE listing fails the test, because a saved
- * identity must never be resolved through the current catalogue.
+ * Answers both stable-ID reads, from separate data, so a test can tell which one the resolver
+ * used. Every ACTIVE listing fails the test, because a saved identity must never be resolved
+ * through the current catalogue.
+ *
+ * [historicalQuestions] is what the historical resolver returns — by default the same content, as
+ * it is for any Question whose option set never changed.
  */
 private class FakeContentRepository(
     private val questions: List<Question>,
     private val failingIds: Set<String> = emptySet(),
+    private val historicalQuestions: List<Question> = questions,
 ) : CurriculumRepository {
     /** How many times the curriculum was read, whatever shape the read took. */
     var lookups = 0
@@ -189,11 +226,18 @@ private class FakeContentRepository(
     /** The identities each batched read asked for, newest call last. */
     val batchedReads = mutableListOf<Set<String>>()
 
-    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
+    override suspend fun getQuestionsByIdsForCurrentContent(
+        questionIds: Collection<String>,
+    ): Map<String, Question> = read(questionIds, questions)
+
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        read(questionIds, historicalQuestions)
+
+    private fun read(questionIds: Collection<String>, source: List<Question>): Map<String, Question> {
         lookups += 1
         batchedReads += questionIds.toSet()
         if (questionIds.any { it in failingIds }) error("Curriculum unavailable.")
-        return questions.filter { it.id in questionIds }.associateBy(Question::id)
+        return source.filter { it.id in questionIds }.associateBy(Question::id)
     }
 
     override suspend fun getActiveTopics(): List<Topic> = error("ACTIVE lookup must not be used.")

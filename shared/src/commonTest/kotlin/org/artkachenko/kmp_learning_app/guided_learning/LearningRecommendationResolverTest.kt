@@ -421,6 +421,10 @@ internal class LearningRecommendationResolverTest {
 
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = unused()
 
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = unused()
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
             unused()
 

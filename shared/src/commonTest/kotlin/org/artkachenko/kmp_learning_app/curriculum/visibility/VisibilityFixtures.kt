@@ -119,6 +119,10 @@ internal class FixtureCurriculumRepository(
 
     override suspend fun getSubtopicById(subtopicId: String) = subtopics.firstOrNull { it.id == subtopicId }
 
+    override suspend fun getQuestionsByIdsForCurrentContent(
+        questionIds: Collection<String>,
+    ): Map<String, Question> = questions.filter { it.id in questionIds }.associateBy { it.id }
+
     override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
         questionsByIdsCalls += questionIds.toSet()
         return questions.filter { it.id in questionIds }.associateBy { it.id }

@@ -1,3 +1,10 @@
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnLockMismatchReport
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension
+import org.jetbrains.kotlin.gradle.targets.wasm.yarn.WasmYarnPlugin
+import org.jetbrains.kotlin.gradle.targets.wasm.yarn.WasmYarnRootExtension
+import org.jetbrains.kotlin.gradle.targets.web.yarn.BaseYarnRootExtension
+
 plugins {
     // this is necessary to avoid the plugins to be loaded multiple times
     // in each subproject's classloader
@@ -12,6 +19,22 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.kotlinSerialization) apply false
 }
+
+// The tracked Kotlin Yarn lockfiles are the npm dependency graph of the JS and Wasm builds:
+// `kotlin-js-store/yarn.lock` for JS and `kotlin-js-store/wasm/yarn.lock` for Wasm. Builds consume
+// them and never rewrite them; a dependency change that alters npm resolution runs
+// `kotlinUpgradeYarnLock` / `kotlinWasmUpgradeYarnLock` and commits the result with that change.
+//  - FAIL: resolution that disagrees with the committed lockfile breaks the build.
+//  - reportNewYarnLock: a missing lockfile is reported, not silently created and accepted.
+//  - no auto-replace: an ordinary build never overwrites the accepted lockfile.
+fun BaseYarnRootExtension.enforceCommittedLockfile() {
+    yarnLockMismatchReport = YarnLockMismatchReport.FAIL
+    reportNewYarnLock = true
+    yarnLockAutoReplace = false
+}
+
+plugins.withType<YarnPlugin> { the<YarnRootExtension>().enforceCommittedLockfile() }
+plugins.withType<WasmYarnPlugin> { the<WasmYarnRootExtension>().enforceCommittedLockfile() }
 
 // The canonical product metadata, read once here and shared with every module that needs it.
 //

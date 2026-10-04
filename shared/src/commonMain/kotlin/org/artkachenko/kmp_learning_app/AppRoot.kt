@@ -10,6 +10,8 @@ import kotlin.coroutines.cancellation.CancellationException
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.app_startup_error
 import kmp_learning_app.shared.generated.resources.app_startup_loading
+import org.artkachenko.kmp_learning_app.diagnostics.AppDiagnostics
+import org.artkachenko.kmp_learning_app.diagnostics.ConsoleAppDiagnostics
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.theme.AppearanceTheme
@@ -24,6 +26,10 @@ internal const val AppStartupLoadingTag = "app_startup_loading"
  * so the state machine lives here rather than being duplicated per platform.
  * [initializer] is the host's application-scoped local-data initializer. Its in-process completion
  * state survives host reconstruction, while a fresh process supplies a fresh initializer.
+ *
+ * Startup presentation is deliberately generic: every failure has the same recovery, Retry, so the
+ * learner sees one error state. The technical cause is reported separately — see
+ * [AppStartupStateHolder].
  */
 @Composable
 public fun AppRoot(initializer: AppStartupInitializer) {
@@ -65,8 +71,17 @@ public interface AppStartupInitializer {
     public suspend fun initialize()
 }
 
+/**
+ * Loading, Ready and Error around one [AppStartupInitializer], with Retry returning to Loading.
+ *
+ * Each failed attempt is reported to [diagnostics] with the exception it threw, unchanged, before
+ * the state becomes Error, so the generic error screen does not cost the developer the cause.
+ * Cancellation is coroutine control flow rather than a failure: it propagates unreported and
+ * leaves the state at Loading. Only [Exception] is recoverable here; a fatal [Error] still escapes.
+ */
 internal class AppStartupStateHolder(
     private val initializer: AppStartupInitializer,
+    private val diagnostics: AppDiagnostics = ConsoleAppDiagnostics,
 ) {
     var state by mutableStateOf(
         if (initializer.isInitialized) AppStartupState.Ready else AppStartupState.Loading,
@@ -81,8 +96,18 @@ internal class AppStartupStateHolder(
             state = AppStartupState.Ready
         } catch (cancellation: CancellationException) {
             throw cancellation
-        } catch (_: Exception) {
+        } catch (failure: Exception) {
+            report(failure)
             state = AppStartupState.Error
+        }
+    }
+
+    private fun report(failure: Exception) {
+        try {
+            diagnostics.reportError("Application startup initialization failed.", failure)
+        } catch (_: Exception) {
+            // Best effort: a sink that throws must not keep the learner out of the recoverable
+            // Error state, and there is nowhere further to report its own failure.
         }
     }
 

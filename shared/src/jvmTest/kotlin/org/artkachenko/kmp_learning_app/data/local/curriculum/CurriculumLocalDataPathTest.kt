@@ -19,11 +19,13 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.content.BundledCurriculumSource
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.curriculum.serialization.CurriculumJsonCodec
+import org.artkachenko.kmp_learning_app.curriculum.validation.CurriculumValidator
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 import org.artkachenko.kmp_learning_app.data.local.curriculum.repository.LocalCurriculumRepository
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
@@ -177,31 +179,46 @@ internal class CurriculumLocalDataPathTest {
 
     @Test
     fun semanticallyInvalidContentFailsInitializationWithoutPersistingRows() = runTest {
+        val invalidCurriculum = Curriculum(
+            topics = listOf(Topic("topic", "Topic")),
+            subtopics = listOf(Subtopic("subtopic", "topic", "Subtopic")),
+            questions = listOf(
+                question(
+                    id = "invalid_question_a",
+                    status = ContentStatus.ACTIVE,
+                    correctAnswerIds = listOf("missing_answer"),
+                ),
+                question(
+                    id = "invalid_question_b",
+                    status = ContentStatus.ACTIVE,
+                    correctAnswerIds = listOf("missing_answer"),
+                ),
+            ),
+        )
         withTestDatabase { database ->
             val initializer = CurriculumDataInitializer(
                 importer = CurriculumImporter(
                     database = database,
                     loadCurriculum = {
-                        Curriculum(
-                            topics = listOf(Topic("topic", "Topic")),
-                            subtopics = listOf(Subtopic("subtopic", "topic", "Subtopic")),
-                            questions = listOf(
-                                question(
-                                    id = "invalid_question",
-                                    status = ContentStatus.ACTIVE,
-                                    correctAnswerIds = listOf("missing_answer"),
-                                ),
-                            ),
-                        )
+                        invalidCurriculum
                     },
                 ),
             )
 
-            assertFailsWith<IllegalStateException> {
+            val failure = assertFailsWith<IllegalStateException> {
                 initializer.initialize()
             }
 
             assertEquals(emptyCounts, database.curriculumDao().countRows())
+            // The exception is what the startup diagnostic reports, so it has to keep the rule and
+            // the entity of every rejection, not only the prose.
+            val errors = CurriculumValidator().validate(invalidCurriculum)
+            assertEquals(2, errors.size)
+            val message = assertNotNull(failure.message)
+            assertContains(message, "2 error(s)")
+            errors.forEach { error ->
+                assertContains(message, "${error.code} [${error.entityId}] ${error.message}")
+            }
         }
     }
 

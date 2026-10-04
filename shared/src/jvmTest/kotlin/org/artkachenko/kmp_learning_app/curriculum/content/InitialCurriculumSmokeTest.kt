@@ -6,6 +6,7 @@ import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.validation.CurriculumValidator
+import org.artkachenko.kmp_learning_app.curriculum.validation.renderForDiagnostics
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -125,8 +126,7 @@ internal class InitialCurriculumSmokeTest {
         // would reduce all of that to "Expected value to be true" in CI.
         assertTrue(
             errors.isEmpty(),
-            "Bundled curriculum failed validation with ${errors.size} error(s):\n" +
-                errors.joinToString("\n") { "${it.code} [${it.entityId ?: "curriculum"}] ${it.message}" },
+            "Bundled curriculum failed validation with ${errors.renderForDiagnostics()}",
         )
     }
 

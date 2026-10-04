@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.artkachenko.kmp_learning_app.AppStartupInitializer
+import org.artkachenko.kmp_learning_app.curriculum.validation.renderForDiagnostics
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImportResult
 import org.artkachenko.kmp_learning_app.data.local.curriculum.importer.CurriculumImporter
 
@@ -27,8 +28,9 @@ internal class CurriculumDataInitializer(
                     initializationComplete.value = true
                 }
                 is CurriculumImportResult.Rejected -> {
+                    // Not reported here: AppStartupStateHolder reports every startup failure once.
                     throw IllegalStateException(
-                        "Bundled curriculum failed validation: ${result.errors.joinToString { it.message }}",
+                        "Bundled curriculum failed validation with ${result.errors.renderForDiagnostics()}",
                     )
                 }
             }

@@ -1715,6 +1715,10 @@ internal class AssessmentQuestionSelectorTest {
             return Subtopic(subtopicId, question.topicId, subtopicId)
         }
 
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = getQuestionsByIds(questionIds)
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
             allKnownQuestions().filter { it.id in questionIds }.associateBy(Question::id)
 

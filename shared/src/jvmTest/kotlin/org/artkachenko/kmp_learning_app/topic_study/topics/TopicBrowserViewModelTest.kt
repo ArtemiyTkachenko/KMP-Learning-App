@@ -1896,6 +1896,10 @@ internal class TopicBrowserViewModelTest {
 
         // Resolves an answered question back to its Topic when accuracy is derived. Historical
         // questions that no longer exist resolve to null and contribute to neither figure.
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = getQuestionsByIds(questionIds)
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
             questionIds
                 .mapNotNull { questionsById[it] ?: RetiredQuestionsById[it] }

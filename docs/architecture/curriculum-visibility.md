@@ -163,7 +163,7 @@ read, and visibility applies to exactly one of them.
 | Kind | Methods | Answers | Visibility |
 | --- | --- | --- | --- |
 | Eligibility (current content) | `CurriculumRepository.getActive*`, `LearningContentRepository.getActiveUnits`, `getActiveUnitsByTopic` | *What can the learner use now?* | **Filtered** |
-| Identity (historical) | `getTopicById`, `getSubtopicById`, `getQuestionsByIds`, `getUnitById`, `getLessonById` | *What does this stable, persisted ID refer to?* | **Unfiltered** |
+| Identity (historical) | `getTopicById`, `getSubtopicById`, `getQuestionsByIds`, `getQuestionsByIdsForCurrentContent` (current authored options of a stable ID), `getUnitById`, `getLessonById` | *What does this stable, persisted ID refer to?* | **Unfiltered** |
 
 Filtering identity reads would be wrong in four ways:
 

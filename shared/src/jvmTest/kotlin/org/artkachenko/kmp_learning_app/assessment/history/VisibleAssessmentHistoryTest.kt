@@ -178,6 +178,13 @@ internal class VisibleAssessmentHistoryTest {
     ) : org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository by delegate {
         var failing = true
 
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> {
+            if (failing) throw IllegalStateException("Curriculum unavailable")
+            return delegate.getQuestionsByIdsForCurrentContent(questionIds)
+        }
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
             if (failing) throw IllegalStateException("Curriculum unavailable")
             return delegate.getQuestionsByIds(questionIds)

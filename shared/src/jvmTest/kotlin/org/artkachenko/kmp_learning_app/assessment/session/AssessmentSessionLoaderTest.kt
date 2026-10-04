@@ -145,6 +145,10 @@ internal class AssessmentSessionLoaderTest {
         ): List<Question> = emptyList()
         override suspend fun getTopicById(topicId: String): Topic? = null
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = getQuestionsByIds(questionIds)
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
             questions.filter { it.id in questionIds }.associateBy(Question::id)
     }

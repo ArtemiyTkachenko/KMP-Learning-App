@@ -448,6 +448,11 @@ private class ScreenCurriculumRepository(
     private val status: ContentStatus,
 ) : CurriculumRepository {
     override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        error("Saved Questions read current content, not attempt history.")
+
+    override suspend fun getQuestionsByIdsForCurrentContent(
+        questionIds: Collection<String>,
+    ): Map<String, Question> =
         questionIds.associateWith { questionId -> question(questionId) }
 
     private fun question(questionId: String): Question =

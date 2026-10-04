@@ -549,6 +549,13 @@ internal class TopicDiscoveryIntegrationTest {
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
             delegate.getSubtopicById(subtopicId)
 
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> {
+            questionReads += 1
+            return delegate.getQuestionsByIdsForCurrentContent(questionIds)
+        }
+
         override suspend fun getQuestionsByIds(
             questionIds: Collection<String>,
         ): Map<String, Question> {

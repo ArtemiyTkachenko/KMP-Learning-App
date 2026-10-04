@@ -107,21 +107,36 @@ internal class LocalCurriculumRepository(
     }
 
     /**
+     * Historical resolver: retired answer options are included so an attempt that selected one can
+     * still be reviewed with its original answer text.
+     */
+    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
+        questionsByIds(questionIds, includeRetiredAnswers = true)
+
+    /** Current-content resolver: the same read, with only the currently authored answer options. */
+    override suspend fun getQuestionsByIdsForCurrentContent(
+        questionIds: Collection<String>,
+    ): Map<String, Question> =
+        questionsByIds(questionIds, includeRetiredAnswers = false)
+
+    /**
      * One read transaction and four statements for the whole set, rather than that cost per id.
      *
-     * Historical resolver: retired answer options are included so an attempt that selected one can
-     * still be reviewed with its original answer text. That is the same [toDomainQuestions] the
-     * ACTIVE listings use, only with `includeRetiredAnswers = true`. The map simply has no entry
-     * for an id the curriculum no longer holds. The empty case is answered before SQL reaches Room,
-     * for the `IN ()` reason [toLevelNames] gives.
+     * Question status is never filtered here; [includeRetiredAnswers] only chooses which answer
+     * options the same [toDomainQuestions] mapping reads. The map simply has no entry for an id the
+     * curriculum no longer holds. The empty case is answered before SQL reaches Room, for the
+     * `IN ()` reason [toLevelNames] gives.
      */
-    override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> {
+    private suspend fun questionsByIds(
+        questionIds: Collection<String>,
+        includeRetiredAnswers: Boolean,
+    ): Map<String, Question> {
         val distinctIds = questionIds.distinct()
         if (distinctIds.isEmpty()) return emptyMap()
         return database.withReadTransaction {
             val dao = database.curriculumDao()
             dao.getQuestionsByIds(distinctIds)
-                .toDomainQuestions(dao, includeRetiredAnswers = true)
+                .toDomainQuestions(dao, includeRetiredAnswers)
                 .associateBy(Question::id)
         }
     }

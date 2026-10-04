@@ -305,6 +305,10 @@ internal class ContinueStudyingResolverTest {
             levels: Set<QuestionLevel>,
         ): List<Question> = unused()
 
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = unused()
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
             unused()
 

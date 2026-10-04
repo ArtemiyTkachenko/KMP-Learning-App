@@ -260,6 +260,10 @@ internal class TopicStudyPresentationModuleTest {
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? =
             error("Not used by TopicBrowserViewModel.")
 
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = error("Not used by TopicBrowserViewModel.")
+
         override suspend fun getQuestionsByIds(questionIds: Collection<String>): Map<String, Question> =
             error("Not used by TopicBrowserViewModel.")
     }

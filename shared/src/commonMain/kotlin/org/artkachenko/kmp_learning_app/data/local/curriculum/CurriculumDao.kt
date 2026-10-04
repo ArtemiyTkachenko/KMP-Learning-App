@@ -78,7 +78,8 @@ internal interface CurriculumDao {
      * Renaming an AnswerOption id is a content operation, but the old row lives on in
      * the database. Without this the retired option would keep appearing as an extra
      * choice in new assessments, so it is marked DEPRECATED and filtered out of active
-     * curriculum queries while remaining resolvable through getQuestionsByIds.
+     * curriculum queries and current-content reads while remaining resolvable through the
+     * historical getQuestionsByIds.
      */
     @Query(
         """
@@ -121,14 +122,16 @@ internal interface CurriculumDao {
     ): List<SubtopicEntity>
 
     /**
-     * The historical Question resolver.
+     * The stable-ID Question read behind both repository identity resolvers, historical and
+     * current-content; they differ only in which answer options they read alongside it.
      *
-     * Status is unfiltered on purpose, so a DEPRECATED Question a stored attempt references still
-     * reads back. Every caller holds the whole set of ids it needs before it reads any of them, so
-     * this is the only shape: there is no per-id variant to fall back to, and therefore no way for
-     * an implementation to answer the two inconsistently. Callers must not pass an empty
-     * collection; LocalCurriculumRepository answers that case before it reaches Room, because
-     * `IN ()` is not portable SQL.
+     * Status is unfiltered on purpose, so a DEPRECATED Question a stored attempt or a saved
+     * Question references still reads back. Every caller holds the whole set of ids it needs
+     * before it reads any of them, so this is the only shape: there is no per-id variant to fall
+     * back to, and therefore no way for an implementation to answer one id and a batch
+     * inconsistently.
+     * Callers must not pass an empty collection; LocalCurriculumRepository answers that case before
+     * it reaches Room, because `IN ()` is not portable SQL.
      */
     @Query("SELECT * FROM question WHERE id IN (:ids)")
     suspend fun getQuestionsByIds(ids: List<String>): List<QuestionEntity>

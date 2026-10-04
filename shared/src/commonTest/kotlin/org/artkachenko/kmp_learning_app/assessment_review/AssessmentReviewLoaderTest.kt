@@ -233,6 +233,10 @@ internal class AssessmentReviewLoaderTest {
 
         override suspend fun getTopicById(topicId: String): Topic? = error("Not used")
         override suspend fun getSubtopicById(subtopicId: String): Subtopic? = null
+        override suspend fun getQuestionsByIdsForCurrentContent(
+            questionIds: Collection<String>,
+        ): Map<String, Question> = error("Assessment review must use the historical resolver.")
+
         override suspend fun getQuestionsByIds(
             questionIds: Collection<String>,
         ): Map<String, Question> {

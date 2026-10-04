@@ -114,6 +114,21 @@ initialization cannot leave a host without content. `App()` keeps its own theme 
 usable directly in tests and previews that bypass `AppRoot` — both go through `AppearanceTheme`, so
 the two are one decision rather than two that happen to agree.
 
+Startup failure is generic for the learner and specific for the developer. Every failure has the
+same recovery, so `AppRoot` shows one Error state with Retry and never names the cause. Before
+entering that state, `AppStartupStateHolder` hands the exception it caught, unchanged, to the common
+`AppDiagnostics` sink (`diagnostics/AppDiagnostics.kt`). That exception might come from decoding
+the bundle, validating the curriculum, opening or migrating the database, or platform storage.
+The default `ConsoleAppDiagnostics` prints a context line and the exception's full stack trace and
+cause chain through the standard library, so the same code serves every host with no logging
+dependency and no platform `actual`. The output is local runtime diagnostics only: nothing is
+persisted or sent anywhere. Each failed attempt is reported, so a Retry that fails again produces a
+second report, and a successful start reports nothing. A validation rejection becomes an
+`IllegalStateException` whose message lists each error as `CODE [entityId] message`, the same
+rendering the CI validation gate uses. `CancellationException` is rethrown without being reported
+or turned into Error, and only `Exception` is treated as recoverable. A sink that itself throws
+cannot keep startup out of Error.
+
 ### Curriculum Visibility And The Back Stacks
 
 Routes carry stable IDs, so a retained or restored stack can hold a route to content the

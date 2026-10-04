@@ -10,8 +10,10 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
+import org.artkachenko.kmp_learning_app.diagnostics.AppDiagnostics
 
 /**
  * The Ready branch composes [App], which resolves ViewModels through Koin, so these
@@ -68,23 +70,73 @@ internal class AppRootTest {
     fun aFreshApplicationInitializerStillRequiresInitialization() = runTest {
         var attempts = 0
         val freshInitializer = FakeAppStartupInitializer { attempts += 1 }
-        val root = AppStartupStateHolder(freshInitializer)
+        val diagnostics = RecordingDiagnostics()
+        val root = AppStartupStateHolder(freshInitializer, diagnostics)
 
         assertEquals(AppStartupState.Loading, root.state)
         root.initialize()
 
         assertEquals(AppStartupState.Ready, root.state)
         assertEquals(1, attempts)
+        assertEquals(emptyList(), diagnostics.reports)
+    }
+
+    @Test
+    fun failedInitializationReportsTheOriginalExceptionOnceBeforeShowingError() = runTest {
+        val failure = IllegalStateException("database failed", RuntimeException("disk I/O"))
+        val diagnostics = RecordingDiagnostics()
+        val root = AppStartupStateHolder(FakeAppStartupInitializer { throw failure }, diagnostics)
+
+        root.initialize()
+
+        assertEquals(AppStartupState.Error, root.state)
+        val report = diagnostics.reports.single()
+        assertSame(failure, report.throwable)
+        assertEquals("Application startup initialization failed.", report.context)
+    }
+
+    @Test
+    fun eachFailedAttemptIsReportedIndependently() = runTest {
+        val failures = listOf(IllegalStateException("first"), IllegalArgumentException("second"))
+        var attempts = 0
+        val diagnostics = RecordingDiagnostics()
+        val root = AppStartupStateHolder(
+            FakeAppStartupInitializer { throw failures[attempts++] },
+            diagnostics,
+        )
+
+        root.initialize()
+        root.retry()
+        root.initialize()
+
+        assertEquals(AppStartupState.Error, root.state)
+        assertEquals(2, diagnostics.reports.size)
+        assertSame(failures[0], diagnostics.reports[0].throwable)
+        assertSame(failures[1], diagnostics.reports[1].throwable)
+    }
+
+    @Test
+    fun aThrowingDiagnosticsSinkStillLeavesStartupInTheRecoverableErrorState() = runTest {
+        val root = AppStartupStateHolder(
+            FakeAppStartupInitializer { error("initialization failed") },
+            AppDiagnostics { _, _ -> error("diagnostics failed") },
+        )
+
+        root.initialize()
+
+        assertEquals(AppStartupState.Error, root.state)
     }
 
     @Test
     fun retryCanRecoverAfterAnInitializationFailure() = runTest {
         var attempts = 0
+        val diagnostics = RecordingDiagnostics()
         val root = AppStartupStateHolder(
             FakeAppStartupInitializer {
                 attempts += 1
                 if (attempts == 1) error("first attempt failed")
             },
+            diagnostics,
         )
 
         root.initialize()
@@ -95,17 +147,22 @@ internal class AppRootTest {
 
         assertEquals(AppStartupState.Ready, root.state)
         assertEquals(2, attempts)
+        // Only the failed attempt is reported; the successful retry adds nothing.
+        assertEquals("first attempt failed", diagnostics.reports.single().throwable.message)
     }
 
     @Test
     fun cancellationPropagatesWithoutBecomingAStartupError() = runTest {
+        val diagnostics = RecordingDiagnostics()
         val root = AppStartupStateHolder(
             FakeAppStartupInitializer { throw CancellationException("cancelled") },
+            diagnostics,
         )
 
         assertFailsWith<CancellationException> { root.initialize() }
 
         assertEquals(AppStartupState.Loading, root.state)
+        assertEquals(emptyList(), diagnostics.reports)
     }
 }
 
@@ -120,3 +177,13 @@ private class FakeAppStartupInitializer(
         isInitialized = true
     }
 }
+
+private class RecordingDiagnostics : AppDiagnostics {
+    val reports = mutableListOf<ReportedError>()
+
+    override fun reportError(context: String, throwable: Throwable) {
+        reports += ReportedError(context, throwable)
+    }
+}
+
+private data class ReportedError(val context: String, val throwable: Throwable)

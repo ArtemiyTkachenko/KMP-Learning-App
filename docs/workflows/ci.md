@@ -71,6 +71,12 @@ command-line order. Cheap Android and desktop JVM compilation runs first so a pl
 break fails fast; `:shared:check` runs last because it is by far the longest, and it is
 what runs the JVM, Android host, JS and Wasm test targets.
 
+`:webApp:assemble` and `:shared:check` resolve npm dependencies through Kotlin's Yarn tasks,
+which consume the committed `kotlin-js-store/yarn.lock` and `kotlin-js-store/wasm/yarn.lock`.
+The root build script makes `kotlinStoreYarnLock` and `kotlinWasmStoreYarnLock` fail the run when
+resolution disagrees with a committed lockfile or a lockfile is missing; there is no separate
+lockfile step. See [validation](../development/validation.md#jswasm-dependency-lock).
+
 `:androidApp:lintDebug` sits beside the Android build because it reuses that compilation
 and costs seconds. **Read its scope precisely:** it analyses the Android shell — two Kotlin
 files, the manifest and the Android resources — and nothing in `:shared`. The
@@ -95,6 +101,8 @@ JSON was never committed produces a green run — CI regenerates the file, the m
 passes against it, and `main` ends up with a schema version that exists on no machine but
 the runner. Generated build output is gitignored, so a clean tree is the normal case; a
 failure here means a build artifact belongs in the commit.
+The same check protects the tracked Yarn lockfiles: a build that rewrote either of them
+would leave the tree dirty and fail here.
 
 Test reports for every target `:shared:check` ran are uploaded as `shared-test-reports`.
 The Android host, JS and Wasm reports matter most: those are the failures least

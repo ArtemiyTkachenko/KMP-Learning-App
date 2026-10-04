@@ -53,6 +53,24 @@ main-variant lint task, and `checkDependencies` does not reach it either. A minS
 Compose-usage defect in shared Kotlin passes this command. Never report it as coverage of
 shared behaviour.
 
+## JS/Wasm Dependency Lock
+
+`kotlin-js-store/yarn.lock` (JS) and `kotlin-js-store/wasm/yarn.lock` (Wasm) are tracked on
+purpose: with the Gradle dependency declarations they define the npm graph of every JS and Wasm
+build. The root `build.gradle.kts` makes both Kotlin Yarn roots fail when resolution disagrees
+with the committed lockfile or a lockfile is missing, and never lets an ordinary build replace
+it, so a normal build leaves both files unchanged.
+
+When a dependency change legitimately changes npm resolution:
+
+```sh
+./gradlew kotlinUpgradeYarnLock kotlinWasmUpgradeYarnLock
+```
+
+Inspect the lockfile diff, commit it with the dependency change, then run
+`:shared:jsTest`, `:shared:wasmJsTest` and `:webApp:assemble`. Deleting the lockfiles is not the
+upgrade procedure.
+
 ## Repository-Wide
 
 ```sh

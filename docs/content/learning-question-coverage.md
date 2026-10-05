@@ -52,7 +52,7 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `66988eaa06d0e0d1649ee7cea2dd09579cbb2eb280121f960c2d10a7d650cb32` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `d68f910966ed526af36aef6043ae8217062e7b767b6d5d31f83236cc000d811c` |
 | Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `74cf2ce05c1394d0f9aa9ee1a08b1e8b7c377b899215f2b9aacf3eb059f02af2` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
@@ -673,7 +673,7 @@ Supporting context — not primary coverage:
 | `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `lifecycle_coroutines` — Lifecycle-aware coroutine scopes | 1 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
-#### Lifecycle-Aware Collection and the Lifecycle a Screen Actually Has (`lesson_lifecycle_aware_collection`)
+#### Lifecycle-Aware Collection and the Screen’s Lifecycle (`lesson_lifecycle_aware_collection`)
 
 Primary concepts:
 
@@ -2304,7 +2304,7 @@ Supporting context — not primary coverage:
 | `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
 
-#### When Does a Broken Graph Tell You? (`lesson_when_a_broken_graph_tells_you`)
+#### When Is a Broken Graph Detected? (`lesson_when_a_broken_graph_tells_you`)
 
 Primary concepts:
 
@@ -2437,7 +2437,7 @@ Supporting context — not primary coverage:
 | `dependency_direction` — Dependency direction and inversion | 2 | `architecture` — Application Architecture & Design Principles |
 | `feature_modularization` — Feature modularization | 1 | `build_delivery` — Build System, Modularization & Delivery |
 
-#### What the Dagger Compiler Actually Checked (`lesson_what_the_dagger_compiler_checked`)
+#### What the Dagger Compiler Checks (`lesson_what_the_dagger_compiler_checked`)
 
 Primary concepts:
 
@@ -2584,7 +2584,7 @@ once each however many lessons share the concept.
 | APPLIED | 4 | `koin_container_startup_composition_boundary`, `koin_definition_from_reuse_requirement`, `koin_interview_scope_owner`, `koin_viewmodel_construction_vs_ownership` |
 | ADVANCED | 0 | — |
 
-#### The Container, and the Modules That Fill It (`lesson_the_koin_container_and_its_modules`)
+#### The Koin Container and Its Modules (`lesson_the_koin_container_and_its_modules`)
 
 Primary concepts:
 
@@ -2601,7 +2601,7 @@ Supporting context — not primary coverage:
 | `koin_definitions` — single/factory definitions | 2 | `dependency_injection` — Dependency Injection |
 | `di_framework_tradeoffs` — DI framework trade-offs | 1 | `dependency_injection` — Dependency Injection |
 
-#### Definitions, and the Reuse Requirement Behind Them (`lesson_koin_definitions_and_reuse`)
+#### Definitions and Instance Reuse (`lesson_koin_definitions_and_reuse`)
 
 Primary concepts:
 
@@ -2619,7 +2619,7 @@ Supporting context — not primary coverage:
 | `interface_boundaries` — Interface boundaries | 2 | `architecture` — Application Architecture & Design Principles |
 | `service_locator_vs_di` — Service locator vs dependency injection | 2 | `dependency_injection` — Dependency Injection |
 
-#### Scopes, and the Owner That Has to Stay Alive (`lesson_koin_scopes_and_their_owners`)
+#### Koin Scopes and Their Owners (`lesson_koin_scopes_and_their_owners`)
 
 Primary concepts:
 
@@ -2666,7 +2666,7 @@ once each however many lessons share the concept.
 | APPLIED | 2 | `di_graph_check_timing_by_mechanism`, `manual_di_graph_growth_cost` |
 | ADVANCED | 0 | — |
 
-#### What a Container Actually Buys (`lesson_what_a_container_actually_buys`)
+#### What a DI Framework Provides (`lesson_what_a_container_actually_buys`)
 
 Primary concepts:
 

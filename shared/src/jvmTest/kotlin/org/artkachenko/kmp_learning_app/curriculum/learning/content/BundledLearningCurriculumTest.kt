@@ -626,7 +626,7 @@ internal class BundledLearningCurriculumTest {
                 "A Scope Is a Rule; an Owner Is a Lifetime",
                 "A Value the Graph Cannot Know",
                 "Two Dependencies of the Same Type",
-                "When Does a Broken Graph Tell You?",
+                "When Is a Broken Graph Detected?",
             ),
             unit("unit_object_graphs_lifetimes_and_scopes").lessons.map { it.title },
         )
@@ -652,7 +652,7 @@ internal class BundledLearningCurriculumTest {
                 "A Child Graph, or a Separate Graph?",
                 "A Scope Is a Promise the Component Keeps",
                 "When the Type Is Not the Key",
-                "What the Dagger Compiler Actually Checked",
+                "What the Dagger Compiler Checks",
             ),
             unit("unit_dagger_compile_time_object_graphs").lessons.map { it.title },
         )
@@ -693,9 +693,9 @@ internal class BundledLearningCurriculumTest {
 
         assertEquals(
             listOf(
-                "The Container, and the Modules That Fill It",
-                "Definitions, and the Reuse Requirement Behind Them",
-                "Scopes, and the Owner That Has to Stay Alive",
+                "The Koin Container and Its Modules",
+                "Definitions and Instance Reuse",
+                "Koin Scopes and Their Owners",
                 "Resolving a ViewModel at the Boundary",
             ),
             unit("unit_koin_containers_definitions_and_scopes").lessons.map { it.title },
@@ -713,7 +713,7 @@ internal class BundledLearningCurriculumTest {
 
         assertEquals(
             listOf(
-                "What a Container Actually Buys",
+                "What a DI Framework Provides",
                 "When Should a Graph Error Surface?",
                 "Three Projects, Three Answers",
                 "The Smallest Sufficient Strategy",
@@ -2519,7 +2519,7 @@ internal class BundledLearningCurriculumTest {
 
         val scopeLesson = textOf("lesson_scope_is_a_rule_owner_is_a_lifetime")
         assertTrue(scopeLesson.contains("CoroutineScope"), "The coroutines collision is not disambiguated.")
-        assertTrue(scopeLesson.contains("A scope creates nothing"), "The central correction is missing.")
+        assertTrue(scopeLesson.contains("Giving the rule a name does not by itself establish how long that context will exist"), "The central correction is missing.")
     }
 
     @Test
@@ -2718,21 +2718,21 @@ internal class BundledLearningCurriculumTest {
         // to name the owner Unit 2 insisted on naming rather than letting the annotation imply it.
         val generation = textOf("lesson_dagger_constructs_what_it_can_see")
         assertTrue(
-            generation.contains("rather than discovering the dependency graph through runtime reflection"),
+            generation.contains("It does not discover the dependency graph through runtime reflection"),
             "The bounded no-reflection claim is missing.",
         )
         assertTrue(
-            generation.contains("predictable, inspectable and paid for"),
+            generation.contains("Avoiding reflection does not eliminate construction cost"),
             "The matching honesty that no reflection is not no cost is missing.",
         )
 
         val scopes = textOf("lesson_dagger_scopes_and_component_instances")
         assertTrue(
-            scopes.contains("associates scoped instances in the graph with instances of component"),
+            scopes.contains("the component instance** retains the result"),
             "The component-instance ownership anchor is missing.",
         )
         assertTrue(
-            scopes.contains("A scope annotation creates no owner"),
+            scopes.contains("A scope annotation specifies reuse rather than creating an application lifetime"),
             "The carried-forward correction from the object-graph Unit is missing.",
         )
     }
@@ -2869,16 +2869,16 @@ internal class BundledLearningCurriculumTest {
         assertTrue(construction.contains("application does not own construction"))
         assertTrue(construction.contains("should still prefer constructor injection"))
         assertTrue(construction.contains("ContentProvider"))
-        assertTrue(construction.contains("architectural cost"))
+        assertTrue(construction.contains("couples boundary code to Hilt access APIs"))
 
         val viewModels = textOf("lesson_hilt_viewmodels_and_runtime_input")
-        assertTrue(viewModels.contains("does **not** mean Hilt owns the ViewModel lifetime"))
-        assertTrue(viewModels.contains("not automatically UI state"))
+        assertTrue(viewModels.contains("The ViewModelStore owner still determines the ViewModel's actual lifetime"))
+        assertTrue(viewModels.contains("does not automatically become UI state"))
         assertTrue(viewModels.contains("does not become durable"))
 
         val installation = textOf("lesson_which_graph_does_this_binding_join")
-        assertTrue(installation.contains("does not by itself say"))
-        assertTrue(installation.contains("Nothing about visibility changed. Only identity changed."))
+        assertTrue(installation.contains("This annotation neither creates the component nor scopes the API"))
+        assertTrue(installation.contains("keeps the parser available to the same consumers, but makes them share one result"))
 
         val allText = unit.lessons.joinToString(" ") { textOf(it.id) }
         listOf("kapt", "KSP", "build.gradle", "annotationProcessor", "plugins {", "startKoin", "koinViewModel")
@@ -3214,19 +3214,19 @@ internal class BundledLearningCurriculumTest {
         }
 
         val container = textOf("lesson_the_koin_container_and_its_modules")
-        assertTrue(container.contains("Koin itself is not the composition root"))
+        assertTrue(container.contains("The code that chooses and loads those definitions is the composition root"))
         assertTrue(container.contains("classic Kotlin DSL"))
         assertTrue(container.contains("annotations and a Compiler Plugin DSL"))
-        assertTrue(container.contains("the example above does not enable them"))
+        assertTrue(container.contains("build configuration that these examples do not include"))
         assertTrue(container.contains("androidContext(this@OrdersApp)"))
-        assertTrue(container.contains("not a Gradle module"))
+        assertTrue(container.contains("A Koin module groups construction definitions"))
         // The multi-host startup belongs to the KMP graph Lesson, not to core Koin.
         listOf("commonMain", "desktopPlatformModule", "iosPlatformModule", "source set", "multiplatform")
             .forEach { token -> assertFalse(container.contains(token, ignoreCase = true), token) }
 
         val definitions = textOf("lesson_koin_definitions_and_reuse")
-        assertTrue(definitions.contains("There is no Kotlin `object`"))
-        assertTrue(definitions.contains("does **not** require a class called"))
+        assertTrue(definitions.contains("it does not turn the class into a Kotlin `object`"))
+        assertTrue(definitions.contains("it does not require a class named"))
         assertTrue(definitions.contains("business code acting as a service locator"))
 
         val scopes = textOf("lesson_koin_scopes_and_their_owners")
@@ -3244,7 +3244,7 @@ internal class BundledLearningCurriculumTest {
             "desktopPlatformModule",
             "webPlatformModule",
             "interface SettingsStorage",
-            "expect val platformModule",
+            "expect fun platformModule()",
             "fun startAndroidApp",
             "parametersOf",
         ).forEach { claim -> assertTrue(multiplatform.contains(claim), claim) }
@@ -3252,9 +3252,9 @@ internal class BundledLearningCurriculumTest {
         val strategy = textOf("lesson_choosing_di_for_a_shared_graph")
         listOf(
             "Builds the graph in shared code?",
-            "**Manual DI remains valid**",
-            "**Koin is a candidate, not a conclusion**",
-            "'KMP, so Koin'",
+            "Both manual DI and Koin can support the shared graph",
+            "A container is useful when the assembly or management work it removes",
+            "A platform name alone does not determine the DI strategy",
             "Revisit trigger",
         ).forEach { claim -> assertTrue(strategy.contains(claim), claim) }
 
@@ -3394,22 +3394,22 @@ internal class BundledLearningCurriculumTest {
             "Project B: a growing Android-only application",
             "Hilt, because the predefined Android ownership model",
             "Project C: an Android application already running Koin",
-            "Keep Koin and adopt the verification its version supports",
+            "Keep Koin; use checks supported by the project's version",
         ).forEach { claim -> assertTrue(scenarios.contains(claim), claim) }
 
         val validation = textOf("lesson_when_should_a_graph_error_surface")
         listOf(
-            "how is this particular project's graph represented and verified?",
+            "identify how the graph is represented, what checks it, and which configurations the check can see",
             "required CredentialsProvider omitted",
             "Koin 4.2 classic DSL without Compiler Plugin",
             "Koin 4.2 with Compiler Plugin",
-            "structurally valid and architecturally wrong",
+            "A graph can pass structural checks and still retain an object for the wrong lifetime",
         ).forEach { claim -> assertTrue(validation.contains(claim), claim) }
 
         val closing = textOf("lesson_the_smallest_sufficient_strategy")
         assertTrue(closing.contains("Manual DI is sufficient"))
         assertTrue(closing.contains("Observable trigger for revisiting:"))
-        assertTrue(closing.contains("Constructor-first design is therefore a reversibility property"))
+        assertTrue(closing.contains("Explicit constructor dependencies make the construction strategy easier to replace"))
     }
 
     @Test

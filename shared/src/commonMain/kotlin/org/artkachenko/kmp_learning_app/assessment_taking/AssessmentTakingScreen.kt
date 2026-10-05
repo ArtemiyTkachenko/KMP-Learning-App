@@ -322,6 +322,8 @@ private fun QuestionContent(
         item {
             // Three distinct tiers: progress metadata, the question itself, and the supporting
             // instruction. They previously shared bodyLarge/onSurface and read as one block.
+            // The question is titleLarge rather than a headline role: long questions at
+            // headlineSmall filled the first screen and pushed the answers below the fold.
             Text(
                 text = stringResource(
                     Res.string.assessment_taking_question_progress,

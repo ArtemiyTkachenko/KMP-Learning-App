@@ -56,7 +56,8 @@ internal val AppTypography = Default.copy(
         fontWeight = FontWeight.SemiBold,
         letterSpacing = (-0.25).sp,
     ),
-    // Section headings, and the trailing accuracy figure on a performance row.
+    // Section headings, the question on the practice screen, and the trailing accuracy figure on a
+    // performance row.
     titleLarge = Default.titleLarge.copy(
         fontWeight = FontWeight.SemiBold,
         letterSpacing = (-0.15).sp,

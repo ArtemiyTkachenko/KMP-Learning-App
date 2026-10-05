@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -31,7 +32,6 @@ import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
@@ -734,9 +734,16 @@ internal class AssessmentTakingScreenTest {
             // A few frames in: the reveal has been measured and the scroll is under way.
             repeat(4) { mainClock.advanceTimeByFrame() }
             // Short and slow — a drag rather than a fling — so the reveal stays composed and an
-            // automatic scroll that resumed afterwards would visibly move it.
+            // automatic scroll that resumed afterwards would visibly move it. The finger is held
+            // still before it lifts: a swipe releases at its travel speed, and even a slow one
+            // hands that on to a fling that drifts the list a pixel after `leftAt` is read.
             onNode(hasScrollAction()).performTouchInput {
-                swipeDown(startY = centerY, endY = centerY + height / 12, durationMillis = SlowDragMillis)
+                down(center)
+                repeat(DragSteps) {
+                    moveBy(Offset(0f, height / 12f / DragSteps), delayMillis = SlowDragMillis / DragSteps)
+                }
+                advanceEventTime(DragHoldMillis)
+                up()
             }
             mainClock.advanceTimeByFrame()
             val leftAt = onNodeWithTag(AssessmentTakingOutcomeTag).fetchSemanticsNode().boundsInRoot.top
@@ -953,8 +960,12 @@ private val CompactDisplay = Size(CompactWidth.value, CompactHeight.value)
 /** Comfortably past the expansion spring, the staggered fades, and the scroll that runs with them. */
 private const val RevealSettleMillis = 2_000L
 
-/** Long enough that the drag ends at rest instead of handing a velocity on to a fling. */
+/** How long the drag spends travelling, spread over [DragSteps] moves. */
 private const val SlowDragMillis = 1_500L
+private const val DragSteps = 30
+
+/** Past the velocity tracker's stop threshold, so the release reads as a finger at rest. */
+private const val DragHoldMillis = 200L
 
 private const val Filler = "This sentence is here to make the block long enough to wrap over " +
     "several lines in a compact window, so the layout behaves like a real interview question."

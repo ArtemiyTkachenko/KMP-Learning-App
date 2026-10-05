@@ -277,9 +277,11 @@ internal fun QuestionExplanationBlock(
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // bodyLarge, as lesson prose and the answer options above it are: this is the teaching
+            // text of a practice session, and at bodyMedium it read as a footnote to the answers.
             Text(
                 explanation,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }

@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -28,6 +29,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -548,6 +550,51 @@ internal class AssessmentTakingScreenTest {
     }
 
     /**
+     * The bank authors identifiers as Markdown inline code. The question, its options, and the
+     * explanation all show the identifier in monospace and none of them shows a backtick.
+     */
+    @Test
+    fun inlineCodeRendersAsCodeWithoutBackticks() = runComposeUiTest {
+        val revealed = revealedState(
+            mode = AnswerSelectionMode.SINGLE,
+            selected = setOf("answer_a"),
+            correct = listOf("answer_a"),
+            isCorrect = true,
+        )
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = revealed.copy(
+                        question = revealed.question.copy(
+                            text = "When does `LaunchedEffect(Unit)` restart?",
+                            answers = listOf(
+                                AnswerOption("answer_a", "Never, the key is `Unit`"),
+                                AnswerOption("answer_b", "On every recomposition"),
+                            ),
+                            explanation = "`Unit` never changes, so the effect keeps running.",
+                        ),
+                    ),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithText("`", substring = true).assertDoesNotExist()
+        listOf(
+            "When does LaunchedEffect(Unit) restart?" to "LaunchedEffect(Unit)",
+            "Never, the key is Unit" to "Unit",
+            "Unit never changes, so the effect keeps running." to "Unit",
+        ).forEach { (text, code) ->
+            onNodeWithText(text).assertIsDisplayed().assert(hasMonospaceSpan(code))
+        }
+    }
+
+    /**
      * Picking two of three correct options and nothing wrong is not the same as picking the wrong
      * one, and the reveal now says so. The score is untouched — this is presentation of a question
      * that was still recorded as incorrect.
@@ -714,6 +761,14 @@ internal class AssessmentTakingScreenTest {
             canSubmit = true,
             feedback = PracticeFeedback(isCorrect = isCorrect),
         )
+    }
+}
+
+private fun hasMonospaceSpan(code: String) = SemanticsMatcher("has monospace span \"$code\"") { node ->
+    node.config.getOrNull(SemanticsProperties.Text).orEmpty().any { text ->
+        text.spanStyles.any {
+            it.item.fontFamily == FontFamily.Monospace && text.text.substring(it.start, it.end) == code
+        }
     }
 }
 

@@ -42,6 +42,7 @@ import org.artkachenko.kmp_learning_app.curriculum.learning.LearningBlock
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningCalloutKind
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningDepth
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningSection
+import org.artkachenko.kmp_learning_app.ui.InlineCodeStyle
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -518,7 +519,7 @@ private fun AnnotatedString.Builder.appendLessonMarkdown(text: String) {
             token.startsWith("**") -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
                 appendLessonMarkdown(token.drop(2).dropLast(2))
             }
-            token.startsWith('`') -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) { append(token.drop(1).dropLast(1)) }
+            token.startsWith('`') -> withStyle(InlineCodeStyle) { append(token.drop(1).dropLast(1)) }
             token.startsWith('*') -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
                 appendLessonMarkdown(token.drop(1).dropLast(1))
             }

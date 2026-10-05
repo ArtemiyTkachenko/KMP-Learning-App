@@ -89,6 +89,7 @@ import org.artkachenko.kmp_learning_app.topic_study.topics.TopicBrowserSearchFie
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyListTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.TopicStudyProgressTag
 import org.artkachenko.kmp_learning_app.topic_study.topic_detail.learningUnitCardTag
+import org.artkachenko.kmp_learning_app.ui.withInlineCode
 import org.koin.compose.KoinApplication
 import org.koin.core.context.stopKoin
 import org.koin.dsl.koinConfiguration
@@ -498,7 +499,7 @@ internal class LearningProductionContentJourneyTest {
                     .performScrollToNode(hasText("Question ", substring = true))
                 val question = candidates.firstOrNull { candidate ->
                     candidate.id !in answered &&
-                        onAllNodesWithText(candidate.text).fetchSemanticsNodes().isNotEmpty()
+                        onAllNodesWithText(candidate.text.rendered).fetchSemanticsNodes().isNotEmpty()
                 }
                 assertNotNull(
                     question,
@@ -508,18 +509,18 @@ internal class LearningProductionContentJourneyTest {
 
                 // How far through the run the learner is stays on screen beside the stem.
                 onNodeWithTag(AssessmentProgressMeterTag).assertIsDisplayed()
-                assertReadableWithin(question.text, rootWidth)
+                assertReadableWithin(question.text.rendered, rootWidth)
                 // Every authored option, including the long ones, is on screen and selectable.
                 question.answers.forEach { answer ->
-                    assertReadableWithin(answer.text, rootWidth)
-                    answerRow(answer.text).assertIsEnabled()
+                    assertReadableWithin(answer.text.rendered, rootWidth)
+                    answerRow(answer.text.rendered).assertIsEnabled()
                 }
 
                 // The first Question takes the incorrect branch; the rest take the correct one.
                 val chosen = question.answers.first {
                     (it.id in question.correctAnswerIds) != firstQuestion
                 }
-                answerRow(chosen.text).performSemanticsAction(SemanticsActions.OnClick)
+                answerRow(chosen.text.rendered).performSemanticsAction(SemanticsActions.OnClick)
 
                 // Feedback names the outcome and carries the authored explanation either way. The
                 // wrong branch always picks an option outside the correct set, so it is the plain
@@ -536,7 +537,7 @@ internal class LearningProductionContentJourneyTest {
                 onNodeWithTag(AssessmentTakingSubmitTag)
                     .performSemanticsAction(SemanticsActions.OnClick)
                 waitForText(verdict)
-                assertReadableWithin(question.explanation, rootWidth)
+                assertReadableWithin(question.explanation.rendered, rootWidth)
                 if (firstQuestion) {
                     // The answer they should have picked is marked on its own row now, so what has
                     // to be readable is the option itself carrying that label — not a sentence
@@ -550,7 +551,7 @@ internal class LearningProductionContentJourneyTest {
                         .performScrollToNode(hasText(correctAnswerLabel))
                     onNodeWithText(correctAnswerLabel).assertIsDisplayed()
                     val key = question.answers.single { it.id in question.correctAnswerIds }
-                    assertReadableWithin(key.text, rootWidth)
+                    assertReadableWithin(key.text.rendered, rootWidth)
                 }
 
                 answered += question.id
@@ -1026,6 +1027,9 @@ private fun ComposeUiTest.assertReadableWithin(text: String, rootWidth: Float) {
     val width = node.fetchSemanticsNode().boundsInRoot.width
     assertTrue(width <= rootWidth, "\"$snippet\" was $width wide in a $rootWidth window.")
 }
+
+/** Authored question content as the screen shows it: inline-code spans without their backticks. */
+private val String.rendered: String get() = withInlineCode().text
 
 /** One answer row, scrolled into the lazy list and matched by the text it carries. */
 @OptIn(ExperimentalTestApi::class)

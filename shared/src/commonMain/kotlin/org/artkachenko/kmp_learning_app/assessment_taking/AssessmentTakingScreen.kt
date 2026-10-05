@@ -98,6 +98,7 @@ import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.ScreenStatus
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
+import org.artkachenko.kmp_learning_app.ui.withInlineCode
 import org.jetbrains.compose.resources.stringResource
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
 import org.artkachenko.kmp_learning_app.ui.theme.maxWidth
@@ -333,8 +334,8 @@ private fun QuestionContent(
                 color = MaterialTheme.colorScheme.primary,
             )
             Text(
-                text = state.question.text,
-                style = MaterialTheme.typography.titleLarge,
+                text = state.question.text.withInlineCode(),
+                style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .padding(top = AppSpacing.Grouped)
@@ -625,7 +626,7 @@ private fun AnswerRow(
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
             ) {
                 Text(
-                    text = answerText,
+                    text = answerText.withInlineCode(),
                     style = MaterialTheme.typography.bodyLarge,
                     color = textColor,
                 )

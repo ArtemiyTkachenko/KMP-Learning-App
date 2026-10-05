@@ -34,6 +34,7 @@ import kmp_learning_app.shared.generated.resources.assessment_review_unresolved_
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
+import org.artkachenko.kmp_learning_app.ui.withInlineCode
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -193,7 +194,7 @@ internal fun ReviewQuestionCard(
                 verticalAlignment = Alignment.Top,
             ) {
                 Text(
-                    question.text,
+                    question.text.withInlineCode(),
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,

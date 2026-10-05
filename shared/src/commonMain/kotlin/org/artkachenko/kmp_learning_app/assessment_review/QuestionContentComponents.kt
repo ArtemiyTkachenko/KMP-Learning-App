@@ -55,6 +55,7 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
+import org.artkachenko.kmp_learning_app.ui.withInlineCode
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -229,7 +230,7 @@ internal fun QuestionAnswerOption(
             verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight),
         ) {
             Text(
-                text,
+                text.withInlineCode(),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -280,7 +281,7 @@ internal fun QuestionExplanationBlock(
             // bodyLarge, as lesson prose and the answer options above it are: this is the teaching
             // text of a practice session, and at bodyMedium it read as a footnote to the answers.
             Text(
-                explanation,
+                explanation.withInlineCode(),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )

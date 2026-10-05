@@ -52,6 +52,7 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.artkachenko.kmp_learning_app.ui.theme.appScreenContentPadding
+import org.artkachenko.kmp_learning_app.ui.withInlineCode
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
@@ -255,7 +256,7 @@ private fun SavedQuestionCard(
                 },
                 text = {
                     Text(
-                        question.text,
+                        question.text.withInlineCode(),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )

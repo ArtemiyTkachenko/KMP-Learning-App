@@ -232,6 +232,27 @@ internal class AppRouteVisibilityTest {
         assertEquals(listOf<NavKey>(AppRoute.Progress), navigator.backStack)
     }
 
+    /**
+     * A hidden result on an area that is not on screen is still pruned.
+     *
+     * Leaving an area with a result on top resets it to its root, so the result here sits under an
+     * unfinished retake, which leaving the area keeps. Only pruning can then remove it — and the
+     * attempt above it, which was reached through it.
+     */
+    @Test
+    fun aHiddenResultUnderAnAttemptOnAnotherAreaIsPruned() = runTest {
+        val navigator = navigator()
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        navigator.push(AppRoute.FocusedPracticeResult("kmp_result"))
+        navigator.push(AppRoute.FocusedPracticeAttempt("android_attempt"))
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+
+        prune(navigator, MutableStateFlow(hidden))
+
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        assertEquals(listOf<NavKey>(AppRoute.Progress), navigator.backStack)
+    }
+
     /** An unclassifiable route reaches its own NotFound instead of being deleted. */
     @Test
     fun unknownRoutesAreNotPruned() = runTest {

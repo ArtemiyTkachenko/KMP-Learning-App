@@ -64,6 +64,18 @@ where it was left. Back leaves the current area's detail first, then returns to 
 start area (Topics), and only then reports the event unconsumed so the host can close
 the app. Re-selecting the area already shown returns it to its root.
 
+Result screens are the one exception to "exactly where it was left", because a result is
+terminal: its attempt is already persisted and scored, and the record it contributes to is
+on the area's home screen. Two navigator rules, both keyed on the single
+`AppRoute.isAssessmentResult()` predicate, keep finished results from resurfacing.
+`AppNavigator.completeAttempt` replaces a completed attempt with its result and also removes
+every result route directly beneath it, stopping at the first entry that is not a result. A
+retake or mistakes practice started from a result therefore replaces that result rather than
+stacking on top of it, and Back skips the older scores. Separately, switching away from an
+area whose top entry is a result resets that area to its root, so returning to it opens its
+home screen. Any other top entry, such as an unfinished attempt, a lesson, a builder, or
+Settings, is kept exactly as it was.
+
 Which screens keep the navigation control is decided by `AppRoute.showsAreaNavigation()`,
 and the rule is one sentence: **normal application mode everywhere except while a question
 is actually being answered.** Browsing, reading, configuring, and reviewing are all normal

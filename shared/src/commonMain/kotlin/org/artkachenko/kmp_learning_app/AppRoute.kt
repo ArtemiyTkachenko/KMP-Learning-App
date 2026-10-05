@@ -150,3 +150,14 @@ internal sealed interface AppRoute : NavKey {
         val attemptId: String,
     ) : AppRoute
 }
+
+/**
+ * Whether this route shows a finished assessment's result.
+ *
+ * A result is terminal: the attempt behind it is persisted and scored, and the record it adds to
+ * lives on the area's home screen. The navigator uses this one predicate for both rules that follow
+ * from that — completing an attempt collapses the results directly beneath it, and leaving an area
+ * with a result on top resets that area to its root — so neither rule keeps a list of its own.
+ */
+internal fun AppRoute.isAssessmentResult(): Boolean =
+    this is AppRoute.MixedInterviewResult || this is AppRoute.FocusedPracticeResult

@@ -207,7 +207,12 @@ Mixed interview repeats follow the same persisted-retake boundary as focused
 practice. The Mixed result delegates creation to `AssessmentRetakeService`,
 keeps the completed source result in the back stack, and pushes
 `MixedInterviewAttempt(retakeAttemptId)` only after the new attempt has been
-saved.
+saved. The source result stays only while its retake is in progress, so Back
+during an unfinished retake returns to it. When the retake completes,
+`AppNavigator.completeAttempt` replaces the attempt and every result directly
+beneath it with the new result. A result is terminal, and the learner's record
+lives on the area's home screen, not in a pile of older results (see the
+navigation section of the [overview](overview.md)).
 
 Both result surfaces drive that boundary through one owner,
 `AssessmentRetakeController`, rather than a copy each. It holds
@@ -237,7 +242,8 @@ E09-05 exposes repeat practice from the result screen through
 `FocusedPracticeAttempt` then carries only its stable ID, and
 `AssessmentSessionLoader` reconstructs the runtime session without calling
 `AssessmentEngine.start()` a second time. The source result remains below the
-retake in the back stack.
+retake in the back stack while the retake is in progress, and is collapsed when
+the retake completes, along with any other results directly beneath it.
 
 The complete E09 focused-learning path is `TopicBrowser -> TopicDetail ->
 AssessmentConfig.Focused -> StartAssessment -> FocusedPracticeAttempt`, with

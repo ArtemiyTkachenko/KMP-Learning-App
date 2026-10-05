@@ -89,6 +89,183 @@ internal class AppNavigatorTest {
     }
 
     @Test
+    fun completingAnAttemptWithNoResultBeneathKeepsWhatItWasStartedFrom() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("t"))
+        navigator.push(AppRoute.PracticeBuilderTopic("t"))
+        navigator.push(AppRoute.FocusedPracticeAttempt("a"))
+
+        navigator.completeAttempt(AppRoute.FocusedPracticeResult("a"))
+
+        assertEquals(
+            listOf<NavKey>(
+                AppRoute.Topics,
+                AppRoute.Topic("t"),
+                AppRoute.PracticeBuilderTopic("t"),
+                AppRoute.FocusedPracticeResult("a"),
+            ),
+            navigator.backStack,
+        )
+    }
+
+    @Test
+    fun completingAnAttemptStartedFromAResultReplacesThatResult() {
+        val navigator = navigator()
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+        navigator.push(AppRoute.MixedInterviewResult("a"))
+        navigator.push(AppRoute.FocusedPracticeAttempt("b"))
+
+        navigator.completeAttempt(AppRoute.FocusedPracticeResult("b"))
+
+        assertEquals(
+            listOf<NavKey>(AppRoute.Interview, AppRoute.FocusedPracticeResult("b")),
+            navigator.backStack,
+        )
+    }
+
+    @Test
+    fun completingAnAttemptCollapsesEveryResultBeneathItButNothingElse() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("t"))
+        navigator.push(AppRoute.PracticeBuilderTopic("t"))
+        navigator.push(AppRoute.FocusedPracticeResult("a"))
+        navigator.push(AppRoute.MixedInterviewResult("b"))
+        navigator.push(AppRoute.FocusedPracticeResult("c"))
+        navigator.push(AppRoute.MixedInterviewAttempt("d"))
+
+        navigator.completeAttempt(AppRoute.MixedInterviewResult("d"))
+
+        // The builder stops the collapse: it is what the first run was started from.
+        assertEquals(
+            listOf<NavKey>(
+                AppRoute.Topics,
+                AppRoute.Topic("t"),
+                AppRoute.PracticeBuilderTopic("t"),
+                AppRoute.MixedInterviewResult("d"),
+            ),
+            navigator.backStack,
+        )
+    }
+
+    @Test
+    fun theCollapseStopsAtTheFirstEntryThatIsNotAResult() {
+        val navigator = navigator()
+        navigator.select(AppTopLevelDestination.MISTAKES)
+        navigator.push(AppRoute.FocusedPracticeResult("a"))
+        navigator.push(AppRoute.PracticeBuilderSubtopic("s"))
+        navigator.push(AppRoute.FocusedPracticeResult("b"))
+        navigator.push(AppRoute.FocusedPracticeAttempt("c"))
+
+        navigator.completeAttempt(AppRoute.FocusedPracticeResult("c"))
+
+        // A result below the first non-result entry is not "directly beneath" and stays.
+        assertEquals(
+            listOf<NavKey>(
+                AppRoute.MistakeReview,
+                AppRoute.FocusedPracticeResult("a"),
+                AppRoute.PracticeBuilderSubtopic("s"),
+                AppRoute.FocusedPracticeResult("c"),
+            ),
+            navigator.backStack,
+        )
+    }
+
+    @Test
+    fun backDuringAnUnfinishedAttemptStillReturnsToTheSourceResult() {
+        val navigator = navigator()
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+        navigator.push(AppRoute.MixedInterviewResult("a"))
+        navigator.push(AppRoute.MixedInterviewAttempt("retake"))
+
+        assertTrue(navigator.popBack())
+
+        assertEquals(AppRoute.MixedInterviewResult("a"), navigator.currentRoute)
+    }
+
+    @Test
+    fun leavingAnAreaWithAResultOnTopResetsItToItsRoot() {
+        val navigator = navigator()
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+        navigator.push(AppRoute.MixedInterviewResult("a"))
+        navigator.push(AppRoute.FocusedPracticeResult("b"))
+
+        navigator.select(AppTopLevelDestination.TOPICS)
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+
+        assertEquals(listOf<NavKey>(AppRoute.Interview), navigator.backStack)
+    }
+
+    @Test
+    fun leavingAnAreaWithWorkInProgressOnTopKeepsItsStack() {
+        val navigator = navigator()
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+        navigator.push(AppRoute.MixedInterviewResult("a"))
+        navigator.push(AppRoute.FocusedPracticeAttempt("b"))
+        navigator.select(AppTopLevelDestination.TOPICS)
+        navigator.push(AppRoute.Topic("t"))
+        navigator.push(AppRoute.LearningUnit("u"))
+        navigator.push(AppRoute.LearningLesson("u", "l"))
+
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+
+        // An unfinished attempt is not a result, so the source result beneath it stays too.
+        assertEquals(
+            listOf<NavKey>(
+                AppRoute.Interview,
+                AppRoute.MixedInterviewResult("a"),
+                AppRoute.FocusedPracticeAttempt("b"),
+            ),
+            navigator.backStack,
+        )
+        navigator.select(AppTopLevelDestination.TOPICS)
+        assertEquals(
+            listOf<NavKey>(
+                AppRoute.Topics,
+                AppRoute.Topic("t"),
+                AppRoute.LearningUnit("u"),
+                AppRoute.LearningLesson("u", "l"),
+            ),
+            navigator.backStack,
+        )
+    }
+
+    @Test
+    fun reselectingAnAreaShowingAResultReturnsItToItsRoot() {
+        val navigator = navigator()
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+        navigator.push(AppRoute.MixedInterviewResult("a"))
+
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+
+        assertEquals(AppTopLevelDestination.INTERVIEW, navigator.area)
+        assertEquals(listOf<NavKey>(AppRoute.Interview), navigator.backStack)
+    }
+
+    @Test
+    fun onlyTheTwoResultRoutesAreResults() {
+        assertTrue(AppRoute.MixedInterviewResult("a").isAssessmentResult())
+        assertTrue(AppRoute.FocusedPracticeResult("a").isAssessmentResult())
+        listOf(
+            AppRoute.Topics,
+            AppRoute.Interview,
+            AppRoute.Progress,
+            AppRoute.MistakeReview,
+            AppRoute.Topic("t"),
+            AppRoute.ProgressTopic("t"),
+            AppRoute.SavedQuestions,
+            AppRoute.Settings,
+            AppRoute.PracticeBuilderTopic("t"),
+            AppRoute.PracticeBuilderSubtopic("s"),
+            AppRoute.PracticeBuilderLearningUnit("u"),
+            AppRoute.LearningUnit("u"),
+            AppRoute.LearningLesson("u", "l"),
+            AppRoute.MixedInterviewAttempt("a"),
+            AppRoute.FocusedPracticeAttempt("a"),
+        ).forEach { assertFalse(it.isAssessmentResult(), "$it is not a result") }
+    }
+
+    @Test
     fun onlyAnAreaRootOutsideTopicsHandsBackToTheOuterHandler() {
         val navigator = navigator()
 

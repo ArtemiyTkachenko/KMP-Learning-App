@@ -5,6 +5,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.SaveableStateRegistry
+import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.testTag
@@ -20,11 +25,14 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertRangeInfoEquals
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
@@ -680,6 +688,171 @@ internal class AssessmentTakingScreenTest {
         assertEquals(0, submitCount)
     }
 
+    /**
+     * On a question too long for the window, Submit is pressed at the bottom of the list and the
+     * reveal opens below it — below the fold, where the learner saw only the top edge of the
+     * verdict. The list now carries the verdict into view on its own; and because this explanation
+     * is taller than the viewport, the verdict lands at the top rather than the explanation's last
+     * line at the bottom.
+     */
+    @Test
+    fun aRevealBelowTheFoldIsBroughtIntoViewVerdictFirst() =
+        runSkikoComposeUiTest(size = CompactDisplay) {
+            val state = mutableStateOf(longState())
+            setCompactContent { state.value }
+
+            onNode(hasScrollAction()).performScrollToNode(hasTestTag(AssessmentTakingSubmitTag))
+            mainClock.autoAdvance = false
+            runOnIdle { state.value = state.value.copy(feedback = PracticeFeedback(isCorrect = false)) }
+            mainClock.advanceTimeBy(RevealSettleMillis)
+
+            val viewport = onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot
+            val verdict = onNodeWithTag(AssessmentTakingOutcomeTag)
+                .assertIsDisplayed()
+                .fetchSemanticsNode().boundsInRoot
+            onNodeWithText("Explanation").assertIsDisplayed()
+            assertTrue(
+                verdict.top >= viewport.top && verdict.top < viewport.top + viewport.height / 4,
+                "The verdict sits at ${verdict.top}px in a viewport spanning " +
+                    "${viewport.top}..${viewport.bottom}px; it should be aligned near the top.",
+            )
+        }
+
+    /**
+     * The automatic scroll is a suggestion, not a hold on the list. A learner who drags while it is
+     * still travelling takes over, and the list stays where they leave it rather than resuming.
+     */
+    @Test
+    fun aLearnerScrollingDuringTheRevealIsNotPulledBack() =
+        runSkikoComposeUiTest(size = CompactDisplay) {
+            val state = mutableStateOf(longState())
+            setCompactContent { state.value }
+            onNode(hasScrollAction()).performScrollToNode(hasTestTag(AssessmentTakingSubmitTag))
+
+            mainClock.autoAdvance = false
+            runOnIdle { state.value = state.value.copy(feedback = PracticeFeedback(isCorrect = false)) }
+            // A few frames in: the reveal has been measured and the scroll is under way.
+            repeat(4) { mainClock.advanceTimeByFrame() }
+            // Short and slow — a drag rather than a fling — so the reveal stays composed and an
+            // automatic scroll that resumed afterwards would visibly move it.
+            onNode(hasScrollAction()).performTouchInput {
+                swipeDown(startY = centerY, endY = centerY + height / 12, durationMillis = SlowDragMillis)
+            }
+            mainClock.advanceTimeByFrame()
+            val leftAt = onNodeWithTag(AssessmentTakingOutcomeTag).fetchSemanticsNode().boundsInRoot.top
+            mainClock.advanceTimeBy(RevealSettleMillis)
+
+            assertEquals(
+                leftAt,
+                onNodeWithTag(AssessmentTakingOutcomeTag).fetchSemanticsNode().boundsInRoot.top,
+            )
+        }
+
+    /** Nothing moves when the reveal already fits: the learner's place on the page is theirs. */
+    @Test
+    fun aRevealThatAlreadyFitsDoesNotScroll() = runSkikoComposeUiTest(size = CompactDisplay) {
+        val state = mutableStateOf(contentState(AnswerSelectionMode.SINGLE).copy(
+            question = contentState(AnswerSelectionMode.SINGLE).question.copy(
+                correctAnswerIds = listOf("answer_a"),
+                explanation = "Because A.",
+            ),
+            selectedAnswerIds = setOf("answer_b"),
+            canSubmit = true,
+        ))
+        setCompactContent { state.value }
+        val headingTop = onNodeWithText("Question text").fetchSemanticsNode().boundsInRoot.top
+
+        mainClock.autoAdvance = false
+        runOnIdle { state.value = state.value.copy(feedback = PracticeFeedback(isCorrect = false)) }
+        mainClock.advanceTimeBy(RevealSettleMillis)
+
+        onNodeWithTag(AssessmentTakingOutcomeTag).assertIsDisplayed()
+        onNodeWithText("Question text").assertIsDisplayed()
+        assertEquals(
+            headingTop,
+            onNodeWithText("Question text").fetchSemanticsNode().boundsInRoot.top,
+        )
+    }
+
+    /**
+     * A configuration change or process restore recomposes the screen with the answer already
+     * revealed. That reveal was scrolled to once; a learner who has since scrolled elsewhere stays
+     * where they are rather than being carried back to the verdict.
+     *
+     * `StateRestorationTester` is unimplemented on skiko, so this drives the same mechanism the way
+     * `AppNavigatorRestorationTest` does: save through a [SaveableStateRegistry], dispose the
+     * screen, and recompose it from the saved values.
+     */
+    @Test
+    fun aRestoredRevealDoesNotScrollAgain() = runSkikoComposeUiTest(size = CompactDisplay) {
+        val state = mutableStateOf(longState())
+        var isComposed by mutableStateOf(true)
+        var registry = SaveableStateRegistry(restoredValues = null, canBeSaved = { true })
+        hostCompactScreen { screen ->
+            if (isComposed) {
+                CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
+                    screen(state.value)
+                }
+            }
+        }
+        onNode(hasScrollAction()).performScrollToNode(hasTestTag(AssessmentTakingSubmitTag))
+        runOnIdle { state.value = state.value.copy(feedback = PracticeFeedback(isCorrect = false)) }
+        waitForIdle()
+        // The learner scrolls back up to reread an option after the automatic scroll.
+        val option = hasText("Answer 3.", substring = true)
+        onNode(hasScrollAction()).performScrollToNode(option)
+        val optionTop = onNode(option).fetchSemanticsNode().boundsInRoot.top
+
+        val saved = registry.performSave()
+        isComposed = false
+        waitForIdle()
+        registry = SaveableStateRegistry(saved, canBeSaved = { true })
+        isComposed = true
+        waitForIdle()
+
+        assertEquals(optionTop, onNode(option).fetchSemanticsNode().boundsInRoot.top)
+    }
+
+    private fun androidx.compose.ui.test.ComposeUiTest.setCompactContent(
+        state: () -> AssessmentTakingUiState,
+    ) = hostCompactScreen { screen -> screen(state()) }
+
+    /** [content] decides whether and how to host the screen it is handed. */
+    private fun androidx.compose.ui.test.ComposeUiTest.hostCompactScreen(
+        content: @Composable (screen: @Composable (AssessmentTakingUiState) -> Unit) -> Unit,
+    ) {
+        setContent {
+            AppTheme {
+                CompositionLocalProvider(LocalAppWindowSizeClass provides AppWindowSizeClass.Compact) {
+                    Box(Modifier.size(CompactWidth, CompactHeight)) {
+                        content { state ->
+                            AssessmentTakingScreen(
+                                title = "Focused practice",
+                                state = state,
+                                onAnswerClick = {}, onSubmit = {}, onRetry = {}, onBack = {},
+                                onComplete = {},
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** Long enough everywhere — question, options, explanation — that nothing fits a phone at once. */
+    private fun longState() = contentState(AnswerSelectionMode.SINGLE).let { base ->
+        base.copy(
+            question = base.question.copy(
+                text = LongQuestionText,
+                answers = (1..4).map { AnswerOption("answer_$it", "Answer $it. " + Filler) },
+                correctAnswerIds = listOf("answer_1"),
+                explanation = List(10) { Filler }.joinToString("\n\n"),
+            ),
+            selectedAnswerIds = setOf("answer_2"),
+            canSubmit = true,
+        )
+    }
+
     private fun contentState(mode: AnswerSelectionMode) = AssessmentTakingUiState.Content(
         attemptId = "attempt",
         questionNumber = 2,
@@ -723,3 +896,18 @@ private const val WindowRootTag = "assessment_taking_window_root"
 private val WideWidth = 1440.dp
 private val WideHeight = 900.dp
 private val WideDisplay = Size(WideWidth.value, WideHeight.value)
+
+/** A phone-sized window, so a long question genuinely runs past the fold. */
+private val CompactWidth = 400.dp
+private val CompactHeight = 720.dp
+private val CompactDisplay = Size(CompactWidth.value, CompactHeight.value)
+
+/** Comfortably past the expansion spring, the staggered fades, and the scroll that runs with them. */
+private const val RevealSettleMillis = 2_000L
+
+/** Long enough that the drag ends at rest instead of handing a velocity on to a fling. */
+private const val SlowDragMillis = 1_500L
+
+private const val Filler = "This sentence is here to make the block long enough to wrap over " +
+    "several lines in a compact window, so the layout behaves like a real interview question."
+private const val LongQuestionText = "Which of these statements about a long question holds? " + Filler

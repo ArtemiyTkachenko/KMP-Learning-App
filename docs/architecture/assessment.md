@@ -101,6 +101,15 @@ The partial case is derived at presentation from `selectedAnswerIds` against
 `isCorrect`, and a partially correct answer is recorded exactly as incorrect as it always
 was; what changed is that the learner is told which kind of wrong it was.
 
+The verdict and explanation open beneath the options, which on a long question is below the
+fold. When feedback first arrives for a question, `QuestionContent` scrolls the least distance
+that shows them: nothing if they already fit, their bottom to the viewport's bottom if they fit
+but are cut off, and the verdict to the top if the reveal is taller than the viewport. The
+distance comes from the reveal's final measured height and runs on `AppMotion.spatialSpec()`
+alongside the expansion, not after it. It happens once per question — a `rememberSaveable` flag
+inside `key(question.id)`, seeded as done when the screen appears with feedback already shown —
+and a learner's own drag or fling cancels it.
+
 ## Completion
 
 Both result screens are the same three shared pieces. `AssessmentResultLayout` is the adaptive

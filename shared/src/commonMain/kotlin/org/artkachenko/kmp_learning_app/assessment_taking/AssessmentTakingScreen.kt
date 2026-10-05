@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.updateTransition
@@ -28,7 +29,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -56,6 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -70,6 +71,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlinx.coroutines.flow.first
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_taking_answer_save_error
@@ -522,23 +524,50 @@ private class RevealGeometry {
  * Otherwise its bottom goes to the bottom, which keeps as much of the marked answers in view as the
  * reveal leaves room for.
  *
- * The scroll runs at the default mutate priority, so a learner who drags, flings, or wheels during
- * it cancels it outright instead of being pulled back.
+ * The reveal's *position* is not final on that first frame, though: every marked answer row above
+ * it is growing its own outcome tag on the same spring. So the distance is measured again from the
+ * live layout after each pass, and corrected, until the reveal stops moving — which is also what
+ * catches a reveal that fitted on the first frame and was then pushed past the fold by those tags.
+ *
+ * All of it is one scroll at the default mutate priority, the settling included, so a learner who
+ * drags, flings, or wheels at any point cancels the whole thing instead of being pulled back by a
+ * later correction.
  */
 private suspend fun LazyListState.scrollRevealIntoView(geometry: RevealGeometry) {
     val (list, reveal) = snapshotFlow { geometry.list to geometry.reveal }
         .first { (list, reveal) -> list != null && reveal != null }
-    if (list == null || reveal == null || !list.isAttached || !reveal.isAttached) return
-    val top = list.localPositionOf(reveal, Offset.Zero).y
-    val height = reveal.size.height.toFloat()
+    if (list == null || reveal == null) return
+    scroll {
+        var previousTop: Float? = null
+        while (list.isAttached && reveal.isAttached) {
+            val top = list.localPositionOf(reveal, Offset.Zero).y
+            val distance = revealScrollDistance(top, reveal.size.height.toFloat())
+            if (abs(distance) >= 1f) {
+                var scrolled = 0f
+                animate(0f, distance, animationSpec = AppMotion.spatialSpec()) { value, _ ->
+                    scrolled += scrollBy(value - scrolled)
+                }
+                // Nothing left to scroll into: the list is at its end, and asking again would loop.
+                if (abs(scrolled) < 1f) break
+            } else if (previousTop != null && abs(top - previousTop) < 1f) {
+                break
+            } else {
+                withFrameNanos { }
+            }
+            previousTop = top
+        }
+    }
+}
+
+/** Zero if the reveal is fully visible; else the verdict to the top or the reveal's end to the bottom. */
+private fun LazyListState.revealScrollDistance(top: Float, height: Float): Float {
     val visibleTop = layoutInfo.beforeContentPadding.toFloat()
     val visibleBottom = (layoutInfo.viewportSize.height - layoutInfo.afterContentPadding).toFloat()
-    val distance = when {
+    return when {
         height > visibleBottom - visibleTop || top < visibleTop -> top - visibleTop
         top + height > visibleBottom -> top + height - visibleBottom
         else -> 0f
     }
-    if (distance != 0f) animateScrollBy(distance, AppMotion.spatialSpec())
 }
 
 /**

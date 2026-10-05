@@ -748,6 +748,54 @@ internal class AssessmentTakingScreenTest {
             )
         }
 
+    /**
+     * A reveal that fits the window but opens below the fold scrolls only as far as its own end:
+     * the whole explanation lands on screen, and the marked answers above it keep what room is
+     * left rather than the verdict being pinned to the top. Every option here is long and three of
+     * them — missed, wrongly picked, rightly picked — gain an outcome tag as the reveal opens, which
+     * pushes the reveal further down after it is first measured. The distance has to account for
+     * that, or the explanation's last lines stay off-screen.
+     */
+    @Test
+    fun aRevealThatFitsButOpensBelowTheFoldScrollsOnlyToItsEnd() =
+        runSkikoComposeUiTest(size = CompactDisplay) {
+            val state = mutableStateOf(
+                longState().let {
+                    it.copy(
+                        question = it.question.copy(
+                            selectionMode = AnswerSelectionMode.MULTIPLE,
+                            correctAnswerIds = listOf("answer_1", "answer_3"),
+                            explanation = FittingExplanation,
+                        ),
+                        selectedAnswerIds = setOf("answer_2", "answer_3"),
+                    )
+                },
+            )
+            setCompactContent { state.value }
+
+            onNode(hasScrollAction()).performScrollToNode(hasTestTag(AssessmentTakingSubmitTag))
+            mainClock.autoAdvance = false
+            runOnIdle { state.value = state.value.copy(feedback = PracticeFeedback(isCorrect = false)) }
+            mainClock.advanceTimeBy(RevealSettleMillis)
+
+            val viewport = onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot
+            val verdict = onNodeWithTag(AssessmentTakingOutcomeTag).fetchSemanticsNode().boundsInRoot
+            // Unclipped: `boundsInRoot` is cut to the list, so text running past the fold would
+            // still report the viewport's own edge as its bottom.
+            val explanation = onNode(hasText(ExplanationEnd, substring = true)).fetchSemanticsNode()
+            val explanationEnd = explanation.positionInRoot.y + explanation.size.height
+            assertTrue(
+                explanationEnd <= viewport.bottom,
+                "The explanation ends at ${explanationEnd}px, past the viewport's " +
+                    "${viewport.bottom}px.",
+            )
+            assertTrue(
+                verdict.top > viewport.top + viewport.height / 4,
+                "The verdict was pinned at ${verdict.top}px although the reveal fits; the " +
+                    "answers above it should have kept the room.",
+            )
+        }
+
     /** Nothing moves when the reveal already fits: the learner's place on the page is theirs. */
     @Test
     fun aRevealThatAlreadyFitsDoesNotScroll() = runSkikoComposeUiTest(size = CompactDisplay) {
@@ -910,4 +958,8 @@ private const val SlowDragMillis = 1_500L
 
 private const val Filler = "This sentence is here to make the block long enough to wrap over " +
     "several lines in a compact window, so the layout behaves like a real interview question."
+/** Two paragraphs: a reveal that fits a compact viewport with room to spare above it. */
+private const val ExplanationEnd = "That is where the explanation ends."
+private const val FittingExplanation = Filler + "\n\n" + ExplanationEnd
+
 private const val LongQuestionText = "Which of these statements about a long question holds? " + Filler

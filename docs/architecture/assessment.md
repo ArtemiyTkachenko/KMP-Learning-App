@@ -106,9 +106,12 @@ fold. When feedback first arrives for a question, `QuestionContent` scrolls the 
 that shows them: nothing if they already fit, their bottom to the viewport's bottom if they fit
 but are cut off, and the verdict to the top if the reveal is taller than the viewport. The
 distance comes from the reveal's final measured height and runs on `AppMotion.spatialSpec()`
-alongside the expansion, not after it. It happens once per question — a `rememberSaveable` flag
-inside `key(question.id)`, seeded as done when the screen appears with feedback already shown —
-and a learner's own drag or fling cancels it.
+alongside the expansion, not after it; because the marked rows above grow their outcome tags at
+the same time, it is re-measured from the live layout and corrected until the reveal stops
+moving. It happens once per question: a flag inside `key(question.id)` is seeded as done when the
+screen appears with feedback already shown, which is what keeps a restore or a return from
+scrolling again. The whole scroll, settling included, is one mutation at default priority, so a
+learner's own drag or fling cancels it.
 
 ## Completion
 

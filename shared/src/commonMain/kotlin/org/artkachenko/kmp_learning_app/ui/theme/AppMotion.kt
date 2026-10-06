@@ -79,14 +79,19 @@ internal object AppMotion {
      *
      * The app pairs a decelerating arrival with a faster accelerating departure, so what is coming
      * settles into place while what is going gets out of the way. That pairing was written out
-     * longhand wherever it was needed — the screen-state cross-fade and the compact navigation
+     * longhand wherever it was needed — the screen-state fade and the compact navigation
      * bar's slide each spelled out the same two `tween`s — which agreed only because nobody had
      * retuned one of them yet.
      *
      * Decelerating rather than emphasized because the content is arriving rather than travelling
      * through, and the full [StateChangeDurationMillis] because arriving is the half the learner
      * actually watches. Distinct from [revealSpec], which is longer: that is content appearing
-     * *underneath* something already being read, and this is one state replacing another.
+     * *underneath* something already being read, and this is one element showing or hiding — the
+     * compact navigation bar — over content that stays put.
+     *
+     * Not for one whole piece of content replacing another. The two halves here start together, so
+     * they overlap; a replacement holds its entrance back until the exit has finished, through
+     * [PhasedReplacement].
      */
     fun <T> arriveSpec(): FiniteAnimationSpec<T> =
         tween(durationMillis = StateChangeDurationMillis, easing = EmphasizedDecelerateEasing)
@@ -94,14 +99,19 @@ internal object AppMotion {
     /**
      * The departing half of the same pairing.
      *
-     * Half the duration by default, and accelerating: the outgoing state should be gone before the
-     * incoming one has finished arriving, or the two are briefly legible at once and the change
-     * reads as a dissolve rather than as a replacement. [durationMillis] is open because a departure
-     * that *moves* rather than fades needs the full duration to clear its own travel — the
-     * navigation bar sliding off the bottom is the one case.
+     * Half the duration by default, and accelerating, so what is going gets out of the way faster
+     * than what is coming settles. [durationMillis] is open because a departure that *moves*
+     * rather than fades needs the full duration to clear its own travel — the navigation bar
+     * sliding off the bottom is the one case.
      */
     fun <T> departSpec(durationMillis: Int = StateChangeDurationMillis / 2): FiniteAnimationSpec<T> =
         tween(durationMillis = durationMillis, easing = EmphasizedAccelerateEasing)
+
+    /** A navigation destination replacing another: area switches, pushes, and pops. */
+    val NavigationReplacement: PhasedReplacement = PhasedReplacement(NavigationDurationMillis)
+
+    /** A screen's loading, empty, error, or content state replacing another. */
+    val StateReplacement: PhasedReplacement = PhasedReplacement(StateChangeDurationMillis)
 
     /**
      * Content entering the screen, optionally after [delayMillis].
@@ -144,4 +154,49 @@ internal object AppMotion {
 
     private const val SpatialDamping = 0.8f
     private const val SpatialStiffness = 380.0f
+}
+
+/**
+ * One whole piece of content replacing another, in two phases: Material's fade-through.
+ *
+ * The outgoing content fades out over the first [exitMillis], and the incoming content does not
+ * start until that has finished — [enterDelayMillis] equals the exit window — then settles over the
+ * rest of [totalMillis]. A replacement whose two halves both start at zero is legible twice over:
+ * a decelerating fade-in is mostly opaque within its first few frames, while the departure is still
+ * on screen, and two full screens of text read through each other as a glitch rather than as one
+ * thing becoming another. Shortening the exit alone does not fix that; only holding the entrance
+ * back does.
+ *
+ * The cost is a brief moment, at the hand-over, where neither side is drawn and only the background
+ * shows. That moment is intended. It is what makes the change read as a clean replacement, and at
+ * these durations it is too short to read as a gap.
+ *
+ * The exit takes [ExitPercent] of the total, which is Material's own fade-through split.
+ */
+internal class PhasedReplacement(val totalMillis: Int) {
+
+    /** How long the outgoing content takes to fade out. */
+    val exitMillis: Int = totalMillis * ExitPercent / 100
+
+    /** When the incoming content starts: exactly when the outgoing content has gone. */
+    val enterDelayMillis: Int = exitMillis
+
+    /** How long the incoming content takes to fade in, filling the rest of [totalMillis]. */
+    val enterMillis: Int = totalMillis - enterDelayMillis
+
+    /** The outgoing half: accelerates away within the exit window. */
+    fun <T> exitSpec(): FiniteAnimationSpec<T> =
+        tween(durationMillis = exitMillis, easing = AppMotion.EmphasizedAccelerateEasing)
+
+    /** The incoming half: waits out the exit, then decelerates into place. */
+    fun <T> enterSpec(): FiniteAnimationSpec<T> =
+        tween(
+            durationMillis = enterMillis,
+            delayMillis = enterDelayMillis,
+            easing = AppMotion.EmphasizedDecelerateEasing,
+        )
+
+    private companion object {
+        const val ExitPercent = 35
+    }
 }

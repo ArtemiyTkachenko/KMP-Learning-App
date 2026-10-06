@@ -30,14 +30,17 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Cross-fades between a screen's loading, empty, error, and content states.
+ * Fades through between a screen's loading, empty, error, and content states.
  *
  * Every screen resolves its state in a `when` block, and each branch simply replaced the last, so
  * content appeared the instant a read finished — a spinner one frame and a full list the next. That
  * hard cut is what made a fast load look like a glitch and a slow one look broken.
  *
  * The fade is short and carries no movement. It exists to say that one thing became another, which
- * is the functional purpose E13-02 requires; sliding content in as well would be decoration.
+ * is the functional purpose E13-02 requires; sliding content in as well would be decoration. It is
+ * phased through [AppMotion.StateReplacement] — the incoming state starts only once the outgoing one
+ * has gone — because a loading message drawn over the content replacing it is two screens of text
+ * at once, not a transition.
  *
  * [contentKey] is what decides whether a transition runs, and it defaults to the state's class
  * rather than the state itself. Keying on the whole state would restart the fade on every data
@@ -56,7 +59,10 @@ internal fun <S : Any> ScreenStateTransition(
         targetState = state,
         modifier = modifier,
         contentKey = contentKey,
-        transitionSpec = { fadeIn(AppMotion.arriveSpec()) togetherWith fadeOut(AppMotion.departSpec()) },
+        transitionSpec = {
+            fadeIn(AppMotion.StateReplacement.enterSpec()) togetherWith
+                fadeOut(AppMotion.StateReplacement.exitSpec())
+        },
         label = "screenState",
         content = content,
     )

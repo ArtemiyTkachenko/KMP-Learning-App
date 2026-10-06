@@ -394,11 +394,30 @@ are marked where they appear.
   row that changed already owns its own `animateItem`. The transition covers the screen's **body**
   — a bar, and anything pinned under it such as a reading or progress meter, is chrome and stays
   outside, exactly as the top bar's own title does.
-- **Arriving and departing are a pair, and the pair is named.** `AppMotion.arriveSpec()`
-  decelerates over the full state-change duration; `AppMotion.departSpec()` accelerates over half
-  it, so the outgoing state is gone before the incoming one has finished arriving and the change
-  reads as a replacement rather than a dissolve. A departure that *moves* rather than fades passes
-  the full duration, because it has its own travel to clear.
+- **A replacement fades through: the old content leaves before the new content starts.** When one
+  whole piece of content replaces another — a screen state through `ScreenStateTransition`, an area
+  switch, a push or a pop — the timing is an `AppMotion.PhasedReplacement`, Material's
+  fade-through. The outgoing content fades out over the first 35% of the duration with accelerate
+  easing; the incoming content waits exactly that long, then fades in over the rest with decelerate
+  easing. The total is unchanged: `AppMotion.StateReplacement` splits `StateChangeDurationMillis`
+  (70ms out, then 130ms in) and `AppMotion.NavigationReplacement` splits `NavigationDurationMillis`
+  (87ms out, then 163ms in). Starting both halves together is what this rule replaced: a
+  decelerating fade-in is mostly opaque within its first few frames, so two full screens of text
+  were legible on top of each other — "Preparing your assessment…" over the results it was
+  replacing. The brief moment at the hand-over where only the background shows is intended; it is
+  what reads as a clean replacement, and at these durations it does not read as a gap.
+- **A push or pop is the same phasing plus a slide: Material's shared axis.** The 1/6-width slide
+  runs the full navigation duration on emphasized easing, and only the fades are phased. Predictive
+  back is the exception: the gesture drives its progress, and phased fades would leave nothing but
+  background under a finger held partway through the swipe, so it keeps overlapping fades — there
+  the overlap is the preview of where Back leads.
+- **Something showing or hiding over content that stays is a pair, and the pair is named.**
+  `AppMotion.arriveSpec()` decelerates over the full state-change duration;
+  `AppMotion.departSpec()` accelerates over half it, so what is going gets out of the way faster
+  than what is coming settles. The two halves overlap, which is right for one element appearing over
+  content that stays put — the compact navigation bar — and wrong for a replacement, which fades
+  through instead. A departure that *moves* rather than fades passes the full duration, because it
+  has its own travel to clear.
 - **Stagger a reveal in the animation spec, not in a coroutine.** When several pieces of
   one reveal should arrive in order, give one container the layout expansion and give the
   children delayed specs through `AppMotion.revealSpec(delayMillis)` and

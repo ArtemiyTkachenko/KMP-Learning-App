@@ -21,6 +21,10 @@ import androidx.navigation3.runtime.rememberNavBackStack
  *
  * Back leaves the current area's detail first, then returns to the start area, and only then
  * reports that it did not consume the event so the host can close the app.
+ *
+ * Results are the exception to "exactly where it was left" (see [AppRoute.isAssessmentResult]): a
+ * finished result never resurfaces once the learner has moved past it, either by completing another
+ * attempt on top of it or by leaving its area.
  */
 @Stable
 internal class AppNavigator(
@@ -52,12 +56,18 @@ internal class AppNavigator(
      * Selecting the area already shown returns it to its root, which is what re-tapping a
      * navigation item conventionally does. Selecting another area switches to it, leaving that
      * area exactly where it was left.
+     *
+     * Except when a result is on top of the area being left: that area is reset to its root, so
+     * returning to it opens its home screen, which already shows the latest record, rather than an
+     * old score the learner has moved past. Anything else on top — an unfinished attempt, a lesson,
+     * a builder — is kept, because it is still work in progress.
      */
     fun select(destination: AppTopLevelDestination) {
         if (destination == area) {
             popToRoot()
             return
         }
+        if (currentRoute?.isAssessmentResult() == true) popToRoot()
         area = destination
     }
 
@@ -68,6 +78,25 @@ internal class AppNavigator(
     /** Replaces the current entry when the current workflow advances without preserving it. */
     fun replaceTop(route: AppRoute) {
         backStack.replaceTopWith(route)
+    }
+
+    /**
+     * Replaces the completed attempt on top with its [result], collapsing every result directly
+     * beneath it.
+     *
+     * A retake or mistakes practice is pushed on top of the result it started from, so that Back
+     * during the unfinished attempt returns there. Once the attempt completes, that source result is
+     * stale: keeping it would let Back walk through a pile of older scores. The collapse stops at the
+     * first entry that is not a result, so whatever the run was started from — the area root, a
+     * builder, a Topic — stays.
+     */
+    fun completeAttempt(result: AppRoute) {
+        val stack = backStack
+        if (stack.size > 1) stack.removeAt(stack.lastIndex)
+        while (stack.size > 1 && (stack.last() as? AppRoute)?.isAssessmentResult() == true) {
+            stack.removeAt(stack.lastIndex)
+        }
+        stack.add(result)
     }
 
     fun popBack(): Boolean {

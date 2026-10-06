@@ -257,6 +257,31 @@ internal class MixedInterviewJourneyIntegrationTest {
                     scrollToText("Retake interview")
                     onNodeWithTag(MixedResultPracticeAgainTag)
                         .assertIsEnabled()
+
+                    // Practising the two mistakes is pushed on top of the source result, like the
+                    // retake was. Completing it collapses that source result, so Back from the new
+                    // result lands on the Interview home, not on the older 2 / 4.
+                    scrollToText("Practice 2 mistakes")
+                    onNodeWithText("Practice 2 mistakes").performClick()
+                    // Focused practice reveals each verdict before moving on; Next on the last
+                    // question completes the run.
+                    waitForText("Question 1 of 2")
+                    answer(listOf("A"))
+                    onNodeWithText("Next question").performClick()
+                    waitForText("Question 2 of 2")
+                    answer(listOf("A"))
+                    onNodeWithText("Next question").performClick()
+                    waitForText("1 / 2")
+                    onNodeWithText("1 / 2").assertIsDisplayed()
+                    assertEquals(
+                        AssessmentStatus.COMPLETED,
+                        components.repository.getById(MistakesAttemptId)?.status,
+                    )
+
+                    onNodeWithContentDescription("Back").performClick()
+                    waitForText("Start Mixed Interview")
+                    onNodeWithText("Start Mixed Interview").assertIsDisplayed()
+                    onNodeWithText("2 / 4").assertDoesNotExist()
                 }
             } finally {
                 stopKoin()
@@ -295,7 +320,7 @@ internal class MixedInterviewJourneyIntegrationTest {
             completedHistory = { assessmentRepository.getCompletedAttempts() },
             randomize = { it },
         )
-        val availableIds = listOf(OriginalAttemptId, RetakeAttemptId).iterator()
+        val availableIds = listOf(OriginalAttemptId, RetakeAttemptId, MistakesAttemptId).iterator()
         val createdAttemptIds = mutableListOf<String>()
         val engine = AssessmentEngine(
             questionSelector = selector,
@@ -438,6 +463,7 @@ internal class MixedInterviewJourneyIntegrationTest {
 
 private const val OriginalAttemptId = "mixed-original"
 private const val RetakeAttemptId = "mixed-retake"
+private const val MistakesAttemptId = "focused-mistakes"
 private const val KotlinTopicId = "topic_kotlin"
 private const val ComposeTopicId = "topic_compose"
 private const val CoroutinesTopicId = "topic_coroutines"

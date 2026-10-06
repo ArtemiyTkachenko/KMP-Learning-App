@@ -266,7 +266,7 @@ private fun AppShell(
                             attemptId = route.attemptId,
                             onBack = { popBack() },
                             onCompleted = { attemptId ->
-                                navigator.replaceTop(AppRoute.MixedInterviewResult(attemptId))
+                                navigator.completeAttempt(AppRoute.MixedInterviewResult(attemptId))
                             },
                         )
                     }
@@ -399,7 +399,7 @@ private fun AppShell(
                             attemptId = route.attemptId,
                             onBack = { popBack() },
                             onCompleted = { attemptId ->
-                                navigator.replaceTop(AppRoute.FocusedPracticeResult(attemptId))
+                                navigator.completeAttempt(AppRoute.FocusedPracticeResult(attemptId))
                             },
                         )
                     }

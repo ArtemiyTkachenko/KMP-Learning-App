@@ -697,32 +697,30 @@ internal class AppNavigationTest {
     }
 
     @Test
-    fun mixedRetakePushesStableAttemptAndCompletionPreservesSourceResult() {
-        val backStack = mutableListOf<AppRoute>(
-            AppRoute.Topics,
-            AppRoute.MixedInterviewResult("source"),
+    fun mixedRetakeKeepsSourceResultUntilCompletionReplacesIt() {
+        val navigator = AppNavigator(
+            AppTopLevelDestination.entries.associateWith { mutableListOf<NavKey>(it.route) },
         )
+        navigator.select(AppTopLevelDestination.INTERVIEW)
+        navigator.push(AppRoute.MixedInterviewResult("source"))
 
-        backStack.add(AppRoute.MixedInterviewAttempt("retake"))
+        navigator.pushMixedAttempt("retake")
 
+        // While the retake is unfinished, Back still has the source result to return to.
         assertEquals(
-            listOf(
-                AppRoute.Topics,
+            listOf<NavKey>(
+                AppRoute.Interview,
                 AppRoute.MixedInterviewResult("source"),
                 AppRoute.MixedInterviewAttempt("retake"),
             ),
-            backStack,
+            navigator.backStack,
         )
 
-        backStack.replaceTopWith(AppRoute.MixedInterviewResult("retake"))
+        navigator.completeAttempt(AppRoute.MixedInterviewResult("retake"))
 
         assertEquals(
-            listOf(
-                AppRoute.Topics,
-                AppRoute.MixedInterviewResult("source"),
-                AppRoute.MixedInterviewResult("retake"),
-            ),
-            backStack,
+            listOf<NavKey>(AppRoute.Interview, AppRoute.MixedInterviewResult("retake")),
+            navigator.backStack,
         )
     }
 

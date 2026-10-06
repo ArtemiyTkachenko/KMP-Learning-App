@@ -12,6 +12,11 @@
     <string name="destination_interview">Interview</string>
     <string name="destination_progress">Progress</string>
     <string name="destination_mistakes">Mistakes</string>
+    <string name="navigation_badge_overflow">99+</string>
+    <plurals name="navigation_mistakes_badge_description">
+        <item quantity="one">%1$d unresolved mistake</item>
+        <item quantity="other">%1$d unresolved mistakes</item>
+    </plurals>
     <string name="topic_browser_subtitle">Pick a topic to study or practise.</string>
     <string name="topic_browser_title">Learn</string>
     <string name="topic_browser_loading">Loading topics</string>

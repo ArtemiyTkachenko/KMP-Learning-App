@@ -288,6 +288,19 @@ are marked where they appear.
 - **Status is stated in words**, with colour and icons as a second channel, never the only
   one. `StatusBadge` is the app's pill; Material's `Badge` is reserved for the navigation
   bar count.
+- **The navigation count is a work queue, not an error.** The one badged count is the
+  unresolved mistake queue, which persists across every screen and is usually non-zero, so
+  Material's default `error` red read as the app reporting a fault. `NavigationCountBadge`
+  in `AppNavigationBar.kt` passes `secondary` / `onSecondary` instead. `secondaryContainer`
+  was the obvious neutral but is the selection pill's own fill, so a badge in it vanishes
+  when Mistakes is selected, and in the light scheme it is barely apart from the bar's
+  `surfaceContainer` either. The drawn number caps at "99+" (`navigation_badge_overflow`)
+  so a long queue cannot crowd the 24dp glyph, and the compact bar pins the badge's leading
+  edge so a wider count grows away from the glyph, as `BadgedBox` does on the rail; the
+  spoken label is unaffected and always
+  states the real count in words (`navigation_mistakes_badge_description`, "21 unresolved
+  mistakes"). Its symbol follows the same reasoning: Mistakes uses Material `replay` ("go
+  back over these"), and `AppIcons.Warning` stays reserved for weak-area markers.
 - **A badge must add something the container does not already say.** Under a heading that
   reads "Weak areas", a "Weak area" badge on every card repeats the heading once per row;
   on a screen titled by its count of unresolved mistakes, an "Incorrect" badge on every
@@ -430,6 +443,7 @@ than drifted into.
 | The Lesson reading hairline is a hand-configured `LinearProgressIndicator`, not `ProgressMeter` | It belongs to the toolbar rather than to the reading column: 3dp, square caps, no gap, full-bleed, and unanimated because it tracks a finger rather than jumping between figures. `ProgressMeter`'s rounded, inset, animated treatment would read as a loose component that had drifted under the bar. |
 | The Lesson outline's current-section mark is a hand-drawn 3dp `primary` capsule, not a Material list container | Material's list and rail treatments for "active" are filled containers, which is the weight this app reserves for area navigation. The outline is page-level, so it takes the tab row's `ActiveIndicatorHeight` rule rotated. It is drawn by the column with `drawBehind` rather than composed per entry, so it can move as one mark, adds no node to the semantics tree, and — unlike the `FontWeight` switch it replaced — cannot re-wrap a label and shift the list under the reader. |
 | The Topic tab row is a `PrimaryScrollableTabRow` with no edge padding and a measured shared minimum tab width, not Material's 52dp and 90dp | The defaults need 374dp for three tabs, more than a compact pane, so the row would scroll at every type size and open on a gap. The shared minimum (`sharedMinimumTabWidth`) is the largest that does not make the row wider than the window and never below the 90dp: equal cells at an ordinary type size, content-sized ones when a label outgrows its share, and scrolling only when the labels do not fit. It is a floor measured from the labels, not a font-scale threshold. |
+| The navigation badge uses `secondary` / `onSecondary` rather than Material's default `error` / `onError` | It counts a learner-owned backlog, not a failure or an unread notification; see "The navigation count is a work queue" above. |
 | Compact area navigation uses an opaque floating container, 24dp icons, and a whole-destination selected pill | The standard full-width container reserved viewport space, while `NavigationBarItem` imposed an icon-only indicator and excess internal layout. The custom 68dp surface keeps Material selection semantics and 48dp targets while centring each icon-label pair in one fixed 60dp-high destination. The container is opaque because translucency let list text scrolling beneath it compete with the navigation labels. |
 
 ## Empty and early states

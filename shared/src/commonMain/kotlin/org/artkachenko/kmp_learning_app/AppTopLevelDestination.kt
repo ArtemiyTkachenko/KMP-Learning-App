@@ -21,10 +21,10 @@ internal enum class AppTopLevelDestination(
     val label: StringResource,
     val icon: ImageVector,
 ) {
-    TOPICS(AppRoute.Topics, Res.string.destination_topics, AppIcons.Topics),
+    TOPICS(AppRoute.Topics, Res.string.destination_topics, AppIcons.Learn),
     INTERVIEW(AppRoute.Interview, Res.string.destination_interview, AppIcons.Interview),
     PROGRESS(AppRoute.Progress, Res.string.destination_progress, AppIcons.Insights),
-    MISTAKES(AppRoute.MistakeReview, Res.string.destination_mistakes, AppIcons.Warning),
+    MISTAKES(AppRoute.MistakeReview, Res.string.destination_mistakes, AppIcons.Replay),
     ;
 
     internal companion object {

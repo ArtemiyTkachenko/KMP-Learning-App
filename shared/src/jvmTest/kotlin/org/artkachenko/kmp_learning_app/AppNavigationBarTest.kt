@@ -207,7 +207,7 @@ internal class AppNavigationBarTest {
         waitForIdle()
 
         assertEquals(iconWithoutBadge, navigationIconBounds(AppTopLevelDestination.MISTAKES))
-        onNodeWithText("7", useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithTag(AppNavigationBadgeTag, useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test
@@ -347,13 +347,116 @@ internal class AppNavigationBarTest {
             }
         }
 
-        onNodeWithText("7", useUnmergedTree = true).assertIsDisplayed()
+        onNodeWithTag(AppNavigationBadgeTag, useUnmergedTree = true).assertIsDisplayed()
         // Drawn is not announced: the count must also reach the Mistakes target's merged node.
-        onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.MISTAKES)).assert(hasText("7"))
+        onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.MISTAKES))
+            .assert(hasText(SevenUnresolved))
         AppTopLevelDestination.entries.forEach {
             onNodeWithTag(appNavigationBarItemTag(it)).performClick()
         }
         assertEquals(AppTopLevelDestination.entries.toList(), selected)
+    }
+
+    /**
+     * The drawn count stops growing at two digits so a long queue cannot crowd the 24dp glyph. The
+     * boundary is the behaviour: 99 is still exact, 100 is the first count drawn as "99+".
+     */
+    @Test
+    fun badgeDrawsExactCountsUpToNinetyNineAndCapsAbove() = runComposeUiTest {
+        val labels = mutableMapOf<Int, String>()
+        setContent {
+            listOf(1, 99, 100, 120).forEach { labels[it] = navigationBadgeLabel(it) }
+        }
+        waitForIdle()
+
+        assertEquals(mapOf(1 to "1", 99 to "99", 100 to "99+", 120 to "99+"), labels)
+    }
+
+    /**
+     * The icon box is 24dp, and measured inside it "99+" was clipped to "99" and pushed back across
+     * the glyph. A wider count must keep the single-digit badge's leading edge and grow past it.
+     */
+    @Test
+    fun aCappedBadgeKeepsItsLeadingEdgeAndIsNotSqueezedToTheIcon() = runComposeUiTest {
+        var badges by mutableStateOf(mapOf(AppTopLevelDestination.MISTAKES to 7))
+        setContent {
+            AppTheme {
+                AppNavigationBar(
+                    selected = AppTopLevelDestination.TOPICS,
+                    onSelect = {},
+                    badges = badges,
+                    modifier = Modifier.size(360.dp, AppLayout.CompactNavigationHeight),
+                )
+            }
+        }
+
+        val singleDigit = badgeBounds()
+        runOnIdle { badges = mapOf(AppTopLevelDestination.MISTAKES to 120) }
+        waitForIdle()
+        val capped = badgeBounds()
+
+        assertEquals(singleDigit.left, capped.left, LayoutTolerancePx)
+        assertEquals(singleDigit.top, capped.top, LayoutTolerancePx)
+        assertTrue(
+            capped.width > navigationIconBounds(AppTopLevelDestination.MISTAKES).width,
+            "the 99+ badge was squeezed to the icon's width.",
+        )
+    }
+
+    @Test
+    fun anEmptyQueueDrawsNoBadgeAndAnnouncesNoCount() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                AppNavigationBar(
+                    selected = AppTopLevelDestination.TOPICS,
+                    onSelect = {},
+                    badges = mapOf(AppTopLevelDestination.MISTAKES to 0),
+                )
+            }
+        }
+
+        onNodeWithTag(AppNavigationBadgeTag, useUnmergedTree = true).assertDoesNotExist()
+        onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.MISTAKES))
+            .assert(hasText("unresolved", substring = true).not())
+    }
+
+    /**
+     * The visible cap is a drawing concern only. A screen reader hears the real count in words —
+     * "120 unresolved mistakes", never "99+" or a bare number — on the compact bar and on
+     * the rail, and the singular form is used for one.
+     */
+    @Test
+    fun theMistakesItemAnnouncesItsRealCountInWords() = runComposeUiTest {
+        var badges by mutableStateOf(mapOf(AppTopLevelDestination.MISTAKES to 120))
+        var width by mutableStateOf(400.dp)
+        setContent {
+            AppTheme {
+                Box(Modifier.size(width, 800.dp)) {
+                    AppNavigationScaffold(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        showsNavigation = true,
+                        badges = badges,
+                    ) { }
+                }
+            }
+        }
+
+        listOf(400.dp, AppNavigationRailBreakpoint).forEach { navigationWidth ->
+            runOnIdle {
+                width = navigationWidth
+                badges = mapOf(AppTopLevelDestination.MISTAKES to 120)
+            }
+            waitForIdle()
+            val mistakes = onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.MISTAKES))
+            mistakes.assert(hasText("120 unresolved mistakes"))
+            mistakes.assert(hasText("99+", substring = true).not())
+            mistakes.assert(hasText("120").not())
+
+            runOnIdle { badges = mapOf(AppTopLevelDestination.MISTAKES to 1) }
+            waitForIdle()
+            mistakes.assert(hasText("1 unresolved mistake"))
+        }
     }
 
     /**
@@ -391,9 +494,9 @@ internal class AppNavigationBarTest {
             // screen reader announces with it, and to no other. Material's rail item clears its
             // icon's semantics, so a drawn badge alone would not satisfy this.
             if (destination == AppTopLevelDestination.MISTAKES) {
-                item.assert(hasText("7"))
+                item.assert(hasText(SevenUnresolved))
             } else {
-                item.assert(hasText("7").not())
+                item.assert(hasText(SevenUnresolved).not())
             }
             item.performClick()
         }
@@ -465,6 +568,10 @@ internal class AppNavigationBarTest {
         appNavigationBarIconTag(destination),
         useUnmergedTree = true,
     ).fetchSemanticsNode().boundsInRoot
+
+    private fun androidx.compose.ui.test.ComposeUiTest.badgeBounds(): Rect =
+        onNodeWithTag(AppNavigationBadgeTag, useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
 
     private fun androidx.compose.ui.test.ComposeUiTest.navigationLabelBounds(
         destination: AppTopLevelDestination,
@@ -556,6 +663,7 @@ private val AppTopLevelDestination.labelText: String
         AppTopLevelDestination.MISTAKES -> "Mistakes"
     }
 
+private const val SevenUnresolved = "7 unresolved mistakes"
 private const val ScaffoldContentTag = "scaffold_content"
 private const val SnackbarMessage = "Copied"
 private const val MinimumTouchTargetPx = 48f

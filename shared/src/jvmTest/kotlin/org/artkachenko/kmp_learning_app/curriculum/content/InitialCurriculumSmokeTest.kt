@@ -30,14 +30,14 @@ internal class InitialCurriculumSmokeTest {
         assertEquals(361, initialCurriculum.subtopics.size)
         // ACTIVE and DEPRECATED are the only statuses, so together they are the total.
         assertEquals(
-            439,
+            447,
             initialCurriculum.questions.count { it.status == ContentStatus.ACTIVE },
         )
         assertEquals(
             41,
             initialCurriculum.questions.count { it.status == ContentStatus.DEPRECATED },
         )
-        assertEquals(433, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
+        assertEquals(441, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
         assertEquals(47, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.MULTIPLE })
     }
 
@@ -47,7 +47,7 @@ internal class InitialCurriculumSmokeTest {
 
         // The all-status distribution is the sum of these two and is not pinned separately.
         assertEquals(
-            LevelDistribution(foundation = 204, applied = 207, advanced = 28),
+            LevelDistribution(foundation = 204, applied = 215, advanced = 28),
             initialCurriculum.questions
                 .filter { it.status == ContentStatus.ACTIVE }
                 .levelDistribution(),
@@ -63,7 +63,7 @@ internal class InitialCurriculumSmokeTest {
                 "android_platform" to LevelDistribution(13, 4, 0),
                 "lifecycle_navigation" to LevelDistribution(19, 8, 0),
                 "android_ui" to LevelDistribution(24, 26, 5),
-                "kotlin_language" to LevelDistribution(25, 2, 0),
+                "kotlin_language" to LevelDistribution(25, 10, 0),
                 "async_reactive" to LevelDistribution(23, 29, 10),
                 "architecture" to LevelDistribution(10, 32, 2),
                 "dependency_injection" to LevelDistribution(18, 24, 0),
@@ -97,7 +97,7 @@ internal class InitialCurriculumSmokeTest {
                 "android_platform" to 16,
                 "lifecycle_navigation" to 23,
                 "android_ui" to 49,
-                "kotlin_language" to 25,
+                "kotlin_language" to 33,
                 "async_reactive" to 57,
                 "architecture" to 40,
                 "dependency_injection" to 38,

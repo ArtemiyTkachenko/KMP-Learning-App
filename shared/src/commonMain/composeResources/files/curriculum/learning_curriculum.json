@@ -21573,6 +21573,1406 @@
       ]
     },
     {
+      "id": "unit_kotlin_types_and_callables",
+      "topicId": "kotlin_language",
+      "title": "Types and Callable Semantics",
+      "summary": "Nullable types make absence explicit, while control-flow checks establish which operations are safe at a particular point. Function values, receiver lambdas and extensions give APIs different ways to accept behavior and expose callable operations.",
+      "lessons": [
+        {
+          "id": "lesson_kotlin_nullability_and_smart_casts",
+          "title": "Nullability, Smart Casts and Type Refinement",
+          "primarySubtopicIds": [
+            "kotlin_nullability"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_variables",
+            "kotlin_properties",
+            "kotlin_java_interop"
+          ],
+          "summary": "Nullable types describe possible absence. Control-flow checks refine what is known about a value, provided the compiler can prove that the checked value remains stable until use.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A profile can have a display name or have no name yet. A parameter declared as `String` accepts a string; `String?` also accepts `null`. The question mark changes the set of values the type permits. Kotlin rejects passing a nullable value to a non-null parameter until the code accounts for the absent case.\n\nThis makes absence part of an API contract. A function returning `String?` asks its caller to decide what missing data means. Returning an empty string instead would combine two potentially different situations: a present but empty name, and no name."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A direct member access such as `name.length` needs a non-null receiver. One way to establish that is to check the value. Within the branch where a stable value is known to be non-null, the compiler permits the access without an explicit cast. This refinement is a **smart cast**: the declared type remains nullable, but the compiler knows more at that point in the control flow."
+                },
+                {
+                  "type": "code",
+                  "code": "fun displayNameLabel(name: String?): String {\n    if (name == null) return \"Name not provided\"\n    return \"${name.trim()} (${name.length} characters)\"\n}\n\nfun initialLabel(name: String?): String {\n    return name?.trim()?.firstOrNull()?.toString() ?: \"?\"\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In `displayNameLabel`, the null branch returns. Every path reaching the next line therefore has a non-null `name`. The compiler follows that control flow; the check does not have to sit immediately around the access in an `if` block.\n\n`initialLabel` handles absence within an expression. A safe call, `?.`, evaluates its receiver and calls the member only when that receiver is non-null. Otherwise its result is null. Chaining safe calls lets either a missing name or a missing first character produce null. The Elvis operator, `?:`, then supplies `\"?\"` only when the expression on its left is null. It does not treat an empty string or zero as absent."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The right side of Elvis can also be `return` or `throw`. For example, `val name = suppliedName ?: return` ends the operation when no name exists and leaves a non-null local value for the remaining code. Choosing a fallback, skipping work, or reporting an error expresses three different policies; the nullable type alone does not choose among them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`!!` expresses a different policy: continue on the assumption that the value is non-null, and throw a null-pointer exception if it is null. It does not supply evidence that the assumption is true. It can express an externally established invariant, but scattered assertions make failures depend on which access happens first. Handling absence where its meaning is known usually gives a clearer failure or fallback."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Type refinement also works for facts other than nullability. A value declared as `Any?` may hold a string, a number, another object, or null. An `is String` check tests its runtime type; inside a successful branch, string members become available. A negative `!is` check followed by an early return establishes the same fact on the remaining path."
+                },
+                {
+                  "type": "code",
+                  "code": "fun importedTitle(raw: Any?): String? {\n    if (raw !is String) return null\n    val title = raw.trim()\n    return if (title.isEmpty()) null else title\n}\n\nfun optionalTitle(raw: Any?): String? {\n    val title = raw as? String ?: return null\n    return title.trim().takeIf { it.isNotEmpty() }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both functions treat a non-string input as an expected branch. `as? String` returns a nullable string: the original string when the cast succeeds, or null when it cannot. An ordinary `as String` instead asserts the required type and throws if the cast fails. Casting changes how the value can be used; it does not convert a number into its textual representation. The `takeIf` call here keeps the trimmed title when the predicate is true and returns null otherwise."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Checking a property and then reading it again involves two accesses. A mutable property can change between them. A `val` property can also run a custom getter on every read, or be overridden when it is open. The second access may therefore return a different value even though the first access passed the check. The compiler cannot smart-cast such a property merely because an `if` condition just tested it."
+                },
+                {
+                  "type": "code",
+                  "code": "class ProfileStore {\n    var displayName: String? = null\n}\n\nfun storedNameLabel(store: ProfileStore): String {\n    // Rejected: displayName is a mutable property.\n    // if (store.displayName != null) return store.displayName.trim()\n\n    val name = store.displayName ?: return \"Name not provided\"\n    return name.trim()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The local `name` holds the result of one property read. It cannot be reassigned, so the null check applies to the same reference used by `trim()`. If the store changes afterwards, this function still formats the name it read. This is a local snapshot of the reference, not a lock on the store or a promise that the store remains unchanged.\n\nA plain non-delegated local `val` is easy to refine. A local `var` can also smart-cast when the compiler can prove it is not changed incompatibly before use. Mutability alone does not forbid all smart casts; the available proof determines whether they are safe."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Capture can weaken that proof. Suppose a local nullable `var` is captured by a callback that assigns null and is passed to an ordinary API that may retain it. A null check before a later access cannot establish that the callback will not change the variable. Keeping the checked value in a separate local `val` removes reassignment of that local from the argument. Capture itself is not a blanket prohibition: a lambda that only reads a stable value differs from one that can modify it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a `val` property without a custom getter or openness, visibility and module boundaries also matter. Kotlin permits property smart casts when the property is private or internal, or when the check is in the module declaring it. A public property supplied by another module does not have the same stability guarantee for compiler analysis. A local snapshot remains useful when the source property cannot be refined."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Nullability can appear at more than one level of a container. `List<String>?` permits an absent list, but a present list has non-null string elements. `List<String?>` requires a list but permits absent elements. `List<String?>?` permits both. Checking the list for null proves nothing about each element."
+                },
+                {
+                  "type": "code",
+                  "code": "fun joinedNames(names: List<String?>?): String {\n    val supplied = names ?: return \"No names supplied\"\n    val present: List<String> = supplied.filterNotNull()\n    return present.joinToString()\n}\n\nfun <T> firstOrMissing(values: List<T>): T? = values.firstOrNull()",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`filterNotNull()` creates a list containing the non-null elements; it does not modify `supplied`. The generic function lets the caller choose `T`, including a nullable element type. If it is called with `List<String?>`, a null result can mean either an empty list or a null first element. When those outcomes need different handling, a single nullable result does not carry enough information. The API needs a representation that distinguishes presence from the value stored."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A smart cast combines two kinds of information: the branch establishes a fact about a value, and stability lets that fact remain valid until use. A null check cannot compensate for an unstable getter. A stable reference cannot establish the type of unvalidated input. Separating those questions explains both accepted and rejected code without treating smart casts as special syntax for nullable strings."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Optionality can also be resolved at an API boundary. If sending a message requires a recipient address, validating the nullable address before calling a function that takes `String` keeps the absence branch outside the sending operation. The non-null parameter then communicates that the operation requires an address. It still does not prove that the string is a valid address; nullability and domain validation establish different facts."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Java APIs without usable nullability information expose **platform types**, for which Kotlin permits choices it would reject for a Kotlin-declared nullable value. A Java result can therefore cause a runtime failure despite compiling as a non-null Kotlin value. External input still needs validation, and platform values need an explicit policy at the boundary. **Kotlin at the Java/JVM Boundary** explains those interop checks in detail."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "A smart cast requires evidence about both the value’s type and its stability until use. A local snapshot can make one read stable; it does not validate the object’s contents or protect shared mutable state."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_kotlin_functions_lambdas_and_extensions",
+            "lesson_kotlin_properties_and_delegation",
+            "lesson_kotlin_java_jvm_boundary"
+          ],
+          "sources": [
+            {
+              "title": "Null safety",
+              "url": "https://kotlinlang.org/docs/null-safety.html"
+            },
+            {
+              "title": "Type checks and casts",
+              "url": "https://kotlinlang.org/docs/typecasts.html"
+            },
+            {
+              "title": "Calling Java from Kotlin",
+              "url": "https://kotlinlang.org/docs/java-interop.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_kotlin_functions_lambdas_and_extensions",
+          "title": "Functions, Lambdas, Receivers and Extensions",
+          "primarySubtopicIds": [
+            "kotlin_functions",
+            "kotlin_lambdas",
+            "kotlin_extension_functions"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_scope_functions",
+            "kotlin_nullability"
+          ],
+          "summary": "Function values let an API accept behavior. Receiver lambdas make one object implicit inside a block; extensions provide receiver-call syntax while selection follows the receiver’s compile-time type.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A search component can own the work of finding a selected item while letting its caller decide what selection does. Passing a function separates that varying behavior from the component’s fixed operation. The function type `(String) -> Unit` says that the supplied behavior accepts one string and produces no meaningful result. `(String) -> Boolean` instead requires a Boolean result, which the receiving API can use to make a decision."
+                },
+                {
+                  "type": "code",
+                  "code": "class SelectionController {\n    private var listener: ((String) -> Unit)? = null\n\n    fun setOnSelected(listener: (String) -> Unit) {\n        this.listener = listener\n    }\n\n    fun select(itemId: String) {\n        listener?.invoke(itemId)\n    }\n\n    fun clearListener() {\n        listener = null\n    }\n}\n\nfun reportSelection(itemId: String) {\n    println(\"Selected $itemId\")\n}\n\nfun installReporter(controller: SelectionController) {\n    val report: (String) -> Unit = ::reportSelection\n    controller.setOnSelected(report)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The controller stores a function value and invokes it when `select` is called. Its nullable property represents the absence of a listener; the safe call skips invocation in that case. Parentheses around `((String) -> Unit)?` make the function itself nullable. `(String?) -> Unit` would instead describe a present function that accepts a nullable string.\n\n`::reportSelection` refers to an existing function. A lambda such as `{ itemId -> println(itemId) }` constructs behavior at the call site. Both can satisfy the same function type. A **higher-order function** accepts or returns function values; `setOnSelected` is one because its parameter is a function."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Named functions can be top-level, members of a class, or local to another function. Their placement determines the state and names they can use. A top-level function needs no containing instance. A member can use its instance’s state. A local function can use variables in the surrounding function. A bound member reference such as `controller::select` keeps the particular controller attached to the function value."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In a lambda, parameters precede `->`, and the body follows it. Parameter types can be inferred from the expected function type. A single inferred parameter can use the implicit name `it`; naming it `itemId` often makes a longer body easier to read. For a result-producing lambda, the final expression supplies the result. If the last parameter of a function is a function, a lambda argument can be written outside the call’s parentheses. That trailing-lambda syntax does not change when the API invokes the block."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A lambda can use variables from the surrounding scope. Those accessible values form its **closure**. Capturing a mutable local variable does not freeze its value at the line where the lambda is created. The lambda observes that variable when its body executes."
+                },
+                {
+                  "type": "code",
+                  "code": "fun selectionCounter(): () -> Int {\n    var count = 0\n    return {\n        count += 1\n        count\n    }\n}\n\nfun countedSelection(): Pair<Int, Int> {\n    val nextCount = selectionCounter()\n    return nextCount() to nextCount()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`selectionCounter` returns before either invocation, yet the returned function still has access to `count`. Calling the same function twice produces 1 and then 2; calling `selectionCounter` again creates separate captured state. Capturing a `val` prevents reassignment of that reference, but an object reached through it may still be mutable. The function type alone says nothing about purity or whether repeated calls return the same value."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An API that transforms an item benefits from explicit input and output: `(Item) -> Label` puts the value being transformed and the result in the signature. An API that configures one object can instead make that object available as an implicit receiver. `SearchOptions.() -> Unit` means the block runs with a `SearchOptions` receiver, so its members can be accessed through `this`, often without writing the qualifier."
+                },
+                {
+                  "type": "code",
+                  "code": "class SearchOptions {\n    var query: String = \"\"\n    var limit: Int = 20\n}\n\nfun searchOptions(\n    limit: Int = 20,\n    configure: SearchOptions.() -> Unit,\n): SearchOptions {\n    val options = SearchOptions()\n    options.limit = limit\n    options.configure()\n    require(options.limit > 0)\n    return options\n}\n\nfun recentSearchOptions(): SearchOptions = searchOptions(limit = 10) {\n    query = \"recent\"\n}\n\nfun explicitSearchOptions(\n    configure: (SearchOptions) -> Unit,\n): SearchOptions {\n    val options = SearchOptions()\n    configure(options)\n    require(options.limit > 0)\n    return options\n}\n\nfun archivedSearchOptions(): SearchOptions = explicitSearchOptions { options ->\n    options.query = \"archived\"\n    options.limit = 5\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The two blocks receive access to the same kind of object. In the receiver version, `query` resolves to the builder’s property. In the parameter version, `options.query` makes the object explicit. Neither notation starts a thread, makes access thread-safe, or causes inlining. `searchOptions` chooses to invoke its block once before returning; the receiver function type itself does not promise that timing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An extension adds callable syntax around an object without adding a member to its class. The receiver’s compile-time type determines which applicable extension is selected. Its runtime subtype does not override that selection. Overridable member functions use a different mechanism: the object’s runtime type determines the override that executes."
+                },
+                {
+                  "type": "code",
+                  "code": "open class SearchResult {\n    open fun description(): String = \"Result\"\n}\n\nclass DownloadedResult : SearchResult() {\n    override fun description(): String = \"Downloaded result\"\n}\n\nfun SearchResult.badge(): String = \"General\"\nfun DownloadedResult.badge(): String = \"Offline\"\n\n// An applicable member takes precedence over this extension.\nfun SearchResult.description(): String = \"Extension description\"\n\nfun resultLabels(): List<String> {\n    val result: SearchResult = DownloadedResult()\n    return listOf(result.badge(), result.description())\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The returned labels are `\"General\"` and `\"Downloaded result\"`. `result.badge()` selects the extension for `SearchResult` because that is the expression’s compile-time type. `result.description()` selects the member rather than the same-signature extension, then invokes the subtype’s override. A member wins when it is applicable to the supplied arguments; an extension with different parameters can still provide an overload."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Receiver syntax fits this small configuration block because most expressions concern one object. An explicit parameter often reads better when a transformation combines several inputs, or when code needs to distinguish the configured object from an enclosing screen or controller. Receiver and ordinary function values can be adapted between the corresponding types; the difference at the call site is which object becomes implicit, not an additional capability granted to it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The default `limit` keeps the common call short, and the named argument `limit = 10` explains an exceptional choice without relying on parameter position. These are API decisions: a useful default represents a meaningful policy, while an arbitrary default can hide a missing caller decision. The block can still override `limit`, so validation runs after configuration. Defaults do not guarantee that later code preserves the value."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Scope functions are short applications of the same callable model. Two facts identify the relevant behavior: how the object is made available inside the block, and what the call returns. This reference concerns the receiver-based `run` overload; the separate `run { ... }` form has no context object."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Function",
+                    "Object inside the block",
+                    "Result of the call"
+                  ],
+                  "rows": [
+                    [
+                      "let",
+                      "Parameter: it, or an explicit name",
+                      "Block result"
+                    ],
+                    [
+                      "run",
+                      "Receiver: this",
+                      "Block result"
+                    ],
+                    [
+                      "with",
+                      "Receiver: this; supplied as an ordinary argument",
+                      "Block result"
+                    ],
+                    [
+                      "apply",
+                      "Receiver: this",
+                      "Original object"
+                    ],
+                    [
+                      "also",
+                      "Parameter: it, or an explicit name",
+                      "Original object"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For example, `options.apply { limit = 10 }` returns `options`, while `options.let { it.limit }` returns the integer limit. `nullableOptions?.let { ... }` invokes the block only for a non-null value because of the safe call, not because `let` excludes null. Nesting these functions can hide which object a property or `it` refers to. A named local or explicitly named parameter can make that relationship visible without changing the behavior."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A smart cast that refines an expression to `DownloadedResult` can change which extension is selected, because it changes the type known at that call site."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An extension declared inside another class has two receivers: the object being extended, and the instance of the class that contains the declaration. The latter is the **dispatch receiver**. An open member extension can be overridden through that containing instance, but its extension receiver is still selected statically. Keeping those two receivers distinct avoids turning “extensions are static” into a claim that all behavior inside every extension declaration is fixed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A stored callback also has an ownership implication. The selection controller keeps its listener, and that listener can retain captured objects such as a screen owner. Clearing or replacing the listener releases that controller’s reference to the function value. Other references may still retain it. A receiver lambda has the same need for a clear invocation and retention contract as an ordinary callback; concise syntax does not establish its lifetime."
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "A function type specifies the block’s inputs and result; the receiving API defines when it is invoked and whether it is retained. Extension-receiver selection follows the type known to the compiler, while an overridable member uses virtual dispatch."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_kotlin_nullability_and_smart_casts",
+            "lesson_kotlin_classes_interfaces_and_objects",
+            "lesson_kotlin_inline_and_reified_types"
+          ],
+          "sources": [
+            {
+              "title": "Functions",
+              "url": "https://kotlinlang.org/docs/functions.html"
+            },
+            {
+              "title": "Higher-order functions and lambdas",
+              "url": "https://kotlinlang.org/docs/lambdas.html"
+            },
+            {
+              "title": "Extensions",
+              "url": "https://kotlinlang.org/docs/extensions.html"
+            },
+            {
+              "title": "Scope functions",
+              "url": "https://kotlinlang.org/docs/scope-functions.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_kotlin_objects_and_state",
+      "topicId": "kotlin_language",
+      "title": "Objects and State Modeling",
+      "summary": "Classes and interfaces define capabilities and dispatch; properties define how state is read and changed. Data classes and sealed models express values and alternatives, but equality, copying and mutation still depend on the state those objects contain.",
+      "lessons": [
+        {
+          "id": "lesson_kotlin_classes_interfaces_and_objects",
+          "title": "Classes, Interfaces, Visibility and Objects",
+          "primarySubtopicIds": [
+            "kotlin_classes",
+            "kotlin_interfaces_inheritance",
+            "kotlin_objects",
+            "kotlin_visibility"
+          ],
+          "supportingSubtopicIds": [
+            "jvm_fundamentals",
+            "kotlin_extension_functions"
+          ],
+          "summary": "Kotlin makes inheritance and overriding explicit. Interfaces expose capabilities, visibility limits who can use declarations, and objects provide shared instances or behavior associated with a type.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An image loader can expose one operation while different implementations load from memory or another source. A caller that needs the operation can depend on an interface rather than on a particular loader class. The interface describes the capability; the implementing object supplies the behavior that runs."
+                },
+                {
+                  "type": "code",
+                  "code": "interface ImageLoader {\n    fun load(imageId: String): String?\n}\n\nclass MemoryImageLoader(\n    private val images: Map<String, String>,\n) : ImageLoader {\n    override fun load(imageId: String): String? = images[imageId]\n}\n\nfun preview(loader: ImageLoader, imageId: String): String {\n    return loader.load(imageId) ?: \"Image unavailable\"\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`preview` knows the methods available on `ImageLoader`. When `load` is invoked, the implementation belonging to the actual loader object executes. This is **virtual dispatch**. Declaring the parameter as an interface hides implementation-specific members without replacing the object or fixing which implementation will run."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Kotlin classes and ordinary class members are final by default. A class needs `open` to permit inheritance; an implemented class member needs `open` to permit overriding. Opening the class alone does not open its methods. `override` explicitly identifies an inherited member being implemented or replaced. An overriding member remains overridable unless marked `final`, provided its containing class permits further inheritance.\n\nAn `abstract` class cannot be instantiated directly. It can combine stored state and implemented operations with abstract members that subclasses must implement. Abstract classes and abstract members are inheritable without an additional `open` modifier."
+                },
+                {
+                  "type": "code",
+                  "code": "abstract class ValidatingImageLoader : ImageLoader {\n    final override fun load(imageId: String): String? {\n        require(imageId.isNotBlank())\n        return loadValidId(imageId)\n    }\n\n    protected abstract fun loadValidId(imageId: String): String?\n}\n\nclass PrefixedImageLoader : ValidatingImageLoader() {\n    override fun loadValidId(imageId: String): String = \"image:$imageId\"\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The base class fixes validation in `load` and leaves only loading a valid ID open to variation. A call through an `ImageLoader` reference reaches that inherited `load`; its call to `loadValidId` dispatches to the subclass implementation. `protected` makes that implementation hook accessible within the class and its subclasses, not to unrelated callers."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Interfaces can declare abstract properties and provide function bodies or computed property accessors. They cannot store instance state in backing fields. A class can implement several interfaces, but inherit from only one class. If two inherited interfaces provide implementations of the same operation, the implementing class has to resolve the conflict explicitly."
+                },
+                {
+                  "type": "code",
+                  "code": "interface CacheReset {\n    fun reset(): String = \"Cache cleared\"\n}\n\ninterface RetryReset {\n    fun reset(): String = \"Retry count cleared\"\n}\n\nclass LoaderReset : CacheReset, RetryReset {\n    override fun reset(): String {\n        return super<CacheReset>.reset() + \"; \" + super<RetryReset>.reset()\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`LoaderReset` chooses to invoke both inherited implementations. It could instead select one or supply different behavior. `super<CacheReset>` names the implementation being called; it does not leave the choice to runtime ordering of the interfaces. The explicit override gives callers one unambiguous `reset` operation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Visibility determines who may use a declaration. `public` is the default and makes a declaration available wherever its containing declaration is accessible. A private class member is available within its declaring class; a protected member also admits subclasses. A top-level private declaration is restricted to its file. Top-level declarations cannot be protected.\n\n`internal` admits Kotlin callers in the same compilation module, across packages. A module is a set of Kotlin files compiled together, commonly a Gradle source set. Ordinary test compilations can receive access to their main compilation’s internals. Importing a declaration or putting a caller in the same package does not cross an internal module restriction."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An `object` declaration provides a named singleton instance, initialized thread-safely on first access. It can implement an interface just as a class can. A companion is an object declared inside and associated with a containing class. Kotlin lets callers access its members through the class name, which makes it useful for a type’s factory."
+                },
+                {
+                  "type": "code",
+                  "code": "object EmptyImageLoader : ImageLoader {\n    override fun load(imageId: String): String? = null\n}\n\nclass ImageRequest private constructor(val imageId: String) {\n    companion object {\n        fun from(rawId: String): ImageRequest {\n            val id = rawId.trim()\n            require(id.isNotEmpty())\n            return ImageRequest(id)\n        }\n    }\n}\n\nfun exampleRequest(): ImageRequest = ImageRequest.from(\" cover-42 \")",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The empty loader is one shared object rather than a class whose callers construct separate instances. `ImageRequest.from` belongs to the companion, but returns a new request for each call. The private constructor keeps construction behind validation. A companion is not recreated for each request instance, and its members are not automatically Java static methods. Kotlin’s convenient call syntax does not determine the Java-facing signature."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An interface suits callers that need a replaceable capability, such as loading an image, without requiring implementations to share internal state or an algorithm. `ValidatingImageLoader` is useful under a different requirement: related loaders share validation and allow one controlled implementation hook. That shared algorithm couples subclasses to the base class’s decisions. Inheritance earns its place when that coupling is part of the intended contract, rather than merely a way to reuse a few lines."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Final-by-default limits the ways another class can alter behavior. For a reusable loader library, opening only `loadValidId` lets the author preserve the validation path. Making every method open would allow overrides to bypass assumptions the base implementation relies on. An interface can remain replaceable even when each concrete implementing class is final; substituting one implementation does not require subclassing it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In a multi-module Android app, an internal disk-cache implementation can remain usable throughout the module that owns it while only `ImageLoader` is public to dependent feature modules. Packages organize names; the compilation module determines internal access. An externally visible public API such as `ImageLoader` cannot expose an internal type in its signature, because external callers could not use that type as part of the advertised API."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A stateless fallback such as `EmptyImageLoader` has a straightforward reason to be shared. A mutable “current user” stored in an object has a broader consequence: every caller reaches the same state, tests can affect one another, and the object’s lifetime does not follow a screen or signed-in session. On Android, in-memory object state also disappears with process death. Initialization safety does not make later reads and writes thread-safe or make that state persistent."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The type of `loader` determines which members the compiler permits; virtual dispatch determines which implementation executes. A top-level extension on `ImageLoader` is selected from the receiver type known at the call site instead. The two mechanisms can coexist: an extension selected statically can call `load`, whose implementation is dispatched virtually. Static extension selection therefore does not freeze every operation performed inside the extension."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Visibility is also distinct from a security barrier. On the JVM, Kotlin internal declarations are exposed as public in Java; internal members may receive mangled names. There is no JVM access level corresponding exactly to Kotlin’s compilation-module rule. `internal` remains useful for a Kotlin API, but it does not protect secrets from Java callers or reflection. **Kotlin at the Java/JVM Boundary** explains the generated API consequences."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Interface bodies express inherited behavior at the language level. How a JVM build emits those bodies and compatibility bridges depends on its compiler configuration, including `jvmDefault` mode. That choice matters when publishing or changing a library’s binary API, but it does not replace the explicit conflict resolution in `LoaderReset`."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A final implementation can satisfy a replaceable interface. Opening a class or member grants a separate inheritance capability. Visibility controls source access, while the object, factory and caller determine instance sharing and ownership."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_kotlin_functions_lambdas_and_extensions",
+            "lesson_kotlin_java_jvm_boundary"
+          ],
+          "sources": [
+            {
+              "title": "Inheritance",
+              "url": "https://kotlinlang.org/docs/inheritance.html"
+            },
+            {
+              "title": "Interfaces",
+              "url": "https://kotlinlang.org/docs/interfaces.html"
+            },
+            {
+              "title": "Visibility modifiers",
+              "url": "https://kotlinlang.org/docs/visibility-modifiers.html"
+            },
+            {
+              "title": "Object declarations and expressions",
+              "url": "https://kotlinlang.org/docs/object-declarations.html"
+            },
+            {
+              "title": "Calling Kotlin from Java",
+              "url": "https://kotlinlang.org/docs/java-to-kotlin-interop.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_kotlin_properties_and_delegation",
+          "title": "Properties, Accessors and Delegation",
+          "primarySubtopicIds": [
+            "kotlin_properties",
+            "kotlin_delegation"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_variables",
+            "kotlin_nullability",
+            "kotlin_classes"
+          ],
+          "summary": "Property access can retrieve stored state, compute a result, or invoke a delegate. Initialization timing, repeated work and ownership remain part of the property’s contract even when access uses the same syntax.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Reading `queue.pendingIds` looks like reading a value, but the declaration determines what happens. A stored property retrieves an existing value. A computed getter can scan the queue on every read. A delegated property hands the access to another object. Kotlin property syntax gives these operations a common interface; it does not guarantee that they have the same cost or lifetime."
+                },
+                {
+                  "type": "code",
+                  "code": "class UploadQueue {\n    private val _ids = mutableListOf<String>()\n\n    val ids: List<String>\n        get() = _ids\n\n    val pendingIds: List<String>\n        get() = _ids.filter { it.startsWith(\"pending:\") }\n\n    var maxParallelUploads: Int = 2\n        set(value) {\n            require(value > 0)\n            field = value\n        }\n\n    fun add(id: String) {\n        _ids.add(id)\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A `val` property has a getter; a `var` also has a setter. Default accessors use stored state in a **backing field**. A custom accessor can refer to that field through `field`, as the validating setter does. Writing `maxParallelUploads = value` inside its own setter would call the setter again; assigning `field` updates its storage directly. Property initialization itself does not run the custom setter, so the initial value also needs to satisfy the invariant."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The getter for `pendingIds` has no stored result: each read executes `filter` and produces a list from the IDs present at that time. Kotlin creates a backing field when a default accessor needs stored state or an accessor uses `field`; it does not create a cache for a computed getter. An abstract interface property has no backing field either, because the implementing class supplies its access behavior.\n\n`_ids` is a **backing property**, an ordinary private property used to implement another property. The public `ids` getter returns that same list through a read-only interface. Callers cannot call `add` through `List`, but queue operations can still change the list they observe. Read-only access is not immutable storage."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Initialization timing is another part of the contract. `lateinit var` permits a non-null property to be assigned after construction. An access before assignment throws `UninitializedPropertyAccessException`. It requires a non-null, non-primitive type; a class-body lateinit property cannot have custom accessors. It remains mutable after initialization.\n\nA `val` delegated to `lazy` runs its initializer on first access and retains a successfully computed value. If initialization throws, a later access attempts initialization again. On the JVM, default `lazy` synchronizes initialization, so racing readers receive the same retained value once initialization succeeds. The value is not computed merely because its owner was constructed."
+                },
+                {
+                  "type": "code",
+                  "code": "class UploadSession(val destination: String)\n\nclass RequiredUploader(private val session: UploadSession) {\n    fun destination(): String = session.destination\n}\n\nclass AttachedUploader {\n    lateinit var session: UploadSession\n\n    fun destination(): String = session.destination\n    fun isAttached(): Boolean = this::session.isInitialized\n}\n\nclass OptionalUploader {\n    var session: UploadSession? = null\n\n    fun destination(): String? = session?.destination\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The constructor version cannot be created without a session. The attached version depends on a caller arranging assignment before use; `lateinit` postpones that check until runtime. `isInitialized` allows the declaring class to test whether assignment has occurred, but does not encode a complete attachment lifecycle. The nullable version makes “no session” a representable state and lets the caller handle it. These types express different contracts even though each may eventually hold the same session."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A delegate packages access behavior for reuse. In `var limit by PositiveInt(2)`, Kotlin routes reads to the delegate’s `getValue` operator and assignments to its `setValue` operator. The property owner and property metadata are provided to those operators. The delegate decides where the value is stored and what validation or other work occurs."
+                },
+                {
+                  "type": "code",
+                  "code": "import kotlin.reflect.KProperty\n\nclass PositiveInt(initial: Int) {\n    private var value = initial.also { require(it > 0) }\n\n    operator fun getValue(owner: Any?, property: KProperty<*>): Int = value\n\n    operator fun setValue(owner: Any?, property: KProperty<*>, newValue: Int) {\n        require(newValue > 0) { \"${property.name} must be positive\" }\n        value = newValue\n    }\n}\n\nclass UploadLimits {\n    var concurrentUploads: Int by PositiveInt(2)\n    var attempts: Int by PositiveInt(3)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each property here creates its own delegate and storage. Both use the same positive-integer rule, including validation of the initial value. A read-only delegated property needs `getValue`; a mutable one also needs `setValue`. Implementing a particular interface is not required when the appropriate operators are available. `lazy` is a standard delegate with a different access policy: computation and retention rather than validation on assignment."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Use constructor initialization when the object cannot perform its job without a dependency. Nullable state is appropriate when absence is a real state, such as an uploader waiting for account selection. `lateinit` can fit framework or test setup that assigns a dependency after construction, but all paths to use still need an initialization guarantee. Changing a missing dependency from nullable to lateinit removes checks from call sites by making ordering failures exceptional; it does not remove the ordering requirement."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Lazy initialization is useful when building a value is expensive and some owners may never need it. A filename validator can defer compiling its fixed pattern until the first validation request."
+                },
+                {
+                  "type": "code",
+                  "code": "class FileNameValidator {\n    private val pattern: Regex by lazy {\n        Regex(\"[A-Za-z0-9_-]+[.]jpg\")\n    }\n\n    fun accepts(name: String): Boolean = pattern.matches(name)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The first call to `accepts` obtains the compiled pattern; later calls reuse it. In contrast, making `pendingIds` lazy would keep the first filtered result even after the queue changes. A cached value is appropriate only when its inputs and intended lifetime justify retaining that result. A getter recomputing from changing state and a lazy value are not interchangeable ways to improve syntax."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "On the JVM, default `lazy` uses `SYNCHRONIZED`: a lock coordinates initialization and makes the retained value visible to other threads. `PUBLICATION` permits concurrent initializer executions but retains one computed value for all readers. `NONE` omits synchronization; behavior is unspecified if multiple threads access that lazy instance. These modes change the initialization contract, not which thread the API chooses to run on."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Repeated reads of `pendingIds` repeat filtering and allocation. When one operation needs the same result several times, reading it once into a local value keeps those uses consistent and avoids repeating that work. If an API regularly performs expensive work, a named operation can communicate the cost better than an inexpensive-looking property. A custom delegate is worthwhile when the access policy genuinely repeats; one local setter can be clearer for a rule used once."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Class delegation is a separate concise use of `by`: `class Wrapper(delegate: ImageLoader) : ImageLoader by delegate` forwards interface implementations to another object. It is not a property getter/setter delegate. **Classes, Interfaces, Visibility and Objects** establishes the interface contract being forwarded; property delegation reuses the semantics of reading or writing one property."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "If a synchronized initialization attempt throws, a later access retries. An initializer with side effects can therefore execute more than once across failed attempts. Failure and successful publication need to be considered separately."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "PUBLICATION fits initialization where duplicate computation is acceptable and discarded results need no special cleanup. A registration or resource acquisition with externally visible side effects may not meet that condition. A documented single-thread access policy can justify NONE, while merely expecting the first read on the main thread cannot establish that policy."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Initialization synchronization protects publication of the lazy value, not arbitrary later mutations of the object returned by the initializer. A lazily created mutable list still needs an ownership and access policy after creation. Likewise, a delegate that saves settings or loads data can hide failures and work behind a property read. Consumers need enough information about those costs and effects to use the API correctly."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Stored, computed, lateinit and lazy properties differ in when state becomes available and what a read does. A delegate can centralize that behavior, but its initialization, failure and concurrency policy remain observable parts of the API."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_kotlin_nullability_and_smart_casts",
+            "lesson_kotlin_classes_interfaces_and_objects",
+            "lesson_kotlin_collections_and_sequences"
+          ],
+          "sources": [
+            {
+              "title": "Properties",
+              "url": "https://kotlinlang.org/docs/properties.html"
+            },
+            {
+              "title": "Delegated properties",
+              "url": "https://kotlinlang.org/docs/delegated-properties.html"
+            },
+            {
+              "title": "lazy",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/lazy.html"
+            },
+            {
+              "title": "LazyThreadSafetyMode",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-lazy-thread-safety-mode/"
+            },
+            {
+              "title": "Delegation",
+              "url": "https://kotlinlang.org/docs/delegation.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_kotlin_data_equality_and_sealed_models",
+          "title": "Data Classes, Equality and Sealed Models",
+          "primarySubtopicIds": [
+            "kotlin_data_classes",
+            "kotlin_equality",
+            "kotlin_sealed_types"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_classes",
+            "kotlin_collections",
+            "kotlin_objects"
+          ],
+          "summary": "Data classes derive value operations from constructor properties, while sealed types define controlled alternatives. Neither shallow copying nor read-only references guarantee immutable state.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Two download requests can represent the same requested work even when they are separate objects. A data class gives that comparison a defined basis: its primary-constructor properties. Kotlin generates `equals`, `hashCode`, `toString`, ordered `componentN` functions for destructuring, and `copy` from those properties. This default value-oriented behavior is useful when those properties describe what the value means."
+                },
+                {
+                  "type": "code",
+                  "code": "data class DownloadRequest(val assetId: String, val priority: Int) {\n    var attempts: Int = 0\n}\n\nfun requestComparison(): List<Boolean> {\n    val first = DownloadRequest(\"cover-42\", 1)\n    first.attempts = 3\n    val second = DownloadRequest(\"cover-42\", 1)\n    val promoted = first.copy(priority = 2)\n\n    return listOf(\n        first == second,\n        first === second,\n        promoted.attempts == 0,\n    )\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The results are true, false and true. `first` and `second` have equal constructor properties despite differing attempt counts. `==` uses a null-safe `equals` comparison; `===` tests whether references identify the same object. The two separate requests are structurally equal without being identical. An ordinary class inheriting `Any.equals` instead has identity-based equality unless it supplies a suitable override."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`attempts` is declared in the body, so it is absent from generated equality, hashing, string output, destructuring and copying. `copy(priority = 2)` constructs a new request from the supplied priority and the existing asset ID. The new body property receives its initializer, zero, rather than the old attempt count. Destructuring a request exposes asset ID followed by priority through `component1()` and `component2()`; it does not include attempts."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The generated behavior can be customized for `equals`, `hashCode` or `toString`, and an applicable final superclass implementation prevents generating that member. Consequently, the data modifier is not a guarantee of one equality policy regardless of the hierarchy. Custom equality needs matching hashing: equal objects must produce equal hash codes. Unequal objects may still share a hash code."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`copy` is **shallow**. It passes existing constructor-property values to a new instance unless replacements are provided; it does not recursively clone the objects those values reference. A `val` list property fixes which list the property refers to, while the list may still allow mutation."
+                },
+                {
+                  "type": "code",
+                  "code": "data class DownloadBatch(val name: String, val assetIds: MutableList<String>)\n\nfun sharedBatchIds(): Pair<DownloadBatch, DownloadBatch> {\n    val original = DownloadBatch(\"Morning\", mutableListOf(\"cover-42\"))\n    val renamed = original.copy(name = \"Afternoon\")\n    renamed.assetIds.add(\"cover-43\")\n    return original to renamed\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both batches now contain two IDs because they refer to the same mutable list. Creating the new batch does not create a separate list. If the two batches require independent membership, the caller can supply `assetIds = original.assetIds.toMutableList()` to `copy`. That copies membership, not arbitrary objects contained in a list. Here the elements are strings; a list of mutable asset objects would still share those objects."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A sealed class or interface solves a different modeling problem: it restricts direct subtypes to a controlled set in the same module and package. The compiler can use that set to check a `when` expression for exhaustive handling. A sealed class is abstract; a sealed interface provides a contract without storing state. Data classes can supply values for individual alternatives, and objects can represent cases with no per-instance payload."
+                },
+                {
+                  "type": "code",
+                  "code": "sealed interface DownloadState {\n    object Waiting : DownloadState\n    data class Transferring(val bytesReceived: Long) : DownloadState\n    data class Finished(val localPath: String) : DownloadState\n    data class Failed(val message: String) : DownloadState\n}\n\nfun downloadLabel(state: DownloadState): String = when (state) {\n    DownloadState.Waiting -> \"Waiting\"\n    is DownloadState.Transferring -> \"Received ${state.bytesReceived} bytes\"\n    is DownloadState.Finished -> \"Saved to ${state.localPath}\"\n    is DownloadState.Failed -> state.message\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each branch has the information valid for its case. A transferring state has a byte count; a finished state has a local path. The `is` checks refine the state type so the matching payload can be read. Because all alternatives are covered, no `else` is needed. Sealing controls which alternatives exist; the data modifier supplies generated value operations inside the payload-bearing alternatives."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This state model prevents a finished state with no path from being represented through its constructor. It also avoids a collection of unrelated nullable properties such as `bytesReceived`, `path` and `error`, whose combinations would need separate validation. It does not prove that a path exists on disk or that the byte count is sensible. Those are domain checks beyond choosing the appropriate alternative."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Adding `Paused` to the hierarchy makes `downloadLabel` fail compilation when it is rebuilt until the new case is handled. The error creates a place for an explicit display decision. An `else` fallback can be intentional when several future cases genuinely share behavior, but it also removes this prompt to consider each added alternative. The guarantee concerns consumers compiled against the changed hierarchy; it does not update an already compiled binary automatically."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An enum is a concise alternative when cases are fixed named instances with a common API, such as low, normal and high priority. Enum entries can have properties and behavior, but they are not newly constructed per-download states carrying different payloads. Sealed types suit the waiting/transfer/finished alternatives because each case requires different data. Choosing sealed is about that difference, rather than a claim that enums cannot contain behavior."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For UI state and cached values, structural equality is useful only if it reflects the changes consumers need to observe. Moving a displayed progress property into a data class body excludes it from generated equality. Conversely, including a mutable collection in the constructor means changes to that collection can change equality and hashing even though the property is a `val`. Constructor placement and ownership therefore affect observable value behavior."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A copied batch can be structurally equal to its original while sharing the exact same list. If that list is then mutated, both the old and new batches expose the new content. Comparing them later cannot recover the old content for a diff. A new top-level instance alone does not preserve a previous state; preserving history also requires that the state it reaches does not change underneath it."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Hash-based sets and maps use hashing to locate candidates, then equality to identify a match. If a stored key’s equality-relevant state changes, its current hash may no longer lead to the location chosen when it was inserted. An object can consequently remain present during iteration while lookup or removal no longer works as expected."
+                },
+                {
+                  "type": "code",
+                  "code": "data class AssetKey(var assetId: String)\n\nfun changedKeyMembership(): Pair<Boolean, Boolean> {\n    val key = AssetKey(\"cover-42\")\n    val keys = hashSetOf(key)\n    key.assetId = \"cover-43\"\n    return (key in keys) to keys.any { it === key }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This deliberately violates the set’s requirement that element state affecting equality remain unchanged while stored. The precise outcome of lookup after such mutation is not a valid API guarantee; the set is no longer being used under its contract. A stable immutable asset identifier is a better key than a mutable record whose fields change during a download. The same concern applies when a constructor property holds a mutable object that participates in generated hashing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Sealing controls direct inheritance, not every possible descendant without qualification. A permitted direct subtype that remains open can admit further subclasses, and a `when` branch for that direct subtype covers them as one group. Using final data classes for the payload cases keeps this particular hierarchy closed at those cases. Allowing an open extension point trades some per-case knowledge for flexibility."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A public sealed model makes evolution visible in source consumers, which can be useful for application-owned states and more demanding for a library’s clients. An open interface allows clients to add implementations but cannot offer the same exhaustive case reasoning. The choice depends on who needs to extend the model and who must make a decision when an alternative appears."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Generated value operations follow constructor properties and their equality behavior. Shallow copies preserve references. A reliable value model requires stable equality participants and an ownership policy for referenced state; sealing separately controls the set of alternatives consumers handle."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_kotlin_classes_interfaces_and_objects",
+            "lesson_kotlin_properties_and_delegation",
+            "lesson_kotlin_collections_and_sequences"
+          ],
+          "sources": [
+            {
+              "title": "Data classes",
+              "url": "https://kotlinlang.org/docs/data-classes.html"
+            },
+            {
+              "title": "Equality",
+              "url": "https://kotlinlang.org/docs/equality.html"
+            },
+            {
+              "title": "Sealed classes and interfaces",
+              "url": "https://kotlinlang.org/docs/sealed-classes.html"
+            },
+            {
+              "title": "Set contract (Java SE 21)",
+              "url": "https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Set.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_kotlin_generic_api_mechanics",
+      "topicId": "kotlin_language",
+      "title": "Generic APIs and Compiler-Assisted Mechanics",
+      "summary": "Generic APIs describe which values can be produced or consumed. Inline functions can expand their bodies and eligible lambdas into caller code, enabling reified type operations and non-local returns. Collection and sequence APIs differ in ownership, evaluation timing and the work they perform.",
+      "lessons": [
+        {
+          "id": "lesson_kotlin_generics_and_variance",
+          "title": "Generics, Variance and Type Erasure",
+          "primarySubtopicIds": [
+            "kotlin_generics"
+          ],
+          "supportingSubtopicIds": [
+            "jvm_fundamentals",
+            "kotlin_collections",
+            "kotlin_java_interop"
+          ],
+          "summary": "Generic types preserve relationships between values at compile time. Variance permits substitution when the exposed operations remain safe; JVM erasure limits what a runtime type check can establish.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An image-only upload queue promises that reading an item gives an image. Letting another caller treat it as a writable queue of arbitrary assets would break that promise: the caller could insert a text document, which the image reader cannot use as an image. The problem is the combination of reading and writing through different references to the same storage."
+                },
+                {
+                  "type": "code",
+                  "code": "open class Asset(val id: String)\nclass ImageAsset(id: String) : Asset(id)\nclass TextAsset(id: String) : Asset(id)\n\nclass AssetSlot<T>(var value: T)\n\nfun <T> readSlot(slot: AssetSlot<T>): T = slot.value\n\nfun queuedImages(): MutableList<ImageAsset> {\n    val images = mutableListOf(ImageAsset(\"cover-42\"))\n    // Rejected: a caller could add a TextAsset through this reference.\n    // val assets: MutableList<Asset> = images\n    return images\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "`T` names a type supplied by the caller. `AssetSlot<ImageAsset>` stores and returns an image; `readSlot` preserves the slot’s element type in its result. Without a constraint, a type parameter can also represent a nullable type. A generic declaration makes that relationship available to the compiler instead of returning `Any?` and asking every caller to cast."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Generic classes are **invariant** by default: knowing that `ImageAsset` is an `Asset` does not make `AssetSlot<ImageAsset>` an `AssetSlot<Asset>`. The wider slot would admit writes that are unsafe for the narrower slot. `MutableList` has the same issue. In the familiar animal example, treating `MutableList<Dog>` as `MutableList<Animal>` would permit adding a cat to a list whose readers expect dogs."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An API that only produces values does not expose that dangerous write. Declaring its parameter `out T` lets a producer of images stand in for a producer of assets, because every image it returns is an asset. This is **covariance**. A consumer uses the reverse direction: something capable of accepting every asset can be used where only images will be supplied. Declaring `in T` expresses that **contravariance**."
+                },
+                {
+                  "type": "code",
+                  "code": "interface AssetSource<out T> {\n    fun next(): T?\n}\n\ninterface AssetSink<in T> {\n    fun accept(value: T)\n}\n\nfun consumeImages(sink: AssetSink<ImageAsset>, image: ImageAsset) {\n    sink.accept(image)\n}\n\nfun routeAsset(source: AssetSource<ImageAsset>, sink: AssetSink<Asset>) {\n    val generalSource: AssetSource<Asset> = source\n    val asset = generalSource.next() ?: return\n    sink.accept(asset)\n}\n\nfun sendImage(sink: AssetSink<Asset>) {\n    consumeImages(sink, ImageAsset(\"cover-42\"))\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The compiler checks how the parameter appears in the interface’s exposed operations. A source cannot also offer `accept(value: T)` while promising covariance; a sink cannot return its stored element as `T` while promising contravariance. The promise concerns values crossing the API. A sink may still return something unrelated, such as a Boolean indicating acceptance. Variance does not require every method to return Unit or every object to be internally immutable."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Sometimes a generic type needs both read and write operations, but one use of it needs only one direction. A **use-site projection** restricts the operations visible at that site without changing the generic class declaration. `Array<out Asset>` permits reading an asset while preventing assignment of an arbitrary asset. `Array<in ImageAsset>` permits writing an image, while reads reveal only a value of the broad type `Any?`."
+                },
+                {
+                  "type": "code",
+                  "code": "fun firstAsset(values: Array<out Asset>): Asset? = values.firstOrNull()\n\nfun replaceFirst(values: Array<in ImageAsset>, image: ImageAsset) {\n    if (values.isNotEmpty()) values[0] = image\n}\n\nfun firstUnknown(values: MutableList<*>): Any? {\n    // Rejected: the actual element type is unknown.\n    // values.add(\"cover-42\")\n    return values.firstOrNull()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A star projection, `*`, says an element type exists but is unknown here. Reading from `List<*>` or `MutableList<*>` yields `Any?`, which can accommodate any element. Adding a string, image, or even null would require knowing that it belongs to the actual element type, so arbitrary additions are rejected. This restriction is about element types: a mutable star-projected list can still support operations such as `clear()` that do not require supplying an unknown element."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "On the JVM, type arguments are generally **erased**. A runtime object check can establish that an unknown object is a list, but ordinarily cannot establish that it is a `List<String>`. A cast to that type does not inspect every element. An ordinary generic function similarly cannot write `value is T` to test its erased type parameter. Compile-time type checking remains useful even though the runtime cannot repeat every generic check."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "The source/sink split fits an upload workflow where one component supplies selected images and another accepts any supported asset. A caller needing both reading and replacement may genuinely need an invariant abstraction. Splitting it merely to obtain more flexible assignments would hide a real shared read/write responsibility. The methods needed by consumers determine the useful variance, rather than a preference for one modifier."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Read-only `List` exposes element production without permitting insertion through that interface, so `List<ImageAsset>` can be passed where `List<Asset>` is expected. This does not copy the list or prove its storage immutable; a mutable owner can still change it. Covariance explains safe substitution through the read-only API, while ownership explains whether the observed contents remain stable."
+                },
+                {
+                  "type": "code",
+                  "code": "fun importedAssetIds(raw: Any?): List<String>? {\n    val values = raw as? List<*> ?: return null\n    val ids = mutableListOf<String>()\n    for (value in values) {\n        if (value !is String) return null\n        ids.add(value)\n    }\n    return ids\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This boundary validates each element and builds a result with the promised type. It rejects a non-list or any non-string element rather than making an unchecked assertion. A cast such as `raw as List<String>` would at most establish the erased list type; a later read could fail when a non-string element is used. Suppressing an unchecked-cast warning removes the diagnostic, not the missing proof."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Java wildcard APIs express related read/write restrictions with `? extends` and `? super`. They can surface in Kotlin as projected types. The same safe-operation reasoning applies: determine what can be read and what can be supplied. **Kotlin at the Java/JVM Boundary** connects that source contract to Java-facing APIs."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Static variance and runtime erasure answer different questions. Variance determines which substitutions the compiler can permit without allowing unsafe operations. Erasure determines which type information a runtime check can observe. Neither a star projection nor an `is List<*>` test recovers the missing element type."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A parser that needs to know which model to create must obtain additional information, such as a type token or an explicitly supplied decoding operation. Reified inline parameters allow certain type checks using the concrete call-site type, but cannot make a list’s nested arguments appear at runtime. Checking a reified `T` instantiated as `List<String>` still cannot validate every string element. **Inline Functions, Lambda Control Flow and Reified Types** explains that call-site mechanism."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Safe substitution follows the operations an API exposes. Production admits covariance, consumption admits contravariance, and shared reading/writing commonly requires invariance. Runtime validation must separately establish any element-type facts erased from the object."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_kotlin_classes_interfaces_and_objects",
+            "lesson_kotlin_inline_and_reified_types",
+            "lesson_kotlin_collections_and_sequences",
+            "lesson_kotlin_java_jvm_boundary"
+          ],
+          "sources": [
+            {
+              "title": "Generics: in, out, where",
+              "url": "https://kotlinlang.org/docs/generics.html"
+            },
+            {
+              "title": "Collections overview",
+              "url": "https://kotlinlang.org/docs/collections-overview.html"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_kotlin_inline_and_reified_types",
+          "title": "Inline Functions, Lambda Control Flow and Reified Types",
+          "primarySubtopicIds": [
+            "kotlin_inline_functions",
+            "kotlin_reified_types"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_lambdas",
+            "kotlin_generics",
+            "jvm_fundamentals"
+          ],
+          "summary": "Inlining can place a function and its eligible lambda bodies at the call site. That enables non-local control flow and reified type operations, while retained callbacks and public inline APIs require explicit constraints.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An operation that takes a lambda ordinarily invokes supplied behavior through a function value. Marking the operation `inline` lets the compiler place its body, and eligible lambda bodies, into the caller’s compiled code. This can remove a separate call and some function-value overhead. It also changes which control flow is possible inside the lambda."
+                },
+                {
+                  "type": "code",
+                  "code": "inline fun visitIds(ids: List<String>, action: (String) -> Unit) {\n    for (id in ids) action(id)\n}\n\nfun firstLocalId(ids: List<String>): String? {\n    visitIds(ids) { id ->\n        if (id.startsWith(\"local:\")) return id\n    }\n    return null\n}\n\nfun reportRemoteIds(ids: List<String>): List<String> {\n    val reported = mutableListOf<String>()\n    visitIds(ids) { id ->\n        if (id.startsWith(\"local:\")) return@visitIds\n        reported.add(id)\n    }\n    return reported\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The bare `return id` exits `firstLocalId`, not just the lambda. This is a **non-local return**. Because `visitIds` and this lambda are expanded into the enclosing operation, the exit can be expressed in that caller’s control flow. A bare return from a lambda passed to an ordinary non-inline function is rejected.\n\n`return@visitIds` ends only the current lambda invocation. `visitIds` then continues its loop, which is why local IDs are skipped while remote IDs are collected. Inline does not mean every return exits the enclosing function; the label identifies a local exit."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An inlinable lambda parameter cannot freely be stored as an ordinary callback. `noinline` keeps that parameter as a function value, permitting storage or passing to an API that retains it. It also prevents the bare non-local return. Other eligible parameters of the same inline function can remain inlined."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A different constraint appears when a lambda body is invoked inside a wrapper such as a Runnable. That invocation cannot offer a return from the caller’s enclosing function. `crossinline` keeps the parameter eligible for inlining into the wrapper while prohibiting non-local return. It does not itself schedule anything or select a thread."
+                },
+                {
+                  "type": "code",
+                  "code": "class CompletionCallbacks {\n    var onComplete: (() -> Unit)? = null\n}\n\ninline fun prepareThenRemember(\n    callbacks: CompletionCallbacks,\n    crossinline prepare: () -> Unit,\n    noinline onComplete: () -> Unit,\n): Runnable {\n    callbacks.onComplete = onComplete\n    return Runnable { prepare() }\n}\n\nfun prepareDownload(callbacks: CompletionCallbacks): Runnable {\n    return prepareThenRemember(\n        callbacks,\n        prepare = { println(\"Prepare download\") },\n        onComplete = { println(\"Download finished\") },\n    )\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Here, `onComplete` is stored directly as a function value. `prepare` is used inside the returned Runnable, whose body may execute after `prepareDownload` returns. Crossinline permits this wrapper use but rejects a bare return aimed at `prepareDownload`. Noinline solves direct function-value retention; crossinline solves the control-flow restriction while retaining inlining eligibility. Neither modifier promises that a wrapper or retained callback needs no allocation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Ordinary generic type parameters are erased on the JVM, so a function cannot test an unknown object with `is T`. A **reified** type parameter of an inline function lets the compiler use the concrete type supplied at the call site for operations such as `is T`, `as T` and `T::class`. Reified parameters are only available on inline functions."
+                },
+                {
+                  "type": "code",
+                  "code": "class DownloadFailure(val message: String)\n\ninline fun <reified T : Any> firstEventOfType(events: List<Any>): T? {\n    for (event in events) {\n        if (event is T) return event\n    }\n    return null\n}\n\nfun failureMessage(events: List<Any>): String? {\n    return firstEventOfType<DownloadFailure>(events)?.message\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "At the call site the compiler knows `T` is `DownloadFailure`, so it can emit the appropriate check. The type is supplied through compilation of the inline call rather than becoming a runtime type token for every ordinary generic function. Reification does not remove erasure inside the checked type: testing `T` where it denotes `List<String>` can identify the list but cannot establish the type of every element."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A reified helper can make a model lookup or parser front-end easier to call. Instead of requiring a caller to pass `DownloadFailure::class` separately, an inline front-end can use `T::class` and pass that token into a non-inline implementation. The token still identifies a class rather than proving the validity of serialized input or nested collection elements. Actual decoding must enforce the model’s structure."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The completion API makes timing and retention visible in its implementation: one function value is kept, and one wrapper is returned. A delayed invocation does not have access to a caller that has already returned. Crossinline is required because of the invocation context, even if a particular caller happens to run the Runnable immediately on the same thread. If an API simply needs an unrestricted callback value, an ordinary non-inline function may communicate that contract more directly."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Inlining is useful when the call-site mechanism is required for reification or when a small higher-order operation benefits from removing call/lambda overhead. It is not a default modifier for every small method. An inline function with neither eligible lambda parameters nor reified parameters commonly produces a compiler warning because there may be little benefit. The body’s size and the number of call sites affect the cost."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An externally visible public or protected inline function may be expanded into another module. Its body therefore cannot freely refer to private or ordinary internal implementation declarations. Code copied into the caller still needs valid access to every declaration it uses. Public/protected members inside an inaccessible private or internal containing declaration do not form the same external inline API."
+                },
+                {
+                  "type": "code",
+                  "code": "@PublishedApi\ninternal fun wrongPayload(expected: String): Nothing {\n    throw IllegalArgumentException(\"Expected payload: $expected\")\n}\n\ninline fun <reified T : Any> requirePayload(value: Any?): T {\n    return value as? T ?: wrongPayload(T::class.simpleName ?: \"requested type\")\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The helper remains internal in Kotlin source, but `@PublishedApi` permits the public inline body to reference it and makes it effectively public for binary compatibility. It is consequently part of the callable support older compiled clients can depend on. Removing or incompatibly changing that helper can break those clients even though ordinary Kotlin callers could not import it as a public API."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Replacing an inline implementation in a library does not replace code already expanded into existing client binaries. Clients need recompilation to receive that changed inlined behavior; calls that the expanded code makes into the library can still reach the library’s updated implementations. The API has both copied behavior and referenced declarations to consider."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Inlining can trade fewer calls and some lambda representation overhead for larger generated caller code. Those savings depend on the actual body, invocation pattern and runtime optimizations; inline is not a guarantee of faster execution or zero allocations. Likewise, `requirePayload<List<String>>` does not validate the elements merely because its helper uses a reified parameter. A useful front-end retains both limits in its contract."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Noinline permits an ordinary retained function value; crossinline retains inlining eligibility while restricting non-local control flow. Reification supplies call-site type operations, and exported inline bodies make their referenced support declarations part of the compatibility contract."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_kotlin_functions_lambdas_and_extensions",
+            "lesson_kotlin_generics_and_variance",
+            "lesson_kotlin_java_jvm_boundary"
+          ],
+          "sources": [
+            {
+              "title": "Inline functions",
+              "url": "https://kotlinlang.org/docs/inline-functions.html"
+            },
+            {
+              "title": "Generics: in, out, where",
+              "url": "https://kotlinlang.org/docs/generics.html"
+            },
+            {
+              "title": "PublishedApi",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-published-api/"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_kotlin_collections_and_sequences",
+          "title": "Collections, Mutability and Sequences",
+          "primarySubtopicIds": [
+            "kotlin_collections",
+            "kotlin_sequences"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_generics",
+            "kotlin_data_classes",
+            "jvm_fundamentals"
+          ],
+          "summary": "Read-only collection access does not freeze shared storage. Eager operations produce results stage by stage; sequences defer processing until consumption, trading less intermediate materialization against iteration overhead and delayed observation.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A list returned by an upload queue can be a view of current storage or a snapshot of its contents. Both can have type `List<String>`. The read-only type exposes inspection but no list-mutation operations through that reference. It does not identify who else owns the object or whether another reference can change it."
+                },
+                {
+                  "type": "code",
+                  "code": "class PendingUploads {\n    private val ids = mutableListOf<String>()\n\n    fun add(id: String) { ids.add(id) }\n    fun currentView(): List<String> = ids\n    fun snapshot(): List<String> = ids.toList()\n}\n\nfun observedUploadCounts(): Pair<Int, Int> {\n    val queue = PendingUploads()\n    queue.add(\"cover-42\")\n    val view = queue.currentView()\n    val snapshot = queue.snapshot()\n    queue.add(\"cover-43\")\n    return view.size to snapshot.size\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The counts are two and one. `view` refers to the queue’s list, so it observes the later addition. `snapshot` retains the membership copied before that addition. A `val` reference does not stop `ids.add`; it only stops replacing the reference. Read-only `Set` and `Map` interfaces have the same separation between exposed operations and mutable aliases."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Ordinary collection operations such as `filter` and `map` are **eager**. Calling `filter` processes the source and returns a result list immediately; calling `map` then processes that result into another list. A later `take` does not undo the work already performed. These particular stages materialize intermediate lists, although not every collection operation needs to allocate one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A **sequence** describes production and processing of elements as they are requested. `asSequence()` wraps an Iterable rather than copying its contents. Operations such as `filter`, `map` and `take` return intermediate sequences; defining that chain does not yet run its element-processing lambdas. A terminal operation such as `toList`, `count` or `firstOrNull` consumes values and triggers the required processing."
+                },
+                {
+                  "type": "code",
+                  "code": "data class UploadCandidate(val id: String, val ready: Boolean)\n\nfun eagerReadyIds(candidates: List<UploadCandidate>): List<String> {\n    return candidates.filter { it.ready }.map { it.id }.take(2)\n}\n\nfun lazyReadyIds(candidates: List<UploadCandidate>): List<String> {\n    return candidates.asSequence()\n        .filter { it.ready }\n        .map { it.id }\n        .take(2)\n        .toList()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For the sequence version, a candidate is tested, and an accepted candidate’s ID is produced before processing moves to the next candidate. Once two IDs have been accepted, `take(2)` needs no further candidates. The eager version filters all candidates and maps all accepted candidates before keeping the first two. Both return the same IDs for stable input and these side-effect-free lambdas, but can perform different amounts of work."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Laziness is not automatically cheaper. Sequence stages add iteration and dispatch overhead, while avoiding some intermediate collections. A small list transformed once and immediately materialized may gain little and can be slower than a direct collection operation. More stages, expensive processing or early termination can make avoided work more valuable. The actual workload determines whether that saving outweighs the overhead."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Most sequences can be iterated again, and doing so normally runs their production and transformations again rather than replaying a cache. Some implementations explicitly allow only one iteration. A sequence therefore needs both an evaluation contract and an iteration contract; neither “all sequences are one-shot” nor “all sequences cache their results” describes the type."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A UI render that requires a stable list of upload IDs can use `snapshot()`. A status panel explicitly intended to observe a shared list may instead use a view, provided ownership and timing are clear. Copying every time is not a universal requirement: copying has a cost, and returning immutable owned state can already provide stability. Returning only a read-only interface over private mutable state does not provide that guarantee by itself."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Collection copying is shallow. `toList()` separates membership from later additions/removals in the source, while referenced element objects can remain shared. If a queued upload has mutable progress and an earlier render needs historical progress, copying the list alone preserves neither the old progress nor independent element state. Immutable element values or a conversion into separate immutable render values can establish that stronger snapshot."
+                },
+                {
+                  "type": "code",
+                  "code": "class UploadProgress(val id: String, var percent: Int)\ndata class ProgressRow(val id: String, val percent: Int)\n\nfun progressRows(uploads: List<UploadProgress>): List<ProgressRow> {\n    return uploads.map { ProgressRow(it.id, it.percent) }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each row captures the integer progress read for that item instead of retaining its mutable upload object. Under the example’s single-owner access, later progress changes do not modify these rows. Copying itself is not synchronization: if another thread changes uploads during iteration, a consistent cross-item snapshot needs an appropriate access policy too."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The lazy candidate pipeline is useful when a large queue has only a small display limit: it can stop after enough ready uploads. If every candidate needs exactly one inexpensive transformation and all outputs are required, direct `map` is a sensible starting point. Timing or profiling can resolve a performance question that depends on sizes, acceptance rates, stage cost and target runtime; syntax alone cannot."
+                },
+                {
+                  "type": "code",
+                  "code": "fun nextPendingIds(iterator: Iterator<String>): Sequence<String> {\n    return generateSequence {\n        if (iterator.hasNext()) iterator.next() else null\n    }\n}\n\nfun numberedIds(): Sequence<String> {\n    return generateSequence(1) { number ->\n        if (number < 3) number + 1 else null\n    }.map { \"upload-$it\" }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The overload with only a next-value lambda produces a once-only sequence. `nextPendingIds` also reaches a single iterator carrying its progress. Requesting a second iterator from that returned sequence throws `IllegalStateException`; it does not quietly replay the consumed IDs. If several consumers need the same IDs, materializing once into a list makes that reuse explicit.\n\nThe seeded generator permits repeated iteration starting at its seed. `numberedIds()` produces the three IDs again on each iteration. A sequence builder also permits repeated iteration, but its body is rerun and can observe changed captured state or a one-shot source; repeatability does not promise identical values under those circumstances."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A lazy pipeline over a mutable collection observes values when consumed, not when the chain is declared. Between those moments, an owner may have changed membership or element contents. Deferring processing therefore also defers observation. Materializing or copying at a chosen time can be necessary for correctness even when laziness would avoid work."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Processing order also changes the meaning of side effects. In the eager version, all filter calls occur before the mapping stage. In the sequence version, filtering and mapping interleave, and short-circuit consumption may omit later calls entirely. A pipeline used for validation, logging or mutation needs those timing and omission consequences considered, rather than assuming an identical side-effect trace because the final IDs match."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Some lazy operations need accumulated state. Sorting a sequence returns an intermediate sequence, but obtaining its first sorted value still requires consuming and ordering the source. Putting `take(2)` after sorting does not let it stop after the first two source elements. A filter/map/take pipeline and a sorted/take pipeline have different work and memory requirements even though both use Sequence."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A read-only reference limits operations; a snapshot establishes a chosen observation of membership or values. Sequence evaluation determines when and how much work occurs, while source repeatability and captured state determine whether another consumption is valid and what it can observe."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_kotlin_generics_and_variance",
+            "lesson_kotlin_data_equality_and_sealed_models",
+            "lesson_kotlin_properties_and_delegation"
+          ],
+          "sources": [
+            {
+              "title": "Collections overview",
+              "url": "https://kotlinlang.org/docs/collections-overview.html"
+            },
+            {
+              "title": "Constructing collections",
+              "url": "https://kotlinlang.org/docs/constructing-collections.html"
+            },
+            {
+              "title": "Sequences",
+              "url": "https://kotlinlang.org/docs/sequences.html"
+            },
+            {
+              "title": "generateSequence",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.sequences/generate-sequence.html"
+            },
+            {
+              "title": "Sequence sorted",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.sequences/sorted.html"
+            },
+            {
+              "title": "Sequence constrainOnce",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.sequences/constrain-once.html"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_kotlin_java_jvm_boundary",
+      "topicId": "kotlin_language",
+      "title": "Kotlin at the Java/JVM Boundary",
+      "summary": "Kotlin source contracts and Java/JVM APIs do not expose exactly the same guarantees. Nullability, exceptions, visibility and generated methods need deliberate treatment when values and callers cross that boundary.",
+      "lessons": [
+        {
+          "id": "lesson_kotlin_java_jvm_boundary",
+          "title": "Kotlin at the Java/JVM Boundary",
+          "primarySubtopicIds": [
+            "kotlin_java_interop",
+            "jvm_fundamentals",
+            "kotlin_exceptions"
+          ],
+          "supportingSubtopicIds": [
+            "kotlin_nullability",
+            "kotlin_visibility",
+            "kotlin_objects",
+            "kotlin_generics",
+            "kotlin_functions",
+            "kotlin_inline_functions"
+          ],
+          "summary": "Java interoperability exposes the difference between Kotlin’s source contracts and the JVM API callers actually use. Null checks, exception declarations and generated methods determine what each side can rely on.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A Java profile library can return a String without saying whether it may be null. Kotlin cannot infer a reliable non-null contract from that declaration, but requiring every Java reference to be treated as nullable would make existing Java APIs difficult to use. Instead, an unannotated Java reference commonly has a **platform type**: Kotlin allows it to be used as either nullable or non-null. The IDE may display `String!`; that notation is diagnostic shorthand, not a type you can write in a declaration."
+                },
+                {
+                  "type": "code",
+                  "code": "// LegacyProfile.java\npublic final class LegacyProfile {\n    public String displayName() {\n        return null;\n    }\n}",
+                  "language": "java"
+                },
+                {
+                  "type": "code",
+                  "code": "fun uncheckedProfileLabel(profile: LegacyProfile): String {\n    val name: String = profile.displayName()\n    return name.trim()\n}\n\nfun profileLabel(profile: LegacyProfile): String {\n    val name: String? = profile.displayName()\n    return name?.trim()?.takeIf { it.isNotEmpty() } ?: \"Name not provided\"\n}\n\nfun formattedName(name: String): String = name.trim()",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both assignments compile. With standard Kotlin/JVM compilation, the non-null assignment checks the Java result and throws a NullPointerException when it is null, before `trim()` runs. Declaring `name` as `String` expresses an expectation and enforces it at runtime; it does not prove the Java implementation meets that expectation. In `profileLabel`, choosing `String?` restores ordinary nullable handling and makes the fallback explicit."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Leaving the type inferred can preserve the platform type and permit direct member access that fails later. A small adapter can resolve that uncertainty once: permit absence, supply a meaningful fallback, or reject an invalid result with a specific error. Which choice fits depends on whether a missing display name is valid data or a broken library contract. Supported Java nullability annotations can supply the missing static information, subject to the compiler’s annotation handling."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The reverse call has its own check. Kotlin source cannot call `formattedName(null)`, but Java can compile such a call because String is a reference type. Standard Kotlin/JVM compilation emits checks for public non-null reference parameters, so the call fails at function entry. Those checks protect the nullability contract; they do not establish that a name is nonblank or otherwise valid. Java tooling may report annotation-based warnings, but that is separate from Kotlin’s compiler rule and the runtime check."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Exceptions cross the language boundary too. Kotlin has no checked-exception requirement: it does not force a caller to catch or declare IOException, including when calling a Java method that declares it. This changes compilation obligations, not runtime propagation. A thrown exception still unwinds the call until handled; it is not swallowed or converted into a result value."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A Kotlin function normally has no Java `throws` declaration merely because its body can throw a checked exception. Java therefore may reject a specific `catch (IOException ...)` around that call when nothing in the try block declares a relevant checked exception. `@Throws(IOException::class)` adds the declaration to the generated Java method. Java’s catch-or-declare rule then applies; Kotlin callers remain free from that requirement. The annotation describes the Java signature rather than generating recovery behavior."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Ordinary generic type arguments are erased on the JVM, so a Java/Kotlin boundary does not supply an unknown `T` as a runtime class token or validate a list’s element types."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A Kotlin `internal` declaration is module-restricted for Kotlin callers but becomes public in Java; internal member names may be mangled. Kotlin’s module restriction and name mangling do not prevent access by Java callers or reflection."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A companion is an object associated with a class, so a Kotlin call through the class name does not by itself imply a Java static method."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider a small API that imports the title from a local text file and can be used by both Kotlin and Java clients. Its file-reading operation has a declared I/O failure, its options have a useful default, and Java clients need a direct factory call. The Kotlin declarations can express each of those requirements without changing how file reading works."
+                },
+                {
+                  "type": "code",
+                  "code": "// TitleFiles.kt\n@file:JvmName(\"TitleFiles\")\npackage example.titles\n\nimport java.io.IOException\nimport java.nio.charset.Charset\nimport java.nio.file.Files\nimport java.nio.file.Path\n\nclass TitleOptions private constructor(val charset: Charset) {\n    companion object {\n        @JvmField\n        val UTF8: Charset = Charsets.UTF_8\n\n        @JvmStatic\n        fun utf8(): TitleOptions = TitleOptions(UTF8)\n    }\n}\n\n@JvmOverloads\n@Throws(IOException::class)\nfun readTitle(\n    path: Path,\n    options: TitleOptions = TitleOptions.utf8(),\n): String = Files.readString(path, options.charset).trim()",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Here is a Java client for those declarations. `Files.readString` requires Java 11 or an environment providing that API; the example concerns an ordinary JVM library rather than Android API availability."
+                },
+                {
+                  "type": "code",
+                  "code": "package example.titles;\n\nimport java.io.IOException;\nimport java.nio.file.Path;\n\npublic final class TitlePreview {\n    public String preview(Path path) {\n        try {\n            return TitleFiles.readTitle(path);\n        } catch (IOException failure) {\n            return \"Title unavailable\";\n        }\n    }\n\n    public TitleOptions options() {\n        return TitleOptions.utf8();\n    }\n}",
+                  "language": "java"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A top-level Kotlin function becomes a static method on a generated file class. Without the file annotation, `TitleFiles.kt` normally produces `TitleFilesKt`; `@file:JvmName(\"TitleFiles\")` gives Java the intentional name used above. A top-level property normally exposes accessor methods on that class as well. Renaming the source file can change the default Java class name, so publishing a deliberate name can avoid coupling callers to file organization."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The Kotlin default argument lets Kotlin callers omit `options`. It does not normally provide Java with a one-argument method, and Java cannot use Kotlin named-argument syntax. `@JvmOverloads` supplies that additional method here by omitting the trailing defaulted parameter. The full two-argument method remains available. This is an overload choice for a particular Java API, not a promise to generate every combination of omitted parameters."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Without `@JvmStatic`, Java would call the factory as `TitleOptions.Companion.utf8()`. The annotation adds `TitleOptions.utf8()` while retaining the companion instance method. `@JvmField` separately exposes the eligible backed property as `TitleOptions.UTF8`, instead of requiring its companion getter. A field gives direct storage access rather than a computed accessor contract, so that decision matters for future API evolution. An ordinary named object’s unannotated methods are likewise called through its singleton instance, such as `ObjectName.INSTANCE.method()` in Java."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Java callback APIs often accept an interface with one abstract method, such as Runnable. Kotlin can adapt a matching lambda to that interface: `val task = Runnable { println(\"Refresh title preview\") }`. This is **SAM conversion**, named for the single abstract method. The interface remains the callable contract Java sees. Conversion does not run the callback, choose a thread or guarantee that its representation allocates nothing; the receiving API determines invocation and retention."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A Java-facing adapter benefits from a contract that is usable on both sides: resolved nullability at entry and exit, meaningful exception declarations, accessible factory calls and only the overloads callers need. Inspecting the generated Java declarations catches problems that an elegant Kotlin call site can conceal. A default parameter, companion call or function type can be convenient in Kotlin while asking Java callers to use a different signature."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Representation can change when a numeric value crosses an API. A function parameter declared `Int` normally becomes Java `int`; `Int?` needs a reference representation such as Integer to admit null. An integer stored through a generic API such as `List<Int>` is boxed too. Boxing makes a value usable where an object reference is required, with potential storage and conversion costs. It does not guarantee a fresh allocation for every value, because cached objects and runtime optimizations can affect that cost."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a large, dense set of integer measurements with no absent entries, `IntArray` stores primitive integers and maps to Java `int[]`, while `Array<Int>` and a generic list use boxed elements. Choosing the primitive array can reduce representation overhead when profiling or memory constraints justify it, but it changes the API and cannot encode null elements. A generic collection may remain appropriate when its operations matter more than that overhead. Numeric value comparison uses `==`; boxed reference identity can depend on caching and is not a numeric equality policy."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An interface method body also has a source contract and a generated JVM form. As a build reference, `jvmDefault` configuration controls whether bodies become JVM default methods and whether compatibility support is emitted for older compiled callers. The JVM target controls the bytecode version. Publishing a library requires those settings to fit its consumers; changing an emission mode can affect binary compatibility even though the Kotlin method body is unchanged. The exact modes and defaults depend on the compiler version, so they are build inputs rather than a rule inferred from interface syntax."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Public inline APIs add another versioning constraint: a compiled client may contain an expanded copy of the function’s body. Updating the library does not replace that copied code; recompiling the client supplies the changed inline behavior. Declarations called by the expanded code remain binary dependencies. An internal helper exposed with `@PublishedApi` therefore needs compatibility care despite its source visibility. A Java-facing method signature and a Kotlin inline implementation can impose different obligations on the same library update."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A Kotlin type can establish a source-level requirement while a runtime check enforces it at a Java boundary. Generated methods and fields define what Java can call; representation and compiled-client dependencies determine what a library can safely change."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_kotlin_nullability_and_smart_casts",
+            "lesson_kotlin_classes_interfaces_and_objects",
+            "lesson_kotlin_generics_and_variance",
+            "lesson_kotlin_inline_and_reified_types"
+          ],
+          "sources": [
+            {
+              "title": "Calling Java from Kotlin",
+              "url": "https://kotlinlang.org/docs/java-interop.html"
+            },
+            {
+              "title": "Calling Kotlin from Java",
+              "url": "https://kotlinlang.org/docs/java-to-kotlin-interop.html"
+            },
+            {
+              "title": "Exception and error handling",
+              "url": "https://kotlinlang.org/docs/exceptions.html"
+            },
+            {
+              "title": "JvmOverloads",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-overloads/"
+            },
+            {
+              "title": "Numbers",
+              "url": "https://kotlinlang.org/docs/numbers.html"
+            },
+            {
+              "title": "Interfaces",
+              "url": "https://kotlinlang.org/docs/interfaces.html"
+            },
+            {
+              "title": "Compiler options in the Kotlin Gradle plugin",
+              "url": "https://kotlinlang.org/docs/gradle-compiler-options.html"
+            },
+            {
+              "title": "Inline functions",
+              "url": "https://kotlinlang.org/docs/inline-functions.html"
+            },
+            {
+              "title": "PublishedApi",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-published-api/"
+            },
+            {
+              "title": "Java SE 11 Files.readString",
+              "url": "https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/file/Files.html#readString(java.nio.file.Path,java.nio.charset.Charset)"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "unit_kmp_shared_viewmodels_and_host_lifecycles",
       "topicId": "kmp",
       "title": "Shared ViewModels and Host Lifecycles",

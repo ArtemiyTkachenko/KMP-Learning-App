@@ -52,8 +52,8 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `d68f910966ed526af36aef6043ae8217062e7b767b6d5d31f83236cc000d811c` |
-| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `74cf2ce05c1394d0f9aa9ee1a08b1e8b7c377b899215f2b9aacf3eb059f02af2` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `ba2c0e8e651742f1faa93a0d6b2f62208a227df2d4f577b8ddb474cd41e05ec8` |
+| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `9fdeb33bfeed6306275b976336eb8b9e44eeeb0ae464c74bb96a7cba0bad904e` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
 because editing lesson content can change whether the material still teaches an
@@ -68,14 +68,14 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 32 |
-| Active lessons in those units | 138 |
-| Distinct primary subtopics | 77 |
-| Distinct supporting subtopics | 116 |
-| Unique active questions reached through primary mappings | 175 |
-| Primary subtopics with at least one active question | 77 |
-| Primary subtopics with no active question | 0 |
-| Active questions in the bank | 439 |
+| Active learning units | 36 |
+| Active lessons in those units | 147 |
+| Distinct primary subtopics | 98 |
+| Distinct supporting subtopics | 127 |
+| Unique active questions reached through primary mappings | 207 |
+| Primary subtopics with at least one active question | 97 |
+| Primary subtopics with no active question | 1 |
+| Active questions in the bank | 447 |
 | Deprecated questions excluded from this report | 41 |
 
 The two bank-size rows are context, not a target. The learning curriculum is
@@ -121,6 +121,10 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Hilt: Android Lifecycle-Aware Dagger (`unit_hilt_android_lifecycle_integration`) | 6 | 5 | 3 | 6 | 0 | 9 |
 | Koin: Containers, Definitions and Scopes (`unit_koin_containers_definitions_and_scopes`) | 4 | 4 | 1 | 4 | 0 | 5 |
 | Choosing a Dependency Injection Strategy (`unit_choosing_a_dependency_injection_strategy`) | 4 | 2 | 0 | 2 | 0 | 2 |
+| Types and Callable Semantics (`unit_kotlin_types_and_callables`) | 2 | 4 | 3 | 2 | 0 | 5 |
+| Objects and State Modeling (`unit_kotlin_objects_and_state`) | 3 | 9 | 10 | 2 | 0 | 12 |
+| Generic APIs and Compiler-Assisted Mechanics (`unit_kotlin_generic_api_mechanics`) | 3 | 5 | 6 | 4 | 0 | 10 |
+| Kotlin at the Java/JVM Boundary (`unit_kotlin_java_jvm_boundary`) | 1 | 3 | 3 | 2 | 0 | 5 |
 | Shared ViewModels and Host Lifecycles (`unit_kmp_shared_viewmodels_and_host_lifecycles`) | 2 | 2 | 1 | 2 | 0 | 3 |
 | Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | 2 | 2 | 1 | 2 | 1 | 4 |
 
@@ -281,7 +285,7 @@ Supporting context — not primary coverage:
 
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
-| `kotlin_collections` — Collections | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_collections` — Collections | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `compose_stability` — Stability and skippability | 4 | `android_ui` — UI — Views & Jetpack Compose |
 
@@ -398,7 +402,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `kotlin_equality` — Structural vs referential equality | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
-| `kotlin_collections` — Collections | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_collections` — Collections | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `kotlin_variables` — val, var, and basic declarations | 0 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 
 #### Stability and Skipping (`lesson_stability_and_skipping`)
@@ -2738,6 +2742,222 @@ Supporting context — not primary coverage:
 | `di_fundamentals` — Dependency injection fundamentals | 2 | `dependency_injection` — Dependency Injection |
 | `constructor_injection` — Constructor injection | 1 | `dependency_injection` — Dependency Injection |
 
+### Types and Callable Semantics (`unit_kotlin_types_and_callables`)
+
+Home topic: `kotlin_language` — Kotlin Language & JVM Fundamentals.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 3 | `kotlin_extension_resolution_static`, `kotlin_lambda_with_receiver_dsl`, `kotlin_nullability_001` |
+| APPLIED | 2 | `kotlin_callback_registration_snapshot`, `kotlin_smart_cast_single_getter_read` |
+| ADVANCED | 0 | — |
+
+#### Nullability, Smart Casts and Type Refinement (`lesson_kotlin_nullability_and_smart_casts`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kotlin_nullability` — Nullability | 1 | 1 | 0 | 2 | `kotlin_nullability_001`, `kotlin_smart_cast_single_getter_read` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_variables` — val, var, and basic declarations | 0 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_properties` — Properties, accessors, and backing fields | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_java_interop` — Java interoperability | 3 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### Functions, Lambdas, Receivers and Extensions (`lesson_kotlin_functions_lambdas_and_extensions`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kotlin_functions` — Functions and arguments | 0 | 1 | 0 | 1 | `kotlin_callback_registration_snapshot` |
+| `kotlin_lambdas` — Lambdas and higher-order functions | 1 | 0 | 0 | 1 | `kotlin_lambda_with_receiver_dsl` |
+| `kotlin_extension_functions` — Extension functions | 1 | 0 | 0 | 1 | `kotlin_extension_resolution_static` |
+| **Lesson total (unique)** | 2 | 1 | 0 | 3 | `kotlin_callback_registration_snapshot`, `kotlin_extension_resolution_static`, `kotlin_lambda_with_receiver_dsl` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_scope_functions` — let/run/apply/also/with | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_nullability` — Nullability | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+### Objects and State Modeling (`unit_kotlin_objects_and_state`)
+
+Home topic: `kotlin_language` — Kotlin Language & JVM Fundamentals.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 10 | `data_class_copy_is_shallow`, `kotlin_custom_getter_recomputes`, `kotlin_data_classes_001`, `kotlin_equality_001`, `kotlin_internal_module_visibility`, `kotlin_lazy_thread_safety_mode`, `kotlin_objects_001`, `kotlin_sealed_types_001`, `object_vs_companion_object_members`, `sealed_when_exhaustive_evolution` |
+| APPLIED | 2 | `kotlin_final_entry_open_hook`, `kotlin_optional_replaceable_property` |
+| ADVANCED | 0 | — |
+
+#### Classes, Interfaces, Visibility and Objects (`lesson_kotlin_classes_interfaces_and_objects`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kotlin_classes` — Kotlin classes | 0 | 1 | 0 | 1 | `kotlin_final_entry_open_hook` |
+| `kotlin_interfaces_inheritance` — Interfaces and inheritance | 0 | 0 | 0 | 0 | — |
+| `kotlin_objects` — object and companion object | 2 | 0 | 0 | 2 | `kotlin_objects_001`, `object_vs_companion_object_members` |
+| `kotlin_visibility` — Visibility modifiers | 1 | 0 | 0 | 1 | `kotlin_internal_module_visibility` |
+| **Lesson total (unique)** | 3 | 1 | 0 | 4 | `kotlin_final_entry_open_hook`, `kotlin_internal_module_visibility`, `kotlin_objects_001`, `object_vs_companion_object_members` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_extension_functions` — Extension functions | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### Properties, Accessors and Delegation (`lesson_kotlin_properties_and_delegation`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kotlin_properties` — Properties, accessors, and backing fields | 1 | 1 | 0 | 2 | `kotlin_custom_getter_recomputes`, `kotlin_optional_replaceable_property` |
+| `kotlin_delegation` — Delegation and delegated properties | 1 | 0 | 0 | 1 | `kotlin_lazy_thread_safety_mode` |
+| **Lesson total (unique)** | 2 | 1 | 0 | 3 | `kotlin_custom_getter_recomputes`, `kotlin_lazy_thread_safety_mode`, `kotlin_optional_replaceable_property` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_variables` — val, var, and basic declarations | 0 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_nullability` — Nullability | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_classes` — Kotlin classes | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### Data Classes, Equality and Sealed Models (`lesson_kotlin_data_equality_and_sealed_models`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kotlin_data_classes` — Data classes | 2 | 0 | 0 | 2 | `data_class_copy_is_shallow`, `kotlin_data_classes_001` |
+| `kotlin_equality` — Structural vs referential equality | 1 | 0 | 0 | 1 | `kotlin_equality_001` |
+| `kotlin_sealed_types` — Sealed classes and interfaces | 2 | 0 | 0 | 2 | `kotlin_sealed_types_001`, `sealed_when_exhaustive_evolution` |
+| **Lesson total (unique)** | 5 | 0 | 0 | 5 | `data_class_copy_is_shallow`, `kotlin_data_classes_001`, `kotlin_equality_001`, `kotlin_sealed_types_001`, `sealed_when_exhaustive_evolution` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_classes` — Kotlin classes | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_collections` — Collections | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_objects` — object and companion object | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+### Generic APIs and Compiler-Assisted Mechanics (`unit_kotlin_generic_api_mechanics`)
+
+Home topic: `kotlin_language` — Kotlin Language & JVM Fundamentals.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 6 | `generic_in_out_variance_tradeoff`, `kotlin_crossinline_non_local_return`, `kotlin_readonly_list_not_immutable`, `kotlin_reified_types_001`, `kotlin_sequence_constrained_once`, `kotlin_star_projection_use_site` |
+| APPLIED | 4 | `kotlin_historical_element_snapshot`, `kotlin_projected_array_transfer`, `noinline_vs_crossinline_lambda`, `sequence_intermediate_allocation_tradeoff` |
+| ADVANCED | 0 | — |
+
+#### Generics, Variance and Type Erasure (`lesson_kotlin_generics_and_variance`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kotlin_generics` — Generics and variance | 2 | 1 | 0 | 3 | `generic_in_out_variance_tradeoff`, `kotlin_projected_array_transfer`, `kotlin_star_projection_use_site` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_collections` — Collections | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_java_interop` — Java interoperability | 3 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### Inline Functions, Lambda Control Flow and Reified Types (`lesson_kotlin_inline_and_reified_types`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kotlin_inline_functions` — inline, noinline, and crossinline | 1 | 1 | 0 | 2 | `kotlin_crossinline_non_local_return`, `noinline_vs_crossinline_lambda` |
+| `kotlin_reified_types` — Reified type parameters | 1 | 0 | 0 | 1 | `kotlin_reified_types_001` |
+| **Lesson total (unique)** | 2 | 1 | 0 | 3 | `kotlin_crossinline_non_local_return`, `kotlin_reified_types_001`, `noinline_vs_crossinline_lambda` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_lambdas` — Lambdas and higher-order functions | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_generics` — Generics and variance | 3 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+#### Collections, Mutability and Sequences (`lesson_kotlin_collections_and_sequences`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kotlin_collections` — Collections | 1 | 1 | 0 | 2 | `kotlin_historical_element_snapshot`, `kotlin_readonly_list_not_immutable` |
+| `kotlin_sequences` — Sequences and lazy collection processing | 1 | 1 | 0 | 2 | `kotlin_sequence_constrained_once`, `sequence_intermediate_allocation_tradeoff` |
+| **Lesson total (unique)** | 2 | 2 | 0 | 4 | `kotlin_historical_element_snapshot`, `kotlin_readonly_list_not_immutable`, `kotlin_sequence_constrained_once`, `sequence_intermediate_allocation_tradeoff` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_generics` — Generics and variance | 3 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_data_classes` — Data classes | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+### Kotlin at the Java/JVM Boundary (`unit_kotlin_java_jvm_boundary`)
+
+Home topic: `kotlin_language` — Kotlin Language & JVM Fundamentals.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 3 | `jvm_fundamentals_001`, `kotlin_no_checked_exceptions_interop`, `kotlin_platform_type_null_check` |
+| APPLIED | 2 | `kotlin_java_companion_default_factory`, `kotlin_platform_absence_adapter` |
+| ADVANCED | 0 | — |
+
+#### Kotlin at the Java/JVM Boundary (`lesson_kotlin_java_jvm_boundary`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `kotlin_java_interop` — Java interoperability | 1 | 2 | 0 | 3 | `kotlin_java_companion_default_factory`, `kotlin_platform_absence_adapter`, `kotlin_platform_type_null_check` |
+| `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | 0 | 0 | 1 | `jvm_fundamentals_001` |
+| `kotlin_exceptions` — Exception handling | 1 | 0 | 0 | 1 | `kotlin_no_checked_exceptions_interop` |
+| **Lesson total (unique)** | 3 | 2 | 0 | 5 | `jvm_fundamentals_001`, `kotlin_java_companion_default_factory`, `kotlin_no_checked_exceptions_interop`, `kotlin_platform_absence_adapter`, `kotlin_platform_type_null_check` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `kotlin_nullability` — Nullability | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_visibility` — Visibility modifiers | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_objects` — object and companion object | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_generics` — Generics and variance | 3 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_functions` — Functions and arguments | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+| `kotlin_inline_functions` — inline, noinline, and crossinline | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
 ### Shared ViewModels and Host Lifecycles (`unit_kmp_shared_viewmodels_and_host_lifecycles`)
 
 Home topic: `kmp` — Kotlin Multiplatform & Compose Multiplatform.
@@ -2842,7 +3062,9 @@ subtopic taxonomy is deliberately finer-grained than the bank — see
 from subtopics that are empty on purpose. This report surfaces the gap; whether it
 matters is editorial judgement.
 
-Every primary concept of every active lesson has at least one active question.
+| Primary subtopic | Owning topic |
+|---|---|
+| `kotlin_interfaces_inheritance` — Interfaces and inheritance | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 
 ## Semantic review reminder
 

@@ -67,6 +67,10 @@ internal class BundledLearningCurriculumTest {
                 "unit_hilt_android_lifecycle_integration",
                 "unit_koin_containers_definitions_and_scopes",
                 "unit_choosing_a_dependency_injection_strategy",
+                "unit_kotlin_types_and_callables",
+                "unit_kotlin_objects_and_state",
+                "unit_kotlin_generic_api_mechanics",
+                "unit_kotlin_java_jvm_boundary",
                 // Android Engineering Lab is Android-first: KMP Units follow every core Unit.
                 "unit_kmp_shared_viewmodels_and_host_lifecycles",
                 "unit_koin_and_dependency_injection_in_kmp",
@@ -106,6 +110,10 @@ internal class BundledLearningCurriculumTest {
                 "Hilt: Android Lifecycle-Aware Dagger",
                 "Koin: Containers, Definitions and Scopes",
                 "Choosing a Dependency Injection Strategy",
+                "Types and Callable Semantics",
+                "Objects and State Modeling",
+                "Generic APIs and Compiler-Assisted Mechanics",
+                "Kotlin at the Java/JVM Boundary",
                 "Shared ViewModels and Host Lifecycles",
                 "Koin and Dependency Injection in KMP",
             ),
@@ -113,7 +121,7 @@ internal class BundledLearningCurriculumTest {
         )
 
         // A Unit's home Topic decides where it is browsed, so it is asserted per Unit
-        // rather than as one value: the document now spans five home Topics.
+        // rather than as one value: the document now spans six home Topics.
         assertEquals(
             listOf(
                 "android_ui",
@@ -146,6 +154,10 @@ internal class BundledLearningCurriculumTest {
                 "dependency_injection",
                 "dependency_injection",
                 "dependency_injection",
+                "kotlin_language",
+                "kotlin_language",
+                "kotlin_language",
+                "kotlin_language",
                 "kmp",
                 "kmp",
             ),
@@ -723,6 +735,39 @@ internal class BundledLearningCurriculumTest {
 
         assertEquals(
             listOf(
+                "lesson_kotlin_nullability_and_smart_casts",
+                "lesson_kotlin_functions_lambdas_and_extensions",
+            ),
+            unit("unit_kotlin_types_and_callables").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_kotlin_classes_interfaces_and_objects",
+                "lesson_kotlin_properties_and_delegation",
+                "lesson_kotlin_data_equality_and_sealed_models",
+            ),
+            unit("unit_kotlin_objects_and_state").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_kotlin_generics_and_variance",
+                "lesson_kotlin_inline_and_reified_types",
+                "lesson_kotlin_collections_and_sequences",
+            ),
+            unit("unit_kotlin_generic_api_mechanics").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_kotlin_java_jvm_boundary",
+            ),
+            unit("unit_kotlin_java_jvm_boundary").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
                 "lesson_kmp_viewmodel_owners_across_hosts",
                 "lesson_kmp_lifecycle_collection_across_hosts",
             ),
@@ -751,6 +796,71 @@ internal class BundledLearningCurriculumTest {
                 "Choosing a Strategy for a Shared Graph",
             ),
             unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.title },
+        )
+    }
+
+    @Test
+    fun kotlinLessonsKeepTheirBlueprintPracticeAndSupportingMappings() = runTest {
+        // Primary concepts determine practice eligibility; supporting references preserve
+        // the bridges without silently expanding what practising a Kotlin Unit assesses.
+        val kotlinLessons = units()
+            .filter { it.topicId == "kotlin_language" }
+            .flatMap { it.lessons }
+
+        assertEquals(
+            mapOf(
+                "lesson_kotlin_nullability_and_smart_casts" to (
+                    listOf("kotlin_nullability") to
+                        listOf("kotlin_variables", "kotlin_properties", "kotlin_java_interop")
+                ),
+                "lesson_kotlin_functions_lambdas_and_extensions" to (
+                    listOf("kotlin_functions", "kotlin_lambdas", "kotlin_extension_functions") to
+                        listOf("kotlin_scope_functions", "kotlin_nullability")
+                ),
+                "lesson_kotlin_classes_interfaces_and_objects" to (
+                    listOf(
+                        "kotlin_classes",
+                        "kotlin_interfaces_inheritance",
+                        "kotlin_objects",
+                        "kotlin_visibility",
+                    ) to
+                        listOf("jvm_fundamentals", "kotlin_extension_functions")
+                ),
+                "lesson_kotlin_properties_and_delegation" to (
+                    listOf("kotlin_properties", "kotlin_delegation") to
+                        listOf("kotlin_variables", "kotlin_nullability", "kotlin_classes")
+                ),
+                "lesson_kotlin_data_equality_and_sealed_models" to (
+                    listOf("kotlin_data_classes", "kotlin_equality", "kotlin_sealed_types") to
+                        listOf("kotlin_classes", "kotlin_collections", "kotlin_objects")
+                ),
+                "lesson_kotlin_generics_and_variance" to (
+                    listOf("kotlin_generics") to
+                        listOf("jvm_fundamentals", "kotlin_collections", "kotlin_java_interop")
+                ),
+                "lesson_kotlin_inline_and_reified_types" to (
+                    listOf("kotlin_inline_functions", "kotlin_reified_types") to
+                        listOf("kotlin_lambdas", "kotlin_generics", "jvm_fundamentals")
+                ),
+                "lesson_kotlin_collections_and_sequences" to (
+                    listOf("kotlin_collections", "kotlin_sequences") to
+                        listOf("kotlin_generics", "kotlin_data_classes", "jvm_fundamentals")
+                ),
+                "lesson_kotlin_java_jvm_boundary" to (
+                    listOf("kotlin_java_interop", "jvm_fundamentals", "kotlin_exceptions") to
+                        listOf(
+                            "kotlin_nullability",
+                            "kotlin_visibility",
+                            "kotlin_objects",
+                            "kotlin_generics",
+                            "kotlin_functions",
+                            "kotlin_inline_functions",
+                        )
+                ),
+            ),
+            kotlinLessons.associate { lesson ->
+                lesson.id to (lesson.primarySubtopicIds to lesson.supportingSubtopicIds)
+            },
         )
     }
 

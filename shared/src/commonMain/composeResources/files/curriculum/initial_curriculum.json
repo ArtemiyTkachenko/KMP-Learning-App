@@ -20740,6 +20740,338 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_smart_cast_single_getter_read",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_nullability",
+      "text": "A store exposes `val name: String?` with a custom getter that may return a different value on each read. Formatting must use one getter result, return \"Missing\" when it is null, and otherwise call `trim()` without a null assertion. Which implementation meets that contract?",
+      "answers": [
+        {
+          "id": "kotlin_smart_cast_single_getter_read_a",
+          "text": "Read `val name = store.name ?: return \"Missing\"`; return `name.trim()`."
+        },
+        {
+          "id": "kotlin_smart_cast_single_getter_read_b",
+          "text": "Check `store.name != null`; return `store.name.trim()` or \"Missing\"."
+        },
+        {
+          "id": "kotlin_smart_cast_single_getter_read_c",
+          "text": "Read `val name = store.name!!`; return `name.trim()` after that assertion."
+        },
+        {
+          "id": "kotlin_smart_cast_single_getter_read_d",
+          "text": "Check `store.name != null`; return `store.name?.trim() ?: \"Missing\"`."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "kotlin_smart_cast_single_getter_read_a"
+      ],
+      "explanation": "Elvis returns for a null getter result and otherwise leaves a non-null local value for trim(). That local retains the result of one getter invocation. Checking the property and reading it again does not establish that both reads agree. A custom getter prevents a property smart cast, and `!!` would turn an expected missing value into an exception.",
+      "sources": [
+        {
+          "title": "Type checks and casts: smart cast prerequisites",
+          "url": "https://kotlinlang.org/docs/typecasts.html#smart-cast-prerequisites"
+        },
+        {
+          "title": "Null safety",
+          "url": "https://kotlinlang.org/docs/null-safety.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_callback_registration_snapshot",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_functions",
+      "text": "A controller stores an ordinary `() -> Unit` callback and invokes it later. A mutable local `selectedId: String` may change after registration. The callback must send the ID selected at registration, not the later selection, and `send` must run only when the callback is invoked. Which approach meets both requirements?",
+      "answers": [
+        {
+          "id": "kotlin_callback_registration_snapshot_a",
+          "text": "Capture `selectedId` directly and read it when the stored callback calls `send`."
+        },
+        {
+          "id": "kotlin_callback_registration_snapshot_b",
+          "text": "Copy `selectedId` to a local `val` inside the callback, then send that local value."
+        },
+        {
+          "id": "kotlin_callback_registration_snapshot_c",
+          "text": "Copy `selectedId` to a local `val` before registration and capture that value."
+        },
+        {
+          "id": "kotlin_callback_registration_snapshot_d",
+          "text": "Call `send(selectedId)` before registration and register a callback with no work."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "kotlin_callback_registration_snapshot_c"
+      ],
+      "explanation": "Copying the string reference into a local `val` before registration fixes which ID the callback uses while leaving the send operation deferred. Capturing the mutable variable directly observes its value when the callback runs. A local declared inside the callback is also initialized at invocation, so it does not capture the earlier selection.",
+      "sources": [
+        {
+          "title": "Higher-order functions and lambdas: closures",
+          "url": "https://kotlinlang.org/docs/lambdas.html#closures"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_final_entry_open_hook",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_classes",
+      "text": "A Kotlin library provides `BaseLoader.load(id)`, which validates an ID and then calls `loadValidId(id)`. Subclasses must supply loading behavior but cannot replace `load` and bypass validation. Calls use a `BaseLoader` reference. Which declaration design preserves these requirements?",
+      "answers": [
+        {
+          "id": "kotlin_final_entry_open_hook_a",
+          "text": "Make the class and both methods open; require each override of load to call super."
+        },
+        {
+          "id": "kotlin_final_entry_open_hook_b",
+          "text": "Make the class abstract, keep load final, and make loadValidId protected abstract."
+        },
+        {
+          "id": "kotlin_final_entry_open_hook_c",
+          "text": "Keep the class final and move loadValidId to an extension on each concrete loader."
+        },
+        {
+          "id": "kotlin_final_entry_open_hook_d",
+          "text": "Make the class open and load open, but keep the implemented loadValidId final."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "kotlin_final_entry_open_hook_b"
+      ],
+      "explanation": "An abstract base can fix `load` as the validation entry point while requiring a subclass implementation of the protected hook. The hook call dispatches to the actual subclass even through a base reference. An open `load` lets an override omit validation; asking overrides to call super does not enforce the invariant. A final class cannot provide this subclass extension point.",
+      "sources": [
+        {
+          "title": "Inheritance: overriding methods",
+          "url": "https://kotlinlang.org/docs/inheritance.html#overriding-methods"
+        },
+        {
+          "title": "Classes: abstract classes",
+          "url": "https://kotlinlang.org/docs/classes.html#abstract-classes"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_optional_replaceable_property",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_properties",
+      "text": "An uploader can be created before account selection. Having no current session is valid; selecting an account installs a session, switching accounts replaces it, and signing out removes it. Operations must handle absence explicitly rather than fail on an uninitialized property. Which property contract fits?",
+      "answers": [
+        {
+          "id": "kotlin_optional_replaceable_property_a",
+          "text": "A lazy val session initialized from the first account selected when it is read."
+        },
+        {
+          "id": "kotlin_optional_replaceable_property_b",
+          "text": "A constructor val session that every uploader instance must receive at creation."
+        },
+        {
+          "id": "kotlin_optional_replaceable_property_c",
+          "text": "A nullable var session initialized to null, with operations handling the null branch."
+        },
+        {
+          "id": "kotlin_optional_replaceable_property_d",
+          "text": "A lateinit var session assigned on selection and checked with isInitialized on use."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "kotlin_optional_replaceable_property_c"
+      ],
+      "explanation": "A nullable mutable property represents both valid absence and later replacement, including setting it back to null on sign-out. A constructor value requires a session at creation, and a lazy val retains its first successful value. Lateinit supports delayed non-null assignment, but has no null state for removing the session; initialization status is not a complete account lifecycle.",
+      "sources": [
+        {
+          "title": "Properties: late-initialized properties and variables",
+          "url": "https://kotlinlang.org/docs/properties.html#late-initialized-properties-and-variables"
+        },
+        {
+          "title": "Delegated properties: lazy properties",
+          "url": "https://kotlinlang.org/docs/delegated-properties.html#lazy-properties"
+        },
+        {
+          "title": "Null safety",
+          "url": "https://kotlinlang.org/docs/null-safety.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_projected_array_transfer",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_generics",
+      "text": "Assume `ImageAsset` extends `Asset`, and `Thumbnail` extends `ImageAsset`. A transfer function copies entries from a source array into an equally sized destination. It must accept `Array<Thumbnail>` as a source and either `Array<ImageAsset>` or `Array<Asset>` as a destination, without casts. Which parameter types permit the required reads, writes and substitutions?",
+      "answers": [
+        {
+          "id": "kotlin_projected_array_transfer_a",
+          "text": "source: Array<out ImageAsset>; destination: Array<in ImageAsset>."
+        },
+        {
+          "id": "kotlin_projected_array_transfer_b",
+          "text": "source: Array<ImageAsset>; destination: Array<ImageAsset>."
+        },
+        {
+          "id": "kotlin_projected_array_transfer_c",
+          "text": "source: Array<in ImageAsset>; destination: Array<out ImageAsset>."
+        },
+        {
+          "id": "kotlin_projected_array_transfer_d",
+          "text": "source: Array<*>; destination: Array<*>."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "kotlin_projected_array_transfer_a"
+      ],
+      "explanation": "The source projection permits reading an ImageAsset from an array of an unknown ImageAsset subtype. The destination projection permits writing that image into an array accepting ImageAsset or a supertype. Invariant Array<ImageAsset> excludes the required subtype and supertype arrays. Reversing the projections loses the required read/write permissions, while star projections cannot justify inserting the source value into an independently unknown destination element type.",
+      "sources": [
+        {
+          "title": "Generics: use-site variance and type projections",
+          "url": "https://kotlinlang.org/docs/generics.html#use-site-variance-type-projections"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_historical_element_snapshot",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_collections",
+      "text": "A single-thread-owned queue stores `Upload(id: String, var percent: Int)` objects in a MutableList. A history entry must retain both membership and each percent value as observed when the entry is created, despite later queue additions and progress updates. Which representation establishes that snapshot?",
+      "answers": [
+        {
+          "id": "kotlin_historical_element_snapshot_a",
+          "text": "Retain the queue as List<Upload>, exposing no list mutation methods to history readers."
+        },
+        {
+          "id": "kotlin_historical_element_snapshot_b",
+          "text": "Map now to new ProgressRow(val id: String, val percent: Int) values and retain that list."
+        },
+        {
+          "id": "kotlin_historical_element_snapshot_c",
+          "text": "Retain queue.toList(), separating list membership while reusing each Upload object."
+        },
+        {
+          "id": "kotlin_historical_element_snapshot_d",
+          "text": "Retain queue.asSequence().map { ProgressRow(it.id, it.percent) } for later consumption."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "kotlin_historical_element_snapshot_b"
+      ],
+      "explanation": "Eager mapping creates rows containing the string and integer values observed at creation, so later changes to Upload objects do not alter them. `toList()` copies membership but retains the mutable element references. A read-only alias also observes membership changes, and a sequence defers reading progress until consumption.",
+      "sources": [
+        {
+          "title": "Constructing collections: copy",
+          "url": "https://kotlinlang.org/docs/constructing-collections.html#copy"
+        },
+        {
+          "title": "Collection transformations: mapping",
+          "url": "https://kotlinlang.org/docs/collection-transformations.html#map"
+        },
+        {
+          "title": "Sequences",
+          "url": "https://kotlinlang.org/docs/sequences.html"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_java_companion_default_factory",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_java_interop",
+      "text": "A Kotlin companion declares `fun create(name: String, retries: Int = 3): Client`. Java callers must be able to write both `Client.create(\"api\")` and `Client.create(\"api\", 5)`. The Kotlin declaration and companion placement stay the same, and no manual wrapper or overload is added. Which annotations on create supply the required Java surface?",
+      "answers": [
+        {
+          "id": "kotlin_java_companion_default_factory_a",
+          "text": "Use @JvmOverloads without @JvmStatic; defaulted parameters supply the class-level call."
+        },
+        {
+          "id": "kotlin_java_companion_default_factory_b",
+          "text": "Use @JvmStatic without @JvmOverloads; Java can then omit the Kotlin default argument."
+        },
+        {
+          "id": "kotlin_java_companion_default_factory_c",
+          "text": "Use @JvmName(\"create\") and @JvmOverloads; naming the method makes it class-level."
+        },
+        {
+          "id": "kotlin_java_companion_default_factory_d",
+          "text": "Use @JvmStatic and @JvmOverloads; static exposure and omitted-argument overloads differ."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "kotlin_java_companion_default_factory_d"
+      ],
+      "explanation": "JvmStatic adds a static method on Client for the companion function. JvmOverloads also supplies the overload omitting the trailing defaulted retries parameter, while retaining the full signature. Static exposure alone does not let Java omit a Kotlin default argument, and overload generation alone leaves Java calls on the companion instance. JvmName changes a generated method name rather than making it static.",
+      "sources": [
+        {
+          "title": "Calling Kotlin from Java: static methods",
+          "url": "https://kotlinlang.org/docs/java-to-kotlin-interop.html#static-methods"
+        },
+        {
+          "title": "Calling Kotlin from Java: overloads generation",
+          "url": "https://kotlinlang.org/docs/java-to-kotlin-interop.html#overloads-generation"
+        },
+        {
+          "title": "Calling Kotlin from Java: JVM names",
+          "url": "https://kotlinlang.org/docs/java-to-kotlin-interop.html#handling-signature-clashes-with-jvmname"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_platform_absence_adapter",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_java_interop",
+      "text": "An unannotated Java library method returns String or null. Null means that no display name has been supplied, and that valid absence must remain distinct from an empty name. A Kotlin adapter will expose the result to Kotlin-only consumers, which must handle absence explicitly. Which boundary policy fits?",
+      "answers": [
+        {
+          "id": "kotlin_platform_absence_adapter_a",
+          "text": "Declare a String? adapter result, preserve null, and let consumers handle the absent branch."
+        },
+        {
+          "id": "kotlin_platform_absence_adapter_b",
+          "text": "Declare a String adapter result and replace null with an empty string before returning it."
+        },
+        {
+          "id": "kotlin_platform_absence_adapter_c",
+          "text": "Declare a String adapter result and assert the Java value is non-null before returning it."
+        },
+        {
+          "id": "kotlin_platform_absence_adapter_d",
+          "text": "Infer the adapter result type from Java and let consumers use it as a non-null String."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "kotlin_platform_absence_adapter_a"
+      ],
+      "explanation": "An explicit nullable Kotlin result preserves the valid absent state and restores compiler-enforced handling for consumers. Replacing null with an empty string merges states the contract distinguishes. A non-null assertion treats valid absence as a failure, while retaining an inferred platform type permits unsafe non-null use instead of requiring the missing case to be handled.",
+      "sources": [
+        {
+          "title": "Calling Java from Kotlin: null-safety and platform types",
+          "url": "https://kotlinlang.org/docs/java-interop.html#null-safety-and-platform-types"
+        },
+        {
+          "title": "Null safety",
+          "url": "https://kotlinlang.org/docs/null-safety.html"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

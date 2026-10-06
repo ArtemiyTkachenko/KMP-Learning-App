@@ -87,21 +87,21 @@ its current output is reproduced under **Audit baselines** below.
 
 | Metric | Value |
 |---|---:|
-| Total questions | 480 |
-| ACTIVE | 439 |
+| Total questions | 488 |
+| ACTIVE | 447 |
 | DEPRECATED | 41 |
 | Topics | 17 |
 | Subtopics | 361 (360 ACTIVE, 1 DEPRECATED) |
-| Subtopics with ≥1 active question | 290 (80%) |
-| Subtopics with 0 active questions | 71 (70 ACTIVE, plus the DEPRECATED `koin_multiplatform`) |
-| SINGLE | 433 |
+| Subtopics with ≥1 active question | 292 (81%) |
+| Subtopics with 0 active questions | 69 (68 ACTIVE, plus the DEPRECATED `koin_multiplatform`) |
+| SINGLE | 441 |
 | MULTIPLE | 47 |
 | — of which exactly one correct answer | 3 |
-| Answer options | 1926 (474 questions with 4 options, 6 with 5) |
-| Source references | 643 across 341 unique URLs |
+| Answer options | 1958 (482 questions with 4 options, 6 with 5) |
+| Source references | 660 across 354 unique URLs |
 
-Subtopic depth distribution: **71** subtopics have 0 questions, **196** have 1,
-**63** have 2, **20** have 3, **6** have 4, **3** have 5, **1** has 8, and **1**
+Subtopic depth distribution: **69** subtopics have 0 questions, **194** have 1,
+**65** have 2, **22** have 3, **6** have 4, **3** have 5, **1** has 8, and **1**
 has 10.
 
 <!-- END GENERATED: question-bank-headline -->
@@ -132,7 +132,7 @@ where the next expansion should look first.
 | UI — Views & Jetpack Compose | `android_ui` | 49 | 24 | 20 | 4 | 2.04 |
 | Android Platform & Application Model | `android_platform` | 16 | 8 | 8 | 0 | 2.00 |
 | Dependency Injection | `dependency_injection` | 38 | 25 | 24 | 1 | 1.52 |
-| Kotlin Language & JVM Fundamentals | `kotlin_language` | 25 | 23 | 19 | 4 | 1.09 |
+| Kotlin Language & JVM Fundamentals | `kotlin_language` | 33 | 23 | 21 | 2 | 1.43 |
 | Local Persistence & Offline Data | `local_data` | 20 | 19 | 16 | 3 | 1.05 |
 | Performance, Memory & Debugging | `performance` | 22 | 23 | 18 | 5 | 0.96 |
 | Testing & Testability | `testing` | 21 | 22 | 19 | 3 | 0.95 |
@@ -143,7 +143,7 @@ where the next expansion should look first.
 | Mobile System Design | `mobile_system_design` | 17 | 24 | 16 | 8 | 0.71 |
 | Build System, Modularization & Delivery | `build_delivery` | 17 | 25 | 15 | 10 | 0.68 |
 | Notifications & Push Messaging | `notifications` | 12 | 18 | 11 | 7 | 0.67 |
-| **Total** | | **439** | **361** | **290** | **71** | **1.22** |
+| **Total** | | **447** | **361** | **292** | **69** | **1.24** |
 
 <!-- END GENERATED: question-bank-topic-coverage -->
 
@@ -168,18 +168,22 @@ Current output of the `docs/content/question-authoring-playbook.md` Part 3 scrip
 the whole bank:
 
 ```
-correct-longest 183/436 (42%), mean ratio 1.03, over 10% limit: 0
-absolutes: distractors 0.24/opt, correct 0.13/opt
+correct-longest 187/444 (42%), mean ratio 1.03, over 10% limit: 0
+absolutes: distractors 0.23/opt, correct 0.13/opt
 position: {0: 27%, 1: 28%, 2: 26%, 3: 19%, 4: 1%}
 ```
 
-All 341 unique source URLs returned HTTP 200 when the KMP content-separation migration
-re-ran the sweep on 2026-09-29, all 50 `#fragment` citations resolved to a real anchor, and
-the body-length sweep over all 306 distinct pages reported no empty or stub page.
+The Kotlin/JVM expansion combined a complete 341-URL baseline sweep with checks for
+13 additional accepted-question URLs. All 354 URLs returned HTTP 200 in those recorded
+checks, and all 63 fragments resolved. The baseline body sweep flagged two Google Cloud
+retrievals as short; these are retrieval warnings, not proof of empty canonical pages.
+Both newly covered question-source base pages passed the body threshold. The
+[Kotlin/JVM implementation report](kotlin-language-jvm-implementation.md) records the
+validation limits; every new question citation was also opened for semantic support.
 
 These are the numbers a new batch must not degrade. In particular: **zero
 questions exceed the 10% correct-answer length limit**, and correct answers do
-use absolute words (0.13/opt against 0.24/opt in distractors), so "the option
+use absolute words (0.13/opt against 0.23/opt in distractors), so "the option
 with 'only' in it is wrong" is not a working strategy. Both properties are easy
 to break by accident and are the reason the audit exists. The position row is
 also why neither E24-08's nineteen new questions nor E25-08's twelve all key
@@ -201,9 +205,9 @@ multiplatform pages moved under `/docs/multiplatform/`.
 **A 200 proves almost nothing on its own.** The full review found three independent ways a
 citation can be dead behind a 200: a page whose section was renamed (the anchor check), a
 page whose content was removed (the body-length check), and a page that was replaced by a
-redirect shell (both). All three scripts are now in the playbook's Part 7 and all three pass
-on the whole bank. They are worth running on a schedule rather than only when questions
-change — vendor documentation decayed faster than the questions did.
+redirect shell (both). All three scripts are now in the playbook's Part 7. The current
+recorded sweep separates the body-retrieval warnings above from URL and anchor success.
+They are worth running on a schedule rather than only when questions change — vendor documentation decayed faster than the questions did.
 
 ## Deprecated questions
 
@@ -280,7 +284,7 @@ is retained because Lessons still name it until the learning migration re-homes 
 
 <!-- BEGIN GENERATED: question-bank-empty-subtopics -->
 
-71 subtopics have no active question: 70 ACTIVE subtopics and the DEPRECATED
+69 subtopics have no active question: 68 ACTIVE subtopics and the DEPRECATED
 `koin_multiplatform`.
 
 <!-- END GENERATED: question-bank-empty-subtopics -->
@@ -324,6 +328,10 @@ Questions moved to `kmp` (both tested a shared-`commonMain` decision). They stay
 ACTIVE because each comparison is legitimate on Android alone; do not refill them
 with KMP framing.
 
+The Kotlin/JVM blueprint also identifies `kotlin_interfaces_inheritance` as an
+assessment gap. The initial expansion dropped a direct qualified-super recall
+proposal; a useful behavioral-design scenario remains deferred.
+
 ### Intentionally empty — do not fill without a reason
 
 These were considered and rejected during the last expansion. They are low
@@ -332,7 +340,7 @@ neighbouring subtopic.
 
 | Subtopic | Why it stays empty |
 |---|---|
-| `kotlin_variables`, `kotlin_functions`, `kotlin_classes`, `kotlin_interfaces_inheritance` | Basic syntax; the bank targets mid-to-senior and tests these implicitly through harder questions |
+| `kotlin_variables` | Basic declarations remain Reference material; other Kotlin questions exercise the distinction between stable bindings and mutable state |
 | `xml_layouts`, `view_binding`, `compose_previews`, `compose_theming` | Tooling and legacy layout mechanics with little interview signal |
 | `gson`, `moshi` | Superseded by kotlinx.serialization, which is covered; a comparison question would be trivia |
 | `rxjava_fundamentals`, `flow_vs_rxjava` | Legacy; would date quickly. Revisit only if RxJava re-enters the target job profile |
@@ -443,15 +451,19 @@ earliest one.
 
 ### Kotlin and JVM
 
-Covered: nullability · extension resolution is static · data class generation and
-shallow `copy` · `object` vs companion · sealed exhaustiveness and its evolution
-cost · custom getters · `by lazy` thread safety · star projection · variance ·
-`crossinline` / `noinline` · `reified` · read-only vs immutable collections ·
-sequence constrained-once and allocation trade-off · `==` vs `===` · scope
-function overuse · platform types · type erasure · `@Throws` Java interop · receiver
-lambdas · `internal` visibility.
+Covered: nullability and stable single-getter refinement · registration-time callback
+capture · final validation entry with a polymorphic hook · extension resolution is
+static · data class generation and shallow `copy` · `object` vs companion · sealed
+exhaustiveness and its evolution cost · custom getters · replaceable optional property
+state · `by lazy` thread safety · star projection · variance and projected array
+transfer · `crossinline` / `noinline` · `reified` · read-only vs immutable collections
+and historical element snapshots · sequence constrained-once and allocation trade-off ·
+`==` vs `===` · scope function overuse · platform types and nullable boundary policy ·
+type erasure · `@Throws` Java interop · companion factory static/overload surface ·
+receiver lambdas · `internal` visibility.
 
-Thin: `kotlin_collections` and `kotlin_exceptions` have one question each.
+Thin: `kotlin_exceptions` has one question. Interface-conflict behavioral reasoning
+remains a blueprint assessment gap; no weak syntax-recall proposal was retained.
 
 ### Architecture and DI
 
@@ -509,19 +521,19 @@ trade-offs.
   cheap wins from filling empty subtopics are largely spent. The next batch will
   produce more value by adding a second, genuinely different question to
   high-frequency subtopics that currently have one than by chasing the remaining
-  71 zeros.
+  69 zeros.
 - **Check the deprecated table before authoring.** Two subtopics are
   deprecated-only and several others have a retired predecessor whose concept is
   still taken.
-- **Author 15–25% of a new batch as MULTIPLE.** The bank sits at 10.9%
-  (47/480, 9.8%) because the earliest content used fewer, and E24-08 authored none —
+- **Author 15–25% of a new batch as MULTIPLE.** The bank sits at 9.6%
+  (47/488) because the earliest content used fewer, and E24-08 authored none —
   every one of its nineteen questions asks for a single prediction or decision,
   which `SINGLE` expresses honestly. The band to aim for is still 15–25%. Only three questions in the whole bank are
   MULTIPLE with a single correct answer — keep authoring some that way, or
   `selectionMode` stays inferable from the answer key.
 - **Every question in the bank has 4 options except 6 with 5.** Stay at 4 unless
   there is a specific reason.
-- **Source hosts, for reference:** developer.android.com 382 · kotlinlang.org 140
+- **Source hosts, for reference:** developer.android.com 382 · kotlinlang.org 157
   · github.com 37 (kotlinx.serialization, OkHttp, Retrofit and SQLDelight —
   `square.github.io` returns 404, so each project's own repository is the primary
   source — plus four androidx runtime files cited where a contract is stated only
@@ -611,32 +623,32 @@ target subtopic here before authoring to avoid a near-duplicate.
 
 ### Kotlin Language & JVM Fundamentals
 
-`kotlin_language` — **25 active** across 23 subtopics (19 covered, 4 empty)
+`kotlin_language` — **33 active** across 23 subtopics (21 covered, 2 empty)
 
 | Subtopic | n | Question IDs |
 |---|---:|---|
 | `kotlin_variables` — val, var, and basic declarations | 0 | — |
-| `kotlin_nullability` — Nullability | 1 | `kotlin_nullability_001` |
-| `kotlin_functions` — Functions and arguments | 0 | — |
+| `kotlin_nullability` — Nullability | 2 | `kotlin_nullability_001`, `kotlin_smart_cast_single_getter_read` |
+| `kotlin_functions` — Functions and arguments | 1 | `kotlin_callback_registration_snapshot` |
 | `kotlin_extension_functions` — Extension functions | 1 | `kotlin_extension_resolution_static` |
-| `kotlin_classes` — Kotlin classes | 0 | — |
+| `kotlin_classes` — Kotlin classes | 1 | `kotlin_final_entry_open_hook` |
 | `kotlin_data_classes` — Data classes | 2 | `kotlin_data_classes_001`, `data_class_copy_is_shallow` |
 | `kotlin_objects` — object and companion object | 2 | `kotlin_objects_001`, `object_vs_companion_object_members` |
 | `kotlin_sealed_types` — Sealed classes and interfaces | 2 | `kotlin_sealed_types_001`, `sealed_when_exhaustive_evolution` |
 | `kotlin_interfaces_inheritance` — Interfaces and inheritance | 0 | — |
 | `kotlin_visibility` — Visibility modifiers | 1 | `kotlin_internal_module_visibility` |
-| `kotlin_properties` — Properties, accessors, and backing fields | 1 | `kotlin_custom_getter_recomputes` |
+| `kotlin_properties` — Properties, accessors, and backing fields | 2 | `kotlin_custom_getter_recomputes`, `kotlin_optional_replaceable_property` |
 | `kotlin_delegation` — Delegation and delegated properties | 1 | `kotlin_lazy_thread_safety_mode` |
-| `kotlin_generics` — Generics and variance | 2 | `kotlin_star_projection_use_site`, `generic_in_out_variance_tradeoff` _(deprecated: `kotlin_generics_001`)_ |
+| `kotlin_generics` — Generics and variance | 3 | `kotlin_star_projection_use_site`, `generic_in_out_variance_tradeoff`, `kotlin_projected_array_transfer` _(deprecated: `kotlin_generics_001`)_ |
 | `kotlin_lambdas` — Lambdas and higher-order functions | 1 | `kotlin_lambda_with_receiver_dsl` |
 | `kotlin_inline_functions` — inline, noinline, and crossinline | 2 | `kotlin_crossinline_non_local_return`, `noinline_vs_crossinline_lambda` |
 | `kotlin_reified_types` — Reified type parameters | 1 | `kotlin_reified_types_001` |
-| `kotlin_collections` — Collections | 1 | `kotlin_readonly_list_not_immutable` |
+| `kotlin_collections` — Collections | 2 | `kotlin_readonly_list_not_immutable`, `kotlin_historical_element_snapshot` |
 | `kotlin_sequences` — Sequences and lazy collection processing | 2 | `kotlin_sequence_constrained_once`, `sequence_intermediate_allocation_tradeoff` _(deprecated: `kotlin_sequences_001`)_ |
 | `kotlin_equality` — Structural vs referential equality | 1 | `kotlin_equality_001` |
 | `kotlin_exceptions` — Exception handling | 1 | `kotlin_no_checked_exceptions_interop` |
 | `kotlin_scope_functions` — let/run/apply/also/with | 1 | `kotlin_scope_functions_001` |
-| `kotlin_java_interop` — Java interoperability | 1 | `kotlin_platform_type_null_check` |
+| `kotlin_java_interop` — Java interoperability | 3 | `kotlin_platform_type_null_check`, `kotlin_java_companion_default_factory`, `kotlin_platform_absence_adapter` |
 | `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `jvm_fundamentals_001` |
 
 ### Coroutines, Flow & Reactive Programming

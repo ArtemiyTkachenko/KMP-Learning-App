@@ -1432,10 +1432,10 @@ internal class TopicBrowserViewModelTest {
     @Test
     fun productionLearningContentCountsTheAndroidUiTopicsAuthoredUnits() = runViewModelTest {
         val androidUi = Topic("android_ui", "UI — Views & Jetpack Compose")
-        val kotlin = Topic("kotlin_language", "Kotlin Language")
+        val testing = Topic("testing", "Testing")
         val viewModel = viewModel(
             repository = FakeCurriculumRepository(
-                topicResults = resultsOf(listOf(androidUi, kotlin)),
+                topicResults = resultsOf(listOf(androidUi, testing)),
             ),
             learningContent = BundledLearningContentRepository(),
         )
@@ -1447,7 +1447,7 @@ internal class TopicBrowserViewModelTest {
         assertEquals(authoredUnitCount, topic(viewModel, "android_ui").learningUnitCount)
         // Every other Topic derives its own real count from the same document rather than a
         // hardcoded mapping, and no authored Unit currently lives under this one.
-        assertEquals(0, topic(viewModel, "kotlin_language").learningUnitCount)
+        assertEquals(0, topic(viewModel, "testing").learningUnitCount)
     }
 
     // --- Continue Learning (E22-05) -----------------------------------------------------------

@@ -140,10 +140,10 @@ internal class LearningProductionContentJourneyTest {
             waitForText("Mark as not studied")
             onNodeWithContentDescription("Back").performClick()
             onNode(hasScrollAction()).performScrollToNode(hasTestTag(LearningUnitStudyProgressTag))
-            waitForText("1 of ${unit.lessons.size} lessons studied")
+            waitForText(lessonsStudied(1, unit.lessons.size))
             onNodeWithContentDescription("Back").performClick()
             onNodeWithTag(TopicStudyListTag).performScrollToNode(hasTestTag(TopicStudyProgressTag))
-            waitForText("1 of $topicLessonCount lessons studied")
+            waitForText(lessonsStudied(1, topicLessonCount))
             scrollToLearningUnit(unit.id)
             onNodeWithTag(learningUnitCardTag(unit.id))
                 .performSemanticsAction(SemanticsActions.OnClick)
@@ -165,10 +165,10 @@ internal class LearningProductionContentJourneyTest {
             waitForText("Complete lesson")
             onNodeWithContentDescription("Back").performClick()
             onNode(hasScrollAction()).performScrollToNode(hasTestTag(LearningUnitStudyProgressTag))
-            waitForText("0 of ${unit.lessons.size} lessons studied")
+            waitForText(lessonsStudied(0, unit.lessons.size))
             onNodeWithContentDescription("Back").performClick()
             onNodeWithTag(TopicStudyListTag).performScrollToNode(hasTestTag(TopicStudyProgressTag))
-            waitForText("0 of $topicLessonCount lessons studied")
+            waitForText(lessonsStudied(0, topicLessonCount))
             onNodeWithTag(LearnAreaTag).performClick()
         }
     }
@@ -258,8 +258,11 @@ internal class LearningProductionContentJourneyTest {
                 }
             }
 
-            onNodeWithTag(LearningLessonPreviousTag).performScrollTo().performClick()
-            waitForText(unit.lessons[unit.lessons.lastIndex - 1].title)
+            // A single-Lesson Unit has no Previous Lesson, so the reader offers no control for it.
+            if (unit.lessons.size > 1) {
+                onNodeWithTag(LearningLessonPreviousTag).performScrollTo().performClick()
+                waitForText(unit.lessons[unit.lessons.lastIndex - 1].title)
+            }
             onNodeWithContentDescription("Back").performClick()
             waitForTag(learningLessonRowTag(unit.lessons.first().id))
 
@@ -642,21 +645,31 @@ private fun ComposeUiTest.assertRenders(block: LearningBlock): String = when (bl
  * A snippet rather than the whole string: a paragraph taller than the viewport can only ever be
  * partly visible, and a substring match still fails when the block did not render, rendered its
  * enum name, or was dropped. Very short authored strings are matched whole.
+ *
+ * Markup is removed token by token, the way the reader parses it, so a literal `*` inside a code
+ * span — `List<*>` — survives into the snippet just as it survives onto the page.
  */
 @OptIn(ExperimentalTestApi::class)
 private fun ComposeUiTest.assertReadable(text: String, markdown: Boolean = true) {
-    val visibleText = if (markdown) {
-        text.replace(Regex("\\[([^]]+)]\\([^)]+\\)"), "$1")
-            .replace("**", "")
-            .replace("*", "")
-            .replace("`", "")
-    } else {
-        text
-    }
+    val visibleText = if (markdown) text.withoutLessonMarkup() else text
     val snippet = visibleText.take(TextSnippetLength)
     val matches = onAllNodesWithText(snippet, substring = true).fetchSemanticsNodes()
     assertTrue(matches.isNotEmpty(), "Authored content did not reach the reader: \"$snippet\".")
 }
+
+/** The lesson Markdown subset reduced to its visible text, mirroring the reader's tokens. */
+private fun String.withoutLessonMarkup(): String = LessonMarkupToken.replace(this) { match ->
+    val token = match.value
+    when {
+        token.startsWith("**") -> token.drop(2).dropLast(2).withoutLessonMarkup()
+        token.startsWith('`') -> token.drop(1).dropLast(1)
+        token.startsWith('*') -> token.drop(1).dropLast(1).withoutLessonMarkup()
+        else -> token.substringAfter('[').substringBefore(']').withoutLessonMarkup()
+    }
+}
+
+private val LessonMarkupToken =
+    Regex("(\\*\\*[^*]+\\*\\*)|(`[^`]+`)|(\\*[^*]+\\*)|(\\[[^]]+](?:\\([^)]*\\)))")
 
 /** An operable control: enabled, activatable, and named by every label it is supposed to carry. */
 private fun SemanticsNodeInteraction.assertOperable(vararg labels: String) {
@@ -1069,6 +1082,10 @@ private class RecordingUriHandler(private val opened: MutableList<String>) : Uri
 }
 
 private fun LearningLesson.blocks(): List<LearningBlock> = sections.flatMap { it.blocks }
+
+/** The progress line as `learning_unit_lessons_studied` words it: the plural follows the total. */
+private fun lessonsStudied(studied: Int, total: Int): String =
+    "$studied of $total ${if (total == 1) "lesson" else "lessons"} studied"
 
 private const val JourneyTimeoutMillis = 10_000L
 

@@ -73,7 +73,7 @@ internal class TopicDetailLearningContentTest {
         // most Topics have no authored Units yet and are still perfectly ordinary Topics.
         assertEquals(
             emptyList(),
-            repository.getActiveUnitsByTopic("kotlin_language").toLearningUnitItems(),
+            repository.getActiveUnitsByTopic("testing").toLearningUnitItems(),
         )
     }
 }

@@ -323,8 +323,57 @@ internal class LearningUnitPracticeIntegrationTest {
                     }
                 }
             }
-            // KMP Units are authored after every core Unit, so exhausting dependency injection
-            // hands over to the KMP Units rather than to Complete.
+            // The Kotlin/JVM learning path added a fifth core home Topic, authored after
+            // dependency injection, so exhausting dependency injection hands over to it next.
+            val kotlinUnits = BundledLearningContentRepository().getActiveUnitsByTopic("kotlin_language")
+            assertEquals(
+                listOf(
+                    "unit_kotlin_types_and_callables",
+                    "unit_kotlin_objects_and_state",
+                    "unit_kotlin_generic_api_mechanics",
+                    "unit_kotlin_java_jvm_boundary",
+                ),
+                kotlinUnits.map { it.id },
+            )
+            assertEquals(listOf(2, 3, 3, 1), kotlinUnits.map { it.lessons.size })
+            val kotlinTopic = topic("kotlin_language")
+            val kotlinParents = kotlinUnits.associate { it.id to unit(it.id) }
+            val kotlinLessonCount = kotlinUnits.sumOf { it.lessons.size }
+            suspend fun awaitKotlinTopic(count: Int) {
+                kotlinTopic.uiState.await { state ->
+                    state is TopicDetailUiState.Content &&
+                        (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                        StudyProgressSummary.Progress(count, kotlinLessonCount)
+                }
+            }
+            awaitKotlinTopic(0)
+            var kotlinStudiedCount = 0
+            kotlinUnits.forEach { kotlinUnit ->
+                kotlinUnit.lessons.forEachIndexed { index, lesson ->
+                    awaitNext(kotlinUnit.id, lesson.id)
+                    val kotlinReader = lesson(kotlinUnit.id, lesson.id)
+                    kotlinReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
+                    }
+                    kotlinReader.toggleStudied()
+                    kotlinReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                                it.isStudied && !it.isPending
+                            } == true
+                    }
+                    kotlinStudiedCount += 1
+                    awaitKotlinTopic(kotlinStudiedCount)
+                    kotlinParents.getValue(kotlinUnit.id).uiState.await { state ->
+                        state is LearningUnitUiState.Content &&
+                            (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                            StudyProgressSummary.Progress(index + 1, kotlinUnit.lessons.size)
+                    }
+                }
+            }
+            // KMP Units are authored after every core Unit, so exhausting the Kotlin Units hands
+            // over to the KMP Units rather than to Complete.
             val kmpUnits = BundledLearningContentRepository().getActiveUnitsByTopic("kmp")
             assertEquals(
                 listOf("unit_kmp_shared_viewmodels_and_host_lifecycles", "unit_koin_and_dependency_injection_in_kmp"),
@@ -399,9 +448,9 @@ internal class LearningUnitPracticeIntegrationTest {
             val rebuilt = LocalLessonStudyRepository(database)
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
-            // architecture Units, 33 in the six dependency-injection Units and 4 in the two KMP
-            // Units, less the one that was just un-studied.
-            assertEquals(137, rebuilt.getStudiedLessons().size)
+            // architecture Units, 33 in the six dependency-injection Units, 9 in the four Kotlin
+            // Units and 4 in the two KMP Units, less the one that was just un-studied.
+            assertEquals(146, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)

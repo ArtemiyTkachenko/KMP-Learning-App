@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.updateTransition
@@ -29,7 +30,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Button
@@ -45,20 +48,31 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
+import kotlinx.coroutines.flow.first
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_taking_answer_save_error
 import kmp_learning_app.shared.generated.resources.assessment_taking_completion_save_error
@@ -314,8 +328,23 @@ private fun QuestionContent(
     onNext: () -> Unit,
     modifier: Modifier,
 ) {
+    // Both are scoped to one question by the caller's `key(question.id)`: a new question gets a new
+    // list state, so it opens at the top, and a new flag, so its own reveal scrolls once.
+    val listState = rememberLazyListState()
+    // Seeded from the feedback rather than `false`, so a composition that starts with the answer
+    // already revealed — a restore, or a return to the screen — treats it as seen and stays put.
+    var revealScrollHandled by rememberSaveable { mutableStateOf(state.feedback != null) }
+    val revealGeometry = remember { RevealGeometry() }
+    LaunchedEffect(state.feedback != null) {
+        if (state.feedback == null || revealScrollHandled) return@LaunchedEffect
+        // Marked before scrolling rather than after: a learner who takes over the scroll cancels
+        // this, and the reveal must not come back for a second attempt on recomposition.
+        revealScrollHandled = true
+        listState.scrollRevealIntoView(revealGeometry)
+    }
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        state = listState,
+        modifier = modifier.fillMaxSize().onPlaced { revealGeometry.list = it },
         contentPadding = appScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
@@ -397,7 +426,12 @@ private fun QuestionContent(
                 visible = state.feedback != null,
                 enter = expandVertically(AppMotion.spatialSpec(), expandFrom = Alignment.Top),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
+                    // The expansion measures this column at its full height from the first frame
+                    // and only clips what it shows, so its size here is already the final one.
+                    modifier = Modifier.onPlaced { revealGeometry.reveal = it },
+                ) {
                     QuestionOutcomeBadge(
                         outcome = questionOutcome(
                             scoredCorrect = state.feedback?.isCorrect == true,
@@ -463,6 +497,79 @@ private fun QuestionContent(
                 ) { label -> Text(label) }
             }
         }
+    }
+}
+
+/**
+ * Where the list and the revealed verdict and explanation were last placed.
+ *
+ * Snapshot state so the scroll can wait for the first layout after Submit rather than guessing
+ * a frame: the effect that starts it runs before the reveal has been measured at all. Nothing reads
+ * these in composition, and a placement that keeps the same coordinates writes nothing.
+ */
+private class RevealGeometry {
+    var list: LayoutCoordinates? by mutableStateOf(null)
+    var reveal: LayoutCoordinates? by mutableStateOf(null)
+}
+
+/**
+ * Scrolls the least distance that puts the verdict and explanation on screen.
+ *
+ * On a long question the reveal opens below the fold, so the learner saw only the top edge of the
+ * verdict and had to discover the explanation. The distance is worked out from the reveal's final
+ * height, not the zero it starts the expansion at, and the scroll runs alongside that expansion on
+ * the same spatial spring rather than after it: content that does not exist yet simply cannot be
+ * scrolled to, and the shortfall is asked for again on the next frame as the list grows, so the two
+ * finish together without anything waiting on the other.
+ *
+ * Nothing moves if the reveal already fits. If it is taller than the viewport, its top — the
+ * verdict — goes to the top, so the explanation is read from its start and never entered halfway.
+ * Otherwise its bottom goes to the bottom, which keeps as much of the marked answers in view as the
+ * reveal leaves room for.
+ *
+ * The reveal's *position* is not final on that first frame, though: every marked answer row above
+ * it is growing its own outcome tag on the same spring. So the distance is measured again from the
+ * live layout after each pass, and corrected, until the reveal stops moving — which is also what
+ * catches a reveal that fitted on the first frame and was then pushed past the fold by those tags.
+ *
+ * All of it is one scroll at the default mutate priority, the settling included, so a learner who
+ * drags, flings, or wheels at any point cancels the whole thing instead of being pulled back by a
+ * later correction.
+ */
+private suspend fun LazyListState.scrollRevealIntoView(geometry: RevealGeometry) {
+    val (list, reveal) = snapshotFlow { geometry.list to geometry.reveal }
+        .first { (list, reveal) -> list != null && reveal != null }
+    if (list == null || reveal == null) return
+    scroll {
+        var previousTop: Float? = null
+        while (list.isAttached && reveal.isAttached) {
+            val top = list.localPositionOf(reveal, Offset.Zero).y
+            val distance = revealScrollDistance(top, reveal.size.height.toFloat())
+            if (abs(distance) >= 1f) {
+                var scrolled = 0f
+                animate(0f, distance, animationSpec = AppMotion.spatialSpec()) { value, _ ->
+                    scrolled += scrollBy(value - scrolled)
+                }
+                // Nothing left to scroll into: the list is at its end, and asking again would loop.
+                if (abs(scrolled) < 1f) break
+            } else if (previousTop != null && abs(top - previousTop) < 1f) {
+                break
+            } else {
+                withFrameNanos { }
+            }
+            previousTop = top
+        }
+    }
+}
+
+/** Zero if the reveal is fully visible; else the verdict to the top or the reveal's end to the bottom. */
+private fun LazyListState.revealScrollDistance(top: Float, height: Float): Float {
+    val visibleTop = layoutInfo.beforeContentPadding.toFloat()
+    val visibleBottom = (layoutInfo.viewportSize.height - layoutInfo.afterContentPadding).toFloat()
+    return when {
+        height > visibleBottom - visibleTop || top < visibleTop -> top - visibleTop
+        top + height > visibleBottom -> top + height - visibleBottom
+        else -> 0f
     }
 }
 

@@ -76,6 +76,12 @@ same busy-control rule as every other action in the app — the button keeps its
 its emphasis, and states its condition as a word beside an 18dp spinner rather than replacing its
 label with Material's 40dp standalone indicator.
 
+In a `Focused` run the commit action is one button throughout: Submit, then, once the answer is
+revealed, Next question. On the last question that tap completes the run and opens Results, with
+no ready-to-finish stop in between, so there it reads "Finish and view results" — the interview's
+own finish wording, so one action has one name. The screen derives the label from the state's
+`questionNumber` and `totalQuestions`; the ViewModel decides what the tap does.
+
 The Mixed Android Interview product has its own top-level area, and the asymmetry with
 Practice is intentional rather than an omission: **Practice is the learner choosing what to
 work on, Interview is the app testing them.** There is no interview builder and no

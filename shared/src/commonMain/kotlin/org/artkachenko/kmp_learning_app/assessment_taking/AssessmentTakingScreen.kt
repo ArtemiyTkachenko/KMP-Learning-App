@@ -320,6 +320,13 @@ private fun FinishAction(isCompleting: Boolean, onComplete: () -> Unit) {
 }
 
 
+/**
+ * Whether this is the run's final question, so moving on from it finishes rather than continues.
+ * Never true while a later question remains, whatever the counts.
+ */
+private val AssessmentTakingUiState.Content.isLastQuestion: Boolean
+    get() = totalQuestions > 0 && questionNumber >= totalQuestions
+
 @Composable
 private fun QuestionContent(
     state: AssessmentTakingUiState.Content,
@@ -462,7 +469,12 @@ private fun QuestionContent(
             // move. The button keeps its place, its width, and its primary emphasis; only the word
             // inside it crosses over, and the box around that word eases rather than snapping
             // between the widths of "Submit" and "Next question".
+            //
+            // After the last question's feedback the same tap completes the run and opens
+            // Results, so the word says that, in the interview's own finish wording.
             val actionLabel = when {
+                state.feedback != null && state.isLastQuestion ->
+                    stringResource(Res.string.assessment_taking_finish)
                 state.feedback != null -> stringResource(Res.string.assessment_taking_next_question)
                 state.isSubmitting -> stringResource(Res.string.assessment_taking_submitting)
                 else -> stringResource(Res.string.assessment_taking_submit)

@@ -239,6 +239,16 @@ internal fun ReviewQuestionCard(
                             ),
                         ),
                     )
+                    QuestionReportLink(
+                        questionId = question.questionId,
+                        onReport = onSourceClick,
+                        failedUrl = failedSourceUrl,
+                        modifier = Modifier.animateEnterExit(
+                            enter = fadeIn(
+                                AppMotion.revealSpec(QuestionExplanationRevealDelayMillis),
+                            ),
+                        ),
+                    )
                 }
             }
             // Whatever this surface offers to do about this Question, inside the card it belongs

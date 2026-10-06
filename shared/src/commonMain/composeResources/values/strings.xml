@@ -289,6 +289,8 @@
         <item quantity="other">Practice %1$d mistakes</item>
     </plurals>
     <string name="assessment_review_source_open_failed">This source could not be opened.</string>
+    <string name="assessment_review_report_problem">Report a problem</string>
+    <string name="assessment_review_report_open_failed">The report form could not be opened.</string>
     <string name="assessment_review_save_question">Save</string>
     <string name="assessment_review_unsave_question">Saved</string>
     <string name="assessment_review_saved_state">Saved</string>

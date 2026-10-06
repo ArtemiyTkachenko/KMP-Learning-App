@@ -93,6 +93,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.AnswerOutcome
 import org.artkachenko.kmp_learning_app.assessment_review.AnswerOutcomeColors
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionAnswerTag
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionExplanationBlock
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionReportLink
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionOutcomeBadge
 import org.artkachenko.kmp_learning_app.assessment_review.answerOutcome
 import org.artkachenko.kmp_learning_app.assessment_review.colors
@@ -141,6 +142,8 @@ internal fun AssessmentTakingScreen(
     onBack: () -> Unit,
     onComplete: () -> Unit,
     modifier: Modifier = Modifier,
+    onReportProblem: (String) -> Unit = {},
+    failedReportUrl: String? = null,
 ) {
     val scrollBehavior = rememberAppTopBarScrollBehavior()
     Column(modifier = modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
@@ -193,6 +196,8 @@ internal fun AssessmentTakingScreen(
                             onAnswerClick = onAnswerClick,
                             onSubmit = onSubmit,
                             onNext = onNext,
+                            onReportProblem = onReportProblem,
+                            failedReportUrl = failedReportUrl,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -333,6 +338,8 @@ private fun QuestionContent(
     onAnswerClick: (String) -> Unit,
     onSubmit: () -> Unit,
     onNext: () -> Unit,
+    onReportProblem: (String) -> Unit,
+    failedReportUrl: String?,
     modifier: Modifier,
 ) {
     // Both are scoped to one question by the caller's `key(question.id)`: a new question gets a new
@@ -457,6 +464,17 @@ private fun QuestionContent(
                     )
                     QuestionExplanationBlock(
                         explanation = state.question.explanation,
+                        modifier = Modifier.animateEnterExit(
+                            enter = fadeIn(AppMotion.revealSpec(ExplanationRevealDelayMillis)),
+                        ),
+                    )
+                    // Inside the reveal, so it exists only once the answer key has been shown: a
+                    // learner can only judge that key after seeing it, and an Interview never
+                    // reveals one, so it never offers this either.
+                    QuestionReportLink(
+                        questionId = state.question.id,
+                        onReport = onReportProblem,
+                        failedUrl = failedReportUrl,
                         modifier = Modifier.animateEnterExit(
                             enter = fadeIn(AppMotion.revealSpec(ExplanationRevealDelayMillis)),
                         ),

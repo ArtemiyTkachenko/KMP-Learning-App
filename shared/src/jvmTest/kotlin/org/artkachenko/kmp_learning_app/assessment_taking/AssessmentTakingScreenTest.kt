@@ -42,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionReportAppVersion
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionReportLinkTag
+import org.artkachenko.kmp_learning_app.assessment_review.questionReportUrl
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -555,6 +558,89 @@ internal class AssessmentTakingScreenTest {
         onNodeWithText("\u2713 Correct answer").assertIsDisplayed()
         onNodeWithText("Explanation").assertIsDisplayed()
         onNodeWithText("Because A.").assertIsDisplayed()
+    }
+
+    /**
+     * The answer key is what a report is about, so there is nothing to report until it is shown —
+     * and an Interview, which never reveals feedback, is this same unanswered state throughout.
+     */
+    @Test
+    fun anUnansweredQuestionOffersNoReport() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = contentState(AnswerSelectionMode.SINGLE).copy(
+                        selectedAnswerIds = setOf("answer_a"),
+                        canSubmit = true,
+                    ),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithTag(QuestionReportLinkTag).assertDoesNotExist()
+        onNodeWithText("Report a problem").assertDoesNotExist()
+    }
+
+    @Test
+    fun theRevealOffersAReportForThisQuestion() = runComposeUiTest {
+        val reported = mutableListOf<String>()
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = revealedState(
+                        mode = AnswerSelectionMode.SINGLE,
+                        selected = setOf("answer_a"),
+                        correct = listOf("answer_a"),
+                        isCorrect = true,
+                    ),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                    onReportProblem = { reported += it },
+                )
+            }
+        }
+
+        onNode(hasScrollAction()).performScrollToNode(hasTestTag(QuestionReportLinkTag))
+        onNodeWithTag(QuestionReportLinkTag).assert(hasText("Report a problem")).performClick()
+
+        assertEquals(listOf(questionReportUrl("question", QuestionReportAppVersion)), reported)
+        onNodeWithText("The report form could not be opened.").assertDoesNotExist()
+    }
+
+    @Test
+    fun aReportFormThatCannotBeOpenedIsStatedBesideTheLink() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = revealedState(
+                        mode = AnswerSelectionMode.SINGLE,
+                        selected = setOf("answer_b"),
+                        correct = listOf("answer_a"),
+                        isCorrect = false,
+                    ),
+                    onAnswerClick = {},
+                    onSubmit = {},
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                    failedReportUrl = questionReportUrl("question", QuestionReportAppVersion),
+                )
+            }
+        }
+
+        onNode(hasScrollAction()).performScrollToNode(hasText("The report form could not be opened."))
+        onNodeWithText("The report form could not be opened.").assertIsDisplayed()
     }
 
     /**

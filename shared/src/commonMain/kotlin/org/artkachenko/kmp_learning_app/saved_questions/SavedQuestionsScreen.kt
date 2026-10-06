@@ -39,6 +39,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.QuestionBookmarkAction
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionDisclosure
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionExplanationBlock
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionExplanationRevealDelayMillis
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionReportLink
 import org.artkachenko.kmp_learning_app.assessment_review.QuestionSources
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
@@ -286,6 +287,16 @@ private fun SavedQuestionCard(
                         sources = question.sources,
                         onSourceClick = onSourceClick,
                         failedSourceUrl = failedSourceUrl,
+                        modifier = Modifier.animateEnterExit(
+                            enter = fadeIn(
+                                AppMotion.revealSpec(QuestionExplanationRevealDelayMillis),
+                            ),
+                        ),
+                    )
+                    QuestionReportLink(
+                        questionId = question.questionId,
+                        onReport = onSourceClick,
+                        failedUrl = failedSourceUrl,
                         modifier = Modifier.animateEnterExit(
                             enter = fadeIn(
                                 AppMotion.revealSpec(QuestionExplanationRevealDelayMillis),

@@ -37,6 +37,8 @@ import org.artkachenko.kmp_learning_app.assessment.session.AssessmentEngine
 import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchViewModel
 import org.artkachenko.kmp_learning_app.assessment.start.StartAssessment
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionReportAppVersion
+import org.artkachenko.kmp_learning_app.assessment_review.questionReportUrl
 import org.artkachenko.kmp_learning_app.saved_questions.FakeSavedQuestionRepository
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
@@ -150,6 +152,60 @@ internal class MistakeReviewDestinationTest {
 
         // The failure must stay visible rather than looking like a no-op.
         onNodeWithText("This source could not be opened.").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun reportingAQuestionOpensItsPrefilledFormThroughTheHostUriHandler() = runComposeUiTest {
+        Dispatchers.setMain(Dispatchers.Unconfined)
+        val uriHandler = RecordingUriHandler()
+
+        setContent {
+            CompositionLocalProvider(LocalUriHandler provides uriHandler) {
+                MaterialTheme {
+                    MistakeReviewDestination(
+                        onBack = {},
+                        onBrowseTopics = {},
+                        onConfigurePractice = {},
+                        onPracticeStarted = {},
+                        viewModel = destinationViewModel(),
+                        launchViewModel = destinationLaunchViewModel(),
+                    )
+                }
+            }
+        }
+
+        waitForIdle()
+        onNodeWithText("Report a problem").performScrollTo().performClick()
+
+        assertEquals(listOf(questionReportUrl("q1", QuestionReportAppVersion)), uriHandler.opened)
+    }
+
+    @Test
+    fun aFailingUriHandlerSurfacesTheReportOpenFailure() = runComposeUiTest {
+        Dispatchers.setMain(Dispatchers.Unconfined)
+        val uriHandler = RecordingUriHandler(fail = true)
+
+        setContent {
+            CompositionLocalProvider(LocalUriHandler provides uriHandler) {
+                MaterialTheme {
+                    MistakeReviewDestination(
+                        onBack = {},
+                        onBrowseTopics = {},
+                        onConfigurePractice = {},
+                        onPracticeStarted = {},
+                        viewModel = destinationViewModel(),
+                        launchViewModel = destinationLaunchViewModel(),
+                    )
+                }
+            }
+        }
+
+        waitForIdle()
+        onNodeWithText("Report a problem").performScrollTo().performClick()
+        waitForIdle()
+
+        onNodeWithText("The report form could not be opened.").performScrollTo().assertIsDisplayed()
+        onNodeWithText("This source could not be opened.").assertDoesNotExist()
     }
 }
 

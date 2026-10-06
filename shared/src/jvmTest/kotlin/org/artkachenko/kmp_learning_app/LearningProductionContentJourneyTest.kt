@@ -52,6 +52,9 @@ import kotlinx.coroutines.test.setMain
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentProgressMeterTag
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingFinishTag
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionReportAppVersion
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionReportLinkTag
+import org.artkachenko.kmp_learning_app.assessment_review.questionReportUrl
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingSubmitTag
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
 import org.artkachenko.kmp_learning_app.curriculum.Question
@@ -456,7 +459,7 @@ internal class LearningProductionContentJourneyTest {
      */
     @Test
     fun shippedArchitectureQuestionsAreAnsweredThroughTheRunningAssessmentUi() =
-        runProductionJourneyTest(expectedAttempts = 1) {
+        runProductionJourneyTest(expectedAttempts = 1) { openedUris ->
             val unit = ArchitectureSynthesisUnit
             val candidates = architecturePracticeCandidates(unit)
             assertTrue(
@@ -558,6 +561,15 @@ internal class LearningProductionContentJourneyTest {
                     onNodeWithText(correctAnswerLabel).assertIsDisplayed()
                     val key = question.answers.single { it.id in question.correctAnswerIds }
                     assertReadableWithin(key.text.rendered, rootWidth)
+
+                    // The reveal offers a report for this Question, opened through the host's
+                    // own URI handler with only its ID and the build pre-filled.
+                    onNode(hasScrollAction()).performScrollToNode(hasTestTag(QuestionReportLinkTag))
+                    onNodeWithTag(QuestionReportLinkTag).performSemanticsAction(SemanticsActions.OnClick)
+                    assertEquals(
+                        questionReportUrl(question.id, QuestionReportAppVersion),
+                        openedUris.last(),
+                    )
                 }
 
                 answered += question.id

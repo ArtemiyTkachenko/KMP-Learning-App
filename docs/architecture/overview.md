@@ -101,9 +101,11 @@ The decision is made from measured window width rather than platform, because th
 be either size — a desktop or browser window can be dragged narrow.
 
 `AppShellViewModel` supplies the one piece of state the control itself needs: the
-unresolved mistake count, badged onto the Mistakes item. The Progress dashboard reports the
-same count and routes into the same destination — see [Progress](progress.md) — because a
-dashboard that names a queue of questions the learner has already got wrong and then
+unresolved mistake count, badged onto the Mistakes item in a neutral `secondary` badge that
+draws up to "99+" and announces the real count in words — it is a queue to work through, not an
+error; see [Material Design 3](../development/material-design.md). The Progress dashboard
+reports the same count and routes into the same destination — see [Progress](progress.md) —
+because a dashboard that names a queue of questions the learner has already got wrong and then
 declines to open it stops one step short of answering "what should I work on next?".
 
 Navigation motion is declared in `AppNavigationTransitions` rather than left to

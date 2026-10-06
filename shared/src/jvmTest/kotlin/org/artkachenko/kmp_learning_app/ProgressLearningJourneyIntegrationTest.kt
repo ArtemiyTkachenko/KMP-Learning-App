@@ -225,10 +225,10 @@ internal class ProgressLearningJourneyIntegrationTest {
                     scrollToTextStartingWith("unresolved mistakes to review")
                     onNodeWithText("2 unresolved mistakes to review").assertIsDisplayed()
                     // The badge is asserted on the Mistakes target's merged node — what is
-                    // announced with it — rather than as a bare "2" anywhere in the unmerged tree.
+                    // announced with it — as the count in words rather than a bare "2".
                     onNodeWithTag(
                         appNavigationBarItemTag(AppTopLevelDestination.MISTAKES),
-                    ).assert(hasText("2")).performClick()
+                    ).assert(hasText("2 unresolved mistakes")).performClick()
                     waitForText("Lifecycle question")
                     onNodeWithText("Lifecycle question").assertIsDisplayed()
                     onNodeWithText("Newest lifecycle selection").performScrollTo().assertIsDisplayed()

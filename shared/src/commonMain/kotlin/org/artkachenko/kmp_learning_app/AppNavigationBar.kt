@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Badge
@@ -56,12 +57,17 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.navigation_badge_overflow
+import kmp_learning_app.shared.generated.resources.navigation_mistakes_badge_description
 import kotlin.math.roundToInt
 import org.artkachenko.kmp_learning_app.ui.LocalAppSnackbarHostState
 import org.artkachenko.kmp_learning_app.ui.theme.AppLayout
@@ -71,6 +77,7 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppNavigationOverlay
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /** Counts worth surfacing on a navigation item; absent or zero renders no badge. */
@@ -87,10 +94,71 @@ private fun DestinationIcon(
         Icon(destination.icon, contentDescription = null, modifier = modifier)
         return
     }
-    BadgedBox(badge = { Badge { Text(count.toString()) } }) {
+    BadgedBox(badge = { NavigationCountBadge(destination, count) }) {
         Icon(destination.icon, contentDescription = null, modifier = modifier)
     }
 }
+
+/**
+ * The count on a navigation item, styled as a work queue rather than an alarm.
+ *
+ * Material's default badge is `error` red. The one count this app badges is the unresolved
+ * mistake queue, which is a backlog the learner works through rather than a notification; in red
+ * it sat on every screen saying something was wrong. `secondary` is the scheme's quiet
+ * periwinkle-grey, and it separates clearly both from the bar's `surfaceContainer` and from the
+ * `secondaryContainer` selection pill it sits on when Mistakes is selected. `secondaryContainer`
+ * itself would vanish into that pill.
+ *
+ * What is drawn and what is announced differ on purpose: the glyph caps at "99+" so a large queue
+ * cannot crowd the icon, while the spoken label always states the real count in words.
+ */
+@Composable
+private fun NavigationCountBadge(
+    destination: AppTopLevelDestination,
+    count: Int,
+    modifier: Modifier = Modifier,
+) {
+    val announcement = navigationBadgeAnnouncement(destination, count)
+    Badge(
+        modifier = modifier.clearAndSetSemantics {
+            testTag = AppNavigationBadgeTag
+            text = AnnotatedString(announcement)
+        },
+        containerColor = MaterialTheme.colorScheme.secondary,
+        contentColor = MaterialTheme.colorScheme.onSecondary,
+    ) {
+        Text(navigationBadgeLabel(count))
+    }
+}
+
+/** The badge's visible text: the exact count up to [NavigationBadgeMaxCount], then "99+". */
+@Composable
+internal fun navigationBadgeLabel(count: Int): String =
+    if (count > NavigationBadgeMaxCount) {
+        stringResource(Res.string.navigation_badge_overflow)
+    } else {
+        count.toString()
+    }
+
+/**
+ * What a screen reader hears for [destination]'s badge, after the destination's own label.
+ *
+ * Only Mistakes is badged. It has its own plural rather than reusing the Progress and Mistakes
+ * screens' "unresolved mistakes to review": after the destination's "Mistakes" label the shorter
+ * phrase is the whole fact, and an identical sentence would make the navigation item and the
+ * Progress button that opens the same queue indistinguishable to a screen reader. Any other
+ * destination falls back to the number.
+ */
+@Composable
+private fun navigationBadgeAnnouncement(destination: AppTopLevelDestination, count: Int): String =
+    when (destination) {
+        AppTopLevelDestination.MISTAKES ->
+            pluralStringResource(Res.plurals.navigation_mistakes_badge_description, count, count)
+        AppTopLevelDestination.TOPICS,
+        AppTopLevelDestination.INTERVIEW,
+        AppTopLevelDestination.PROGRESS,
+        -> count.toString()
+    }
 
 internal fun appNavigationBarItemTag(destination: AppTopLevelDestination): String =
     "app_nav_${destination.name.lowercase()}"
@@ -104,6 +172,9 @@ internal fun appNavigationBarIconTag(destination: AppTopLevelDestination): Strin
  * each destination owns a copy of.
  */
 internal const val AppNavigationSelectedIndicatorTag = "app_nav_selected_indicator"
+
+/** A drawn navigation badge, wherever it appears in the unmerged tree. */
+internal const val AppNavigationBadgeTag = "app_nav_badge"
 
 /** The rail needs a rule because its surface and the adjacent page share the same theme colour. */
 internal const val AppNavigationRailDividerTag = "app_nav_rail_divider"
@@ -322,13 +393,17 @@ private fun CompactDestinationIcon(
         )
         val count = badges[destination] ?: 0
         if (count > 0) {
-            Badge(
+            NavigationCountBadge(
+                destination = destination,
+                count = count,
+                // Measured free of the 24dp box: constrained to it, "99+" clipped to "99" and
+                // grew back across the glyph. The leading edge is pinned instead, so a wider
+                // count extends towards the trailing edge, as Material's BadgedBox does on the rail.
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = NavigationBadgeOffsetX, y = NavigationBadgeOffsetY),
-            ) {
-                Text(count.toString())
-            }
+                    .align(Alignment.TopStart)
+                    .wrapContentSize(Alignment.TopStart, unbounded = true)
+                    .offset(x = NavigationBadgeStartX, y = NavigationBadgeOffsetY),
+            )
         }
     }
 }
@@ -348,6 +423,11 @@ internal fun AppNavigationRail(
         AppTopLevelDestination.entries.forEach { destination ->
             val label = stringResource(destination.label)
             val count = badges[destination] ?: 0
+            val badgeAnnouncement = if (count > 0) {
+                navigationBadgeAnnouncement(destination, count)
+            } else {
+                null
+            }
             NavigationRailItem(
                 selected = destination == selected,
                 onClick = { onSelect(destination) },
@@ -358,10 +438,10 @@ internal fun AppNavigationRail(
                     // Material clears the icon's semantics whenever the item shows its label, and
                     // the badge goes with it: the rail drew a count no screen reader announced. The
                     // compact bar keeps its badge inside the merged target, so the rail states the
-                    // same count the same way rather than gaining wording of its own.
+                    // same announcement the same way rather than gaining wording of its own.
                     .then(
-                        if (count > 0) {
-                            Modifier.semantics { text = AnnotatedString(count.toString()) }
+                        if (badgeAnnouncement != null) {
+                            Modifier.semantics { text = AnnotatedString(badgeAnnouncement) }
                         } else {
                             Modifier
                         },
@@ -514,5 +594,13 @@ private val NavigationIconSize: Dp = 24.dp
  */
 private const val SelectedIconScale = 1.05f
 private const val UnselectedIconScale = 1f
-private val NavigationBadgeOffsetX: Dp = 6.dp
+
+/**
+ * Where the badge's leading edge sits within the 24dp icon box. A single-digit badge is Material's
+ * 16dp minimum wide, so it still ends 6dp past the icon's trailing edge, where it always sat.
+ */
+private val NavigationBadgeStartX: Dp = 14.dp
 private val NavigationBadgeOffsetY: Dp = (-5).dp
+
+/** The largest count drawn exactly; above it the badge reads "99+", three characters at most. */
+private const val NavigationBadgeMaxCount = 99

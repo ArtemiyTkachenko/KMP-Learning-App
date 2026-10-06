@@ -21072,6 +21072,47 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "kotlin_interface_conflict_shared_dispatch",
+      "topicId": "kotlin_language",
+      "subtopicId": "kotlin_interfaces_inheritance",
+      "text": "StatusBadge implements CachedStatus and LiveStatus because two parts of the app consume different interfaces. Both interfaces define fun label(): String with default bodies that return \"Cached\" and \"Live\", respectively. StatusBadge must reuse the LiveStatus default for calls through either interface, without recursion. Which override belongs in StatusBadge?",
+      "answers": [
+        {
+          "id": "kotlin_interface_conflict_shared_dispatch_a",
+          "text": "override fun label(): String = super<CachedStatus>.label()"
+        },
+        {
+          "id": "kotlin_interface_conflict_shared_dispatch_b",
+          "text": "override fun label(): String = (this as LiveStatus).label()"
+        },
+        {
+          "id": "kotlin_interface_conflict_shared_dispatch_c",
+          "text": "override fun label(): String = super<LiveStatus>.label()"
+        },
+        {
+          "id": "kotlin_interface_conflict_shared_dispatch_d",
+          "text": "override fun label(): String = super.label()"
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "FOUNDATION",
+      "correctAnswerIds": [
+        "kotlin_interface_conflict_shared_dispatch_c"
+      ],
+      "explanation": "When two interfaces supply default implementations of the same member, the implementing class must override that member and resolve the conflict explicitly. super<LiveStatus>.label() calls the LiveStatus default body. The StatusBadge override implements the member for both interfaces, so callers receive \"Live\" through either reference. super<CachedStatus>.label() instead returns \"Cached\". Casting this to LiveStatus keeps the same object and calls its override again, causing recursion rather than selecting the interface default. Unqualified super.label() leaves the two inherited implementations ambiguous.",
+      "sources": [
+        {
+          "title": "Kotlin interfaces — Resolving overriding conflicts",
+          "url": "https://kotlinlang.org/docs/interfaces.html#resolving-overriding-conflicts"
+        },
+        {
+          "title": "Kotlin inheritance — Overriding rules",
+          "url": "https://kotlinlang.org/docs/inheritance.html#overriding-rules"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

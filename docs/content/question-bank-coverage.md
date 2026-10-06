@@ -87,20 +87,20 @@ its current output is reproduced under **Audit baselines** below.
 
 | Metric | Value |
 |---|---:|
-| Total questions | 488 |
-| ACTIVE | 447 |
+| Total questions | 489 |
+| ACTIVE | 448 |
 | DEPRECATED | 41 |
 | Topics | 17 |
 | Subtopics | 361 (360 ACTIVE, 1 DEPRECATED) |
-| Subtopics with ≥1 active question | 292 (81%) |
-| Subtopics with 0 active questions | 69 (68 ACTIVE, plus the DEPRECATED `koin_multiplatform`) |
-| SINGLE | 441 |
+| Subtopics with ≥1 active question | 293 (81%) |
+| Subtopics with 0 active questions | 68 (67 ACTIVE, plus the DEPRECATED `koin_multiplatform`) |
+| SINGLE | 442 |
 | MULTIPLE | 47 |
 | — of which exactly one correct answer | 3 |
-| Answer options | 1958 (482 questions with 4 options, 6 with 5) |
-| Source references | 660 across 354 unique URLs |
+| Answer options | 1962 (483 questions with 4 options, 6 with 5) |
+| Source references | 662 across 356 unique URLs |
 
-Subtopic depth distribution: **69** subtopics have 0 questions, **194** have 1,
+Subtopic depth distribution: **68** subtopics have 0 questions, **195** have 1,
 **65** have 2, **22** have 3, **6** have 4, **3** have 5, **1** has 8, and **1**
 has 10.
 
@@ -132,7 +132,7 @@ where the next expansion should look first.
 | UI — Views & Jetpack Compose | `android_ui` | 49 | 24 | 20 | 4 | 2.04 |
 | Android Platform & Application Model | `android_platform` | 16 | 8 | 8 | 0 | 2.00 |
 | Dependency Injection | `dependency_injection` | 38 | 25 | 24 | 1 | 1.52 |
-| Kotlin Language & JVM Fundamentals | `kotlin_language` | 33 | 23 | 21 | 2 | 1.43 |
+| Kotlin Language & JVM Fundamentals | `kotlin_language` | 34 | 23 | 22 | 1 | 1.48 |
 | Local Persistence & Offline Data | `local_data` | 20 | 19 | 16 | 3 | 1.05 |
 | Performance, Memory & Debugging | `performance` | 22 | 23 | 18 | 5 | 0.96 |
 | Testing & Testability | `testing` | 21 | 22 | 19 | 3 | 0.95 |
@@ -143,7 +143,7 @@ where the next expansion should look first.
 | Mobile System Design | `mobile_system_design` | 17 | 24 | 16 | 8 | 0.71 |
 | Build System, Modularization & Delivery | `build_delivery` | 17 | 25 | 15 | 10 | 0.68 |
 | Notifications & Push Messaging | `notifications` | 12 | 18 | 11 | 7 | 0.67 |
-| **Total** | | **447** | **361** | **292** | **69** | **1.24** |
+| **Total** | | **448** | **361** | **293** | **68** | **1.24** |
 
 <!-- END GENERATED: question-bank-topic-coverage -->
 
@@ -284,7 +284,7 @@ is retained because Lessons still name it until the learning migration re-homes 
 
 <!-- BEGIN GENERATED: question-bank-empty-subtopics -->
 
-69 subtopics have no active question: 68 ACTIVE subtopics and the DEPRECATED
+68 subtopics have no active question: 67 ACTIVE subtopics and the DEPRECATED
 `koin_multiplatform`.
 
 <!-- END GENERATED: question-bank-empty-subtopics -->
@@ -328,9 +328,9 @@ Questions moved to `kmp` (both tested a shared-`commonMain` decision). They stay
 ACTIVE because each comparison is legitimate on Android alone; do not refill them
 with KMP framing.
 
-The Kotlin/JVM blueprint also identifies `kotlin_interfaces_inheritance` as an
-assessment gap. The initial expansion dropped a direct qualified-super recall
-proposal; a useful behavioral-design scenario remains deferred.
+The Kotlin/JVM interface assessment gap is closed by
+`kotlin_interface_conflict_shared_dispatch`, which tests explicit default selection
+and dispatch through both interface references.
 
 ### Intentionally empty — do not fill without a reason
 
@@ -452,8 +452,8 @@ earliest one.
 ### Kotlin and JVM
 
 Covered: nullability and stable single-getter refinement · registration-time callback
-capture · final validation entry with a polymorphic hook · extension resolution is
-static · data class generation and shallow `copy` · `object` vs companion · sealed
+capture · final validation entry with a polymorphic hook · explicit interface-default
+resolution · extension resolution is static · data class generation and shallow `copy` · `object` vs companion · sealed
 exhaustiveness and its evolution cost · custom getters · replaceable optional property
 state · `by lazy` thread safety · star projection · variance and projected array
 transfer · `crossinline` / `noinline` · `reified` · read-only vs immutable collections
@@ -462,8 +462,8 @@ and historical element snapshots · sequence constrained-once and allocation tra
 type erasure · `@Throws` Java interop · companion factory static/overload surface ·
 receiver lambdas · `internal` visibility.
 
-Thin: `kotlin_exceptions` has one question. Interface-conflict behavioral reasoning
-remains a blueprint assessment gap; no weak syntax-recall proposal was retained.
+Thin: `kotlin_exceptions` has one question. Interface-default conflict resolution
+and dispatch through interface references are covered by one FOUNDATION question.
 
 ### Architecture and DI
 
@@ -521,12 +521,12 @@ trade-offs.
   cheap wins from filling empty subtopics are largely spent. The next batch will
   produce more value by adding a second, genuinely different question to
   high-frequency subtopics that currently have one than by chasing the remaining
-  69 zeros.
+  68 zeros.
 - **Check the deprecated table before authoring.** Two subtopics are
   deprecated-only and several others have a retired predecessor whose concept is
   still taken.
 - **Author 15–25% of a new batch as MULTIPLE.** The bank sits at 9.6%
-  (47/488) because the earliest content used fewer, and E24-08 authored none —
+  (47/489) because the earliest content used fewer, and E24-08 authored none —
   every one of its nineteen questions asks for a single prediction or decision,
   which `SINGLE` expresses honestly. The band to aim for is still 15–25%. Only three questions in the whole bank are
   MULTIPLE with a single correct answer — keep authoring some that way, or
@@ -623,7 +623,7 @@ target subtopic here before authoring to avoid a near-duplicate.
 
 ### Kotlin Language & JVM Fundamentals
 
-`kotlin_language` — **33 active** across 23 subtopics (21 covered, 2 empty)
+`kotlin_language` — **34 active** across 23 subtopics (22 covered, 1 empty)
 
 | Subtopic | n | Question IDs |
 |---|---:|---|
@@ -635,7 +635,7 @@ target subtopic here before authoring to avoid a near-duplicate.
 | `kotlin_data_classes` — Data classes | 2 | `kotlin_data_classes_001`, `data_class_copy_is_shallow` |
 | `kotlin_objects` — object and companion object | 2 | `kotlin_objects_001`, `object_vs_companion_object_members` |
 | `kotlin_sealed_types` — Sealed classes and interfaces | 2 | `kotlin_sealed_types_001`, `sealed_when_exhaustive_evolution` |
-| `kotlin_interfaces_inheritance` — Interfaces and inheritance | 0 | — |
+| `kotlin_interfaces_inheritance` — Interfaces and inheritance | 1 | `kotlin_interface_conflict_shared_dispatch` |
 | `kotlin_visibility` — Visibility modifiers | 1 | `kotlin_internal_module_visibility` |
 | `kotlin_properties` — Properties, accessors, and backing fields | 2 | `kotlin_custom_getter_recomputes`, `kotlin_optional_replaceable_property` |
 | `kotlin_delegation` — Delegation and delegated properties | 1 | `kotlin_lazy_thread_safety_mode` |

@@ -1424,29 +1424,30 @@ internal class TopicBrowserViewModelTest {
     }
 
     /**
-     * The production relationship, through the real bundled repository: `android_ui` publishes the
-     * authored Compose Units, and presentation composes those into an availability count without
+     * The production relationship, through the real bundled repository: authored Topics publish
+     * their Units, and presentation composes those into an availability count without
      * knowing the Topic ID or the number itself. The expected count is read from the same document
      * rather than restated, so authoring another Unit does not make this a maintenance edit.
      */
     @Test
-    fun productionLearningContentCountsTheAndroidUiTopicsAuthoredUnits() = runViewModelTest {
+    fun productionLearningContentCountsAuthoredTopicsAndPreservesUnauthoredAvailability() = runViewModelTest {
         val androidUi = Topic("android_ui", "UI — Views & Jetpack Compose")
+        val kotlin = Topic("kotlin_language", "Kotlin Language")
         val testing = Topic("testing", "Testing")
         val viewModel = viewModel(
             repository = FakeCurriculumRepository(
-                topicResults = resultsOf(listOf(androidUi, testing)),
+                topicResults = resultsOf(listOf(androidUi, kotlin, testing)),
             ),
             learningContent = BundledLearningContentRepository(),
         )
         advanceUntilIdle()
 
-        val authoredUnitCount = BundledLearningContentRepository()
-            .getActiveUnitsByTopic("android_ui")
-            .size
-        assertEquals(authoredUnitCount, topic(viewModel, "android_ui").learningUnitCount)
-        // Every other Topic derives its own real count from the same document rather than a
-        // hardcoded mapping, and no authored Unit currently lives under this one.
+        val learningContent = BundledLearningContentRepository()
+        for (topicId in listOf("android_ui", "kotlin_language")) {
+            val authoredUnitCount = learningContent.getActiveUnitsByTopic(topicId).size
+            assertEquals(authoredUnitCount, topic(viewModel, topicId).learningUnitCount)
+        }
+        // A successfully loaded Topic with no authored Units still reports zero availability.
         assertEquals(0, topic(viewModel, "testing").learningUnitCount)
     }
 

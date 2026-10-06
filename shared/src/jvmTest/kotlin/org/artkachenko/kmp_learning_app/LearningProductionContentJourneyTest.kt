@@ -262,6 +262,9 @@ internal class LearningProductionContentJourneyTest {
             if (unit.lessons.size > 1) {
                 onNodeWithTag(LearningLessonPreviousTag).performScrollTo().performClick()
                 waitForText(unit.lessons[unit.lessons.lastIndex - 1].title)
+            } else {
+                assertTrue(onAllNodesWithTag(LearningLessonPreviousTag).fetchSemanticsNodes().isEmpty())
+                assertTrue(onAllNodesWithTag(LearningLessonNextTag).fetchSemanticsNodes().isEmpty())
             }
             onNodeWithContentDescription("Back").performClick()
             waitForTag(learningLessonRowTag(unit.lessons.first().id))
@@ -946,6 +949,7 @@ private suspend fun ComposeUiTest.openShippedLesson(unit: LearningUnit, lesson: 
     openShippedUnit(unit)
     onNode(hasScrollAction()).performScrollToNode(hasTestTag(learningLessonRowTag(lesson.id)))
     onNodeWithTag(learningLessonRowTag(lesson.id)).performClick()
+    waitForTag(LearningLessonReadingColumnTag)
     waitForText(lesson.title)
 }
 
@@ -953,6 +957,7 @@ private suspend fun ComposeUiTest.openShippedLesson(unit: LearningUnit, lesson: 
 private suspend fun ComposeUiTest.openFirstShippedLesson(unit: LearningUnit = ShippedUnit) {
     openShippedUnit(unit)
     onNodeWithTag(learningLessonRowTag(unit.lessons.first().id)).performClick()
+    waitForTag(LearningLessonReadingColumnTag)
     waitForText(unit.lessons.first().title)
 }
 

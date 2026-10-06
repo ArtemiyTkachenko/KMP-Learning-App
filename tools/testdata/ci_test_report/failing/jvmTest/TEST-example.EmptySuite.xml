@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A suite with no test cases and none of the optional attributes. -->
+<testsuite name="example.EmptySuite">
+</testsuite>

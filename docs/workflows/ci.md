@@ -6,8 +6,8 @@ The workflow is triggered by pull requests to `main`, pushes to `main`, and manu
 but the runner job executes only when `github.actor` is `ArtemiyTkachenko`. Events triggered
 by other accounts leave the job skipped, so public contributors cannot consume this
 repository's hosted-runner minutes. When it runs, it uses Ubuntu and Temurin JDK 21. The
-job is a fast data gate, then one Gradle invocation, then two verification steps over what
-that invocation produced.
+job is a fast data gate, then one Gradle invocation, then test reporting and verification
+steps over what that invocation produced.
 
 ### 1. Data gates
 
@@ -104,9 +104,50 @@ failure here means a build artifact belongs in the commit.
 The same check protects the tracked Yarn lockfiles: a build that rewrote either of them
 would leave the tree dirty and fail here.
 
-Test reports for every target `:shared:check` ran are uploaded as `shared-test-reports`.
-The Android host, JS and Wasm reports matter most: those are the failures least
-reproducible on a developer's macOS machine.
+### 4. Test reports
+
+The test reports for every target `:shared:check` ran are surfaced three ways. The Android
+host, JS and Wasm results matter most, because those failures are the hardest to reproduce on
+a developer's macOS machine.
+
+- **Summary table, on every run that was not cancelled.** `tools/ci_test_report.py` reads the
+  JUnit XML under `shared/build/test-results/` and appends Markdown to the run's Summary page.
+  The Markdown has one row per test task (`jvmTest`, `testAndroidHostTest`, `jsBrowserTest`,
+  `wasmJsBrowserTest`) with its total, passed, failed and skipped counts and its time. When
+  tests failed, a table of the failed tests follows, with the first line of each message and
+  a collapsed excerpt of each stack trace. The failure table stops at 50 rows and the trace
+  excerpts at a 256 KiB budget, keeping the summary well under GitHub's 1 MiB limit per
+  step; both point to the HTML report for the rest. Only test tasks that wrote results
+  appear: Gradle stops at the first failing task, so after a failure the table can be
+  missing targets that never ran. Malformed report files are listed as unreadable rather than stopping the step. If
+  Gradle wrote no results at all, for example because compilation failed, the summary says
+  so and points to the Gradle log. The step also runs when an earlier data gate failed and
+  Gradle was skipped, and then shows that same no-results message. Read it as "no tests
+  ran", not as a claim about Gradle.
+- **Browsable HTML report, on failed runs only.** The same script writes one self-contained
+  HTML file, with failures first by target, collapsed stack traces and captured output, the
+  per-target table, and collapsed passing and skipped tests. `actions/upload-artifact@v7`
+  uploads it with `archive: false`. A non-zipped single file opens directly in the browser,
+  and in that mode the artifact is named after the file: `test-report.html`. A link to the
+  artifact is appended to the Summary page. The report uses inline CSS only, with no script,
+  no fonts and no external resources; its only link is the one back to the workflow
+  run. On a green run it is still generated, but not uploaded.
+- **Zipped Gradle reports, on every run.** `shared-test-reports` holds Gradle's own HTML
+  reports and the raw XML, unchanged, as the complete fallback.
+
+The script writes its HTML to `RUNNER_TEMP`, outside the workspace, so the uncommitted-output
+check never sees it. It exits 0 whenever it wrote its outputs, failing tests included. The
+step also sets `continue-on-error`, so a fault in the reporting can neither fail a green
+build nor hide the Gradle failure it describes.
+
+**Why there is no third-party code.** The report is built with the Python standard library
+and only GitHub's own `actions/*` actions, the same as the other `tools/` scripts. The
+alternatives are test-reporter actions from the Marketplace, or a templating or JUnit
+parsing package from PyPI. Either would run unreviewed code with access to the job's
+checkout and token, and add a dependency that has to be pinned and kept up to date, all to
+render a few tables. The runner's Python 3 already has everything the report needs, and the
+fixtures under `tools/testdata/ci_test_report/` pin the script to the JUnit XML Gradle
+actually writes. The script's tests run in the data-gate step with the other `tools/` tests.
 
 **What CI does not cover:** Kotlin/Native iOS compilations are disabled on a Linux runner,
 so this job gives no iOS signal at all. iOS framework linking and simulator runtime

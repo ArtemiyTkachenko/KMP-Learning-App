@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-written in Gradle's JUnit XML shape: one test case per outcome the report handles. -->
+<testsuite name="example.CheckoutTest" tests="6" skipped="1" failures="3" errors="1" timestamp="2026-10-06T10:00:00.000Z" hostname="localhost" time="1.5">
+  <properties/>
+  <testcase name="totalIncludesTax[jvm]" classname="example.CheckoutTest" time="0.25"/>
+  <testcase name="discountIsApplied[jvm]" classname="example.CheckoutTest" time="0.5">
+    <failure message="java.lang.AssertionError: expected:&lt;90&gt; but was:&lt;100&gt;" type="java.lang.AssertionError">java.lang.AssertionError: expected:&lt;90&gt; but was:&lt;100&gt;
+	at org.junit.Assert.fail(Assert.java:89)
+	at example.CheckoutTest.discountIsApplied(CheckoutTest.kt:42)
+</failure>
+  </testcase>
+  <testcase name="paymentGatewayIsReachable[jvm]" classname="example.CheckoutTest" time="0.125">
+    <error message="java.lang.IllegalStateException: gateway not configured" type="java.lang.IllegalStateException">java.lang.IllegalStateException: gateway not configured
+	at example.Gateway.connect(Gateway.kt:7)
+</error>
+  </testcase>
+  <testcase name="refundIsIgnored[jvm]" classname="example.CheckoutTest" time="0.0">
+    <skipped/>
+  </testcase>
+  <testcase name="cartIsConsistent[jvm]" classname="example.CheckoutTest" time="0.25">
+    <failure message="first: item count differs" type="java.lang.AssertionError">java.lang.AssertionError: first: item count differs
+	at example.CheckoutTest.cartIsConsistent(CheckoutTest.kt:60)
+</failure>
+    <failure message="second: total differs" type="java.lang.AssertionError">java.lang.AssertionError: second: total differs
+	at example.CheckoutTest.cartIsConsistent(CheckoutTest.kt:61)
+</failure>
+  </testcase>
+  <testcase name="hostile &lt;b&gt;name&lt;/b&gt; | pipe[jvm]" classname="example.CheckoutTest" time="0.375">
+    <failure message="&lt;/details&gt;&lt;script&gt;alert(1)&lt;/script&gt; a|b **bold** [x](https://example.com) Grüße — 日本語 ✓" type="java.lang.AssertionError"><![CDATA[java.lang.AssertionError: </details><script>alert(1)</script> a|b
+
+</pre></details><img src=x onerror=alert(2)>
+	at example.CheckoutTest.hostile(CheckoutTest.kt:99)
+]]></failure>
+  </testcase>
+  <system-out><![CDATA[log line before failure <script>alert(3)</script>
+]]></system-out>
+  <system-err><![CDATA[warning: Grüße
+]]></system-err>
+</testsuite>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Missing time and classname attributes fall back to zero and the suite name. -->
+<testsuite name="example.SettingsTest" tests="2">
+  <testcase name="themeDefaultsToSystem"/>
+  <testcase name="themePersists" classname="example.SettingsTest" time="not-a-number"/>
+</testsuite>

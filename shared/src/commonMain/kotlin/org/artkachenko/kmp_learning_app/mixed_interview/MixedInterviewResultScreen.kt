@@ -209,6 +209,7 @@ private fun LazyListScope.outcomeSection(
             retakeProgressTestTag = MixedResultCreatingIndicatorTag,
             onPracticeMistakes = onPracticeMistakes,
             hiddenQuestionCount = state.hiddenQuestionCount,
+            revealKey = state.attemptId,
         )
     }
     item {

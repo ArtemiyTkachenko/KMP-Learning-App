@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,6 +19,8 @@ import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
+import org.artkachenko.kmp_learning_app.assessment_review.LocalRevealedResults
+import org.artkachenko.kmp_learning_app.assessment_review.rememberRevealedResults
 import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewDestination
 import org.artkachenko.kmp_learning_app.mixed_interview.InterviewStartDestination
@@ -47,7 +50,11 @@ internal fun App() {
     // follows the saved appearance exactly as the running application does, rather than making a
     // second, independent decision from isSystemInDarkTheme().
     AppearanceTheme {
-        AppShell()
+        // Above navigation, because an area switch discards the saved state of every entry in the
+        // area being left; a result's "already counted" flag has to outlive that. See RevealedResults.
+        CompositionLocalProvider(LocalRevealedResults provides rememberRevealedResults()) {
+            AppShell()
+        }
     }
 }
 

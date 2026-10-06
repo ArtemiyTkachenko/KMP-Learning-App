@@ -53,7 +53,7 @@ invalidate the snapshot, but changing what it says does.
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
 | Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `ba2c0e8e651742f1faa93a0d6b2f62208a227df2d4f577b8ddb474cd41e05ec8` |
-| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `9fdeb33bfeed6306275b976336eb8b9e44eeeb0ae464c74bb96a7cba0bad904e` |
+| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `88969d34ef9d4ea52ef08e35166150a401e45ba758572bc91633d4551d4da21b` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
 because editing lesson content can change whether the material still teaches an
@@ -72,10 +72,10 @@ Deprecated units, lessons and questions are excluded throughout.
 | Active lessons in those units | 147 |
 | Distinct primary subtopics | 98 |
 | Distinct supporting subtopics | 127 |
-| Unique active questions reached through primary mappings | 207 |
-| Primary subtopics with at least one active question | 97 |
-| Primary subtopics with no active question | 1 |
-| Active questions in the bank | 447 |
+| Unique active questions reached through primary mappings | 208 |
+| Primary subtopics with at least one active question | 98 |
+| Primary subtopics with no active question | 0 |
+| Active questions in the bank | 448 |
 | Deprecated questions excluded from this report | 41 |
 
 The two bank-size rows are context, not a target. The learning curriculum is
@@ -122,7 +122,7 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Koin: Containers, Definitions and Scopes (`unit_koin_containers_definitions_and_scopes`) | 4 | 4 | 1 | 4 | 0 | 5 |
 | Choosing a Dependency Injection Strategy (`unit_choosing_a_dependency_injection_strategy`) | 4 | 2 | 0 | 2 | 0 | 2 |
 | Types and Callable Semantics (`unit_kotlin_types_and_callables`) | 2 | 4 | 3 | 2 | 0 | 5 |
-| Objects and State Modeling (`unit_kotlin_objects_and_state`) | 3 | 9 | 10 | 2 | 0 | 12 |
+| Objects and State Modeling (`unit_kotlin_objects_and_state`) | 3 | 9 | 11 | 2 | 0 | 13 |
 | Generic APIs and Compiler-Assisted Mechanics (`unit_kotlin_generic_api_mechanics`) | 3 | 5 | 6 | 4 | 0 | 10 |
 | Kotlin at the Java/JVM Boundary (`unit_kotlin_java_jvm_boundary`) | 1 | 3 | 3 | 2 | 0 | 5 |
 | Shared ViewModels and Host Lifecycles (`unit_kmp_shared_viewmodels_and_host_lifecycles`) | 2 | 2 | 1 | 2 | 0 | 3 |
@@ -2798,7 +2798,7 @@ once each however many lessons share the concept.
 
 | Level | Count | Question IDs |
 |---|---:|---|
-| FOUNDATION | 10 | `data_class_copy_is_shallow`, `kotlin_custom_getter_recomputes`, `kotlin_data_classes_001`, `kotlin_equality_001`, `kotlin_internal_module_visibility`, `kotlin_lazy_thread_safety_mode`, `kotlin_objects_001`, `kotlin_sealed_types_001`, `object_vs_companion_object_members`, `sealed_when_exhaustive_evolution` |
+| FOUNDATION | 11 | `data_class_copy_is_shallow`, `kotlin_custom_getter_recomputes`, `kotlin_data_classes_001`, `kotlin_equality_001`, `kotlin_interface_conflict_shared_dispatch`, `kotlin_internal_module_visibility`, `kotlin_lazy_thread_safety_mode`, `kotlin_objects_001`, `kotlin_sealed_types_001`, `object_vs_companion_object_members`, `sealed_when_exhaustive_evolution` |
 | APPLIED | 2 | `kotlin_final_entry_open_hook`, `kotlin_optional_replaceable_property` |
 | ADVANCED | 0 | — |
 
@@ -2809,10 +2809,10 @@ Primary concepts:
 | Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
 |---|---:|---:|---:|---:|---|
 | `kotlin_classes` — Kotlin classes | 0 | 1 | 0 | 1 | `kotlin_final_entry_open_hook` |
-| `kotlin_interfaces_inheritance` — Interfaces and inheritance | 0 | 0 | 0 | 0 | — |
+| `kotlin_interfaces_inheritance` — Interfaces and inheritance | 1 | 0 | 0 | 1 | `kotlin_interface_conflict_shared_dispatch` |
 | `kotlin_objects` — object and companion object | 2 | 0 | 0 | 2 | `kotlin_objects_001`, `object_vs_companion_object_members` |
 | `kotlin_visibility` — Visibility modifiers | 1 | 0 | 0 | 1 | `kotlin_internal_module_visibility` |
-| **Lesson total (unique)** | 3 | 1 | 0 | 4 | `kotlin_final_entry_open_hook`, `kotlin_internal_module_visibility`, `kotlin_objects_001`, `object_vs_companion_object_members` |
+| **Lesson total (unique)** | 4 | 1 | 0 | 5 | `kotlin_final_entry_open_hook`, `kotlin_interface_conflict_shared_dispatch`, `kotlin_internal_module_visibility`, `kotlin_objects_001`, `object_vs_companion_object_members` |
 
 Supporting context — not primary coverage:
 
@@ -3062,9 +3062,7 @@ subtopic taxonomy is deliberately finer-grained than the bank — see
 from subtopics that are empty on purpose. This report surfaces the gap; whether it
 matters is editorial judgement.
 
-| Primary subtopic | Owning topic |
-|---|---|
-| `kotlin_interfaces_inheritance` — Interfaces and inheritance | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+Every primary concept of every active lesson has at least one active question.
 
 ## Semantic review reminder
 

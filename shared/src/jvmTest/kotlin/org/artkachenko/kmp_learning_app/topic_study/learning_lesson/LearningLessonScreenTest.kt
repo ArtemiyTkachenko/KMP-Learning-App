@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ComposeUiTest
@@ -162,6 +163,28 @@ internal class LearningLessonScreenTest {
 
         onNodeWithTag(LearningLessonReadingColumnTag).performTouchInput { swipeDown() }
         waitForIdle()
+        onNodeWithTag(LearningLessonScrollToEndTag).assertIsDisplayed()
+    }
+
+    /**
+     * The button sits over the text column, so it is reading chrome: reading downward hides it
+     * with the bottom navigation, and a short scroll back up returns it — mid-Lesson, where the
+     * end is still ahead and the button still has somewhere to go.
+     */
+    @Test
+    fun scrollToEndFabHidesWhileReadingDownwardAndReturnsOnScrollUp() = runComposeUiTest {
+        setContentWith(
+            sections = List(40) { section(LearningBlock.Paragraph("Body paragraph $it.")) },
+            height = ShortHeight,
+        )
+        onNodeWithTag(LearningLessonScrollToEndTag).assertIsDisplayed()
+
+        dragReadingColumn(by = -ReadingDragDistance)
+        onNodeWithTag(LearningLessonPracticeButtonTag).assertIsNotDisplayed()
+        onNodeWithTag(LearningLessonScrollToEndTag).assertDoesNotExist()
+
+        dragReadingColumn(by = ReadingDragDistance / 2)
+        onNodeWithTag(LearningLessonPracticeButtonTag).assertIsNotDisplayed()
         onNodeWithTag(LearningLessonScrollToEndTag).assertIsDisplayed()
     }
 
@@ -1009,6 +1032,22 @@ internal class LearningLessonScreenTest {
     ): StudyProgressUiState<LessonStudyUiModel> =
         StudyProgressUiState.Available(LessonStudyUiModel(isStudied = isStudied, isPending = isPending))
 
+    /**
+     * A reading drag rather than a swipe: moved in steps and held still before release, so the
+     * pointer leaves no velocity and the Lesson stops where the finger did instead of flinging to
+     * an end. Negative [by] moves the finger up, which reads further down the Lesson.
+     */
+    private fun ComposeUiTest.dragReadingColumn(by: Dp) {
+        onNodeWithTag(LearningLessonReadingColumnTag).performTouchInput {
+            val step = by.toPx() / ReadingDragSteps
+            down(center)
+            repeat(ReadingDragSteps) { moveBy(Offset(0f, step)) }
+            advanceEventTime(ReadingDragHoldMillis)
+            up()
+        }
+        waitForIdle()
+    }
+
     private fun ComposeUiTest.assertWithinRootWidth(tag: String, rootWidth: Float) {
         val width = onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot.width
         assertTrue(width <= rootWidth, "$tag was $width wide in a $rootWidth viewport.")
@@ -1074,6 +1113,12 @@ private val NarrowWidth = 360.dp
 private val WideWidth = 1600.dp
 private val TestHeight = 800.dp
 private val ShortHeight = 400.dp
+
+// Well past both the touch slop and the reader's 24dp direction threshold, and short of either end
+// of a 40-paragraph Lesson in a ShortHeight viewport.
+private val ReadingDragDistance = 160.dp
+private const val ReadingDragSteps = 10
+private const val ReadingDragHoldMillis = 200L
 
 private fun section(
     vararg blocks: LearningBlock,

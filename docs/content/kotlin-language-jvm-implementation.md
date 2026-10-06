@@ -112,6 +112,12 @@ Learning-stage and environment evidence:
 
 The initial Python tooling run detected the expected stale learning coverage snapshot; regeneration resolved it. No validation failure was treated as a successful run.
 
+## CI follow-up
+
+The first published CI run ([37441792665](https://github.com/ArtemiyTkachenko/KMP-Learning-App/actions/runs/37441792665)) compiled the JVM tests and executed 1,896 tests, with five failures in existing journey and Topic tests. Coverage, identity and backlog checks passed. The failures exposed assumptions about Kotlin being unauthored, DI continuing directly to KMP, plural progress text, and stripping literal stars from inline code.
+
+Four test files were corrected to cover the new Kotlin journey and Topic availability, preserve inline-code syntax, use singular text for a one-Lesson Unit, and check absent adjacent navigation. Reader arrival now waits for its screen tag, since a Unit and Lesson may share a title. No production renderer or reviewed curriculum text was changed. The branch’s overlapping Quality improvements commit preserved these fixes and corrected the durable studied-Lesson count to 146. Its configured CI run [37449041785](https://github.com/ArtemiyTkachenko/KMP-Learning-App/actions/runs/37449041785) passed. The additional reader-arrival, absent-navigation and Kotlin Topic coverage assertions run the pipeline again; their result is recorded in the PR checks rather than presumed here. Local Gradle remains blocked as described above.
+
 ## Deliberately deferred scope
 
 The blueprint retains `val`/`var` and scope functions as Reference material and does not add value classes, reflection internals, a bytecode tutorial, coroutine/Flow material or KMP runtime differences. Smart-cast/type-refinement reasoning remains mapped to `kotlin_nullability`, because the existing taxonomy has no dedicated smart-cast Subtopic. No new taxonomy was introduced. The blueprint’s interface-conflict behavioral assessment gap remains after rejecting the syntax-recall proposal; the Lesson still teaches the concept.

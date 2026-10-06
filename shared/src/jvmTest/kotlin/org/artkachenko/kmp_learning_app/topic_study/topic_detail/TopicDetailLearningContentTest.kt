@@ -66,6 +66,25 @@ internal class TopicDetailLearningContentTest {
     }
 
     @Test
+    fun theProductionKotlinTopicMapsItsFourUnitsAndNineLessonsToStudyRows() = runTest {
+        val repository: LearningContentRepository = BundledLearningContentRepository()
+
+        val items = repository.getActiveUnitsByTopic("kotlin_language").toLearningUnitItems()
+
+        assertEquals(
+            listOf(
+                "unit_kotlin_types_and_callables",
+                "unit_kotlin_objects_and_state",
+                "unit_kotlin_generic_api_mechanics",
+                "unit_kotlin_java_jvm_boundary",
+            ),
+            items.map { it.unitId },
+        )
+        assertEquals(listOf(2, 3, 3, 1), items.map { it.activeLessonCount })
+        assertTrue(items.all { it.summary.isNotBlank() })
+    }
+
+    @Test
     fun aTopicWithNoAuthoredLearningContentMapsToAnEmptyStudySection() = runTest {
         val repository: LearningContentRepository = BundledLearningContentRepository()
 

@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.topic_study.topic_detail
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 
 /**
@@ -128,6 +129,7 @@ internal class TopicPracticeRecommendationTest {
             totalQuestionCount = total,
             coveragePercentage = if (total == 0) null else attempted.toDouble() / total * 100,
             accuracyPercentage = accuracy,
+            answeredCount = if (accuracy == null) 0 else LearningProgressPolicy.WeakAreaMinimumAnswered,
             isWeak = isWeak,
         )
 }

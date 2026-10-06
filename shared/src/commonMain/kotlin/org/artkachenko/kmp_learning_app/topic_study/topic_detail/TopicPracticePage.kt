@@ -29,6 +29,7 @@ import kmp_learning_app.shared.generated.resources.learning_context_not_studied
 import kmp_learning_app.shared.generated.resources.practice_shortcut_mistake_count
 import kmp_learning_app.shared.generated.resources.practice_shortcut_unseen_count
 import kmp_learning_app.shared.generated.resources.practice_shortcut_weak_area
+import kmp_learning_app.shared.generated.resources.progress_not_enough_data
 import kmp_learning_app.shared.generated.resources.progress_weak_label
 import kmp_learning_app.shared.generated.resources.topic_detail_accuracy_caption
 import kmp_learning_app.shared.generated.resources.topic_detail_available_questions
@@ -279,6 +280,11 @@ private fun TopicPracticeRecommendation.reasonLabel(): String? =
  * for how much of the bank is behind the learner — because the only reason they share a card is
  * that they are not the same reading.
  *
+ * Below the evidence minimum the hero stays but draws no ring: it passes a null figure and lets
+ * "not enough data" stand as its caption, the same treatment the Progress drill-down gives its Topic
+ * hero. The learner has answered here, so the page still leads with this scope; it just has no
+ * honest rate to lead with yet.
+ *
  * With no accuracy to lead on, the whole thing steps down to a quieter card rather than passing a
  * null figure to the hero: an unstudied Topic should not open with a display-size surface at all,
  * and it must never open with a fabricated 0%. The third branch is analytics being absent
@@ -301,9 +307,14 @@ private fun TopicPracticeSummary(
 ) {
     val accuracy = context?.accuracyPercentage
     if (context != null && accuracy != null) {
+        val hasEvidence = context.hasAccuracyEvidence
         AccuracyHeroCard(
-            percentage = accuracy,
-            caption = stringResource(Res.string.topic_detail_accuracy_caption),
+            percentage = accuracy.takeIf { hasEvidence },
+            caption = if (hasEvidence) {
+                stringResource(Res.string.topic_detail_accuracy_caption)
+            } else {
+                stringResource(Res.string.progress_not_enough_data)
+            },
         ) {
             if (context.isWeak) {
                 StatusBadge(

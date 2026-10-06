@@ -125,12 +125,16 @@ Mixed result appends its per-Topic breakdown to the outcome pane after the share
 no `isInterview` flag anywhere in the path.
 
 That breakdown is one `ContentGroup` rather than a card per Topic. Its rows are the most
-homogeneous thing on the screen — a Topic, a score, a rate, every one of them — they navigate
+homogeneous thing on the screen — a Topic and its score, every one of them — they navigate
 nowhere, and there are at most as many as the interview drew Topics from, so a card each spent an
 edge saying what the heading above already said. It did that directly above a transcript of
 question cards that genuinely are separate surfaces, which left the two halves of the summary
 reading as one undifferentiated column of boxes. Every row is inert and therefore chevron-free: a
 result is a record of what happened and there is no per-Topic destination to reach from one.
+A row states a percentage only when its Topic was asked at least the per-Topic evidence minimum
+(`LearningProgressPolicy.hasAccuracyEvidence`, five) times in this interview; below that it keeps
+"x / y correct" and draws no rate, so in an ordinary interview most rows carry counts alone. See
+[the accuracy evidence minimum](progress.md#the-accuracy-evidence-minimum).
 
 `AssessmentCompletionHero` is the product's one use of the hero gradient. It states the score as
 the display figure (`8 / 10`) with the percentage beneath it (`80% correct`), a determinate ring

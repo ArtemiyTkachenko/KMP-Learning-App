@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.testTag
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.mistake_review_none
 import kmp_learning_app.shared.generated.resources.mistake_review_unresolved_count
+import kmp_learning_app.shared.generated.resources.progress_not_enough_data
 import kmp_learning_app.shared.generated.resources.progress_review_mistakes_action
 import kmp_learning_app.shared.generated.resources.mixed_interview_title
 import kmp_learning_app.shared.generated.resources.practice_shortcut_weak_area
@@ -53,6 +54,7 @@ import kmp_learning_app.shared.generated.resources.progress_weak_areas
 import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_detail
 import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_title
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.AccuracyRow
@@ -662,12 +664,16 @@ private fun WeakAreaCard(
  * changes of this one. Every part a learner acts on survives: the figure at its own weight and in
  * `accuracyColor`, the counts that earned it, the chevron, `Role.Button`, and the stable per-Topic
  * handle. What it gives up is the edge, which the group now draws once for all of them.
+ *
+ * Below the evidence minimum the row keeps its counts and drops the figure, with the drill-down's
+ * "not enough data" line as its caption, so the table and the screen it opens agree.
  */
 @Composable
 private fun TopicPerformanceRow(
     topic: ProgressTopicUiModel,
     onClick: () -> Unit,
 ) {
+    val hasEvidence = LearningProgressPolicy.hasAccuracyEvidence(topic.answeredCount)
     AccuracyRow(
         title = topic.topicName ?: stringResource(Res.string.progress_topic_unavailable),
         detail = stringResource(
@@ -675,8 +681,9 @@ private fun TopicPerformanceRow(
             topic.correctCount,
             topic.answeredCount,
         ),
-        percentage = topic.percentage,
+        percentage = topic.percentage.takeIf { hasEvidence },
         modifier = Modifier.testTag(progressTopicCardTag(topic.topicId)),
+        caption = if (hasEvidence) null else stringResource(Res.string.progress_not_enough_data),
         onClick = onClick,
     )
 }

@@ -257,7 +257,8 @@ about it.
 
 The drill-down leads with the same `AccuracyHeroCard`, carrying the Topic name as its
 title and the all-time counts as its caption. Its percentage is nullable for the
-same reason the card's parameter is: below `WeakAreaMinimumAnswered` there is no
+same reason the card's parameter is: below the evidence minimum (see
+[the accuracy evidence minimum](#the-accuracy-evidence-minimum)) there is no
 honest figure, so the hero states the counts and lets the "not enough data" line
 explain itself rather than drawing a ring at a number the learner never produced.
 Weakness remains the domain's verdict and is still suppressed below that minimum,
@@ -357,10 +358,10 @@ a count ("12 of 28 explored"), never a bare percentage that could be mistaken fo
 accuracy, and stays in neutral theme colours throughout: a learner at 10% coverage
 has not done anything wrong, so the correct/incorrect palette would misread as a
 bad score. Accuracy keeps `accuracyColor` and carries its own label. The weak badge
-is driven only by `TopicPerformance.isWeak` / `SubtopicPerformance.isWeak`; a row
-can render as low accuracy without being weak, because the policy's evidence
-threshold has not been met, and accuracy colour is never treated as the weak-state
-source of truth.
+is driven only by `TopicPerformance.isWeak` / `SubtopicPerformance.isWeak`, and
+accuracy colour is never treated as the weak-state source of truth. Below the
+evidence minimum neither appears; see
+[the accuracy evidence minimum](#the-accuracy-evidence-minimum).
 
 Unresolved mistake state is derived once, never persisted:
 
@@ -389,6 +390,49 @@ Mistake Review also presents the shared Saved Questions state described in
 are independent: saving or unsaving an entry never resolves it, and only a later correct answer
 takes it out of the queue. The E17-04 scoped practice shortcut is unchanged and stays a separate
 action on the entry.
+
+## The accuracy evidence minimum
+
+A per-Topic or per-Subtopic accuracy figure is shown only when it rests on at
+least `LearningProgressPolicy.WeakAreaMinimumAnswered` (five) answers. The rule
+is one predicate, `LearningProgressPolicy.hasAccuracyEvidence(answeredCount)`,
+beside the weak-area constants it shares a threshold with: the reason a weak
+verdict needs a pattern rather than one unlucky question is the same reason a
+"100%" from one lucky one is not a measurement. The count it is given is always
+occurrence-based — every answer recorded in the scope — and never coverage's
+`attemptedQuestionCount`, which counts unique current Questions. Nothing about
+derivation changed: snapshots, scoring, weak-area policy and recommendations
+compute exactly what they did, and only presentation consults the predicate.
+
+`LearningContextUiModel` carries the occurrence count as `answeredCount`, filled
+from `TopicPerformance` / `SubtopicPerformance` by `LearningContextIndex`, and
+exposes `hasAccuracyEvidence`. Accuracy therefore has three states on every
+surface that follows the rule:
+
+- **never answered** — no accuracy at all, exactly as before;
+- **answered, below the minimum** — no percentage, no `accuracyColor`, no ring,
+  no meter; the surface states its evidence instead;
+- **at or above the minimum** — the figure, unchanged.
+
+The surfaces, and what each states below the minimum:
+
+| Surface | Below the minimum |
+| --- | --- |
+| Learn Topic cards (`TopicBrowserScreen`) | "N answered" in `onSurfaceVariant` in the figure slot, still labelled "accuracy" |
+| Topic Detail Subtopic rows (`TopicSubtopicsPage`) | the same "N answered" figure; both use `LearningContextAccuracy` |
+| Topic Detail Practice summary (`TopicPracticePage`) | `AccuracyHeroCard(percentage = null)` captioned "not enough data"; coverage and the action stay |
+| Progress dashboard Topic rows (`ProgressScreen`) | `AccuracyRow(percentage = null)` keeping "x / y correct", captioned "not enough data" |
+| Progress Topic drill-down hero and Subtopic rows (`ProgressTopicScreen`) | counts and "not enough data"; no ring, no meter |
+| Mixed interview per-Topic breakdown (`MixedInterviewResultScreen`) | `AccuracyRow(percentage = null)` keeping "x / y correct", judged on that Topic's question count *within the interview* |
+
+The interview breakdown is the case most often affected: an ordinary interview
+spreads its questions across many Topics, so most rows carry counts alone. That
+is intended — two questions do not measure a Topic. The weak badge needs no
+change, because the weak verdict already required the same minimum. Two figures
+are deliberately outside this rule: a finished run's own hero, which withholds
+its percentage below five questions under its own run-size constant in
+`AssessmentCompletionHero`, and the Interview record row on the Interview start
+screen, which covers whole interviews rather than one Topic.
 
 ## Curriculum visibility
 

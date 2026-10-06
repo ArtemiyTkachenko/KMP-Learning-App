@@ -171,6 +171,7 @@ internal class LargeFontScaleTest {
                                         totalQuestionCount = 30,
                                         coveragePercentage = 40.0,
                                         accuracyPercentage = 88.0,
+                                        answeredCount = 20,
                                         isWeak = false,
                                     ),
                                 ),

@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasNoClickAction
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -466,6 +468,43 @@ internal class MixedInterviewResultScreenTest {
         // A Topic the curriculum has dropped still gets its row and its fallback name.
         onNode(hasText("Topic unavailable") and insideGroup).assertHasNoClickAction()
         onNodeWithTag(MixedResultTopicGroupTag).assertHasNoClickAction()
+    }
+
+    /**
+     * A Topic asked twice in one interview keeps its counts and draws no percentage — two questions
+     * do not measure a Topic — while a Topic asked five times, the evidence minimum, keeps its
+     * figure.
+     */
+    @Test
+    fun theTopicBreakdownStatesAPercentageOnlyFromEnoughQuestions() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MixedInterviewResultScreen(
+                    state = contentState().copy(
+                        totalQuestions = 7,
+                        correctAnswers = 5,
+                        percentage = 5.0 / 7 * 100,
+                        topicPerformance = listOf(
+                            TopicPerformanceUiModel("kotlin", "Kotlin", 2, 1, 50.0),
+                            TopicPerformanceUiModel("compose", "Compose", 5, 4, 80.0),
+                        ),
+                    ),
+                    onRetry = {},
+                    onBack = {},
+                    onSourceClick = {},
+                )
+            }
+        }
+
+        onNode(hasScrollAction()).performScrollToNode(hasTestTag(MixedResultTopicGroupTag))
+        val insideGroup = hasAnyAncestor(hasTestTag(MixedResultTopicGroupTag))
+        onNode(hasText("Kotlin") and insideGroup)
+            .assert(hasText("1 / 2 correct", substring = true))
+            .assert(!hasText("%", substring = true))
+        onAllNodesWithText("50%", useUnmergedTree = true).assertCountEquals(0)
+        onNode(hasText("Compose") and insideGroup)
+            .assert(hasText("4 / 5 correct", substring = true))
+            .assert(hasText("80%", substring = true))
     }
 
     private fun contentState() = MixedInterviewResultUiState.Content(

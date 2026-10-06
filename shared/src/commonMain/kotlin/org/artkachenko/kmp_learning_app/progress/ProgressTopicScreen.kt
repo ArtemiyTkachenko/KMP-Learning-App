@@ -118,11 +118,11 @@ private fun ProgressTopicContent(
                     correctCount = subtopic.correctCount,
                     answeredCount = subtopic.answeredCount,
                     percentage = subtopic.percentage.takeIf {
-                        subtopic.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered
+                        LearningProgressPolicy.hasAccuracyEvidence(subtopic.answeredCount)
                     },
                     caption = coverageCaption(subtopic.coverage),
                     isWeak = subtopic.isWeak &&
-                        subtopic.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered,
+                        LearningProgressPolicy.hasAccuracyEvidence(subtopic.answeredCount),
                     // This is the one list in the app whose rows exist to be read against each
                     // other, so it is the one list whose rows get a meter. See [PerformanceCard].
                     comparesWithSiblings = true,
@@ -141,7 +141,7 @@ private fun ProgressTopicContent(
  * arriving from the dashboard had nothing telling them which figure was the Topic's.
  *
  * The evidence rule is unchanged and is the reason [AccuracyHeroCard] takes a nullable percentage:
- * below `WeakAreaMinimumAnswered` there is no honest figure, so the hero states the counts and lets
+ * below the policy's evidence minimum (`hasAccuracyEvidence`) there is no honest figure, so the hero states the counts and lets
  * the "not enough data" line explain itself rather than drawing a ring at a number the learner
  * never produced. Weakness is likewise still the domain's verdict, and is still suppressed below
  * the same minimum.
@@ -152,7 +152,7 @@ private fun ProgressTopicContent(
  */
 @Composable
 private fun TopicAggregateHero(state: ProgressTopicUiState.Content) {
-    val hasEvidence = state.answeredCount >= LearningProgressPolicy.WeakAreaMinimumAnswered
+    val hasEvidence = LearningProgressPolicy.hasAccuracyEvidence(state.answeredCount)
     AccuracyHeroCard(
         percentage = state.percentage.takeIf { hasEvidence },
         caption = stringResource(
@@ -201,7 +201,7 @@ private fun TopicAggregateHero(state: ProgressTopicUiState.Content) {
 
 @Composable
 private fun evidenceLabel(answeredCount: Int): String? =
-    if (answeredCount < LearningProgressPolicy.WeakAreaMinimumAnswered) {
+    if (!LearningProgressPolicy.hasAccuracyEvidence(answeredCount)) {
         stringResource(Res.string.progress_not_enough_data)
     } else {
         null

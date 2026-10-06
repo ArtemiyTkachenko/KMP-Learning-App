@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
-import kmp_learning_app.shared.generated.resources.learning_context_accuracy
 import kmp_learning_app.shared.generated.resources.learning_context_explored
 import kmp_learning_app.shared.generated.resources.learning_context_not_studied
 import kmp_learning_app.shared.generated.resources.progress_weak_label
@@ -36,12 +35,11 @@ import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.ui.AppIcons
+import org.artkachenko.kmp_learning_app.ui.LearningContextAccuracy
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
-import org.artkachenko.kmp_learning_app.ui.accuracyColor
-import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
@@ -169,22 +167,10 @@ private fun SubtopicRow(
             TrailingFigureRow(
                 modifier = Modifier.weight(1f),
                 // Absent rather than 0% for a Subtopic with no recorded answer, and the row then
-                // has no reflow question to ask.
+                // has no reflow question to ask. Below the evidence minimum it states the answer
+                // count instead of a percentage.
                 figure = {
-                    context?.accuracyPercentage?.let { accuracy ->
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = formatAccuracy(accuracy),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = accuracyColor(accuracy),
-                            )
-                            Text(
-                                text = stringResource(Res.string.learning_context_accuracy),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+                    context?.let { LearningContextAccuracy(it) }
                 },
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {

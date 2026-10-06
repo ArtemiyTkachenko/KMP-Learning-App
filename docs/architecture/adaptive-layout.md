@@ -52,7 +52,7 @@ visibility transition therefore cannot remeasure or move screen content.
 
 `LocalAppNavigationOverlay.clearance` is added only to the trailing padding of shared scrolling
 primitives. That extra range lets the final meaningful item move above navigation at maximum
-scroll, while intermediate content remains free to pass behind the translucent surface. A route
+scroll, while intermediate content remains free to pass behind the opaque surface. A route
 that owns compact navigation keeps the clearance while a Lesson temporarily hides the surface;
 rail layouts and assessment focus mode publish zero.
 

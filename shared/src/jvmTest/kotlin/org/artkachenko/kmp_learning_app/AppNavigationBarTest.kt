@@ -1,31 +1,41 @@
 package org.artkachenko.kmp_learning_app
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -472,6 +482,57 @@ internal class AppNavigationBarTest {
         return indicators.single().boundsInRoot
     }
 
+    @Test
+    fun compactContainerHidesContentBehindItInLightTheme() = runComposeUiTest {
+        assertContainerIsOpaqueOverContent(darkTheme = false)
+    }
+
+    @Test
+    fun compactContainerHidesContentBehindItInDarkTheme() = runComposeUiTest {
+        assertContainerIsOpaqueOverContent(darkTheme = true)
+    }
+
+    /**
+     * Renders the bar over a backdrop no theme colour is near and reads back a pixel from the
+     * container's empty top padding, between destinations. An opaque container paints exactly
+     * `surfaceContainer` there; any translucency mixes the backdrop in and moves the pixel by
+     * several steps per channel, which is the bleed-through list text showed on the dark theme.
+     */
+    private fun androidx.compose.ui.test.ComposeUiTest.assertContainerIsOpaqueOverContent(
+        darkTheme: Boolean,
+    ) {
+        var container = Color.Unspecified
+        setContent {
+            AppTheme(darkTheme = darkTheme) {
+                container = MaterialTheme.colorScheme.surfaceContainer
+                Box(Modifier.size(400.dp, 200.dp).background(OpacityBackdrop)) {
+                    AppNavigationBar(
+                        selected = AppTopLevelDestination.TOPICS,
+                        onSelect = {},
+                        modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+                    )
+                }
+            }
+        }
+
+        val bar = onNodeWithTag(AppNavigationBarTag).fetchSemanticsNode().boundsInRoot
+        val pixels = onRoot().captureToImage().toPixelMap()
+        val probe = pixels[bar.center.x.roundToInt(), (bar.top + EmptyContainerProbeInsetPx).roundToInt()]
+
+        listOf(
+            "red" to (probe.red to container.red),
+            "green" to (probe.green to container.green),
+            "blue" to (probe.blue to container.blue),
+        ).forEach { (channel, values) ->
+            val (drawn, expected) = values
+            assertTrue(
+                abs(drawn - expected) <= ColorChannelTolerance,
+                "dark=$darkTheme: the container's $channel was $drawn, not surfaceContainer's " +
+                    "$expected, so the backdrop showed through.",
+            )
+        }
+    }
+
     private fun androidx.compose.ui.test.ComposeUiTest.assertSelectedIndicatorWraps(
         destination: AppTopLevelDestination,
     ) {
@@ -500,3 +561,12 @@ private const val SnackbarMessage = "Copied"
 private const val MinimumTouchTargetPx = 48f
 private const val LayoutTolerancePx = 1f
 private val CompactWidths = listOf(360, 390, 412, 599)
+
+/** Far from every neutral container in both themes, so any bleed-through moves the probe. */
+private val OpacityBackdrop = Color.Magenta
+
+/** Inside the container's 4dp top content padding: no pill, icon, or label is drawn there. */
+private const val EmptyContainerProbeInsetPx = 2f
+
+/** One 8-bit step either way, for rounding between the colour space and the captured pixel. */
+private const val ColorChannelTolerance = 1f / 255f

@@ -137,7 +137,7 @@ internal fun AppNavigationBar(
             .height(AppLayout.CompactNavigationHeight)
             .testTag(AppNavigationBarTag),
         shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = NavigationContainerAlpha),
+        color = MaterialTheme.colorScheme.surfaceContainer,
         tonalElevation = NavigationContainerElevation,
         shadowElevation = NavigationContainerElevation,
     ) {
@@ -500,7 +500,6 @@ private fun CompactNavigationOverlay(
     }
 }
 
-private const val NavigationContainerAlpha = 0.94f
 private val NavigationContainerElevation: Dp = 3.dp
 private val NavigationContentHorizontalPadding: Dp = 2.dp
 private val NavigationContentVerticalPadding: Dp = 4.dp

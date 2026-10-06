@@ -142,10 +142,16 @@ result is a record of what happened and there is no per-Topic destination to rea
 the display figure (`8 / 10`) with the percentage beneath it (`80% correct`), a determinate ring
 beside it, and nothing else; below five questions the percentage and the ring are both withheld,
 because four questions can only produce 0, 25, 50, 75, or 100 and reporting a percentage from one
-of them claims an accuracy the run never measured. One `Animatable`, held in a `rememberSaveable`
-flag so it runs once per visit rather than once per composition, counts the numerator and sweeps the
-ring as a single movement. The figure's node overrides its own `text` with the settled value, so the
-score is readable — to a test and to a screen reader — on the first frame, and the ring's
+of them claims an accuracy the run never measured. One `Animatable` counts the numerator and sweeps
+the ring as a single movement, and the accuracy line is derived from that same shown numerator, so
+the figure and the percentage agree on every frame and settle to exactly the final strings. The
+emphasis colour is the final band's from the first frame. The count plays once per result: a
+`rememberSaveable` flag covers scrolling and configuration changes, and `LocalRevealedResults`, a
+saveable set of attempt IDs provided above navigation, covers Back to a result whose entry state an
+area switch discarded. A result already counted in the session, reopened from history included,
+appears settled. The figure's node and the accuracy line both override their own `text` with the
+settled value, so the score is readable — to a test and to a screen reader — on the first frame, and
+the ring's
 `progressBarRangeInfo` is cleared rather than described, because the number is already written twice
 beside it.
 

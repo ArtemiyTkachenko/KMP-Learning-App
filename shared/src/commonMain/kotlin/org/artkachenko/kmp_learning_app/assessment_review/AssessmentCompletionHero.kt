@@ -25,12 +25,18 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_caption
 import kmp_learning_app.shared.generated.resources.assessment_review_accuracy_correct
@@ -64,7 +70,10 @@ import org.jetbrains.compose.resources.stringResource
  * so the gradient is an object lifted off the page rather than a patch of colour on it — which
  * matters most in light, where the sweep is a pale tint over an off-white background. Its figure is
  * the score itself at display scale. And that figure is *counted out*, with the ring beside it
- * sweeping to the same value over the same movement.
+ * sweeping to the same value over the same movement. The accuracy line under the figure is derived
+ * from the numerator on show, so `0 / 15` is never captioned `6.7% correct`. Its colour, though, is
+ * the final band's from the first frame, because a colour that changed mid-count would read as a
+ * changing verdict.
  *
  * The celebration stops there. There is no confetti, no streak, no points, and no praise: the app
  * has none of those anywhere else, and a learner who scored 30% is not owed a party. What the
@@ -105,6 +114,8 @@ internal fun AssessmentCompletionHero(
     totalQuestions: Int,
     percentage: Double,
     title: String? = null,
+    /** Identifies the result, normally its attempt ID, so its count plays once; see [LocalRevealedResults]. */
+    revealKey: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val semantic = AppThemeExtras.semanticColors
@@ -125,11 +136,20 @@ internal fun AssessmentCompletionHero(
     // so the score is counted out once per visit. A result is a settled fact; counting it again
     // would suggest something had changed. The flag is claimed *before* the count rather than after
     // it, so scrolling the hero out of view mid-count and back does not start it over either.
-    var alreadyRevealed by rememberSaveable { mutableStateOf(false) }
+    //
+    // The flag alone lives and dies with the navigation entry, and an area switch discards the
+    // saved state of every entry in the area being left — including a result still waiting under an
+    // unfinished retake. [revealKey] records the result in [LocalRevealedResults], which sits above
+    // navigation, so Back to that result later shows it settled rather than counting it again.
+    val revealedResults = LocalRevealedResults.current
+    var alreadyRevealed by rememberSaveable {
+        mutableStateOf(revealKey != null && revealedResults?.contains(revealKey) == true)
+    }
     val reveal = remember { Animatable(if (alreadyRevealed) 1f else 0f) }
     LaunchedEffect(Unit) {
         if (!alreadyRevealed) {
             alreadyRevealed = true
+            if (revealKey != null) revealedResults?.add(revealKey)
             reveal.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
@@ -138,6 +158,18 @@ internal fun AssessmentCompletionHero(
                 ),
             )
         }
+    }
+
+    // The figure and the accuracy line both read this one number, so on no frame can they disagree.
+    // Settled, it is the score itself and the line is the caller's `percentage`, exactly as before
+    // the count existed; only the frames in between are derived from the numerator on show.
+    val shownCorrect =
+        if (reveal.value >= 1f) correctAnswers else (correctAnswers * reveal.value).toInt()
+    val shownPercentage = shownCorrect.toDouble() / totalQuestions.toDouble() * 100.0
+    val accuracyLine = if (statesAccuracy) {
+        stringResource(Res.string.assessment_review_accuracy_correct, formatAccuracy(percentage))
+    } else {
+        stringResource(Res.string.assessment_review_accuracy_caption)
     }
 
     // `MutableTransitionState` seeded false and flipped to true is how an `AnimatedVisibility`
@@ -226,12 +258,12 @@ internal fun AssessmentCompletionHero(
                             // Only the numerator counts. The denominator is how many questions
                             // there were, which was settled before the learner answered any of
                             // them, and a count that moved it would be animating the wrong fact.
-                            shownText = if (reveal.value >= 1f) {
+                            shownText = if (shownCorrect == correctAnswers) {
                                 scoreFigure
                             } else {
                                 stringResource(
                                     Res.string.assessment_review_score_figure,
-                                    (correctAnswers * reveal.value).toInt(),
+                                    shownCorrect,
                                     totalQuestions,
                                 )
                             },
@@ -239,16 +271,21 @@ internal fun AssessmentCompletionHero(
                             color = onHero,
                         )
                         Text(
-                            text = if (statesAccuracy) {
+                            text = if (statesAccuracy && shownCorrect != correctAnswers) {
                                 stringResource(
                                     Res.string.assessment_review_accuracy_correct,
-                                    formatAccuracy(percentage),
+                                    formatAccuracy(shownPercentage),
                                 )
                             } else {
-                                stringResource(Res.string.assessment_review_accuracy_caption)
+                                accuracyLine
                             },
                             style = MaterialTheme.typography.titleMedium,
+                            // The final percentage, not the counting one: a colour that changed
+                            // band mid-count would read as the verdict itself changing.
                             color = emphasis,
+                            // Announced settled, like the figure, so assistive technology never
+                            // hears a percentage the learner did not score.
+                            modifier = Modifier.semantics { text = AnnotatedString(accuracyLine) },
                         )
                     }
                 }
@@ -256,6 +293,40 @@ internal fun AssessmentCompletionHero(
         }
     }
 }
+
+/**
+ * The results whose score has already been counted out, held above navigation so the count plays
+ * once per result rather than once per navigation entry.
+ *
+ * Saveable UI state and nothing more: it survives a configuration change and process restoration
+ * with the rest of the shell's state, and is never persisted. Reopening a result already counted in
+ * this session — Back to it after an area switch, or from history — shows it settled.
+ */
+internal class RevealedResults(private val keys: MutableSet<String> = mutableSetOf()) {
+    operator fun contains(key: String): Boolean = key in keys
+
+    fun add(key: String) {
+        keys += key
+    }
+
+    companion object {
+        val Saver: Saver<RevealedResults, Any> = listSaver(
+            save = { it.keys.toList() },
+            restore = { RevealedResults(it.toMutableSet()) },
+        )
+    }
+}
+
+/**
+ * Provided once by the shell. Null without it, rather than a default holder, because a default would
+ * be one instance shared by every composition in the process: a hero composed without the shell — a
+ * test, a preview — then behaves exactly as it does with no [AssessmentCompletionHero] `revealKey`.
+ */
+internal val LocalRevealedResults = staticCompositionLocalOf<RevealedResults?> { null }
+
+@Composable
+internal fun rememberRevealedResults(): RevealedResults =
+    rememberSaveable(saver = RevealedResults.Saver) { RevealedResults() }
 
 /**
  * How strongly a finished run went, as the three bands the hero is allowed to distinguish.

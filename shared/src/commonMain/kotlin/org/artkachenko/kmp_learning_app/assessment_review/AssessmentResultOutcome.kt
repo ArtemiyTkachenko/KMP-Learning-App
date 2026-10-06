@@ -68,6 +68,8 @@ internal fun AssessmentResultOutcome(
     modifier: Modifier = Modifier,
     /** Questions the current curriculum visibility left out of this result; see [HiddenReviewQuestionsNotice]. */
     hiddenQuestionCount: Int = 0,
+    /** Passed to [AssessmentCompletionHero] so this result's score is counted out once. */
+    revealKey: String? = null,
 ) {
     val mistakes = questions.unresolvedMistakes()
     // Reachable only when this host can start a practice run *and* there is something to practise.
@@ -79,6 +81,7 @@ internal fun AssessmentResultOutcome(
             totalQuestions = totalQuestions,
             percentage = percentage,
             title = title,
+            revealKey = revealKey,
         )
         // First among the qualifiers: it explains the figure itself, which the other two do not.
         HiddenReviewQuestionsNotice(hiddenQuestionCount)

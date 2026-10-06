@@ -1,19 +1,27 @@
 package org.artkachenko.kmp_learning_app.assessment_review
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.text.TextLayoutResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
 import org.artkachenko.kmp_learning_app.ui.theme.AppDarkSemanticColors
 import org.artkachenko.kmp_learning_app.ui.theme.AppLightSemanticColors
 import org.artkachenko.kmp_learning_app.ui.theme.AppSemanticColors
+import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.theme.BodyTextContrast
 import org.artkachenko.kmp_learning_app.ui.theme.assertContrastAtLeast
@@ -47,6 +55,75 @@ internal class AssessmentCompletionHeroTest {
         onNodeWithText("9 / 10").assertIsDisplayed()
         onNodeWithText("90% correct").assertIsDisplayed()
         onNodeWithText("Practice complete").assertIsDisplayed()
+    }
+
+    /**
+     * The figure and the accuracy line are counted from one number, so no frame can show two
+     * different scores. One of fifteen is the sharpest case: the numerator stays at 0 for the whole
+     * count, and the line used to print the final "6.7% correct" under "0 / 15" throughout.
+     *
+     * Both nodes announce the settled score, so what is *drawn* is read from each node's text layout
+     * rather than from its semantics text.
+     */
+    @Test
+    fun theFigureAndTheAccuracyLineAgreeOnEveryFrameOfTheCount() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        setContent {
+            AppTheme(darkTheme = false) {
+                AssessmentCompletionHero(
+                    correctAnswers = 1,
+                    totalQuestions = 15,
+                    percentage = 1.0 / 15.0 * 100.0,
+                )
+            }
+        }
+        mainClock.advanceTimeByFrame()
+
+        assertEquals("0 / 15", onNodeWithText("1 / 15").drawnText())
+        assertEquals("0% correct", onNodeWithText("6.7% correct").drawnText())
+
+        mainClock.advanceTimeBy(AppMotion.ScoreRevealDurationMillis.toLong() * 2)
+
+        assertEquals("1 / 15", onNodeWithText("1 / 15").drawnText())
+        assertEquals("6.7% correct", onNodeWithText("6.7% correct").drawnText())
+    }
+
+    /**
+     * Back to a result after an area switch composes it again with none of its saved state, because
+     * navigation discards the state of every entry in the area being left. The result's key in
+     * [LocalRevealedResults] is what keeps that from replaying a count the learner already watched.
+     * Removing and re-adding the hero reproduces the same loss of its own saved state.
+     */
+    @Test
+    fun aResultAlreadyCountedIsShownSettledWhenComposedAgain() = runComposeUiTest {
+        mainClock.autoAdvance = false
+        val revealedResults = RevealedResults()
+        var shown by mutableStateOf(true)
+        setContent {
+            AppTheme(darkTheme = false) {
+                CompositionLocalProvider(LocalRevealedResults provides revealedResults) {
+                    if (shown) {
+                        AssessmentCompletionHero(
+                            correctAnswers = 3,
+                            totalQuestions = 15,
+                            percentage = 20.0,
+                            revealKey = "attempt-1",
+                        )
+                    }
+                }
+            }
+        }
+        mainClock.advanceTimeByFrame()
+        assertEquals("0 / 15", onNodeWithText("3 / 15").drawnText())
+        mainClock.advanceTimeBy(AppMotion.ScoreRevealDurationMillis.toLong() * 2)
+
+        shown = false
+        mainClock.advanceTimeByFrame()
+        shown = true
+        mainClock.advanceTimeByFrame()
+
+        assertEquals("3 / 15", onNodeWithText("3 / 15").drawnText())
+        assertEquals("20% correct", onNodeWithText("20% correct").drawnText())
     }
 
     /**
@@ -161,6 +238,13 @@ internal class AssessmentCompletionHeroTest {
                 }
             }
         }
+    }
+
+    /** The text actually laid out and drawn, which may differ from the node's announced text. */
+    private fun SemanticsNodeInteraction.drawnText(): String {
+        val layouts = mutableListOf<TextLayoutResult>()
+        fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(layouts)
+        return layouts.single().layoutInput.text.text
     }
 
     private fun AppSemanticColors.gradientEndpoints(): List<Pair<String, Color>> = listOf(

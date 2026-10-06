@@ -121,6 +121,48 @@ jobs:
           :webApp:assemble
           :shared:check
 
+      # The zipped reports below must be downloaded and unpacked before anyone can see which
+      # test failed. This step reads the same JUnit XML and writes the per-target table (and,
+      # on failure, the failed tests) to the run's Summary page, plus one self-contained HTML
+      # file for the upload that follows. It runs whether the build passed or failed, and
+      # only reports: the script exits 0 whenever it wrote its outputs, and
+      # continue-on-error keeps a fault in the reporting itself from failing a green build
+      # or from tripping the failure() steps below. The HTML goes to RUNNER_TEMP, outside the
+      # workspace, so the uncommitted-output check still sees a clean tree. Standard library
+      # only, like the other tools/ scripts: no third-party code reads the results.
+      - name: Summarise test results
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: >
+          python3 tools/ci_test_report.py shared/build/test-results
+          --summary "$GITHUB_STEP_SUMMARY"
+          --html "$RUNNER_TEMP/test-report.html"
+
+      # A non-zipped artifact (upload-artifact v7, archive: false) opens directly in the
+      # browser, which only works for a single file with nothing linked — hence the
+      # self-contained report. In this mode the file name becomes the artifact name and the
+      # `name` input is ignored, so the artifact is called `test-report.html`. Uploaded on
+      # failure only: a green run's Summary table already says everything it would.
+      - name: Upload browsable test report
+        id: browser-report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ runner.temp }}/test-report.html
+          archive: false
+          if-no-files-found: ignore
+
+      # The artifact URL is only known after the upload, so the link is a separate append.
+      # Nothing is appended when the upload produced no artifact.
+      - name: Link the report from the summary
+        if: ${{ failure() }}
+        env:
+          REPORT_URL: ${{ steps.browser-report.outputs.artifact-url }}
+        run: |
+          if [ -n "$REPORT_URL" ]; then
+            printf '\n[Open the full test report in the browser](%s)\n' "$REPORT_URL" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       # The build writes into the source tree: Room exports its schemas to
       # `shared/schemas`, which is tracked on purpose. Without this step a database
       # version bump whose schema JSON was never committed produces a green run —

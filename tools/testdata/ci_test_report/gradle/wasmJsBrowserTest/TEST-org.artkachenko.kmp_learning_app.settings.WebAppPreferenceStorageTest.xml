@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.artkachenko.kmp_learning_app.settings.WebAppPreferenceStorageTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-06T10:55:13.691Z" hostname="localhost" time="0.0">
+  <properties/>
+  <testcase name="aValueReadsBackAndANeverWrittenKeyIsAbsent[wasmJs, browser, ChromeHeadless154.0.0.0, MacOS10.15.7]" classname="org.artkachenko.kmp_learning_app.settings.WebAppPreferenceStorageTest" time="0.0"/>
+  <testcase name="clearingOneKeyLeavesTheOtherStored[wasmJs, browser, ChromeHeadless154.0.0.0, MacOS10.15.7]" classname="org.artkachenko.kmp_learning_app.settings.WebAppPreferenceStorageTest" time="0.0"/>
+  <testcase name="anEmptyValueIsStoredRatherThanReadAsAbsence[wasmJs, browser, ChromeHeadless154.0.0.0, MacOS10.15.7]" classname="org.artkachenko.kmp_learning_app.settings.WebAppPreferenceStorageTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

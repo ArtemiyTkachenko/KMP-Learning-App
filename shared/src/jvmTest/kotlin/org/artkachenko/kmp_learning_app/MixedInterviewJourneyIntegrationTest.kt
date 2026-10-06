@@ -263,14 +263,14 @@ internal class MixedInterviewJourneyIntegrationTest {
                     // result lands on the Interview home, not on the older 2 / 4.
                     scrollToText("Practice 2 mistakes")
                     onNodeWithText("Practice 2 mistakes").performClick()
-                    // Focused practice reveals each verdict before moving on; Next on the last
+                    // Focused practice reveals each verdict before moving on; Finish on the last
                     // question completes the run.
                     waitForText("Question 1 of 2")
                     answer(listOf("A"))
                     onNodeWithText("Next question").performClick()
                     waitForText("Question 2 of 2")
                     answer(listOf("A"))
-                    onNodeWithText("Next question").performClick()
+                    onNodeWithText("Finish and view results").performClick()
                     waitForText("1 / 2")
                     onNodeWithText("1 / 2").assertIsDisplayed()
                     assertEquals(

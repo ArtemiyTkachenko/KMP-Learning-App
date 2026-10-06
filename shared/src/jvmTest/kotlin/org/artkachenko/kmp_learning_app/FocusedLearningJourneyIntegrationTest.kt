@@ -148,7 +148,7 @@ internal class FocusedLearningJourneyIntegrationTest {
             onNodeWithTag(AssessmentTakingOutcomeTag).assert(hasAnyDescendant(hasText("Incorrect")))
             onNodeWithText("\u2715 Incorrectly selected").assertIsDisplayed()
             onNodeWithText("\u2713 Correct answer").assertIsDisplayed()
-            onNodeWithText("Next question").performClick()
+            onNodeWithText("Finish and view results").performClick()
 
             onNodeWithText("1 / 2").assertIsDisplayed()
             onNodeWithText("Review answer").performClick()

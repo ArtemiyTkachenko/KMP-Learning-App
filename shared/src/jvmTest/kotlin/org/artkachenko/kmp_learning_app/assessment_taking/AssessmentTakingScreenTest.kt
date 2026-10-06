@@ -736,6 +736,58 @@ internal class AssessmentTakingScreenTest {
     }
 
     /**
+     * Moving on from the last question's feedback completes the run and opens Results, so the
+     * action says so in the interview's finish wording, while every earlier question still offers
+     * the next one. It is still the same control calling the same callback; only its word differs.
+     */
+    @Test
+    fun theLastQuestionsActionSaysItFinishesRatherThanContinues() = runComposeUiTest {
+        var submitCount = 0
+        var nextCount = 0
+        val middle = revealedState(
+            mode = AnswerSelectionMode.SINGLE,
+            selected = setOf("answer_a"),
+            correct = listOf("answer_a"),
+            isCorrect = true,
+        ).copy(questionNumber = 1, totalQuestions = 2)
+        val state = mutableStateOf(middle)
+        setContent {
+            MaterialTheme {
+                AssessmentTakingScreen(
+                    title = "Focused practice",
+                    state = state.value,
+                    onAnswerClick = {},
+                    onSubmit = { submitCount += 1 },
+                    onNext = { nextCount += 1 },
+                    onRetry = {},
+                    onBack = {},
+                    onComplete = {},
+                )
+            }
+        }
+
+        onNodeWithTag(AssessmentTakingSubmitTag)
+            .assertIsEnabled()
+            .assert(hasText("Next question"))
+        onNodeWithText("Finish and view results").assertDoesNotExist()
+
+        runOnIdle {
+            state.value = middle.copy(
+                questionNumber = 2,
+                question = middle.question.copy(id = "question_last"),
+            )
+        }
+
+        onNodeWithTag(AssessmentTakingSubmitTag)
+            .assertIsEnabled()
+            .assert(hasText("Finish and view results"))
+            .performClick()
+        onNodeWithText("Next question").assertDoesNotExist()
+        assertEquals(1, nextCount)
+        assertEquals(0, submitCount)
+    }
+
+    /**
      * On a question too long for the window, Submit is pressed at the bottom of the list and the
      * reveal opens below it — below the fold, where the learner saw only the top edge of the
      * verdict. The list now carries the verdict into view on its own; and because this explanation

@@ -185,7 +185,7 @@ internal fun LearningLessonScreen(
     }
     var scrollUiState by remember(lessonId) { mutableStateOf(InitialLessonScrollUiState) }
     val currentVisibilityCallback by rememberUpdatedState(onBottomNavigationVisibilityChange)
-    val showsScrollToEnd by remember(scrollState) {
+    val canScrollToEnd by remember(scrollState) {
         derivedStateOf { scrollState.canScrollForward }
     }
 
@@ -268,7 +268,10 @@ internal fun LearningLessonScreen(
                     onOpenSource = onOpenSource,
                     onToggleStudied = onToggleStudied,
                     failedSourceUrl = failedSourceUrl,
-                    showsScrollToEnd = showsScrollToEnd,
+                    // The button is reading chrome: it sits over the text column, so it leaves with
+                    // the bottom navigation while the learner reads downward and returns with it.
+                    // Reusing the reducer's decision keeps one reading-direction rule for all of it.
+                    showsScrollToEnd = canScrollToEnd && scrollUiState.showsBottomNavigation,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

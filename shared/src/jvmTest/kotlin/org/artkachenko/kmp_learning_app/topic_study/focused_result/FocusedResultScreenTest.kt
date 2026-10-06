@@ -84,6 +84,8 @@ internal class FocusedResultScreenTest {
             hasText("Question q2 is no longer available."),
         )
         onNodeWithText("Question q2 is no longer available.").assertIsDisplayed()
+        // Scrolled back to, because the opened card can push the count above the test window.
+        onNode(hasScrollAction()).performScrollToNode(hasText("1 of 2 questions", substring = true))
         onNodeWithText("1 of 2 questions", substring = true).assertIsDisplayed()
     }
 

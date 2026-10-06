@@ -3,7 +3,11 @@ package org.artkachenko.kmp_learning_app.assessment_taking
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -18,6 +22,8 @@ internal fun AssessmentTakingDestination(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val currentOnCompleted by rememberUpdatedState(onCompleted)
+    val uriHandler = LocalUriHandler.current
+    var failedReportUrl by remember { mutableStateOf<String?>(null) }
 
     val completedAttemptId = (state as? AssessmentTakingUiState.CompletionSucceeded)?.attemptId
 
@@ -33,5 +39,11 @@ internal fun AssessmentTakingDestination(
         onRetry = viewModel::retry,
         onBack = onBack,
         onComplete = viewModel::completeAssessment,
+        onReportProblem = { url ->
+            // The same handling as the result destinations' source links: openUri throws when no
+            // host handler can open the URI, and the failure is shown beside the link.
+            failedReportUrl = url.takeIf { runCatching { uriHandler.openUri(it) }.isFailure }
+        },
+        failedReportUrl = failedReportUrl,
     )
 }

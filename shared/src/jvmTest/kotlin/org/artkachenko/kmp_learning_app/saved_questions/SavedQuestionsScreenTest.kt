@@ -24,7 +24,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
+import org.artkachenko.kmp_learning_app.assessment_review.QuestionReportAppVersion
 import org.artkachenko.kmp_learning_app.assessment_review.ReviewSourceUiModel
+import org.artkachenko.kmp_learning_app.assessment_review.questionReportUrl
 import org.artkachenko.kmp_learning_app.curriculum.AnswerOption
 import org.artkachenko.kmp_learning_app.curriculum.AnswerSelectionMode
 import org.artkachenko.kmp_learning_app.curriculum.ContentStatus
@@ -139,7 +141,8 @@ internal class SavedQuestionsScreenTest {
         // Opening one leaves the other closed: the state is the card's, not the screen's.
         onAllNodesWithText("Review answer")[0].performClick()
         onNodeWithText("Answer A").assertIsDisplayed()
-        onNodeWithText("Review answer").assertIsDisplayed()
+        // Scrolled to, because the opened card above it can be taller than the test window.
+        onNodeWithText("Review answer").performScrollTo().assertIsDisplayed()
     }
 
     /** The screen says how much it holds, as the Mistakes queue beside it always has. */
@@ -274,6 +277,41 @@ internal class SavedQuestionsScreenTest {
         // The same message the result screens show, beside the link that failed.
         onNodeWithText("Review answer").performClick()
         onNodeWithText("This source could not be opened.").performScrollTo().assertIsDisplayed()
+    }
+
+    /** The report goes through the same external-link handler as the sources, for this card's ID. */
+    @Test
+    fun aSavedQuestionOffersItsOwnReportLink() = runComposeUiTest {
+        val openedUrls = mutableListOf<String>()
+        setContent {
+            AppTheme {
+                screen(
+                    SavedQuestionsUiState.Content(listOf(availableItem("q1"))),
+                    onSourceClick = { openedUrls += it },
+                )
+            }
+        }
+
+        onNodeWithText("Review answer").performClick()
+        onNodeWithText("Report a problem").performScrollTo().performClick()
+
+        assertEquals(listOf(questionReportUrl("q1", QuestionReportAppVersion)), openedUrls)
+    }
+
+    @Test
+    fun aReportFormThatCannotBeOpenedSaysSoOnItsOwnCard() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                screen(
+                    SavedQuestionsUiState.Content(listOf(availableItem("q1"))),
+                    failedSourceUrl = questionReportUrl("q1", QuestionReportAppVersion),
+                )
+            }
+        }
+
+        onNodeWithText("Review answer").performClick()
+        onNodeWithText("The report form could not be opened.").performScrollTo().assertIsDisplayed()
+        onNodeWithText("This source could not be opened.").assertDoesNotExist()
     }
 
     @Test

@@ -89,6 +89,36 @@ internal class AssessmentReviewComponentsTest {
         )
     }
 
+    /** Result and Mistakes cards both open the report through the card's external-link handler. */
+    @Test
+    fun theReviewCardOffersAReportForItsOwnQuestion() = runComposeUiTest {
+        val openedUrls = mutableListOf<String>()
+        setContent {
+            AppTheme { ReviewQuestionCard(question(isCorrect = false), onSourceClick = { openedUrls += it }) }
+        }
+
+        onNodeWithTag(QuestionReportLinkTag).assert(hasText("Report a problem")).performClick()
+
+        assertEquals(listOf(questionReportUrl("q", QuestionReportAppVersion)), openedUrls)
+    }
+
+    /** The failure belongs to the link that failed, not to a source on the same card. */
+    @Test
+    fun aReportThatCannotBeOpenedIsStatedBesideTheLink() = runComposeUiTest {
+        setContent {
+            AppTheme {
+                ReviewQuestionCard(
+                    question(isCorrect = false),
+                    onSourceClick = {},
+                    failedSourceUrl = questionReportUrl("q", QuestionReportAppVersion),
+                )
+            }
+        }
+
+        onNodeWithText("The report form could not be opened.").assertIsDisplayed()
+        onNodeWithText("This source could not be opened.").assertDoesNotExist()
+    }
+
     @Test
     fun aQuestionScoredCorrectShowsTheCorrectOutcome() = runComposeUiTest {
         setContent { AppTheme { ReviewQuestionCard(question(isCorrect = true), {}) } }

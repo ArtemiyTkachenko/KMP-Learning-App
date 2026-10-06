@@ -182,6 +182,19 @@ A question ships only when **all** of the following hold:
 The other criteria are not hard gates, but a failure in any of them should normally be
 fixed before merge rather than deferred.
 
+## Learner reports
+
+Every answered question in the app — the practice reveal, result and Mistakes review cards,
+and Saved Questions — has a "Report a problem" link. It opens the
+`.github/ISSUE_TEMPLATE/question-report.yml` form pre-filled with the question ID and app
+version; the learner picks the kind of problem, writes the reasoning, and decides whether to
+submit. Reports arrive as issues labelled `question-report`.
+
+The question ID is the stable `id` in `initial_curriculum.json`, so a report maps directly to
+the question it names. A report is an input to this process, not a verdict: re-solve the
+question, verify the cited sources and the learner's evidence, and fix it only if it fails the
+standard above. Record the outcome like any other audit.
+
 ## Recording an audit
 
 Bank-wide reviews record their results in a machine-readable log so a later session reads

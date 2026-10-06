@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,10 +24,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.toggleableState
@@ -42,6 +45,8 @@ import kmp_learning_app.shared.generated.resources.assessment_review_incorrect
 import kmp_learning_app.shared.generated.resources.assessment_review_incorrectly_selected
 import kmp_learning_app.shared.generated.resources.assessment_review_missed_correct_answer
 import kmp_learning_app.shared.generated.resources.assessment_review_partially_correct
+import kmp_learning_app.shared.generated.resources.assessment_review_report_open_failed
+import kmp_learning_app.shared.generated.resources.assessment_review_report_problem
 import kmp_learning_app.shared.generated.resources.assessment_review_save_question
 import kmp_learning_app.shared.generated.resources.assessment_review_saved_state
 import kmp_learning_app.shared.generated.resources.assessment_review_source
@@ -330,6 +335,61 @@ internal fun QuestionSources(
         if (failedSourceUrl != null && sources.any { it.url == failedSourceUrl }) {
             Text(
                 stringResource(Res.string.assessment_review_source_open_failed),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+/** The report link, wherever a Question offers it; tests find it by this tag. */
+internal const val QuestionReportLinkTag = "question_report_link"
+
+/**
+ * The way to tell the maintainers a Question looks wrong, and the failure of a tap on it.
+ *
+ * It opens the pre-filled GitHub issue form built by [questionReportUrl], so nothing leaves the
+ * device until the learner has read and submitted the form themselves. [onReport] receives that
+ * URL and is the same external-link handler the surface's sources use: each destination already
+ * opens a link with `runCatching` and remembers the one that failed, and the report form is one
+ * more link. [failedUrl] is that remembered URL, which is why the notice only appears under the
+ * Question whose link actually failed.
+ *
+ * Shaped like the source links — flush, an inline external-link glyph — but in `onSurfaceVariant`
+ * rather than `primary`. Reporting is a meta-action about the content, not part of studying it, so
+ * it must not compete with the bookmark or with the screen's own next step. The button keeps
+ * Material's 48dp minimum interactive size; only its drawn padding is trimmed.
+ */
+@Composable
+internal fun QuestionReportLink(
+    questionId: String,
+    onReport: (String) -> Unit,
+    failedUrl: String?,
+    modifier: Modifier = Modifier,
+) {
+    val url = remember(questionId) { questionReportUrl(questionId, QuestionReportAppVersion) }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped)) {
+        TextButton(
+            onClick = { onReport(url) },
+            contentPadding = SourceLinkPadding,
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            ),
+            modifier = Modifier.testTag(QuestionReportLinkTag),
+        ) {
+            Icon(
+                imageVector = AppIcons.OpenInNew,
+                contentDescription = null,
+                modifier = Modifier.size(AppIconSize.Inline),
+            )
+            Text(
+                stringResource(Res.string.assessment_review_report_problem),
+                modifier = Modifier.padding(start = AppSpacing.Related),
+            )
+        }
+        if (failedUrl == url) {
+            Text(
+                stringResource(Res.string.assessment_review_report_open_failed),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
             )

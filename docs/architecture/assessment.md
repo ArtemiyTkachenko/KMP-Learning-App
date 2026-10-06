@@ -368,8 +368,15 @@ historical attempt, and a saved Question has none — the learner may have saved
 either way. Nothing about correctness, selection, or score is fabricated to reuse
 `ReviewQuestionCard`. What is shared is the neutral presentation in `QuestionContentComponents.kt`
 — the answer-option container and tag, the explanation block, the source links with their
-open-failure notice, `QuestionDisclosure`, and `QuestionBookmarkAction` — which both
-`ReviewQuestionCard` and the saved-Question card render.
+open-failure notice, the "Report a problem" link (`QuestionReportLink`), `QuestionDisclosure`, and
+`QuestionBookmarkAction` — which both `ReviewQuestionCard` and the saved-Question card render.
+
+The report link opens a pre-filled GitHub issue form (`.github/ISSUE_TEMPLATE/question-report.yml`)
+carrying only the Question ID and the app version, built by the pure `questionReportUrl`. It is one
+more external link: review and saved cards hand it to the same `onSourceClick` handler and
+`failedSourceUrl` state their sources use, and the practice screen shows it inside the answer reveal,
+under the explanation, so it never appears before feedback and never during an Interview. Nothing
+leaves the device until the learner submits the form on GitHub.
 
 The disclosure is shared and its *default* is not, because the default is a statement about the
 surface. A result transcript opens the Questions the learner got wrong, because they came to read it

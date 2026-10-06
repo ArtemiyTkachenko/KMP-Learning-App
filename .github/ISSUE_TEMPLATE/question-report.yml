@@ -1,0 +1,50 @@
+name: Question report
+description: Report a question in the bundled question bank that looks wrong, unclear, or out of date.
+title: "[Question] "
+labels:
+  - question-report
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a question. The app's "Report a problem" link fills in the question ID
+        and app version; everything else, and whether to submit at all, is up to you.
+
+        A report is checked against the official documentation before anything changes.
+  - type: input
+    id: question_id
+    attributes:
+      label: Question ID
+      description: The stable ID of the question, as filled in by the app.
+      placeholder: android_process_model_001
+    validations:
+      required: true
+  - type: input
+    id: app_version
+    attributes:
+      label: App version
+      description: The app version and build, as filled in by the app or shown in Settings.
+      placeholder: 0.1.0 (1)
+    validations:
+      required: false
+  - type: dropdown
+    id: problem
+    attributes:
+      label: What is the problem?
+      options:
+        - Answer key looks wrong
+        - Unclear or ambiguous wording
+        - Outdated API or behaviour
+        - Source link broken or wrong
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: >-
+        Explain your reasoning — what you expected and why. A link to the official documentation
+        that supports it makes the report much quicker to verify.
+    validations:
+      required: true

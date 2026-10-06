@@ -142,6 +142,7 @@ internal class ProgressScreenTest {
                         topics = listOf(
                             ProgressTopicUiModel("a", "Kotlin", 20, 14, 70.0),
                             ProgressTopicUiModel("b", null, 3, 1, 33.333),
+                            ProgressTopicUiModel("c", "Compose", 5, 3, 60.0),
                         ),
                     ),
                     onBack = {},
@@ -165,7 +166,15 @@ internal class ProgressScreenTest {
         onAllNodesWithText("70%").assertCountEquals(2)
         onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Topic unavailable"))
         onNodeWithText("Topic unavailable").assertExists()
-        onNodeWithText("33.3%").assertExists()
+        // Three answers are below the evidence minimum: the counts stay, the figure does not, and
+        // the row says why in the drill-down's words.
+        onNodeWithText("1 / 3 correct").assertExists()
+        onAllNodesWithText("33.3%").assertCountEquals(0)
+        onAllNodesWithText("Not enough data yet. Practice more to measure this area.")
+            .assertCountEquals(1)
+        // Five is the minimum itself, so that row keeps its figure.
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("3 / 5 correct"))
+        onNodeWithText("60%").assertExists()
     }
 
     /**

@@ -150,8 +150,13 @@ internal class ProgressLearningJourneyIntegrationTest {
                     // inside the composed window once the section heading above it was in view.
                     scrollToText("Legacy Android")
                     onNodeWithText("Legacy Android").assertIsDisplayed()
-                    onNodeWithText("0 / 1 correct").assertIsDisplayed()
-                    assertTrue(onAllNodesWithText("0%").fetchSemanticsNodes().isNotEmpty())
+                    // One answer is below the evidence minimum: the row keeps its counts and says
+                    // so, and draws no 0% figure.
+                    onNode(hasText("Legacy Android") and hasText("0 / 1 correct"))
+                        .assert(
+                            hasText("Not enough data yet. Practice more to measure this area."),
+                        )
+                        .assert(!hasText("0%"))
                     scrollToTag(progressTopicCardTag(AndroidTopicId))
                     onNodeWithTag(progressTopicCardTag(AndroidTopicId)).performClick()
                     waitForText("Subtopics")

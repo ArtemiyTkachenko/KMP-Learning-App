@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.v2.runSkikoComposeUiTest
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
 import org.artkachenko.kmp_learning_app.ui.theme.AppWindowSizeClass
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
 import androidx.compose.foundation.layout.WindowInsets
@@ -545,8 +546,9 @@ internal class TopicBrowserScreenTest {
                             // Weak by the domain's verdict.
                             topicItem("weak", "Weak Topic", learningContext(6, 20, 41.0, isWeak = true)),
                             // Just as low, but on too little evidence for the policy to call it
-                            // weak: the figure may render as low accuracy, the badge may not appear.
-                            topicItem("sparse", "Sparse Topic", learningContext(1, 20, 0.0)),
+                            // weak: no badge, and no percentage either — one answer is stated as
+                            // one answer rather than drawn as a 0% figure.
+                            topicItem("sparse", "Sparse Topic", learningContext(1, 20, 0.0, answered = 1)),
                         ),
                     ),
                     onTopicClick = {},
@@ -557,9 +559,67 @@ internal class TopicBrowserScreenTest {
 
         onAllNodesWithText("Weak area").assertCountEquals(1)
         onNodeWithText("41%").assertIsDisplayed()
-        onNodeWithText("0%").assertIsDisplayed()
-        // A 0% accuracy is a real answered result here, so the row is not "not studied".
+        onNodeWithText("0%").assertDoesNotExist()
+        onNodeWithText("1 answered").assertIsDisplayed()
+        // One answer is a real answered result, so the row is not "not studied".
         onNodeWithText("Not studied yet").assertDoesNotExist()
+    }
+
+    /**
+     * Below the evidence minimum the card states how many answers it has instead of a percentage,
+     * keeping the labelled slot so the column does not change shape down the list.
+     */
+    @Test
+    fun aTopicBelowTheEvidenceMinimumStatesItsAnswersInsteadOfAPercentage() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = browsingContent(
+                        topics = listOf(
+                            topicItem(
+                                "kotlin",
+                                "Kotlin Language & JVM Fundamentals",
+                                learningContext(attempted = 1, total = 17, accuracy = 100.0, answered = 4),
+                            ),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("4 answered").assertIsDisplayed()
+        onNodeWithText("accuracy").assertIsDisplayed()
+        onNodeWithText("100%").assertDoesNotExist()
+        onAllNodesWithText("%", substring = true).assertCountEquals(0)
+        onNodeWithText("1 of 17 explored").assertIsDisplayed()
+        onNodeWithText("Not studied yet").assertDoesNotExist()
+    }
+
+    @Test
+    fun aTopicAtTheEvidenceMinimumShowsItsPercentage() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicBrowserScreen(
+                    state = browsingContent(
+                        topics = listOf(
+                            topicItem(
+                                "kotlin",
+                                "Kotlin Language & JVM Fundamentals",
+                                learningContext(attempted = 2, total = 17, accuracy = 80.0, answered = 5),
+                            ),
+                        ),
+                    ),
+                    onTopicClick = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        onNodeWithText("80%").assertIsDisplayed()
+        onNodeWithText("accuracy").assertIsDisplayed()
+        onNodeWithText("5 answered").assertDoesNotExist()
     }
 
     @Test
@@ -1926,11 +1986,15 @@ private fun learningContext(
     total: Int,
     accuracy: Double? = null,
     isWeak: Boolean = false,
+    // Answered scopes default to exactly enough evidence, so a test about something else still sees
+    // the figure; tests about the evidence minimum pass their own count.
+    answered: Int = if (accuracy == null) 0 else LearningProgressPolicy.WeakAreaMinimumAnswered,
 ) = LearningContextUiModel(
     attemptedQuestionCount = attempted,
     totalQuestionCount = total,
     coveragePercentage = if (total == 0) null else attempted.toDouble() / total * 100.0,
     accuracyPercentage = accuracy,
+    answeredCount = answered,
     isWeak = isWeak,
 )
 

@@ -35,6 +35,7 @@ import org.artkachenko.kmp_learning_app.assessment_review.reviewSaveAction
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeState
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentResultLayout
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
@@ -269,6 +270,10 @@ private fun LazyListScope.reviewSection(
  * no per-Topic destination to reach from one. The shared [AccuracyRow] is what keeps this reading
  * identical to the Progress dashboard's per-Topic table, which answers the same question over a
  * different window.
+ *
+ * It follows the same evidence minimum as that table, counted within this interview: a Topic asked
+ * fewer times than that keeps its "x / y correct" and draws no percentage. In an ordinary run that
+ * is most Topics, which is intended — two questions do not measure a Topic.
  */
 @Composable
 private fun TopicPerformanceRow(
@@ -281,6 +286,8 @@ private fun TopicPerformanceRow(
             topic.correctCount,
             topic.questionCount,
         ),
-        percentage = topic.percentage,
+        percentage = topic.percentage.takeIf {
+            LearningProgressPolicy.hasAccuracyEvidence(topic.questionCount)
+        },
     )
 }

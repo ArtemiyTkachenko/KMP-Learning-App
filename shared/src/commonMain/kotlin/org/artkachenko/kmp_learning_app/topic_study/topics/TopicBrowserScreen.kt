@@ -51,7 +51,6 @@ import kmp_learning_app.shared.generated.resources.continue_practice_action
 import kmp_learning_app.shared.generated.resources.continue_studying_source_mistakes
 import kmp_learning_app.shared.generated.resources.continue_studying_source_unseen
 import kmp_learning_app.shared.generated.resources.continue_studying_source_weak_areas
-import kmp_learning_app.shared.generated.resources.learning_context_accuracy
 import kmp_learning_app.shared.generated.resources.learning_context_explored
 import kmp_learning_app.shared.generated.resources.learning_context_not_started
 import kmp_learning_app.shared.generated.resources.progress_weak_label
@@ -93,6 +92,7 @@ import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRa
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
 import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
 import org.artkachenko.kmp_learning_app.ui.AppIcons
+import org.artkachenko.kmp_learning_app.ui.LearningContextAccuracy
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.ContentGroup
 import org.artkachenko.kmp_learning_app.ui.GroupRowPadding
@@ -104,8 +104,6 @@ import org.artkachenko.kmp_learning_app.ui.ScreenMessage
 import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.TopicVisualMarker
-import org.artkachenko.kmp_learning_app.ui.accuracyColor
-import org.artkachenko.kmp_learning_app.ui.formatAccuracy
 import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppMinimumTouchTarget
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
@@ -1055,11 +1053,10 @@ private fun TopicRow(
             TrailingFigureRow(
                 modifier = Modifier.weight(1f),
                 // Absent for an unseen Topic rather than showing 0%: never answered is not the
-                // same statement as answered and got none right.
+                // same statement as answered and got none right. Below the evidence minimum it
+                // states the answer count instead of a percentage.
                 figure = {
-                    topic.learningContext?.accuracyPercentage?.let { accuracy ->
-                        TopicAccuracy(accuracy)
-                    }
+                    topic.learningContext?.let { LearningContextAccuracy(it) }
                 },
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
@@ -1160,23 +1157,6 @@ private fun TopicLearningContext(context: LearningContextUiModel) {
             contentColor = AppThemeExtras.semanticColors.onPartiallyCorrectContainer,
             containerColor = AppThemeExtras.semanticColors.partiallyCorrectContainer,
             icon = AppIcons.Warning,
-        )
-    }
-}
-
-/** Labelled so the figure cannot be mistaken for the coverage count beside it. */
-@Composable
-private fun TopicAccuracy(accuracy: Double) {
-    Column(horizontalAlignment = Alignment.End) {
-        Text(
-            text = formatAccuracy(accuracy),
-            style = MaterialTheme.typography.titleMedium,
-            color = accuracyColor(accuracy),
-        )
-        Text(
-            text = stringResource(Res.string.learning_context_accuracy),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -1304,6 +1284,7 @@ private fun TopicBrowserScreenPreview() {
                             totalQuestionCount = 28,
                             coveragePercentage = 12.0 / 28 * 100,
                             accuracyPercentage = 76.0,
+                            answeredCount = 25,
                             isWeak = false,
                         ),
                         learningUnitCount = 0,
@@ -1316,6 +1297,7 @@ private fun TopicBrowserScreenPreview() {
                             totalQuestionCount = 22,
                             coveragePercentage = 0.0,
                             accuracyPercentage = null,
+                            answeredCount = 0,
                             isWeak = false,
                         ),
                         learningUnitCount = 1,
@@ -1328,6 +1310,7 @@ private fun TopicBrowserScreenPreview() {
                             totalQuestionCount = 19,
                             coveragePercentage = 6.0 / 19 * 100,
                             accuracyPercentage = 41.0,
+                            answeredCount = 17,
                             isWeak = true,
                         ),
                         learningUnitCount = 0,

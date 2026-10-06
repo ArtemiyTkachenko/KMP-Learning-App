@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.ui
 
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressSnapshot
 import org.artkachenko.kmp_learning_app.learning_progress.QuestionCoverage
 import org.artkachenko.kmp_learning_app.learning_progress.SubtopicCoverage
@@ -24,6 +25,17 @@ import org.artkachenko.kmp_learning_app.learning_progress.TopicPerformance
  *   have not loaded or could not be derived, so nothing about the learner is known yet. That is not
  *   the same statement as an empty history, and must never be presented as one;
  * - [isUnstudied] is the only combination that justifies saying so.
+ *
+ * Accuracy itself then has three states of its own, told apart by [accuracyPercentage] and
+ * [answeredCount] together:
+ *
+ * - **never answered** — [accuracyPercentage] is `null`, and a surface shows no accuracy at all;
+ * - **answered, below the evidence minimum** — [accuracyPercentage] is set but
+ *   [hasAccuracyEvidence] is false. A surface states the evidence instead ("2 answered", "Not
+ *   enough data") and draws no percentage, accuracy colour, ring or meter: two answers do not
+ *   measure a scope, and a "100%" from one of them is a claim the learner never earned;
+ * - **at or above the minimum** — [hasAccuracyEvidence] is true and [accuracyPercentage] is the
+ *   figure to show.
  */
 internal data class LearningContextUiModel(
     val attemptedQuestionCount: Int,
@@ -33,9 +45,16 @@ internal data class LearningContextUiModel(
     /** All-time occurrence-based accuracy, or `null` when history holds no answer for this scope. */
     val accuracyPercentage: Double?,
     /**
+     * Every answer recorded in this scope across completed history — the occurrence count behind
+     * [accuracyPercentage], and the evidence [hasAccuracyEvidence] is judged on. Not
+     * [attemptedQuestionCount], which counts unique current Questions for coverage: a Question
+     * answered three times is three answers here and one attempted Question there.
+     */
+    val answeredCount: Int,
+    /**
      * The domain's weak-area verdict, copied verbatim. Presentation never re-derives it from
-     * [accuracyPercentage]: a low percentage from a single answer is visibly low without being weak,
-     * because the evidence threshold in the policy has not been met.
+     * [accuracyPercentage]. Below the evidence minimum the policy never calls a scope weak, so such a
+     * scope shows neither a figure nor a badge.
      */
     val isWeak: Boolean,
 ) {
@@ -46,6 +65,15 @@ internal data class LearningContextUiModel(
      */
     val isUnstudied: Boolean
         get() = accuracyPercentage == null && attemptedQuestionCount == 0
+
+    /**
+     * Whether [accuracyPercentage] rests on enough answers to be shown as a figure. False both when
+     * the scope was never answered and when it was answered too few times; the policy owns the
+     * minimum, so no surface restates it.
+     */
+    val hasAccuracyEvidence: Boolean
+        get() = accuracyPercentage != null &&
+            LearningProgressPolicy.hasAccuracyEvidence(answeredCount)
 
     /** Whether there is a current bank to describe, so a surface can omit an empty "0 of 0". */
     val hasCoverageScope: Boolean
@@ -82,7 +110,7 @@ internal class LearningContextIndex(snapshot: LearningProgressSnapshot) {
         learningContext(
             coverage = topicCoverage[topicId],
             performance = topicPerformance[topicId]?.let {
-                Performance(it.percentage, it.isWeak)
+                Performance(it.percentage, it.answeredCount, it.isWeak)
             },
         )
 
@@ -90,7 +118,7 @@ internal class LearningContextIndex(snapshot: LearningProgressSnapshot) {
         learningContext(
             coverage = subtopicCoverage[subtopicId],
             performance = subtopicPerformance[subtopicId]?.let {
-                Performance(it.percentage, it.isWeak)
+                Performance(it.percentage, it.answeredCount, it.isWeak)
             },
         )
 
@@ -103,12 +131,14 @@ internal class LearningContextIndex(snapshot: LearningProgressSnapshot) {
             totalQuestionCount = coverage?.totalQuestionCount ?: 0,
             coveragePercentage = coverage?.percentage,
             accuracyPercentage = performance?.percentage,
+            answeredCount = performance?.answeredCount ?: 0,
             isWeak = performance?.isWeak == true,
         )
 
-    /** The two performance models carry the same pair of fields under different names. */
+    /** The two performance models carry the same fields under different types. */
     private data class Performance(
         val percentage: Double,
+        val answeredCount: Int,
         val isWeak: Boolean,
     )
 }

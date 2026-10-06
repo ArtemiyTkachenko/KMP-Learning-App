@@ -63,6 +63,10 @@
         <item quantity="other">Not started · %1$d questions</item>
     </plurals>
     <string name="learning_context_accuracy">accuracy</string>
+    <plurals name="learning_context_answered">
+        <item quantity="one">%1$d answered</item>
+        <item quantity="other">%1$d answered</item>
+    </plurals>
     <string name="progress_title">Progress</string>
     <string name="progress_loading">Loading progress</string>
     <string name="progress_accuracy_caption">All-time accuracy</string>

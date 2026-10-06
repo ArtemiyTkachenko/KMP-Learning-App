@@ -205,7 +205,8 @@ internal class FocusedLearningJourneyIntegrationTest {
             // history reaches the dashboard with the right numbers.
             onNode(hasText("Questions answered") and hasText("2")).assertIsDisplayed()
             onNode(hasText("Correct answers") and hasText("1")).assertIsDisplayed()
-            // 50% is the overall headline here and also the topic and weak-area figures.
+            // 50% is the overall headline. The Android row rests on the same two answers, which is
+            // below the evidence minimum, so it carries counts rather than a second 50%.
             onNodeWithText("All-time accuracy").assertIsDisplayed()
             assertTrue(onAllNodesWithText("50%").fetchSemanticsNodes().isNotEmpty())
             onNode(hasScrollAction()).performScrollToNode(hasText("Practice"))
@@ -284,7 +285,11 @@ internal class FocusedLearningJourneyIntegrationTest {
             waitUntil(timeoutMillis = 5_000) {
                 onAllNodesWithText("Curriculum coverage").fetchSemanticsNodes().isNotEmpty()
             }
-            onNodeWithText("All-time accuracy").assertIsDisplayed()
+            // Two answers are below the evidence minimum, so the hero states that instead of a
+            // figure; coverage is a separate concept and still reports in full.
+            onNodeWithText("Not enough data yet. Practice more to measure this area.")
+                .assertIsDisplayed()
+            onNodeWithText("All-time accuracy").assertDoesNotExist()
             onNodeWithText("2 of 2 questions explored").assertIsDisplayed()
 
             selectTopicDetailTab(TopicSubtopicsTabTag)

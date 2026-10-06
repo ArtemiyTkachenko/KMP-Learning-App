@@ -175,10 +175,13 @@ internal class MixedInterviewJourneyIntegrationTest {
                     // reviewing answers is reading, and there is nothing left to interrupt.
                     onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS))
                         .assertIsDisplayed()
+                    // Four questions are below both evidence minimums: the run's own hero states
+                    // the score without a percentage, and no Topic in the breakdown — two
+                    // questions at most — is given one either.
                     assertTrue(
-                        onAllNodesWithText("50", substring = true)
+                        onAllNodesWithText("50%", substring = true)
                             .fetchSemanticsNodes()
-                            .isNotEmpty(),
+                            .isEmpty(),
                     )
                     val reconstructedRepository = LocalAssessmentRepository(
                         AssessmentAttemptStore(components.database),
@@ -195,17 +198,19 @@ internal class MixedInterviewJourneyIntegrationTest {
                     onNodeWithText("1 / 2 correct").performScrollTo().assertIsDisplayed()
                     onNodeWithText("Compose").performScrollTo().assertIsDisplayed()
                     onNodeWithText("0 / 1 correct").performScrollTo().assertIsDisplayed()
+                    onNodeWithText("Coroutines").performScrollTo().assertIsDisplayed()
+                    onNodeWithText("1 / 1 correct").performScrollTo().assertIsDisplayed()
+                    // One question does not measure a Topic: each row keeps its counts and draws
+                    // no percentage, neither the 0% nor the 100% it used to.
                     assertTrue(
                         onAllNodesWithText("0%", substring = true)
                             .fetchSemanticsNodes()
-                            .isNotEmpty(),
+                            .isEmpty(),
                     )
-                    onNodeWithText("Coroutines").performScrollTo().assertIsDisplayed()
-                    onNodeWithText("1 / 1 correct").performScrollTo().assertIsDisplayed()
                     assertTrue(
                         onAllNodesWithText("100%", substring = true)
                             .fetchSemanticsNodes()
-                            .isNotEmpty(),
+                            .isEmpty(),
                     )
 
                     scrollToText("Compose multiple question")

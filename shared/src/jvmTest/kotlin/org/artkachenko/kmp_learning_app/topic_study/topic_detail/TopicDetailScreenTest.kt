@@ -38,6 +38,7 @@ import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
+import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
 import org.artkachenko.kmp_learning_app.lesson_study.LearningUnitStudyProgress
 import org.artkachenko.kmp_learning_app.lesson_study.LessonStudyProgress
 import org.artkachenko.kmp_learning_app.lesson_study.StudyProgressSummary
@@ -1885,11 +1886,12 @@ internal class TopicDetailScreenTest {
                                 learningContext = learningContext(4, 10, 41.0, isWeak = true),
                             ),
                             subtopicItem(
-                                // Just as low, but on too little evidence to be called weak.
+                                // Just as low, but on too little evidence to be called weak — or
+                                // to be given a percentage at all.
                                 id = "sparse_sub",
                                 name = "Sparse Subtopic",
                                 count = 10,
-                                learningContext = learningContext(1, 10, 0.0),
+                                learningContext = learningContext(1, 10, 0.0, answered = 1),
                             ),
                         ),
                         learningContext = learningContext(5, 20, accuracy = 33.0),
@@ -1906,9 +1908,70 @@ internal class TopicDetailScreenTest {
         selectTab(TopicSubtopicsTabTag)
         onAllNodesWithText("Weak area").assertCountEquals(1)
         onNodeWithText("41%").assertIsDisplayed()
-        // A real 0% from a real answer stays visible and is not relabelled as unstudied.
-        onNodeWithText("0%").assertIsDisplayed()
+        // A real answer is stated as one and is not relabelled as unstudied, but one answer earns
+        // no percentage.
+        onNodeWithText("1 answered").assertIsDisplayed()
+        onAllNodesWithText("0%").assertCountEquals(0)
         onAllNodesWithText("Not studied yet").assertCountEquals(0)
+    }
+
+    @Test
+    fun thePracticeSummaryBelowTheEvidenceMinimumStatesNotEnoughDataInsteadOfAFigure() =
+        runComposeUiTest {
+            setContent {
+                MaterialTheme {
+                    TopicDetailScreen(
+                        state = TopicDetailUiState.Content(
+                            topic = Topic("topic_a", "Topic A"),
+                            topicQuestionCount = 28,
+                            subtopics = emptyList(),
+                            learningContext = learningContext(3, 28, accuracy = 100.0, answered = 4),
+                        ),
+                        onBack = {},
+                        onStartTopicPractice = {},
+                        onStartSubtopicPractice = {},
+                        onPracticePreset = {},
+                        onRetry = {},
+                    )
+                }
+            }
+
+            selectTab(TopicPracticeTabTag)
+            onNodeWithText("Not enough data yet. Practice more to measure this area.")
+                .assertIsDisplayed()
+            onAllNodesWithText("%", substring = true).assertCountEquals(0)
+            onAllNodesWithText("All-time accuracy").assertCountEquals(0)
+            // Answered, so not "Not studied yet"; coverage and the action stay.
+            onAllNodesWithText("Not studied yet").assertCountEquals(0)
+            onNodeWithText("3 of 28 questions explored").assertIsDisplayed()
+            onNodeWithTag(TopicPracticeButtonTag).assertIsDisplayed()
+        }
+
+    @Test
+    fun thePracticeSummaryAtTheEvidenceMinimumShowsItsFigure() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                TopicDetailScreen(
+                    state = TopicDetailUiState.Content(
+                        topic = Topic("topic_a", "Topic A"),
+                        topicQuestionCount = 28,
+                        subtopics = emptyList(),
+                        learningContext = learningContext(3, 28, accuracy = 80.0, answered = 5),
+                    ),
+                    onBack = {},
+                    onStartTopicPractice = {},
+                    onStartSubtopicPractice = {},
+                    onPracticePreset = {},
+                    onRetry = {},
+                )
+            }
+        }
+
+        selectTab(TopicPracticeTabTag)
+        onNodeWithText("80%").assertIsDisplayed()
+        onNodeWithText("All-time accuracy").assertIsDisplayed()
+        onAllNodesWithText("Not enough data yet. Practice more to measure this area.")
+            .assertCountEquals(0)
     }
 
     @Test
@@ -2179,10 +2242,14 @@ private fun learningContext(
     total: Int,
     accuracy: Double? = null,
     isWeak: Boolean = false,
+    // Answered scopes default to exactly enough evidence, so a test about something else still sees
+    // the figure; tests about the evidence minimum pass their own count.
+    answered: Int = if (accuracy == null) 0 else LearningProgressPolicy.WeakAreaMinimumAnswered,
 ) = LearningContextUiModel(
     attemptedQuestionCount = attempted,
     totalQuestionCount = total,
     coveragePercentage = if (total == 0) null else attempted.toDouble() / total * 100.0,
     accuracyPercentage = accuracy,
+    answeredCount = answered,
     isWeak = isWeak,
 )

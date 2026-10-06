@@ -259,7 +259,7 @@ internal fun AppNavigationBar(
 @Composable
 private fun SelectedDestinationIndicator(selectedSlot: Int, slotCount: Int) {
     // Spatial, not effect: this is the one thing in the bar that actually travels. The spring
-    // settles ahead of the destination cross-fade it accompanies, which is the intended order — the
+    // settles ahead of the destination fade-through it accompanies, which is the intended order — the
     // indicator must never be the thing the learner is waiting for.
     val slot = animateFloatAsState(
         targetValue = selectedSlot.toFloat(),

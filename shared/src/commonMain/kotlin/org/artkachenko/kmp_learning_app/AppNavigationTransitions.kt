@@ -21,7 +21,7 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
  * iOS, and web get `EnterTransition.None`. Since all four are real hosts, the motion is defined
  * here instead so the app moves the same way everywhere.
  *
- * Switching areas from the navigation bar cross-fades, because those destinations are siblings
+ * Switching areas from the navigation bar fades through, because those destinations are siblings
  * rather than one being "deeper" than the other. Pushing to and popping from a detail screen slides
  * horizontally, which carries the sense of depth.
  */
@@ -32,8 +32,9 @@ private const val SlideFraction = 6
  *
  * Everything previously used one `tween` on the default easing, so a screen slid in at the same
  * rate it faded — which is what made the motion read as mechanical. Material pairs an emphasised
- * curve for the thing that moves with a shorter, flatter fade, so the incoming screen is legible
- * before it has finished arriving.
+ * curve for the thing that moves with phased fades: Material's shared-axis pattern, in which the
+ * slide runs the full duration while the outgoing screen fades out first and the incoming screen
+ * only starts once it has gone. See [AppMotion.NavigationReplacement] for why the entrance waits.
  */
 private fun slideSpec() =
     tween<IntOffset>(
@@ -41,74 +42,81 @@ private fun slideSpec() =
         easing = AppMotion.EmphasizedEasing,
     )
 
-private fun enterFadeSpec() =
-    tween<Float>(
-        durationMillis = AppMotion.NavigationDurationMillis,
-        easing = AppMotion.EmphasizedDecelerateEasing,
-    )
-
-/** Exits accelerate away and finish early, so the incoming screen is never read through the old one. */
-private fun exitFadeSpec() =
-    tween<Float>(
-        durationMillis = AppMotion.NavigationDurationMillis / 2,
-        easing = AppMotion.EmphasizedAccelerateEasing,
-    )
-
 internal fun appTransitionSpec():
     AnimatedContentTransitionScope<Scene<NavKey>>.() -> ContentTransform = {
     if (isTopLevelSwitch()) {
-        crossFade()
+        fadeThrough()
     } else {
         slideInHorizontally(slideSpec()) { it / SlideFraction } +
-            fadeIn(enterFadeSpec()) togetherWith
+            fadeIn(AppMotion.NavigationReplacement.enterSpec()) togetherWith
             slideOutHorizontally(slideSpec()) { -it / SlideFraction } +
-            fadeOut(exitFadeSpec())
+            fadeOut(AppMotion.NavigationReplacement.exitSpec())
     }
 }
 
 internal fun appPopTransitionSpec():
     AnimatedContentTransitionScope<Scene<NavKey>>.() -> ContentTransform = {
     if (isTopLevelSwitch()) {
-        crossFade()
+        fadeThrough()
     } else {
         slideInHorizontally(slideSpec()) { -it / SlideFraction } +
-            fadeIn(enterFadeSpec()) togetherWith
+            fadeIn(AppMotion.NavigationReplacement.enterSpec()) togetherWith
             slideOutHorizontally(slideSpec()) { it / SlideFraction } +
-            fadeOut(exitFadeSpec())
+            fadeOut(AppMotion.NavigationReplacement.exitSpec())
     }
 }
 
 /**
  * Predictive back follows the edge the gesture started from, so the outgoing screen moves the way
  * the user's finger does. A swipe from the right edge is the mirror of one from the left.
+ *
+ * Its fades are deliberately *not* phased like [appPopTransitionSpec]'s. Here the gesture drives
+ * progress, and the point of predictive back is to show where Back leads while the finger is still
+ * down. Phased, the screen underneath would stay invisible for the first third of the swipe and the
+ * screen being dragged would have gone by then, so a learner holding the gesture partway would see
+ * only the background. Overlap is the preview here, not a glitch.
+ *
+ * The top-level branch keeps the shared [fadeThrough] so the route decision stays one rule; a gesture
+ * does not reach it in practice, because `NavDisplay` handles back only within one area's stack.
  */
 internal fun appPredictivePopTransitionSpec():
     AnimatedContentTransitionScope<Scene<NavKey>>.(Int) -> ContentTransform = { swipeEdge ->
     if (isTopLevelSwitch()) {
-        crossFade()
+        fadeThrough()
     } else {
         val direction = if (swipeEdge == NavigationEvent.EDGE_RIGHT) -1 else 1
         slideInHorizontally(slideSpec()) { -direction * it / SlideFraction } +
-            fadeIn(enterFadeSpec()) togetherWith
+            fadeIn(gestureEnterFadeSpec()) togetherWith
             slideOutHorizontally(slideSpec()) { direction * it / SlideFraction } +
-            fadeOut(exitFadeSpec())
+            fadeOut(gestureExitFadeSpec())
     }
 }
 
+/** Predictive back's incoming fade: starts with the gesture, so the destination is previewed. */
+private fun gestureEnterFadeSpec() =
+    tween<Float>(
+        durationMillis = AppMotion.NavigationDurationMillis,
+        easing = AppMotion.EmphasizedDecelerateEasing,
+    )
+
+/** Predictive back's outgoing fade: accelerates away and finishes halfway through the gesture. */
+private fun gestureExitFadeSpec() =
+    tween<Float>(
+        durationMillis = AppMotion.NavigationDurationMillis / 2,
+        easing = AppMotion.EmphasizedAccelerateEasing,
+    )
+
 /**
- * Siblings cross-fade rather than slide, so neither reads as deeper than the other.
+ * Siblings fade through rather than slide, so neither reads as deeper than the other.
  *
- * The outgoing half is not shortened here as it is for a push: with nothing moving, an early exit
- * leaves a visible gap where neither screen is drawn.
+ * Material's fade-through: the outgoing area fades out first and the incoming one starts only once
+ * it has gone, with a brief moment of background between them. Two areas' worth of text fading
+ * across each other at once read as a glitch, and the background moment does not — see
+ * [AppMotion.NavigationReplacement].
  */
-private fun crossFade(): ContentTransform =
-    fadeIn(enterFadeSpec()) togetherWith
-        fadeOut(
-            tween(
-                durationMillis = AppMotion.NavigationDurationMillis,
-                easing = AppMotion.EmphasizedEasing,
-            ),
-        )
+private fun fadeThrough(): ContentTransform =
+    fadeIn(AppMotion.NavigationReplacement.enterSpec()) togetherWith
+        fadeOut(AppMotion.NavigationReplacement.exitSpec())
 
 /** True when both sides of the transition are navigation-bar areas. */
 internal fun isTopLevelSwitch(from: AppRoute?, to: AppRoute?): Boolean =

@@ -110,7 +110,11 @@ declines to open it stops one step short of answering "what should I work on nex
 
 Navigation motion is declared in `AppNavigationTransitions` rather than left to
 Navigation 3's defaults, which animate on Android but resolve to `EnterTransition.None`
-on desktop, iOS, and web.
+on desktop, iOS, and web. Area switches fade through, and pushes and pops slide with the
+same phased fades, timed by `AppMotion.NavigationReplacement`: the outgoing screen has
+faded out before the incoming one starts, so two screens' text are never legible at once.
+Predictive back keeps overlapping fades because the gesture drives its progress; see
+[Material Design 3](../development/material-design.md#how-it-moves).
 
 Shared presentation ViewModels are resolved from the Koin Compose module at the
 Navigation 3 destination boundary. Parameterized destinations pass only stable

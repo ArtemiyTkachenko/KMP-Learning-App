@@ -141,6 +141,33 @@ internal class AppNavigator(
         }
     }
 
+    /**
+     * Returns every area to its root and leaves the learner on [AppRoute.Settings], on top of the
+     * start area's root — what resetting learner progress needs, since every result and attempt route
+     * on any stack now names a deleted attempt.
+     *
+     * Every detail goes, not only attempt routes: what remains above an area's root was reached in a
+     * session whose history no longer exists, and a Topic or a builder left open would show figures
+     * the learner has just erased. Settings stays open for the reason [pruneFrom] keeps it.
+     *
+     * When Settings is already on top of the start area — the only place it is pushed from — the
+     * entries *beneath* it are removed and the entry itself is left in place, so the open screen
+     * keeps its state rather than being rebuilt by the reset it just ran.
+     */
+    fun resetToRootsKeepingSettings() {
+        stacks.forEach { (destination, stack) ->
+            if (destination != AppTopLevelDestination.Start) {
+                while (stack.size > 1) stack.removeAt(stack.lastIndex)
+            } else if (stack.size > 1 && stack.last() == AppRoute.Settings) {
+                while (stack.size > 2) stack.removeAt(stack.lastIndex - 1)
+            } else {
+                while (stack.size > 1) stack.removeAt(stack.lastIndex)
+                stack.add(AppRoute.Settings)
+            }
+        }
+        area = AppTopLevelDestination.Start
+    }
+
     private fun popToRoot() {
         val stack = backStack
         while (stack.size > 1) stack.removeAt(stack.lastIndex)

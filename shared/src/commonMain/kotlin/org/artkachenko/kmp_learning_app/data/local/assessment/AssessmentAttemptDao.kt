@@ -24,6 +24,17 @@ internal interface AssessmentAttemptDao {
     @Query("DELETE FROM question_attempt WHERE test_attempt_id = :attemptId")
     suspend fun deleteQuestionAttemptsForAttempt(attemptId: String)
 
+    // The three whole-table deletes exist only for resetting learner progress, which runs them
+    // children first inside one write transaction: the child tables' foreign keys are NO_ACTION.
+    @Query("DELETE FROM question_attempt_selected_answer")
+    suspend fun deleteAllSelectedAnswers()
+
+    @Query("DELETE FROM question_attempt")
+    suspend fun deleteAllQuestionAttempts()
+
+    @Query("DELETE FROM test_attempt")
+    suspend fun deleteAllTestAttempts()
+
     @Query("SELECT * FROM test_attempt WHERE id = :id")
     suspend fun getTestAttemptById(id: String): TestAttemptEntity?
 

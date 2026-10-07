@@ -24,6 +24,8 @@ import org.artkachenko.kmp_learning_app.progress.ProgressViewModel
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionContentResolver
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionStateHolder
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsViewModel
+import org.artkachenko.kmp_learning_app.progress_reset.ResetLearnerProgress
+import org.artkachenko.kmp_learning_app.settings.ProgressResetViewModel
 import org.artkachenko.kmp_learning_app.topic_study.focused_result.FocusedResultViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_unit.LearningUnitViewModel
@@ -134,6 +136,11 @@ internal val topicStudyPresentationModule = module {
     }
     viewModel {
         AssessmentLaunchViewModel(startAssessment = get())
+    }
+    viewModel {
+        // Settings' reset confirmation. The use case owns the delete and every cache invalidation;
+        // the ViewModel owns only the dialog around it.
+        ProgressResetViewModel(resetLearnerProgress = get<ResetLearnerProgress>()::invoke)
     }
     viewModel {
         MistakeReviewViewModel(

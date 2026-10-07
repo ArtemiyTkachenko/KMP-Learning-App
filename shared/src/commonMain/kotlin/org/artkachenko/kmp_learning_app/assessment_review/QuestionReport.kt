@@ -1,16 +1,11 @@
 package org.artkachenko.kmp_learning_app.assessment_review
 
 import org.artkachenko.kmp_learning_app.product.ProductMetadata
+import org.artkachenko.kmp_learning_app.product.ProductRepositoryUrl
 
 /**
- * The public repository the question bank is maintained in.
- *
- * Used only by [questionReportUrl], which opens the `question-report.yml` issue form under
- * `.github/ISSUE_TEMPLATE/`. A fork that keeps the app but not the repository changes it here.
+ * The form's file name under `.github/ISSUE_TEMPLATE/`, which GitHub's `template` parameter selects.
  */
-private const val RepositoryUrl = "https://github.com/ArtemiyTkachenko/KMP-Learning-App"
-
-/** The form's file name, which GitHub's `template` parameter selects. */
 private const val QuestionReportTemplate = "question-report.yml"
 
 /** The form's own title prefix, repeated so a pre-filled title reads like a hand-written one. */
@@ -38,7 +33,7 @@ internal fun questionReportUrl(questionId: String, appVersion: String): String {
         "question_id" to questionId,
         "app_version" to appVersion,
     )
-    return parameters.joinToString(separator = "&", prefix = "$RepositoryUrl/issues/new?") { (name, value) ->
+    return parameters.joinToString(separator = "&", prefix = "$ProductRepositoryUrl/issues/new?") { (name, value) ->
         "$name=${value.percentEncoded()}"
     }
 }

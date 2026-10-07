@@ -31,6 +31,7 @@ import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModu
 import org.artkachenko.kmp_learning_app.data.local.curriculum.CurriculumDatabase
 import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
+import org.artkachenko.kmp_learning_app.data.local.progress_reset.progressResetDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.settings.appearanceModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
@@ -137,6 +138,7 @@ internal class AppShellBackNavigationTest {
                                             assessmentDataModule,
                                             savedQuestionDataModule,
                                             lessonStudyDataModule,
+                                            progressResetDataModule,
                                             topicStudyPresentationModule,
                                             // Settings is the detail used below; its storage is
                                             // the in-memory one the KMP test module binds.

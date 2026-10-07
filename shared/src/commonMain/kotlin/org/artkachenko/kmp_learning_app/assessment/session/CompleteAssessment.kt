@@ -11,9 +11,12 @@ import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentReposito
  *
  * ## Why the invalidation lives here
  *
- * Completion is the *only* transition that changes completed history, so it is the only point at
- * which the app-scoped cache behind Progress, the mistake queue, the interview record, the Mistakes
- * badge, Topic learning context and unseen-practice selection can be wrong. Nothing in
+ * Completion is the only transition *within an assessment* that changes completed history — the
+ * other is a progress reset deleting all of it, which
+ * [org.artkachenko.kmp_learning_app.progress_reset.ResetLearnerProgress] invalidates for the same
+ * reasons — so it is the only point in taking an assessment at which the app-scoped cache behind
+ * Progress, the mistake queue, the interview record, the Mistakes badge, Topic learning context and
+ * unseen-practice selection can be wrong. Nothing in
  * [AssessmentRepository.save]'s signature says that writing a `COMPLETED` attempt obliges a second
  * call, and the repository cannot make the call itself: [AssessmentHistoryStore] is built *on* the
  * repository, so depending on the store from the data layer would close a cycle. Owning both steps

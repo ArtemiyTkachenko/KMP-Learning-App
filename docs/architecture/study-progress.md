@@ -561,6 +561,7 @@ already hold, and nothing becomes visible that was not read back from it:
 | First read fails | `Error`, never `Loaded(empty)` |
 | A later read fails | The previous `Loaded` stands; a transient failure must not repaint the Learn stack as unstudied |
 | Concurrent `refresh()` | A `Mutex.tryLock` collapses them into one query |
+| `invalidate()` after a progress reset | Waits for any read in flight, then reads again; a failure is `Error`, because the previous `Loaded` is known to be stale |
 
 Every Learn ViewModel calls `refresh()` when it is constructed and again on `retry()`, which
 is what lets a surface recover from an earlier failed read instead of losing the mark

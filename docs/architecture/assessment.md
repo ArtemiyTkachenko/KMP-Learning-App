@@ -372,7 +372,9 @@ open-failure notice, the "Report a problem" link (`QuestionReportLink`), `Questi
 `QuestionBookmarkAction` — which both `ReviewQuestionCard` and the saved-Question card render.
 
 The report link opens a pre-filled GitHub issue form (`.github/ISSUE_TEMPLATE/question-report.yml`)
-carrying only the Question ID and the app version, built by the pure `questionReportUrl`. It is one
+carrying only the Question ID and the app version, built by the pure `questionReportUrl` on
+`ProductRepositoryUrl`, the one place the repository address is stated (Settings' "Send feedback"
+uses it too). It is one
 more external link: review and saved cards hand it to the same `onSourceClick` handler and
 `failedSourceUrl` state their sources use, and the practice screen shows it inside the answer reveal,
 under the explanation, so it never appears before feedback and never during an Interview. Nothing

@@ -5,6 +5,7 @@ import org.artkachenko.kmp_learning_app.curriculum.visibility.curriculumVisibili
 import org.artkachenko.kmp_learning_app.data.local.assessment.assessmentDataModule
 import org.artkachenko.kmp_learning_app.data.local.curriculum.curriculumDataModule
 import org.artkachenko.kmp_learning_app.data.local.lesson_study.lessonStudyDataModule
+import org.artkachenko.kmp_learning_app.data.local.progress_reset.progressResetDataModule
 import org.artkachenko.kmp_learning_app.data.local.saved_questions.savedQuestionDataModule
 import org.artkachenko.kmp_learning_app.settings.appearanceModule
 import org.artkachenko.kmp_learning_app.topic_study.topicStudyPresentationModule
@@ -28,6 +29,7 @@ internal fun sharedApplicationModules(): List<Module> = listOf(
     assessmentDataModule,
     savedQuestionDataModule,
     lessonStudyDataModule,
+    progressResetDataModule,
     topicStudyPresentationModule,
     appearanceModule,
     curriculumVisibilityModule,

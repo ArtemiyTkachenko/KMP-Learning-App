@@ -174,7 +174,10 @@ cancels a pass that a newer visibility has made obsolete. Turning the content ba
 not resurrect pruned routes, and pruning never touches domain persistence.
 
 `AppNavigator` gained only structural operations. It knows nothing about repositories or
-visibility, and the decision of which routes are invalid belongs to the caller. The guarded
+visibility, and the decision of which routes are invalid belongs to the caller. The other
+whole-shell operation is `resetToRootsKeepingSettings`, run after a progress reset: every area
+returns to its root and Settings stays open over the Topics root, because every result and
+attempt route on any stack then names a deleted attempt. The guarded
 destinations and the full rules are in
 [curriculum visibility](curriculum-visibility.md#identity-addressed-routes).
 
@@ -240,7 +243,14 @@ The product has two independent application-level preferences, both on the Setti
 the theme and curriculum visibility. Each has its own store, which owns its key and tokens
 over the shared `AppPreferenceStorage`, and its own app-scoped state holder. There is no
 generic settings framework, and Settings owns neither preference: `SettingsDestination`
-resolves the two holders directly and has no ViewModel.
+resolves the two holders directly. Its one ViewModel, `ProgressResetViewModel`, owns only the
+"Reset progress" confirmation; see [persistence](persistence.md#resetting-progress).
+
+Settings has four sections: Appearance (the theme switch), Learning content (the Kotlin
+Multiplatform switch), Your data ("Reset progress"), and About (name, version and build from
+`ProductMetadata`, plus "Send feedback", which opens the repository's GitHub issue chooser at
+`ProductRepositoryUrl/issues/new/choose` — the same `ProductRepositoryUrl` the per-Question report
+form is built on).
 
 ### Appearance
 

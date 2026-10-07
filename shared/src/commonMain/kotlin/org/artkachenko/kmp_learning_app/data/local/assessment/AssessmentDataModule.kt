@@ -70,7 +70,8 @@ internal val assessmentDataModule = module {
     }
     single {
         // The counterpart of StartAssessment: it owns both the completed write and the history
-        // invalidation, which is why nothing else in the graph is handed the store to invalidate.
+        // invalidation. The only other writer handed the store to invalidate is
+        // ResetLearnerProgress, which owns its delete and invalidation the same way.
         CompleteAssessment(
             assessmentEngine = get(),
             assessmentRepository = get(),

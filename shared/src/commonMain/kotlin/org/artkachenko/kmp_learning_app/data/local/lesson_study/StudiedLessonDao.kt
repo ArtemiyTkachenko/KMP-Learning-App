@@ -18,6 +18,10 @@ internal interface StudiedLessonDao {
     @Query("DELETE FROM studied_lesson WHERE lesson_id = :lessonId")
     suspend fun deleteByLessonId(lessonId: String)
 
+    /** Only for resetting learner progress; see `LocalProgressResetRepository`. */
+    @Query("DELETE FROM studied_lesson")
+    suspend fun deleteAll()
+
     @Query("SELECT * FROM studied_lesson WHERE lesson_id = :lessonId")
     suspend fun getByLessonId(lessonId: String): StudiedLessonEntity?
 

@@ -2,9 +2,14 @@ package org.artkachenko.kmp_learning_app.settings
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.UriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.state.ToggleableState
@@ -21,13 +26,17 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import org.artkachenko.kmp_learning_app.product.ProductMetadata
+import org.artkachenko.kmp_learning_app.product.ProductRepositoryUrl
+import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 
 @OptIn(ExperimentalTestApi::class)
 internal class SettingsScreenTest {
@@ -254,21 +263,21 @@ internal class SettingsScreenTest {
     }
 
     /**
-     * The scope is three sections: appearance, the curriculum the app teaches, and what this build
-     * is. This is the guard against Settings quietly becoming a preference framework: nothing here
-     * is a placeholder for an account, a language or a notifications screen, and a later change
-     * that adds one has to change this test deliberately.
+     * The scope is four sections: appearance, the curriculum the app teaches, the learner's data,
+     * and what this build is. This is the guard against Settings quietly becoming a preference
+     * framework: nothing here is a placeholder for an account, a language or a notifications screen,
+     * and a later change that adds one has to change this test deliberately.
      */
     @Test
-    fun theScreenCarriesTheThreeSectionsInOrderAndNoSpeculativeOnes() = runComposeUiTest {
+    fun theScreenCarriesTheFourSectionsInOrderAndNoSpeculativeOnes() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 TestSettingsScreen()
             }
         }
 
-        val headings = listOf("Appearance", "Learning content", "About").map { title ->
-            onNodeWithText(title).assertIsDisplayed().fetchSemanticsNode().boundsInRoot.top
+        val headings = listOf("Appearance", "Learning content", "Your data", "About").map { title ->
+            onNodeWithText(title).performScrollTo().fetchSemanticsNode().boundsInRoot.top
         }
         assertEquals(headings.sorted(), headings)
         listOf("Account", "Profile", "Language", "Notifications", "Licences", "Feedback")
@@ -276,7 +285,107 @@ internal class SettingsScreenTest {
         // The KMP row belongs to Learning content, not to Appearance.
         val kmpTop = onNodeWithTag(SettingsKmpContentSwitchTag).fetchSemanticsNode().boundsInRoot.top
         assertTrue(kmpTop > headings[1] && kmpTop < headings[2])
+        // Reset is the only row under Your data; Send feedback is under About.
+        val resetTop = onNodeWithTag(SettingsResetProgressTag).fetchSemanticsNode().boundsInRoot.top
+        assertTrue(resetTop > headings[2] && resetTop < headings[3])
+        val feedbackTop = onNodeWithTag(SettingsSendFeedbackTag).fetchSemanticsNode().boundsInRoot.top
+        assertTrue(feedbackTop > headings[3])
         assertEquals(1, onAllNodesWithText("Dark theme").fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun theResetRowIsOneButtonThatAsksForConfirmation() = runComposeUiTest {
+        var requests = 0
+        setContent {
+            MaterialTheme {
+                TestSettingsScreen(onResetProgress = { requests += 1 })
+            }
+        }
+
+        onNodeWithTag(SettingsResetProgressTag)
+            .performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .assertHeightIsAtLeast(MinimumTouchTarget)
+            .performClick()
+
+        assertEquals(1, requests)
+        // The screen does not open the dialog by itself: that is the state it is given.
+        onNodeWithTag(SettingsResetDialogTag).assertDoesNotExist()
+    }
+
+    /** The destructive action takes the theme's error role, and keeps it while it reports working. */
+    @Test
+    fun theConfirmButtonIsDrawnInTheThemeErrorColourIdleAndBusy() = runComposeUiTest {
+        var state by mutableStateOf<ProgressResetUiState>(ProgressResetUiState.Confirming())
+        var error = Color.Unspecified
+        setContent {
+            AppTheme(darkTheme = false) {
+                error = MaterialTheme.colorScheme.error
+                TestSettingsScreen(progressReset = state)
+            }
+        }
+
+        assertEquals(error, confirmContainerColour())
+        state = ProgressResetUiState.Resetting
+        waitForIdle()
+        assertEquals(error, confirmContainerColour())
+    }
+
+    @Test
+    fun sendFeedbackOpensTheIssueChooserOfTheOneRepository() = runComposeUiTest {
+        val opened = mutableListOf<String>()
+        setContent {
+            CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(opened)) {
+                MaterialTheme {
+                    TestSettingsScreen()
+                }
+            }
+        }
+
+        onNodeWithTag(SettingsSendFeedbackTag)
+            .performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+            .performClick()
+
+        assertEquals(listOf("$ProductRepositoryUrl/issues/new/choose"), opened)
+        assertEquals(
+            "https://github.com/ArtemiyTkachenko/KMP-Learning-App/issues/new/choose",
+            opened.single(),
+        )
+        onNodeWithTag(SettingsSendFeedbackFailedTag).assertDoesNotExist()
+    }
+
+    /** No host handler for the address: the failure is said under the row rather than swallowed. */
+    @Test
+    fun aFeedbackLinkThatCannotOpenSaysSoInline() = runComposeUiTest {
+        setContent {
+            CompositionLocalProvider(LocalUriHandler provides RecordingUriHandler(failure = true)) {
+                MaterialTheme {
+                    TestSettingsScreen()
+                }
+            }
+        }
+
+        onNodeWithTag(SettingsSendFeedbackTag).performScrollTo().performClick()
+
+        onNodeWithTag(SettingsSendFeedbackFailedTag).performScrollTo().assertIsDisplayed()
+        onNodeWithText("The feedback page could not be opened.").assertIsDisplayed()
+    }
+
+    /** A pixel of the pill's top edge at its centre: container, never label. */
+    private fun androidx.compose.ui.test.ComposeUiTest.confirmContainerColour(): Color {
+        val image = onNodeWithTag(SettingsResetConfirmTag).captureToImage()
+        return image.toPixelMap()[image.width / 2, 2]
+    }
+}
+
+private class RecordingUriHandler(
+    private val opened: MutableList<String> = mutableListOf(),
+    private val failure: Boolean = false,
+) : UriHandler {
+    override fun openUri(uri: String) {
+        if (failure) throw IllegalStateException("No handler for $uri")
+        opened += uri
     }
 }
 
@@ -288,12 +397,18 @@ private fun TestSettingsScreen(
     includeKmpContent: Boolean = false,
     onIncludeKmpContentChange: (Boolean) -> Unit = {},
     onBack: () -> Unit = {},
+    progressReset: ProgressResetUiState = ProgressResetUiState.Idle,
+    onResetProgress: () -> Unit = {},
 ) {
     SettingsScreen(
         isDarkTheme = isDarkTheme,
         onDarkThemeChange = onDarkThemeChange,
         includeKmpContent = includeKmpContent,
         onIncludeKmpContentChange = onIncludeKmpContentChange,
+        progressReset = progressReset,
+        onResetProgress = onResetProgress,
+        onConfirmReset = {},
+        onDismissReset = {},
         onBack = onBack,
     )
 }

@@ -200,7 +200,12 @@ private fun AppShell(
                         )
                     }
                     entry<AppRoute.Settings> {
-                        SettingsDestination(onBack = { popBack() })
+                        SettingsDestination(
+                            onBack = { popBack() },
+                            // Every result and attempt route now names a deleted attempt, so every
+                            // area returns to its root and Settings stays open over the Learn root.
+                            onProgressReset = navigator::resetToRootsKeepingSettings,
+                        )
                     }
                     entry<AppRoute.SavedQuestions> {
                         SavedQuestionsDestination(

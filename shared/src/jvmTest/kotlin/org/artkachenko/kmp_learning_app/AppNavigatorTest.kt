@@ -388,4 +388,54 @@ internal class AppNavigatorTest {
             navigator.detailRoutes(),
         )
     }
+
+    /**
+     * After a reset every attempt and result route names a deleted attempt, so every area returns
+     * to its root — not only the one on screen — and the learner stays on Settings over the Learn
+     * root rather than being thrown out of the screen they just acted in.
+     */
+    @Test
+    fun resettingProgressReturnsEveryAreaToItsRootAndKeepsSettingsOpen() {
+        val stacks = AppTopLevelDestination.entries.associateWith { mutableListOf<NavKey>(it.route) }
+        val navigator = AppNavigator(stacks)
+        stacks.getValue(AppTopLevelDestination.INTERVIEW) +=
+            listOf(AppRoute.MixedInterviewAttempt("a1"))
+        stacks.getValue(AppTopLevelDestination.PROGRESS) +=
+            listOf(AppRoute.ProgressTopic("kotlin"), AppRoute.FocusedPracticeResult("a2"))
+        stacks.getValue(AppTopLevelDestination.MISTAKES) += listOf(AppRoute.FocusedPracticeAttempt("a3"))
+        stacks.getValue(AppTopLevelDestination.TOPICS) +=
+            listOf(AppRoute.Topic("kotlin"), AppRoute.FocusedPracticeResult("a4"), AppRoute.Settings)
+        val topicsStack = stacks.getValue(AppTopLevelDestination.TOPICS)
+
+        navigator.resetToRootsKeepingSettings()
+
+        assertEquals(listOf<NavKey>(AppRoute.Topics, AppRoute.Settings), topicsStack)
+        assertEquals(listOf<NavKey>(AppRoute.Interview), stacks.getValue(AppTopLevelDestination.INTERVIEW))
+        assertEquals(listOf<NavKey>(AppRoute.Progress), stacks.getValue(AppTopLevelDestination.PROGRESS))
+        assertEquals(listOf<NavKey>(AppRoute.MistakeReview), stacks.getValue(AppTopLevelDestination.MISTAKES))
+        assertEquals(AppTopLevelDestination.TOPICS, navigator.area)
+        assertEquals(AppRoute.Settings, navigator.currentRoute)
+        assertEquals(emptySet(), navigator.detailRoutes() - AppRoute.Settings)
+        // Back from Settings now lands on the Learn root.
+        assertTrue(navigator.popBack())
+        assertEquals(AppRoute.Topics, navigator.currentRoute)
+    }
+
+    /**
+     * Settings is only pushed from the Learn root, but the operation does not depend on that: called
+     * from anywhere it still ends on Settings over the start area's root.
+     */
+    @Test
+    fun resettingFromAnotherAreaStillEndsOnSettingsOverTheLearnRoot() {
+        val navigator = navigator()
+        navigator.push(AppRoute.Topic("kotlin"))
+        navigator.select(AppTopLevelDestination.PROGRESS)
+        navigator.push(AppRoute.FocusedPracticeResult("a1"))
+
+        navigator.resetToRootsKeepingSettings()
+
+        assertEquals(AppTopLevelDestination.TOPICS, navigator.area)
+        assertEquals(listOf<NavKey>(AppRoute.Topics, AppRoute.Settings), navigator.backStack)
+        assertEquals(setOf<AppRoute>(AppRoute.Settings), navigator.detailRoutes())
+    }
 }

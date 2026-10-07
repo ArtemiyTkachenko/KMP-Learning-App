@@ -66,27 +66,49 @@ internal class StudyProgressStateHolder(
         if (!reading.tryLock()) return
         scope.launch {
             try {
-                try {
-                    val studied = repository.getStudiedLessons()
-                    _state.update { current ->
-                        when (current) {
-                            // A mutation in flight keeps its pending marker across the refresh.
-                            is StudyProgressState.Loaded -> current.copy(studiedLessons = studied)
-                            else -> StudyProgressState.Loaded(studied)
-                        }
-                    }
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: Exception) {
+                read(onFailure = { current ->
                     // A failed re-read leaves an earlier successful one in place: a transient
                     // failure must not repaint every Lesson in the Learn stack as unstudied.
-                    _state.update { current ->
-                        current as? StudyProgressState.Loaded ?: StudyProgressState.Error
-                    }
-                }
+                    current as? StudyProgressState.Loaded ?: StudyProgressState.Error
+                })
             } finally {
                 reading.unlock()
             }
+        }
+    }
+
+    /**
+     * Re-reads studied state after something outside this holder rewrote it — resetting learner
+     * progress, which deletes every record.
+     *
+     * Unlike [refresh], this never coalesces into a read already running: that read may have
+     * reached the database before the deletion and would publish the old marks. Waiting for the
+     * lock orders this read after it. And a failure publishes [StudyProgressState.Error] rather
+     * than keeping the previous snapshot, because that snapshot is now known to be stale; the next
+     * [refresh] recovers. Not `suspend`, so a caller can run it from `finally` under cancellation.
+     */
+    fun invalidate() {
+        scope.launch {
+            reading.withLock {
+                read(onFailure = { StudyProgressState.Error })
+            }
+        }
+    }
+
+    private suspend fun read(onFailure: (StudyProgressState) -> StudyProgressState) {
+        try {
+            val studied = repository.getStudiedLessons()
+            _state.update { current ->
+                when (current) {
+                    // A mutation in flight keeps its pending marker across the refresh.
+                    is StudyProgressState.Loaded -> current.copy(studiedLessons = studied)
+                    else -> StudyProgressState.Loaded(studied)
+                }
+            }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            _state.update(onFailure)
         }
     }
 

@@ -1,5 +1,7 @@
 package org.artkachenko.kmp_learning_app
 
+import org.artkachenko.kmp_learning_app.progress_reset.ResetLearnerProgress
+import org.artkachenko.kmp_learning_app.settings.ProgressResetViewModel
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
@@ -178,6 +180,10 @@ internal class SharedHostStartupTest {
             assertIs<LearningLessonViewModel>(
                 koin.get<LearningLessonViewModel> { parametersOf("unit", "lesson") },
             )
+            // Resetting progress spans tables of two data modules and invalidates holders from the
+            // presentation module, so it is resolved here end to end, through Settings' ViewModel.
+            assertIs<ResetLearnerProgress>(koin.get<ResetLearnerProgress>())
+            assertIs<ProgressResetViewModel>(koin.get<ProgressResetViewModel>())
             // The appearance preference spans the same two-module split: the platform key-value
             // store comes from the host's module and everything above it from the shared one.
             assertIs<AppPreferenceStorage>(koin.get<AppPreferenceStorage>())

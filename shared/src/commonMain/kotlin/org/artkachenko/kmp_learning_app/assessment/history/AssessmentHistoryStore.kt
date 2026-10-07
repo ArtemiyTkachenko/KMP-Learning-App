@@ -47,8 +47,9 @@ internal sealed interface AssessmentHistory {
  * Nothing outside this app writes the attempt tables, and an attempt is saved after *every answered
  * question* — observing the tables would recompute the whole history on each of those writes, in
  * the background, while the learner is mid-assessment. Every consumer here reads *completed*
- * attempts only, which an in-progress save cannot change, so the cache is invalidated on the one
- * transition that can affect it: an attempt completing. Adding a writer outside the app, such as a
+ * attempts only, which an in-progress save cannot change, so the cache is invalidated on the two
+ * transitions that can affect it: an attempt completing, and a progress reset deleting every
+ * attempt (`ResetLearnerProgress`). Adding a writer outside the app, such as a
  * server sync, is the point at which this would need to become a real observation.
  */
 internal class AssessmentHistoryStore(
@@ -123,8 +124,9 @@ internal class AssessmentHistoryStore(
     }
 
     /**
-     * Marks the cached history stale. Call after an attempt reaches a completed state; an
-     * in-progress save cannot change what any consumer of this store reads.
+     * Marks the cached history stale. Call after an attempt reaches a completed state, or after a
+     * progress reset deletes the attempts; an in-progress save cannot change what any consumer of
+     * this store reads.
      *
      * This is also the whole of a consumer's retry: [history] emits once the resulting read settles
      * even if it reads the same attempts back, so a derivation that failed over readable history

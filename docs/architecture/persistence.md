@@ -716,6 +716,46 @@ also holds nothing derived: `StudyProgressDerivation` computes Unit and Topic st
 demand by intersecting these stable IDs with the current ACTIVE learning hierarchy, and stores none
 of them. See [study progress](study-progress.md) for the semantics this storage serves.
 
+## Resetting Progress
+
+Settings' "Reset progress" starts the learner over without a reinstall. It deletes exactly the
+learner's progress and nothing else:
+
+| Data | Reset |
+| --- | --- |
+| `test_attempt`, `question_attempt`, `question_attempt_selected_answer` — completed **and** in progress | Deleted |
+| `studied_lesson` | Deleted |
+| `saved_question` | Kept: bookmarks the learner curated, not progress |
+| Theme and Kotlin Multiplatform preferences (`AppPreferenceStorage`) | Kept: settings, and not in Room |
+| Curriculum tables | Kept: bundled content |
+
+There is no separate practice-builder store to clear. A remembered targeted run is derived from
+history (Continue Studying reads `practice_levels` and `practice_source` off completed attempts), so
+it goes with the attempts.
+
+All four deleted tables live in the one `CurriculumDatabase`, so `LocalProgressResetRepository`
+deletes them in a single write transaction — children first, because the attempt tables' foreign
+keys are `NO_ACTION`, then `studied_lesson`. A failure anywhere rolls the whole reset back; there
+is no partial state to describe. No schema change or migration was needed: the deletes are
+whole-table `DELETE` queries on the existing DAOs.
+
+`ResetLearnerProgress` owns the delete and the cache invalidation as one operation, following
+`CompleteAssessment`: in `finally`, so a delete that commits under a cancelled caller still
+invalidates, it calls `AssessmentHistoryStore.invalidate()` — which re-derives Progress, topic
+accuracy and coverage, the mistake queue and its badge, the interview record, recommendations,
+Continue Studying and unseen-practice selection through `VisibleAssessmentHistory` — and
+`StudyProgressStateHolder.invalidate()`, which re-reads studied state after any read already in
+flight, and publishes `Error` rather than the old marks if that read fails. Settings then calls
+`AppNavigator.resetToRootsKeepingSettings`, so no back stack keeps a route to a deleted attempt.
+
+A delete that fails with an ordinary exception committed nothing, so it invalidates nothing: the
+caches are already right, and a failing database would likely fail the re-read too. Cancellation
+still invalidates, because it cannot tell whether the commit landed. One edge is left as it is: if
+the delete commits but the history re-read then fails, `AssessmentHistoryStore` keeps its
+stale-on-failure rule and history surfaces show the last snapshot until the next successful read,
+whereas the study holder publishes `Error`. Changing the history store's failure rule for this
+unlikely case was judged not worth the risk to its generation logic.
+
 ## Curriculum Visibility Is Not Persisted
 
 Whether the optional Kotlin Multiplatform Topic is shown is a learner preference. It is
@@ -793,10 +833,11 @@ Android Application
      -> AssessmentRepository
      -> SavedQuestionRepository
      -> LessonStudyRepository
+     -> ProgressResetRepository     (progressResetDataModule, with ResetLearnerProgress)
 ```
 
 The shared module defines the repository data modules. Each host supplies its platform database
-module, and all four repositories resolve against that single `CurriculumDatabase` instance.
+module, and all five repositories resolve against that single `CurriculumDatabase` instance.
 `lessonStudyDataModule` is separate from `learningContentModule` on purpose: the latter owns the
 publisher-authored learning document, the former the learner's claims about it.
 The project uses Koin's classic DSL only; annotation processing, compiler plugins, Compose

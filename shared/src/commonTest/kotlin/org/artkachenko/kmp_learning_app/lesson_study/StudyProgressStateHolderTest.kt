@@ -323,6 +323,57 @@ internal class StudyProgressStateHolderTest {
         assertEquals(emptyList(), repository.unmarkCalls)
     }
 
+    /** After the records are deleted underneath the holder, invalidating it publishes the empty set. */
+    @Test
+    fun invalidatingAfterAnExternalDeleteShowsNothingStudied() = runTest {
+        val repository = FakeLessonStudyRepository(StudiedLesson("lesson_a", 1_000))
+        val holder = loadedHolder(repository)
+
+        repository.unmarkStudied("lesson_a")
+        holder.invalidate()
+        advanceUntilIdle()
+
+        assertEquals(emptySet(), studiedIds(holder))
+    }
+
+    /**
+     * The reason invalidation is not [StudyProgressStateHolder.refresh]: a refresh coalesces into a
+     * read already running, and that read may have reached the table before the reset deleted it.
+     * Invalidation waits for it and reads again, so the stale snapshot cannot be the last word.
+     */
+    @Test
+    fun invalidationIsOrderedAfterAReadThatStartedBeforeTheDelete() = runTest {
+        val repository = FakeLessonStudyRepository(StudiedLesson("lesson_a", 1_000))
+        val holder = loadedHolder(repository)
+        val staleRead = CompletableDeferred<Unit>()
+        repository.staleReadGate = staleRead
+        holder.refresh()
+        runCurrent()
+
+        repository.unmarkStudied("lesson_a")
+        holder.invalidate()
+        staleRead.complete(Unit)
+        advanceUntilIdle()
+
+        assertEquals(emptySet(), studiedIds(holder))
+    }
+
+    /**
+     * After invalidation the previous snapshot is known to be stale, so an unreadable table is
+     * [StudyProgressState.Error] — never the old marks kept on screen as if they were still true.
+     */
+    @Test
+    fun aFailedReadAfterInvalidationIsErrorRatherThanTheStaleMarks() = runTest {
+        val repository = FakeLessonStudyRepository(StudiedLesson("lesson_a", 1_000))
+        val holder = loadedHolder(repository)
+
+        repository.failReads = true
+        holder.invalidate()
+        advanceUntilIdle()
+
+        assertEquals(StudyProgressState.Error, holder.state.value)
+    }
+
     private fun TestScope.loadedHolder(
         repository: FakeLessonStudyRepository,
     ): StudyProgressStateHolder =

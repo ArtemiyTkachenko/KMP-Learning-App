@@ -85,6 +85,25 @@ internal class TopicDetailLearningContentTest {
     }
 
     @Test
+    fun theProductionLifecycleTopicMapsItsFourUnitsAndTenLessonsToStudyRows() = runTest {
+        val repository: LearningContentRepository = BundledLearningContentRepository()
+
+        val items = repository.getActiveUnitsByTopic("lifecycle_navigation").toLearningUnitItems()
+
+        assertEquals(
+            listOf(
+                "unit_component_lifetimes_and_visibility",
+                "unit_recreation_retention_and_restoration",
+                "unit_navigation_state_and_destination_lifetime",
+                "unit_external_entry_and_back_navigation",
+            ),
+            items.map { it.unitId },
+        )
+        assertEquals(listOf(3, 3, 2, 2), items.map { it.activeLessonCount })
+        assertTrue(items.all { it.summary.isNotBlank() })
+    }
+
+    @Test
     fun aTopicWithNoAuthoredLearningContentMapsToAnEmptyStudySection() = runTest {
         val repository: LearningContentRepository = BundledLearningContentRepository()
 

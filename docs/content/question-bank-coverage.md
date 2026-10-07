@@ -3,7 +3,7 @@
 ## Purpose
 
 This document records **what the interview question bank currently covers**, so
-that planning the next expansion does not require re-reading all 480 questions.
+that planning the next expansion does not require re-reading all 493 questions.
 A full coverage review is expensive; this is the checkpoint that replaces it.
 
 `docs/content/content-authoring.md` is the editorial contract and
@@ -87,21 +87,21 @@ its current output is reproduced under **Audit baselines** below.
 
 | Metric | Value |
 |---|---:|
-| Total questions | 489 |
-| ACTIVE | 448 |
+| Total questions | 493 |
+| ACTIVE | 452 |
 | DEPRECATED | 41 |
 | Topics | 17 |
 | Subtopics | 361 (360 ACTIVE, 1 DEPRECATED) |
 | Subtopics with ≥1 active question | 293 (81%) |
 | Subtopics with 0 active questions | 68 (67 ACTIVE, plus the DEPRECATED `koin_multiplatform`) |
-| SINGLE | 442 |
+| SINGLE | 446 |
 | MULTIPLE | 47 |
 | — of which exactly one correct answer | 3 |
-| Answer options | 1962 (483 questions with 4 options, 6 with 5) |
-| Source references | 662 across 356 unique URLs |
+| Answer options | 1978 (487 questions with 4 options, 6 with 5) |
+| Source references | 676 across 365 unique URLs |
 
-Subtopic depth distribution: **68** subtopics have 0 questions, **195** have 1,
-**65** have 2, **22** have 3, **6** have 4, **3** have 5, **1** has 8, and **1**
+Subtopic depth distribution: **68** subtopics have 0 questions, **193** have 1,
+**65** have 2, **24** have 3, **6** have 4, **3** have 5, **1** has 8, and **1**
 has 10.
 
 <!-- END GENERATED: question-bank-headline -->
@@ -126,9 +126,9 @@ where the next expansion should look first.
 
 | Topic | `topicId` | Active | Subtopics | Covered | Empty | Density |
 |---|---|---:|---:|---:|---:|---:|
+| Lifecycle, State & Navigation | `lifecycle_navigation` | 27 | 11 | 11 | 0 | 2.45 |
 | Application Architecture & Design Principles | `architecture` | 40 | 18 | 18 | 0 | 2.22 |
 | Coroutines, Flow & Reactive Programming | `async_reactive` | 57 | 26 | 24 | 2 | 2.19 |
-| Lifecycle, State & Navigation | `lifecycle_navigation` | 23 | 11 | 11 | 0 | 2.09 |
 | UI — Views & Jetpack Compose | `android_ui` | 49 | 24 | 20 | 4 | 2.04 |
 | Android Platform & Application Model | `android_platform` | 16 | 8 | 8 | 0 | 2.00 |
 | Dependency Injection | `dependency_injection` | 38 | 25 | 24 | 1 | 1.52 |
@@ -143,7 +143,7 @@ where the next expansion should look first.
 | Mobile System Design | `mobile_system_design` | 17 | 24 | 16 | 8 | 0.71 |
 | Build System, Modularization & Delivery | `build_delivery` | 17 | 25 | 15 | 10 | 0.68 |
 | Notifications & Push Messaging | `notifications` | 12 | 18 | 11 | 7 | 0.67 |
-| **Total** | | **448** | **361** | **293** | **68** | **1.24** |
+| **Total** | | **452** | **361** | **293** | **68** | **1.25** |
 
 <!-- END GENERATED: question-bank-topic-coverage -->
 
@@ -155,12 +155,10 @@ Two caveats before acting on this table:
   Compose). `kmp` rose from 0.59 to 0.85 when the KMP content-separation
   migration moved its misfiled Questions home and split two mixed ones.
 - **Density hides depth.** Read it together with how many *covered* subtopics
-  hold only one question, which is what density averages away. `async_reactive`
-  is now the one Topic where the two agree: 2.19, and only 6 of its 24 covered
-  subtopics are at one. Everywhere below it they diverge — `kotlin_language` at
-  1.09 has 13 of 19 at one, and `security` and `mobile_system_design` are both
-  above 90%. Use the Concept coverage section, not the density, to judge
-  whether a concept is genuinely tested.
+  hold only one question, which is what density averages away. `lifecycle_navigation`
+  now averages 2.45 across its 11 covered subtopics, but two still hold one question.
+  Use the Concept coverage section, not density alone, to judge whether a distinct
+  engineering decision is actually assessed.
 
 ## Audit baselines
 
@@ -168,7 +166,7 @@ Current output of the `docs/content/question-authoring-playbook.md` Part 3 scrip
 the whole bank:
 
 ```
-correct-longest 187/444 (42%), mean ratio 1.03, over 10% limit: 0
+correct-longest 188/449 (42%), mean ratio 1.03, over 10% limit: 0
 absolutes: distractors 0.23/opt, correct 0.13/opt
 position: {0: 27%, 1: 28%, 2: 26%, 3: 19%, 4: 1%}
 ```
@@ -397,14 +395,21 @@ listed as thin or open.
 
 ### Lifecycle and state
 
-Covered: Activity `onPause` vs `onStop` · Fragment view lifecycle and back-stack
-instance survival · configuration change vs process recreation · `ViewModelStore`
-retention · `onCleared` · `SavedStateHandle` · `TransactionTooLargeException` ·
-`rememberSaveable` vs ViewModel ownership · reproducing process death · launch
-modes · back stack · Navigation 3 state ownership · `popUpTo` · predictive back ·
-App Links.
+Covered: Activity `onPause` vs `onStop` · Fragment view lifecycle, back-stack
+instance survival and separately captured callback bindings · configuration change
+vs process recreation · `ViewModelStore` retention · `onCleared` · `SavedStateHandle`
+· `TransactionTooLargeException` · `rememberSaveable` vs ViewModel ownership ·
+task-preserving process-death testing · launch modes · back stack · Navigation 3
+history versus entry saveable state and ViewModel decorators · `popUpTo` ·
+predictive participation and gesture cancellation · App Links · pending external
+targets through sign-in and account-appropriate return history.
 
-Thin: deep links has one question; Navigation 2 vs 3 has one.
+Deep links and Navigation 2 vs 3 now hold two distinct questions each. Generic
+external-input trust is already assessed under Security; an additional verified-link
+trust variant was omitted. The Activity pairing candidate was also omitted because
+existing visibility coverage already teaches that contract. Multiple stacks,
+adaptive scenes and Dynamic App Links remain reference material in the initial
+learning blueprint, rather than assessment-count targets.
 
 ### Compose and Views
 
@@ -525,15 +530,15 @@ trade-offs.
 - **Check the deprecated table before authoring.** Two subtopics are
   deprecated-only and several others have a retired predecessor whose concept is
   still taken.
-- **Author 15–25% of a new batch as MULTIPLE.** The bank sits at 9.6%
-  (47/489) because the earliest content used fewer, and E24-08 authored none —
+- **Author 15–25% of a new batch as MULTIPLE.** The bank sits at 9.5%
+  (47/493) because the earliest content used fewer, and E24-08 authored none —
   every one of its nineteen questions asks for a single prediction or decision,
   which `SINGLE` expresses honestly. The band to aim for is still 15–25%. Only three questions in the whole bank are
   MULTIPLE with a single correct answer — keep authoring some that way, or
   `selectionMode` stays inferable from the answer key.
 - **Every question in the bank has 4 options except 6 with 5.** Stay at 4 unless
   there is a specific reason.
-- **Source hosts, for reference:** developer.android.com 382 · kotlinlang.org 157
+- **Source hosts, for reference:** developer.android.com 395 · kotlinlang.org 160
   · github.com 37 (kotlinx.serialization, OkHttp, Retrofit and SQLDelight —
   `square.github.io` returns 404, so each project's own repository is the primary
   source — plus four androidx runtime files cited where a contract is stated only
@@ -574,21 +579,21 @@ target subtopic here before authoring to avoid a near-duplicate.
 
 ### Lifecycle, State & Navigation
 
-`lifecycle_navigation` — **23 active** across 11 subtopics (11 covered, 0 empty)
+`lifecycle_navigation` — **27 active** across 11 subtopics (11 covered, 0 empty)
 
 | Subtopic | n | Question IDs |
 |---|---:|---|
 | `activity_lifecycle` — Activity lifecycle | 2 | `activity_lifecycle_001`, `activity_on_pause_vs_on_stop_visibility` |
-| `fragment_lifecycle` — Fragment and Fragment view lifecycle | 2 | `fragment_view_lifecycle_collection`, `fragment_back_stack_view_destroyed_binding` _(deprecated: `fragment_lifecycle_001`)_ |
+| `fragment_lifecycle` — Fragment and Fragment view lifecycle | 3 | `fragment_view_lifecycle_collection`, `fragment_back_stack_view_destroyed_binding`, `fragment_captured_binding_callback_cleanup` _(deprecated: `fragment_lifecycle_001`)_ |
 | `configuration_changes` — Configuration changes | 2 | `configuration_changes_001`, `configuration_change_vs_process_recreation` |
 | `process_death` — Process death and recreation | 1 | `process_death_reproducing_restoration` _(deprecated: `process_death_001`)_ |
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `viewmodel_destination_scope`, `viewmodel_store_configuration_retention`, `viewmodel_clear_owner_finish` |
 | `saved_state` — Saved-state mechanisms | 4 | `saved_state_binder_transaction_limit`, `saved_state_transient_inputs`, `savedstatehandle_process_recreation`, `remember_saveable_vs_viewmodel_ownership` _(deprecated: `saved_state_001`)_ |
 | `lifecycle_aware_apis` — Lifecycle-aware APIs | 1 | `lifecycle_repeat_on_lifecycle` |
 | `navigation_fundamentals` — Navigation and back-stack fundamentals | 4 | `activity_launch_mode_task_stack`, `navigation_fundamentals_001`, `navigation_graph_viewmodel_shared_scope`, `navigation_back_stack_entry_lifetime` |
-| `navigation_2_vs_3` — Navigation 2 vs Navigation 3 | 1 | `navigation3_back_stack_ownership` |
-| `deep_links` — Deep links | 1 | `deep_link_app_link_verification` |
-| `back_handling` — Back handling and predictive back | 2 | `predictive_back_handler_registration`, `navigation_pop_up_to_inclusive` _(deprecated: `back_handling_001`)_ |
+| `navigation_2_vs_3` — Navigation 2 vs Navigation 3 | 2 | `navigation3_back_stack_ownership`, `navigation3_keys_and_entry_state_scopes` |
+| `deep_links` — Deep links | 2 | `deep_link_app_link_verification`, `external_target_account_history_after_sign_in` |
+| `back_handling` — Back handling and predictive back | 3 | `predictive_back_handler_registration`, `navigation_pop_up_to_inclusive`, `predictive_back_cancel_preserves_history` _(deprecated: `back_handling_001`)_ |
 
 ### UI — Views & Jetpack Compose
 

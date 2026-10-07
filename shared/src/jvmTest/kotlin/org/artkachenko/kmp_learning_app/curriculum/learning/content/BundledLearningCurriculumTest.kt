@@ -71,6 +71,10 @@ internal class BundledLearningCurriculumTest {
                 "unit_kotlin_objects_and_state",
                 "unit_kotlin_generic_api_mechanics",
                 "unit_kotlin_java_jvm_boundary",
+                "unit_component_lifetimes_and_visibility",
+                "unit_recreation_retention_and_restoration",
+                "unit_navigation_state_and_destination_lifetime",
+                "unit_external_entry_and_back_navigation",
                 // Android Engineering Lab is Android-first: KMP Units follow every core Unit.
                 "unit_kmp_shared_viewmodels_and_host_lifecycles",
                 "unit_koin_and_dependency_injection_in_kmp",
@@ -114,6 +118,10 @@ internal class BundledLearningCurriculumTest {
                 "Objects and State Modeling",
                 "Generic APIs and Compiler-Assisted Mechanics",
                 "Kotlin at the Java/JVM Boundary",
+                "Component Lifetimes and Visibility",
+                "Recreation, Retention and Restoration",
+                "Navigation State and Destination Lifetime",
+                "External Entry and Back Navigation",
                 "Shared ViewModels and Host Lifecycles",
                 "Koin and Dependency Injection in KMP",
             ),
@@ -121,7 +129,7 @@ internal class BundledLearningCurriculumTest {
         )
 
         // A Unit's home Topic decides where it is browsed, so it is asserted per Unit
-        // rather than as one value: the document now spans six home Topics.
+        // rather than as one value: the document now spans seven home Topics.
         assertEquals(
             listOf(
                 "android_ui",
@@ -158,6 +166,10 @@ internal class BundledLearningCurriculumTest {
                 "kotlin_language",
                 "kotlin_language",
                 "kotlin_language",
+                "lifecycle_navigation",
+                "lifecycle_navigation",
+                "lifecycle_navigation",
+                "lifecycle_navigation",
                 "kmp",
                 "kmp",
             ),
@@ -767,6 +779,26 @@ internal class BundledLearningCurriculumTest {
         )
 
         assertEquals(
+            listOf("lesson_activity_lifecycle_visibility_and_work", "lesson_fragment_and_view_lifecycles", "lesson_lifecycle_aware_work_and_collection"),
+            unit("unit_component_lifetimes_and_visibility").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf("lesson_recreation_configuration_process_and_dismissal", "lesson_viewmodel_owner_and_scope", "lesson_saved_state_and_reconstruction"),
+            unit("unit_recreation_retention_and_restoration").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf("lesson_navigation_back_stacks_tasks_and_entry_lifetimes", "lesson_navigation_2_vs_3_state_ownership"),
+            unit("unit_navigation_state_and_destination_lifetime").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf("lesson_deep_links_app_links_and_reconstruction", "lesson_back_navigation_and_predictive_back"),
+            unit("unit_external_entry_and_back_navigation").lessons.map { it.id },
+        )
+
+        assertEquals(
             listOf(
                 "lesson_kmp_viewmodel_owners_across_hosts",
                 "lesson_kmp_lifecycle_collection_across_hosts",
@@ -796,6 +828,36 @@ internal class BundledLearningCurriculumTest {
                 "Choosing a Strategy for a Shared Graph",
             ),
             unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.title },
+        )
+    }
+
+    @Test
+    fun lifecycleLessonsKeepTheirBlueprintPracticeAndSupportingMappings() = runTest {
+        val lessons = units().filter { it.topicId == "lifecycle_navigation" }.flatMap { it.lessons }
+        assertEquals(
+            mapOf(
+                "lesson_activity_lifecycle_visibility_and_work" to (listOf("activity_lifecycle") to
+                    listOf("lifecycle_aware_apis", "configuration_changes", "process_death", "android_main_thread")),
+                "lesson_fragment_and_view_lifecycles" to (listOf("fragment_lifecycle") to
+                    listOf("lifecycle_aware_apis", "viewmodel_lifecycle", "navigation_fundamentals")),
+                "lesson_lifecycle_aware_work_and_collection" to (listOf("lifecycle_aware_apis") to
+                    listOf("activity_lifecycle", "fragment_lifecycle", "coroutine_scope", "flow_collection")),
+                "lesson_recreation_configuration_process_and_dismissal" to (listOf("configuration_changes", "process_death") to
+                    listOf("activity_lifecycle", "viewmodel_lifecycle", "saved_state", "android_process_model")),
+                "lesson_viewmodel_owner_and_scope" to (listOf("viewmodel_lifecycle") to
+                    listOf("configuration_changes", "process_death", "navigation_fundamentals", "saved_state", "state_ownership")),
+                "lesson_saved_state_and_reconstruction" to (listOf("saved_state") to
+                    listOf("process_death", "configuration_changes", "viewmodel_lifecycle", "compose_state")),
+                "lesson_navigation_back_stacks_tasks_and_entry_lifetimes" to (listOf("navigation_fundamentals") to
+                    listOf("viewmodel_lifecycle", "saved_state", "back_handling", "android_intents", "android_components")),
+                "lesson_navigation_2_vs_3_state_ownership" to (listOf("navigation_2_vs_3") to
+                    listOf("navigation_fundamentals", "viewmodel_lifecycle", "saved_state", "compose_state")),
+                "lesson_deep_links_app_links_and_reconstruction" to (listOf("deep_links") to
+                    listOf("navigation_fundamentals", "android_intents", "saved_state")),
+                "lesson_back_navigation_and_predictive_back" to (listOf("back_handling") to
+                    listOf("navigation_fundamentals", "lifecycle_aware_apis", "coroutine_cancellation")),
+            ),
+            lessons.associate { it.id to (it.primarySubtopicIds to it.supportingSubtopicIds) },
         )
     }
 
@@ -3662,7 +3724,7 @@ internal class BundledLearningCurriculumTest {
         // not track a moving branch such as androidx-main. Other repositories may pin a
         // release tag instead (kotlinx.coroutines cites 1.11.0); this guards only AndroidX.
         val androidxSourceRef = Regex(
-            """^https://(?:raw\.githubusercontent\.com/androidx/androidx|github\.com/androidx/androidx/(?:blob|raw))/([^/]+)/""",
+            """^https://(?:(?:raw\.githubusercontent\.com/androidx/androidx|github\.com/androidx/androidx/(?:blob|raw))/|android\.googlesource\.com/platform/frameworks/support/\+/)([^/]+)/""",
         )
         val fullCommitSha = Regex("[0-9a-f]{40}")
         val citations = units().flatMap { it.lessons }.flatMap { lesson ->

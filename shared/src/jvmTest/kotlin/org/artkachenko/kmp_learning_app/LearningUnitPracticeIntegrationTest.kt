@@ -372,7 +372,55 @@ internal class LearningUnitPracticeIntegrationTest {
                     }
                 }
             }
-            // KMP Units are authored after every core Unit, so exhausting the Kotlin Units hands
+            // Lifecycle learning is the final Android core Topic before the optional KMP tail.
+            val lifecycleUnits = BundledLearningContentRepository().getActiveUnitsByTopic("lifecycle_navigation")
+            assertEquals(
+                listOf(
+                    "unit_component_lifetimes_and_visibility",
+                    "unit_recreation_retention_and_restoration",
+                    "unit_navigation_state_and_destination_lifetime",
+                    "unit_external_entry_and_back_navigation",
+                ),
+                lifecycleUnits.map { it.id },
+            )
+            assertEquals(listOf(3, 3, 2, 2), lifecycleUnits.map { it.lessons.size })
+            val lifecycleTopic = topic("lifecycle_navigation")
+            val lifecycleParents = lifecycleUnits.associate { it.id to unit(it.id) }
+            val lifecycleLessonCount = lifecycleUnits.sumOf { it.lessons.size }
+            suspend fun awaitLifecycleTopic(count: Int) {
+                lifecycleTopic.uiState.await { state ->
+                    state is TopicDetailUiState.Content &&
+                        (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                        StudyProgressSummary.Progress(count, lifecycleLessonCount)
+                }
+            }
+            awaitLifecycleTopic(0)
+            var lifecycleStudiedCount = 0
+            lifecycleUnits.forEach { lifecycleUnit ->
+                lifecycleUnit.lessons.forEachIndexed { index, lesson ->
+                    awaitNext(lifecycleUnit.id, lesson.id)
+                    val lifecycleReader = lesson(lifecycleUnit.id, lesson.id)
+                    lifecycleReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
+                    }
+                    lifecycleReader.toggleStudied()
+                    lifecycleReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                                it.isStudied && !it.isPending
+                            } == true
+                    }
+                    lifecycleStudiedCount += 1
+                    awaitLifecycleTopic(lifecycleStudiedCount)
+                    lifecycleParents.getValue(lifecycleUnit.id).uiState.await { state ->
+                        state is LearningUnitUiState.Content &&
+                            (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                            StudyProgressSummary.Progress(index + 1, lifecycleUnit.lessons.size)
+                    }
+                }
+            }
+            // KMP Units are authored after every core Unit, so exhausting the Lifecycle Units hands
             // over to the KMP Units rather than to Complete.
             val kmpUnits = BundledLearningContentRepository().getActiveUnitsByTopic("kmp")
             assertEquals(
@@ -449,8 +497,9 @@ internal class LearningUnitPracticeIntegrationTest {
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
             // architecture Units, 33 in the six dependency-injection Units, 9 in the four Kotlin
-            // Units and 4 in the two KMP Units, less the one that was just un-studied.
-            assertEquals(146, rebuilt.getStudiedLessons().size)
+            // Units, 10 in the four Lifecycle Units and 4 in the two KMP Units, less the one
+            // that was just un-studied.
+            assertEquals(156, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
@@ -614,6 +663,11 @@ internal class LearningUnitPracticeIntegrationTest {
                         "interface_boundaries",
                     ) to 9
                 ),
+                // Supporting bridges must not expand Lifecycle Unit practice.
+                "unit_component_lifetimes_and_visibility" to (setOf("activity_lifecycle", "fragment_lifecycle", "lifecycle_aware_apis") to 6),
+                "unit_recreation_retention_and_restoration" to (setOf("configuration_changes", "process_death", "viewmodel_lifecycle", "saved_state") to 10),
+                "unit_navigation_state_and_destination_lifetime" to (setOf("navigation_fundamentals", "navigation_2_vs_3") to 6),
+                "unit_external_entry_and_back_navigation" to (setOf("deep_links", "back_handling") to 5),
             )
             val content = BundledLearningContentRepository()
             expected.forEach { (unitId, expectation) ->

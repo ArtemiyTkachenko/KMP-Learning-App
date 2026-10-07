@@ -52,8 +52,8 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `ba2c0e8e651742f1faa93a0d6b2f62208a227df2d4f577b8ddb474cd41e05ec8` |
-| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `88969d34ef9d4ea52ef08e35166150a401e45ba758572bc91633d4551d4da21b` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `ad7cc4371dbeaa6768c2952fa005db9d3c727609cc641d45fdde90d42cba8ab5` |
+| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `5ce2d06641e57f8de71d9ac8cbd1f419e572085a2bde6e28e2d39c99c1971caf` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
 because editing lesson content can change whether the material still teaches an
@@ -68,14 +68,14 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 36 |
-| Active lessons in those units | 147 |
-| Distinct primary subtopics | 98 |
-| Distinct supporting subtopics | 127 |
-| Unique active questions reached through primary mappings | 208 |
-| Primary subtopics with at least one active question | 98 |
+| Active learning units | 40 |
+| Active lessons in those units | 157 |
+| Distinct primary subtopics | 109 |
+| Distinct supporting subtopics | 131 |
+| Unique active questions reached through primary mappings | 235 |
+| Primary subtopics with at least one active question | 109 |
 | Primary subtopics with no active question | 0 |
-| Active questions in the bank | 448 |
+| Active questions in the bank | 452 |
 | Deprecated questions excluded from this report | 41 |
 
 The two bank-size rows are context, not a target. The learning curriculum is
@@ -125,6 +125,10 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Objects and State Modeling (`unit_kotlin_objects_and_state`) | 3 | 9 | 11 | 2 | 0 | 13 |
 | Generic APIs and Compiler-Assisted Mechanics (`unit_kotlin_generic_api_mechanics`) | 3 | 5 | 6 | 4 | 0 | 10 |
 | Kotlin at the Java/JVM Boundary (`unit_kotlin_java_jvm_boundary`) | 1 | 3 | 3 | 2 | 0 | 5 |
+| Component Lifetimes and Visibility (`unit_component_lifetimes_and_visibility`) | 3 | 3 | 4 | 2 | 0 | 6 |
+| Recreation, Retention and Restoration (`unit_recreation_retention_and_restoration`) | 3 | 4 | 7 | 3 | 0 | 10 |
+| Navigation State and Destination Lifetime (`unit_navigation_state_and_destination_lifetime`) | 2 | 2 | 4 | 2 | 0 | 6 |
+| External Entry and Back Navigation (`unit_external_entry_and_back_navigation`) | 2 | 2 | 4 | 1 | 0 | 5 |
 | Shared ViewModels and Host Lifecycles (`unit_kmp_shared_viewmodels_and_host_lifecycles`) | 2 | 2 | 1 | 2 | 0 | 3 |
 | Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | 2 | 2 | 1 | 2 | 1 | 4 |
 
@@ -2957,6 +2961,229 @@ Supporting context — not primary coverage:
 | `kotlin_generics` — Generics and variance | 3 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `kotlin_functions` — Functions and arguments | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
 | `kotlin_inline_functions` — inline, noinline, and crossinline | 2 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
+
+### Component Lifetimes and Visibility (`unit_component_lifetimes_and_visibility`)
+
+Home topic: `lifecycle_navigation` — Lifecycle, State & Navigation.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 4 | `activity_lifecycle_001`, `activity_on_pause_vs_on_stop_visibility`, `fragment_back_stack_view_destroyed_binding`, `fragment_view_lifecycle_collection` |
+| APPLIED | 2 | `fragment_captured_binding_callback_cleanup`, `lifecycle_repeat_on_lifecycle` |
+| ADVANCED | 0 | — |
+
+#### Activity Lifecycle: Visible, Interactive and Gone (`lesson_activity_lifecycle_visibility_and_work`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `activity_lifecycle` — Activity lifecycle | 2 | 0 | 0 | 2 | `activity_lifecycle_001`, `activity_on_pause_vs_on_stop_visibility` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `lifecycle_aware_apis` — Lifecycle-aware APIs | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `process_death` — Process death and recreation | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 3 | `android_platform` — Android Platform & Application Model |
+
+#### A Fragment Has an Instance Lifecycle and a View Lifecycle (`lesson_fragment_and_view_lifecycles`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `fragment_lifecycle` — Fragment and Fragment view lifecycle | 2 | 1 | 0 | 3 | `fragment_back_stack_view_destroyed_binding`, `fragment_captured_binding_callback_cleanup`, `fragment_view_lifecycle_collection` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `lifecycle_aware_apis` — Lifecycle-aware APIs | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `navigation_fundamentals` — Navigation and back-stack fundamentals | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+#### Lifecycle-Aware Work: Follow the Owner, Not the Screen Name (`lesson_lifecycle_aware_work_and_collection`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `lifecycle_aware_apis` — Lifecycle-aware APIs | 0 | 1 | 0 | 1 | `lifecycle_repeat_on_lifecycle` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `activity_lifecycle` — Activity lifecycle | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `fragment_lifecycle` — Fragment and Fragment view lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `coroutine_scope` — CoroutineScope | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `flow_collection` — Flow collection | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+### Recreation, Retention and Restoration (`unit_recreation_retention_and_restoration`)
+
+Home topic: `lifecycle_navigation` — Lifecycle, State & Navigation.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 7 | `configuration_change_vs_process_recreation`, `configuration_changes_001`, `process_death_reproducing_restoration`, `saved_state_binder_transaction_limit`, `savedstatehandle_process_recreation`, `viewmodel_clear_owner_finish`, `viewmodel_store_configuration_retention` |
+| APPLIED | 3 | `remember_saveable_vs_viewmodel_ownership`, `saved_state_transient_inputs`, `viewmodel_destination_scope` |
+| ADVANCED | 0 | — |
+
+#### Configuration Change, Process Death and Permanent Dismissal (`lesson_recreation_configuration_process_and_dismissal`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `configuration_changes` — Configuration changes | 2 | 0 | 0 | 2 | `configuration_change_vs_process_recreation`, `configuration_changes_001` |
+| `process_death` — Process death and recreation | 1 | 0 | 0 | 1 | `process_death_reproducing_restoration` |
+| **Lesson total (unique)** | 3 | 0 | 0 | 3 | `configuration_change_vs_process_recreation`, `configuration_changes_001`, `process_death_reproducing_restoration` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `activity_lifecycle` — Activity lifecycle | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `android_process_model` — Application and process model | 2 | `android_platform` — Android Platform & Application Model |
+
+#### ViewModel Lifetime Is the Lifetime of Its Owner (`lesson_viewmodel_owner_and_scope`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `viewmodel_lifecycle` — ViewModel lifecycle | 2 | 1 | 0 | 3 | `viewmodel_clear_owner_finish`, `viewmodel_destination_scope`, `viewmodel_store_configuration_retention` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `process_death` — Process death and recreation | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `navigation_fundamentals` — Navigation and back-stack fundamentals | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `state_ownership` — State ownership | 8 | `architecture` — Application Architecture & Design Principles |
+
+#### Saved State Is a Reconstruction Hint, Not a Database (`lesson_saved_state_and_reconstruction`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `saved_state` — Saved-state mechanisms | 2 | 2 | 0 | 4 | `remember_saveable_vs_viewmodel_ownership`, `saved_state_binder_transaction_limit`, `saved_state_transient_inputs`, `savedstatehandle_process_recreation` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `process_death` — Process death and recreation | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
+
+### Navigation State and Destination Lifetime (`unit_navigation_state_and_destination_lifetime`)
+
+Home topic: `lifecycle_navigation` — Lifecycle, State & Navigation.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 4 | `activity_launch_mode_task_stack`, `navigation3_keys_and_entry_state_scopes`, `navigation_back_stack_entry_lifetime`, `navigation_fundamentals_001` |
+| APPLIED | 2 | `navigation3_back_stack_ownership`, `navigation_graph_viewmodel_shared_scope` |
+| ADVANCED | 0 | — |
+
+#### Back Stacks, Tasks and Entry Lifetimes (`lesson_navigation_back_stacks_tasks_and_entry_lifetimes`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `navigation_fundamentals` — Navigation and back-stack fundamentals | 3 | 1 | 0 | 4 | `activity_launch_mode_task_stack`, `navigation_back_stack_entry_lifetime`, `navigation_fundamentals_001`, `navigation_graph_viewmodel_shared_scope` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `back_handling` — Back handling and predictive back | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `android_intents` — Intents | 2 | `android_platform` — Android Platform & Application Model |
+| `android_components` — Android application components | 2 | `android_platform` — Android Platform & Application Model |
+
+#### Navigation 2 and Navigation 3: Who Owns the Stack? (`lesson_navigation_2_vs_3_state_ownership`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `navigation_2_vs_3` — Navigation 2 vs Navigation 3 | 1 | 1 | 0 | 2 | `navigation3_back_stack_ownership`, `navigation3_keys_and_entry_state_scopes` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `navigation_fundamentals` — Navigation and back-stack fundamentals | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `compose_state` — Compose state | 5 | `android_ui` — UI — Views & Jetpack Compose |
+
+### External Entry and Back Navigation (`unit_external_entry_and_back_navigation`)
+
+Home topic: `lifecycle_navigation` — Lifecycle, State & Navigation.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 4 | `deep_link_app_link_verification`, `navigation_pop_up_to_inclusive`, `predictive_back_cancel_preserves_history`, `predictive_back_handler_registration` |
+| APPLIED | 1 | `external_target_account_history_after_sign_in` |
+| ADVANCED | 0 | — |
+
+#### Deep Links and App Links: Entering the Right State (`lesson_deep_links_app_links_and_reconstruction`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `deep_links` — Deep links | 1 | 1 | 0 | 2 | `deep_link_app_link_verification`, `external_target_account_history_after_sign_in` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `navigation_fundamentals` — Navigation and back-stack fundamentals | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `android_intents` — Intents | 2 | `android_platform` — Android Platform & Application Model |
+| `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+#### Back Is a Navigation Transition, Including Predictive Back (`lesson_back_navigation_and_predictive_back`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `back_handling` — Back handling and predictive back | 3 | 0 | 0 | 3 | `navigation_pop_up_to_inclusive`, `predictive_back_cancel_preserves_history`, `predictive_back_handler_registration` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `navigation_fundamentals` — Navigation and back-stack fundamentals | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `lifecycle_aware_apis` — Lifecycle-aware APIs | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 
 ### Shared ViewModels and Host Lifecycles (`unit_kmp_shared_viewmodels_and_host_lifecycles`)
 

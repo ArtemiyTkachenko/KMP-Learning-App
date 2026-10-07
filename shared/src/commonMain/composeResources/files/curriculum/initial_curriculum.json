@@ -2628,7 +2628,7 @@
       "correctAnswerIds": [
         "predictive_back_handler_registration_d"
       ],
-      "explanation": "Predictive back shows the user where a gesture will land while their finger is still down, so the system has to know in advance whether the app will handle Back and what it would show. A callback registered with OnBackPressedDispatcher, or BackHandler in Compose, supplies that ahead of time. Overriding onBackPressed() reports the decision only once the gesture has committed, leaving nothing to preview, which is why intercepting Back through that override is no longer supported.",
+      "explanation": "Predictive Back needs an advance decision about whether the app handles Back, rather than a decision made only by a legacy onBackPressed override at commitment. Registering supported callbacks and maintaining their enabled state establishes participation and dispatch policy. It does not itself render a destination preview: ordinary Compose BackHandler supplies a committed action, while navigation-library integration or custom progress handling supplies in-app rendering. Consuming Back can suppress system predictive animations. Migrating away from legacy interception is the predictive-back support contract.",
       "sources": [
         {
           "title": "Predictive Back Gesture",
@@ -2924,11 +2924,11 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "APPLIED",
+      "level": "FOUNDATION",
       "correctAnswerIds": [
         "navigation_pop_up_to_inclusive_b"
       ],
-      "explanation": "Navigating forward puts home on top of sign-in, so Back simply pops back to it. popUpTo names a destination to pop up to as part of the same navigation, and inclusive says to remove that destination too, leaving the user on home with nothing beneath it. launchSingleTop only avoids stacking two copies of the same destination, finishing the Activity would tear down the whole host, and the start destination controls where the graph begins rather than what Back does here.",
+      "explanation": "Navigating forward puts home above sign-in, so Back can return to it. popUpTo removes entries above its named target; inclusive also removes the sign-in target itself as home is added. Entries below sign-in can remain, so this removes sign-in from the return path without necessarily clearing all history. launchSingleTop prevents a duplicate at the top rather than removing sign-in; finishing the Activity removes the host, and choosing a start destination does not perform this history change.",
       "sources": [
         {
           "title": "Navigation Back Stack",
@@ -17193,7 +17193,7 @@
       "id": "process_death_reproducing_restoration",
       "topicId": "lifecycle_navigation",
       "subtopicId": "process_death",
-      "text": "A team wants to verify that a screen restores correctly after system-initiated process death. Which procedure actually reproduces that case?",
+      "text": "A team wants to verify that a screen restores correctly after system-initiated process death. Assume tooling termination is a verified kill of the background process that preserves its task and Recents entry, rather than a force-stop. Which procedure actually reproduces that case?",
       "answers": [
         {
           "id": "process_death_reproducing_restoration_a",
@@ -17213,15 +17213,23 @@
         }
       ],
       "selectionMode": "SINGLE",
-      "level": "APPLIED",
+      "level": "FOUNDATION",
       "correctAnswerIds": [
         "process_death_reproducing_restoration_b"
       ],
-      "explanation": "Process death is the case where saved instance state is restored but everything the process held is gone. Reproducing it means genuinely killing the process while the task stays in Recents and then resuming that task — what the tooling's terminate action or adb shell am kill does. \"Don't keep activities\" destroys the Activity but leaves the process running, so application singletons, the dependency graph and any static cache are still populated when the screen is rebuilt — and depending on one of those is exactly the bug that survives this setting and then fails in the field. Rotation is a configuration change within the same process, and finishing the Activity ends the task instead of restoring it.",
+      "explanation": "The chosen procedure exercises process reconstruction only if the old background process really ends while the task and its saved state remain available for return through Recents. Tooling termination must preserve that task; arbitrary termination or force-stop is not an equivalent restoration test. The new process has no old singleton or cache instances. \"Don't keep activities\" destroys Activities without itself killing the process, and rotation normally replaces the UI within the same process. finish() permanently removes that Activity instead of restoring its stopped-process state; other Activities in its task can remain.",
       "sources": [
         {
           "title": "Save UI states",
           "url": "https://developer.android.com/topic/libraries/architecture/saving-states"
+        },
+        {
+          "title": "Tasks and the back stack",
+          "url": "https://developer.android.com/guide/components/activities/tasks-and-back-stack"
+        },
+        {
+          "title": "Developer options: Don't keep activities",
+          "url": "https://developer.android.com/studio/debug/dev-options"
         }
       ],
       "status": "ACTIVE"
@@ -21110,6 +21118,186 @@
         {
           "title": "Kotlin inheritance — Overriding rules",
           "url": "https://kotlinlang.org/docs/inheritance.html#overriding-rules"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "fragment_captured_binding_callback_cleanup",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "fragment_lifecycle",
+      "text": "In onViewCreated, a Fragment copies its binding to a local val and registers a callback with a long-lived download tracker; the callback writes through that local binding. The tracker has no lifecycle integration. onDestroyView clears _binding, but the tracker still retains the callback and can queue deliveries. Which change prevents obsolete View updates and releases the registration when that View ends?",
+      "answers": [
+        {
+          "id": "fragment_captured_binding_callback_cleanup_a",
+          "text": "Keep the registration until onDestroy and check isAdded before writing through the local binding."
+        },
+        {
+          "id": "fragment_captured_binding_callback_cleanup_b",
+          "text": "Keep the registration and check _binding != null before writing through the captured local binding."
+        },
+        {
+          "id": "fragment_captured_binding_callback_cleanup_c",
+          "text": "Move the callback and its captured binding into the Fragment ViewModel, clearing them in onCleared."
+        },
+        {
+          "id": "fragment_captured_binding_callback_cleanup_d",
+          "text": "Unregister in onDestroyView and invalidate that View's callback so queued deliveries skip its binding."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "fragment_captured_binding_callback_cleanup_d"
+      ],
+      "explanation": "Clearing _binding removes one reference; it does not change the separate local value captured by the retained callback. End the registration with the View and guard late deliveries against that ended View lifetime. A non-null replacement binding or an attached Fragment does not make the old binding valid. Moving it into a ViewModel extends the reference lifetime rather than fixing the target.",
+      "sources": [
+        {
+          "title": "Fragment lifecycle: View destruction and reference cleanup",
+          "url": "https://developer.android.com/guide/fragments/lifecycle"
+        },
+        {
+          "title": "View binding in fragments",
+          "url": "https://developer.android.com/topic/libraries/view-binding"
+        },
+        {
+          "title": "Kotlin lambdas and closures",
+          "url": "https://kotlinlang.org/docs/lambdas.html"
+        },
+        {
+          "title": "ViewModel overview: avoid retaining lifecycle-related references",
+          "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "navigation3_keys_and_entry_state_scopes",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "navigation_2_vs_3",
+      "text": "An Android Compose editor uses Navigation 3 1.2.0 and the Lifecycle Navigation 3 add-on 2.11.0 beneath a ComponentActivity. Serializable NavKey visits have distinct contentKeys, and rememberNavBackStack restores their order. NavDisplay is given an empty entryDecorators list. Each retained visit needs its own saveable text-field state when its content leaves composition and its own ViewModel store. Which arrangement supplies those entry responsibilities?",
+      "answers": [
+        {
+          "id": "navigation3_keys_and_entry_state_scopes_a",
+          "text": "Add the saveable-state-holder decorator followed by the ViewModel-store decorator to entryDecorators."
+        },
+        {
+          "id": "navigation3_keys_and_entry_state_scopes_b",
+          "text": "Add the ViewModel-store decorator alone; restoring the keys supplies the entry saveable UI values."
+        },
+        {
+          "id": "navigation3_keys_and_entry_state_scopes_c",
+          "text": "Add the saveable-state-holder decorator alone; viewModel() will then select an entry-owned store."
+        },
+        {
+          "id": "navigation3_keys_and_entry_state_scopes_d",
+          "text": "Keep entryDecorators empty and give the Activity ViewModel the keys; the display supplies both scopes."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "FOUNDATION",
+      "correctAnswerIds": [
+        "navigation3_keys_and_entry_state_scopes_a"
+      ],
+      "explanation": "Saving the back-stack keys is separate from supplying entry state owners. rememberSaveableStateHolderNavEntryDecorator preserves entry-associated saveable UI state, and rememberViewModelStoreNavEntryDecorator supplies an entry ViewModelStoreOwner. Include the saveable decorator first, including for the add-on's saved-state integration. Without an entry store owner, viewModel() uses an available surrounding owner such as the Activity; saved keys alone do not create either arrangement.",
+      "sources": [
+        {
+          "title": "Save and manage Navigation 3 state",
+          "url": "https://developer.android.com/guide/navigation/navigation-3/save-state"
+        },
+        {
+          "title": "Navigation 3 runtime decorator API",
+          "url": "https://developer.android.com/reference/kotlin/androidx/navigation3/runtime/SaveableStateHolderNavEntryDecorator"
+        },
+        {
+          "title": "Lifecycle Navigation 3 ViewModel decorator API",
+          "url": "https://developer.android.com/reference/kotlin/androidx/lifecycle/viewmodel/navigation3/ViewModelStoreNavEntryDecorator"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "external_target_account_history_after_sign_in",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "deep_links",
+      "text": "A workspace app receives a link to document D42 while signed out. Its parser accepts the route and ID, but access has not been checked for the next account. Old private entries from account A remain in the navigation owner. Product requires resuming the requested document after sign-in if permitted, with Back leading to the new account's document list and no return to sign-in or A's screens. Which success policy meets these requirements?",
+      "answers": [
+        {
+          "id": "external_target_account_history_after_sign_in_a",
+          "text": "Discard D42 during sign-in, clear A's history, and open the new account's document list on success."
+        },
+        {
+          "id": "external_target_account_history_after_sign_in_b",
+          "text": "Retain D42, check the new account's access, and append its list and document above A's retained entries."
+        },
+        {
+          "id": "external_target_account_history_after_sign_in_c",
+          "text": "Retain D42, check the new account's access, replace history with its list and document, then clear the pending target."
+        },
+        {
+          "id": "external_target_account_history_after_sign_in_d",
+          "text": "Retain D42 and its parser approval, replace history with the new list and document, and skip the account access check."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "external_target_account_history_after_sign_in_c"
+      ],
+      "explanation": "Keep the accepted target through authentication, then check resource access for the account that actually signed in. Route acceptance is not authorization. The stated return policy requires replacing account A's private history and removing sign-in, not merely pushing the new document above them. Clear the pending request after handling it; cancellation should also clear it and lead to a safe destination instead of replaying the request.",
+      "sources": [
+        {
+          "title": "Unsafe use of deep links: validation and current access checks",
+          "url": "https://developer.android.com/privacy-and-security/risks/unsafe-use-of-deeplinks"
+        },
+        {
+          "title": "Conditional navigation through login",
+          "url": "https://developer.android.com/guide/navigation/use-graph/conditional"
+        },
+        {
+          "title": "Navigation and the back stack",
+          "url": "https://developer.android.com/guide/navigation/backstack"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "predictive_back_cancel_preserves_history",
+      "topicId": "lifecycle_navigation",
+      "subtopicId": "back_handling",
+      "text": "A Compose drawing editor uses PredictiveBackHandler with Activity 1.13.0 to preview leaving an unsaved sketch. The handler collects gesture progress to translate the canvas. The user reverses the swipe and the progress collection throws CancellationException. What should the handler do with the preview and the navigation entry?",
+      "answers": [
+        {
+          "id": "predictive_back_cancel_preserves_history_a",
+          "text": "Reset the translation and pop the entry, because cancellation ends collection just as commitment does."
+        },
+        {
+          "id": "predictive_back_cancel_preserves_history_b",
+          "text": "Reset the translation and keep the entry; perform the lasting pop only after normal collection completion."
+        },
+        {
+          "id": "predictive_back_cancel_preserves_history_c",
+          "text": "Keep the partial translation and the entry until the next swipe, because progress remains the current preview."
+        },
+        {
+          "id": "predictive_back_cancel_preserves_history_d",
+          "text": "Pop the entry while collecting progress and reconstruct it on cancellation, so preview follows the stack."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "FOUNDATION",
+      "correctAnswerIds": [
+        "predictive_back_cancel_preserves_history_b"
+      ],
+      "explanation": "Cancellation means the gesture did not commit. Reset the transient preview and preserve the sketch's entry rather than treating the exception as a successful completion. Perform the lasting navigation change after the progress Flow completes normally. A pop during progress changes lasting history before the user decides.",
+      "sources": [
+        {
+          "title": "Predictive Back in Compose: progress, commitment and cancellation",
+          "url": "https://developer.android.com/guide/navigation/custom-back/predictive-back-gesture"
+        },
+        {
+          "title": "PredictiveBackHandler API contract",
+          "url": "https://developer.android.com/reference/kotlin/androidx/activity/compose/PredictiveBackHandler.composable"
         }
       ],
       "status": "ACTIVE"

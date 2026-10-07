@@ -127,6 +127,7 @@ does not cover: [CI](docs/workflows/ci.md).
 **Content — learning** — the explanatory study material, not the question bank:
 [learning-content authoring contract](docs/content/learning-content-authoring.md) ·
 [Kotlin/JVM learning blueprint](docs/content/kotlin-language-jvm-learning-blueprint.md) ·
+[Lifecycle/State/Navigation learning blueprint](docs/content/lifecycle-state-navigation-learning-blueprint.md) ·
 [Compose learning blueprint](docs/content/compose-learning-blueprint.md) ·
 [Compose Units 2-6 plan](docs/content/compose-units-2-6-plan.md) ·
 [Compose Units 7-12 plan](docs/content/compose-units-7-12-plan.md) ·

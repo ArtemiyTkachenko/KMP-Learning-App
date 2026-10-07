@@ -22973,6 +22973,1857 @@
       "status": "ACTIVE"
     },
     {
+      "id": "unit_component_lifetimes_and_visibility",
+      "topicId": "lifecycle_navigation",
+      "title": "Component Lifetimes and Visibility",
+      "summary": "Activity visibility, Fragment View availability, and owner destruction impose different limits on UI work. Selecting the right owner and active state keeps resources and observations aligned with the UI that uses them.",
+      "lessons": [
+        {
+          "id": "lesson_activity_lifecycle_visibility_and_work",
+          "title": "Activity Lifecycle: Visible, Interactive and Gone",
+          "primarySubtopicIds": [
+            "activity_lifecycle"
+          ],
+          "supportingSubtopicIds": [
+            "lifecycle_aware_apis",
+            "configuration_changes",
+            "process_death",
+            "android_main_thread"
+          ],
+          "summary": "An Activity can lose foreground interaction while remaining visible, and it can stop without being destroyed. Resource use should follow the lifecycle condition the feature requires; process termination cannot be made safe by waiting for a final callback.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "title": "Visibility and interaction are different conditions",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider a route preview that draws the latest location while the screen is visible. A dialog-themed Activity opens above it, leaving part of the map exposed. The map still needs updates, even though the user is interacting with the dialog. If those updates stop whenever the map Activity pauses, the visible map freezes. If they stop when it becomes hidden, the behavior matches the requirement."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An Activity lifecycle describes the availability of one Activity instance. Creation establishes that instance and its UI. Starting makes it visible. Resuming puts it in the state used for foreground interaction. Pausing takes it out of that state; stopping means it is no longer visible. Destruction ends the instance. Moving away and returning can repeat start and resume transitions without creating a new instance."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Callback",
+                    "What changes",
+                    "Typical consequence"
+                  ],
+                  "rows": [
+                    [
+                      "onCreate",
+                      "A new Activity instance is being initialized.",
+                      "Create the UI and connect this instance to its state sources."
+                    ],
+                    [
+                      "onStart",
+                      "The Activity becomes visible.",
+                      "Enable work required while its UI is visible."
+                    ],
+                    [
+                      "onResume",
+                      "The Activity enters the resumed state.",
+                      "Enable work that requires this level of foreground availability."
+                    ],
+                    [
+                      "onPause",
+                      "The Activity leaves the resumed state. It can remain visible.",
+                      "Release or pause work whose requirement ends here."
+                    ],
+                    [
+                      "onStop",
+                      "The Activity is no longer visible.",
+                      "Stop visibility-dependent updates and release their registrations."
+                    ],
+                    [
+                      "onDestroy",
+                      "The Activity instance is being destroyed through normal lifecycle dispatch.",
+                      "Clean up instance-owned references; do not rely on this callback for durable saving."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "AndroidX Lifecycle expresses these transitions as states. RESUMED is above STARTED, so a resumed owner also satisfies an at-least-STARTED condition. A paused Activity ordinarily has state STARTED; a stopped Activity has state CREATED. There is no separate PAUSED or STOPPED value in Lifecycle.State. The state tells an observer which conditions currently hold, while a callback tells it that a transition occurred."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A separate translucent or dialog-themed Activity can cause onPause without onStop on the Activity underneath, because that Activity remains partly visible. An ordinary dialog inside the same Activity is a different arrangement and does not, by itself, create this two-Activity lifecycle transition. Pressing Home or placing a fully opaque Activity above the screen normally takes it through pause and stop."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Activity callbacks run on the main thread. A long database write, blocking network call, or expensive calculation in onPause blocks the UI transition; the next Activity cannot resume until that callback returns. Keep release actions short. A callback may ask another component to save or schedule work, but it must not wait there for slow completion."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Paused does not mean hidden, and stopped does not mean destroyed. Choose the end of visible work separately from the end of foreground-interaction work."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Pair resource acquisition with the condition it needs",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "For the route preview, STARTED is a useful minimum state: the displayed position should keep changing while the map remains visible. For a scanner, the product may require scanning only while its screen is resumed. These choices come from the feature, rather than from a fixed rule that every resource belongs in onResume. Location permissions, camera availability, and other resource-specific constraints still apply."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A registration needs a matching release. Acquiring at start and releasing at pause leaves a visible but paused screen without its resource. Acquiring at resume and releasing only at stop keeps the resource during a period when the feature no longer needs it. Repeated transitions also mean registration must not accumulate multiple listeners."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This reusable observer starts and stops an invented location feed with visibility. The Android UI supplies the LifecycleOwner, which can be a ComponentActivity. startListening registers a listener without blocking, and stopListening unregisters it and tolerates repeated calls. Permission handling and the location provider belong in the feed implementation; lifecycle code expresses only when that feed is needed."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import androidx.lifecycle.DefaultLifecycleObserver\nimport androidx.lifecycle.LifecycleOwner\n\ninterface MapLocationFeed {\n    fun startListening()\n    fun stopListening()\n}\n\nclass VisibleMapFeed(\n    private val feed: MapLocationFeed,\n) : DefaultLifecycleObserver {\n    override fun onStart(owner: LifecycleOwner) {\n        feed.startListening()\n    }\n\n    override fun onStop(owner: LifecycleOwner) {\n        feed.stopListening()\n    }\n}\n\n// Call once during the Activity's onCreate, after obtaining the feed.\nfun bindMapFeed(owner: LifecycleOwner, feed: MapLocationFeed) {\n    owner.lifecycle.addObserver(VisibleMapFeed(feed))\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Installing the observer once keeps its setup separate from the repeated start/stop work. AndroidX moves a newly added observer toward the owner’s current state, so setup does not require guessing whether onStart has already happened. This helper assumes the feed is owned for that Activity lifetime. A feature removed before the Activity stops needs an explicit unbind operation that also releases its registration."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Launching asynchronous work does not create a durability guarantee. Work launched in an Activity’s lifecycleScope is cancelled when that Activity is destroyed, and a process kill removes every in-process coroutine. A user operation that must persist should use a persistence or background-work mechanism appropriate to its requirement, rather than postponing all saving until departure. Moving the same blocking write into onStop still blocks the main thread."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Waiting for onDestroy to save a draft assumes Android will give application code a final opportunity before process termination. It may kill a stopped process without calling onDestroy. Save meaningful changes while the application can do so, and use saved state only for the small inputs needed to reconstruct UI."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "title": "A lifecycle state is not exclusive ownership of a device",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "On Android 10 and higher, multi-window supports multiple resumed Activities. Switching focus to another window can leave an Activity RESUMED. Consequently, a RESUMED threshold does not prove that this Activity is the only interactive window or that it exclusively owns the camera. For work requiring the top-resumed position, Android provides onTopResumedActivityChanged; actual resource availability and its loss must also be handled. Older multi-window behavior can leave an unfocused but visible Activity paused."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Destruction also needs a precise subject. A configuration change normally destroys the Activity and constructs a replacement while the process continues. A stopped Activity may instead remain in memory and restart. Process termination removes the entire process, without requiring a clean teardown of each component. These cases can all look like leaving a screen, yet impose different consequences on its objects and work."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Identify the resource’s requirement first: visible UI, resumed UI, top-resumed position, or a lifetime beyond the UI.",
+                    "Pair acquisition and release at matching transitions, and account for repeated visits.",
+                    "Use the Activity instance lifecycle for instance-owned work; do not interpret it as the lifetime of every destination it hosts.",
+                    "Keep main-thread callbacks short and make important persistence independent of a final teardown callback."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "For a partly covered Activity, describe the remaining visibility before choosing a work policy. Then qualify any focus claim for multi-resume and distinguish Activity destruction from process termination."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [],
+          "sources": [
+            {
+              "title": "The activity lifecycle",
+              "url": "https://developer.android.com/guide/components/activities/activity-lifecycle"
+            },
+            {
+              "title": "Activity callback contracts",
+              "url": "https://developer.android.com/reference/android/app/Activity"
+            },
+            {
+              "title": "Support multi-window mode",
+              "url": "https://developer.android.com/develop/ui/views/layout/support-multi-window-mode"
+            },
+            {
+              "title": "DefaultLifecycleObserver",
+              "url": "https://developer.android.com/reference/kotlin/androidx/lifecycle/DefaultLifecycleObserver"
+            },
+            {
+              "title": "Processes and app lifecycle",
+              "url": "https://developer.android.com/guide/components/activities/process-lifecycle"
+            },
+            {
+              "title": "LifecycleRegistry observer synchronization",
+              "url": "https://developer.android.com/reference/kotlin/androidx/lifecycle/LifecycleRegistry"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_fragment_and_view_lifecycles",
+          "title": "A Fragment Has an Instance Lifecycle and a View Lifecycle",
+          "primarySubtopicIds": [
+            "fragment_lifecycle"
+          ],
+          "supportingSubtopicIds": [
+            "lifecycle_aware_apis",
+            "viewmodel_lifecycle",
+            "navigation_fundamentals"
+          ],
+          "summary": "A Fragment instance and its current View hierarchy have separate lifetimes. View references and UI observation belong to the current View; the Fragment and its scoped state may remain after that View is destroyed.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "title": "One Fragment can own several successive Views",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An article list opens an article detail Fragment. The transaction replaces the list Fragment and adds the transaction to the back stack. In the running process, FragmentManager can keep the list Fragment instance so it can reverse the transaction. It no longer needs the list’s View hierarchy, so that hierarchy is destroyed. Returning can create a fresh View for the same Fragment object."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A Fragment therefore has two relevant owners. The Fragment implements LifecycleOwner for its instance lifecycle. When it creates a non-null View, it also provides viewLifecycleOwner for that particular View hierarchy. The first answers whether the Fragment instance is still managed and active. The second answers whether the current UI exists and is active enough to use. They often advance together, which can hide the difference until navigation destroys only the View."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Point in the example",
+                    "Fragment instance",
+                    "Current View hierarchy"
+                  ],
+                  "rows": [
+                    [
+                      "List is displayed",
+                      "Exists and is active.",
+                      "Exists and displays the list."
+                    ],
+                    [
+                      "Replace transaction has finished taking the list offscreen",
+                      "Can remain managed on the back stack.",
+                      "Destroyed; onDestroyView has run."
+                    ],
+                    [
+                      "Back reverses the replacement",
+                      "The retained instance can be used again.",
+                      "A new hierarchy and a new View lifecycle owner are created."
+                    ],
+                    [
+                      "The list Fragment is permanently removed",
+                      "Its instance lifecycle ends.",
+                      "Any remaining hierarchy also ends."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Instance fields do not automatically reset at onDestroyView. A binding field can therefore keep pointing at the old widgets while the Fragment itself remains valid. The widgets are detached, but a strong reference still keeps them reachable. A later callback might update the old hierarchy rather than the one the user sees, or crash when code assumes a binding exists."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The lifecycle guarantee concerns the current View, not every object associated with a screen name. viewLifecycleOwner is available when a Fragment has created its non-null View; onViewCreated is a convenient place to use it. After View teardown it is unavailable. The View lifecycle reaches DESTROYED before onDestroyView is invoked, and onDestroyView is where the Fragment must release its own references to that hierarchy."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A living Fragment object does not prove that its View exists. Each new View has a new lifecycle owner, and references to a previous View must end with that View."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Bind observation to the View that receives it",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "View binding groups references to a layout’s widgets. Keeping a nullable binding field allows the Fragment to use that group while the View exists and release it during onDestroyView. Clearing the field is necessary even when an observation API stops sending values: stopping callbacks does not remove the Fragment’s own reference to the binding."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The example assumes an Android app with namespace com.example.forecast, AndroidX Fragment KTX, ViewModel and LiveData, and view binding enabled. Its fragment_forecast.xml contains a TextView with ID title, generating FragmentForecastBinding. ForecastViewModel exposes a small initial value so the example is complete apart from that layout; a real data source can update the same observable value."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import android.os.Bundle\nimport android.view.LayoutInflater\nimport android.view.View\nimport android.view.ViewGroup\nimport androidx.fragment.app.Fragment\nimport androidx.fragment.app.viewModels\nimport androidx.lifecycle.LiveData\nimport androidx.lifecycle.MutableLiveData\nimport androidx.lifecycle.ViewModel\nimport com.example.forecast.databinding.FragmentForecastBinding\n\nclass ForecastViewModel : ViewModel() {\n    val title: LiveData<String> = MutableLiveData(\"Forecast\")\n}\n\nclass ForecastFragment : Fragment() {\n    private var _binding: FragmentForecastBinding? = null\n    private val binding get() = checkNotNull(_binding)\n    private val model: ForecastViewModel by viewModels()\n\n    override fun onCreateView(\n        inflater: LayoutInflater,\n        container: ViewGroup?,\n        savedInstanceState: Bundle?,\n    ): View {\n        _binding = FragmentForecastBinding.inflate(inflater, container, false)\n        return binding.root\n    }\n\n    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {\n        super.onViewCreated(view, savedInstanceState)\n        model.title.observe(viewLifecycleOwner) { title ->\n            binding.title.text = title\n        }\n    }\n\n    override fun onDestroyView() {\n        super.onDestroyView()\n        _binding = null\n    }\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "LiveData.observe delivers updates while this View owner is active and removes the observer when that owner is destroyed. Creating the observer in onViewCreated installs one observation for each successive View. On return, the new active owner can receive the current value and render the new widgets. The binding getter is used only on paths where the View is valid; it is not a substitute for choosing the correct lifecycle."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Using observe(this) inside the Fragment gives the observer the Fragment’s longer lifetime. The old observer may remain registered after View teardown. Creating another observer for the replacement View can then leave multiple observers associated with the same Fragment, and a callback capturing a binding can retain the obsolete hierarchy. Using viewLifecycleOwner makes removal coincide with the lifetime of the callback’s actual target."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A Fragment-scoped ViewModel is retained independently of the current View. Destroying the View does not clear that ViewModel. In this back-stack example, a new binding can render the state still held by the same Fragment’s ViewModel. Permanent removal ends the Fragment’s retained store; process death removes its in-memory objects. The binding must never be moved into the ViewModel, since that would give View references an even longer owner."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Not every asynchronous callback understands LifecycleOwner. A custom listener or network callback needs its own cancellation or unregistration arrangement. Clearing _binding prevents the Fragment field from retaining the old View, but does not cancel a callback that captured a separate binding variable. An isAdded check is also insufficient: a Fragment can be attached while its View is gone. For cancellable UI coroutine work, use the View’s scope; for callback APIs, remove the registration when the View ends and ensure late results cannot target it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Changing a stale callback to _binding?.title?.text = value can avoid one crash while leaving its registration and captured references alive. Fix the ownership and cleanup of the callback as well as the nullable access."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Follow both owners when debugging",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "For a stale update or leak, log Fragment identity, View identity, onViewCreated and onDestroyView. Navigate forward and back several times. A stable Fragment identity with different View identities is a valid result for a retained back-stack Fragment. More active UI observers on each return, or a retained binding for a destroyed View, indicates that some work was bound to the longer owner."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A Fragment’s state is also constrained by its host, parent, and FragmentManager. A maximum lifecycle can keep it below RESUMED even if its View exists; a pager can keep an offscreen Fragment at STARTED. Presence in memory is therefore insufficient both for View validity and for deciding whether interactive work should run. Select the owner first, then the active state needed by the feature."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Treat each View creation as a fresh UI lifetime, even when the Fragment instance is reused.",
+                    "Clear ViewBinding and other View references in onDestroyView.",
+                    "Use viewLifecycleOwner for observations that render this hierarchy.",
+                    "Keep Fragment-scoped state independent of the current binding.",
+                    "Check callback registrations and captured references when a stale View remains reachable."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Trace a replacement added to the back stack in terms of two objects: the managed Fragment instance can remain, while its View is destroyed and later recreated. That explains binding cleanup, observer ownership, and why ViewModel clearing does not follow onDestroyView."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [],
+          "sources": [
+            {
+              "title": "Fragment lifecycle",
+              "url": "https://developer.android.com/guide/fragments/lifecycle"
+            },
+            {
+              "title": "Fragment View lifecycle API contract",
+              "url": "https://developer.android.com/reference/androidx/fragment/app/Fragment#getViewLifecycleOwner()"
+            },
+            {
+              "title": "View binding in fragments",
+              "url": "https://developer.android.com/topic/libraries/view-binding"
+            },
+            {
+              "title": "LiveData observation and owner lifecycle",
+              "url": "https://developer.android.com/topic/libraries/architecture/livedata"
+            },
+            {
+              "title": "ViewModel overview",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_lifecycle_aware_work_and_collection",
+          "title": "Lifecycle-Aware Work: Follow the Owner, Not the Screen Name",
+          "primarySubtopicIds": [
+            "lifecycle_aware_apis"
+          ],
+          "supportingSubtopicIds": [
+            "activity_lifecycle",
+            "fragment_lifecycle",
+            "coroutine_scope",
+            "flow_collection"
+          ],
+          "summary": "Lifecycle-aware UI work needs both the correct owner and an active-state threshold. lifecycleScope ends work at destruction; repeatOnLifecycle also cancels and restarts a child block as the owner leaves and re-enters the requested state.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "title": "Destruction and temporary inactivity need different policies",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A forecast screen observes readings while its widgets are usable, stops that observation when the screen is hidden, and resumes it when the user returns. The Fragment might still exist throughout. Two decisions are needed: which object owns the widgets, and at what lifecycle state their subscription should run. Choosing a coroutine scope alone answers only part of that problem."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Lifecycle is AndroidX’s representation of an owner’s current state and transitions. LifecycleOwner provides that Lifecycle. An Activity, a Fragment instance, and a Fragment’s current View can each be owners with different lifetimes. For a collector that writes to Fragment widgets, the relevant owner is viewLifecycleOwner. Naming the feature “forecast screen” does not identify which of these owners its code uses."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A CoroutineScope owns launched coroutines through its Job. lifecycleScope supplies a scope whose work is cancelled when its Lifecycle reaches DESTROYED. This gives a useful upper limit, but a launch in lifecycleScope can keep running while its owner is stopped. It does not automatically impose a STARTED or RESUMED requirement."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "repeatOnLifecycle supplies that second condition. At or above the requested state, it runs the supplied block in a child coroutine. When the owner falls below the threshold, it cancels that child and its children. When the owner reaches the threshold again, it starts a new invocation. The coroutine calling repeatOnLifecycle remains suspended until the owner is destroyed, unless it is cancelled or fails earlier."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "View lifecycle movement",
+                    "Outer lifecycleScope coroutine",
+                    "Block repeated at STARTED"
+                  ],
+                  "rows": [
+                    [
+                      "View exists but has not reached STARTED",
+                      "Waits inside repeatOnLifecycle.",
+                      "Not running yet."
+                    ],
+                    [
+                      "STARTED or RESUMED",
+                      "Remains alive.",
+                      "Runs, including its collecting children."
+                    ],
+                    [
+                      "RESUMED to STARTED",
+                      "Remains alive.",
+                      "Keeps running; STARTED still meets the threshold."
+                    ],
+                    [
+                      "STARTED to CREATED after stop",
+                      "Remains alive.",
+                      "Cancellation is requested."
+                    ],
+                    [
+                      "Returns to STARTED",
+                      "Remains alive.",
+                      "A fresh invocation starts after the previous one finishes."
+                    ],
+                    [
+                      "DESTROYED",
+                      "The View scope is cancelled.",
+                      "Ends with that owner; a new View needs its own setup."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Cancellation and restart differ from pausing a coroutine and later resuming it at the same instruction. Code inside the repeated block begins again on a new active interval. Local variables created inside it are created again, and collecting a cold Flow can repeat the producer’s work. Put repeatable subscriptions there rather than an irreversible operation such as submitting an order."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The owner determines which lifetime ends the work. The minimum active state determines which intervals within that lifetime should run it. Both choices must match the consumer."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Install once and collect independently",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This helper renders two Flow<String> sources into two TextViews. Call it once from a Fragment’s onViewCreated, passing viewLifecycleOwner, the current title and warning widgets, and the two streams. The imports are shown; it requires AndroidX lifecycle-runtime coroutine APIs and kotlinx.coroutines. The streams may come from a state holder, but the helper does not decide how they are produced or retained."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import android.widget.TextView\nimport androidx.lifecycle.Lifecycle\nimport androidx.lifecycle.LifecycleOwner\nimport androidx.lifecycle.lifecycleScope\nimport androidx.lifecycle.repeatOnLifecycle\nimport kotlinx.coroutines.flow.Flow\nimport kotlinx.coroutines.flow.collect\nimport kotlinx.coroutines.launch\n\nfun observeForecast(\n    owner: LifecycleOwner,\n    title: TextView,\n    warning: TextView,\n    conditions: Flow<String>,\n    warnings: Flow<String>,\n) {\n    owner.lifecycleScope.launch {\n        owner.repeatOnLifecycle(Lifecycle.State.STARTED) {\n            launch {\n                conditions.collect { title.text = it }\n            }\n            launch {\n                warnings.collect { warning.text = it }\n            }\n        }\n    }\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Each launch inside the repeated block creates a child for one collection. A long-lived collect call suspends until it ends; placing a second collect after the first would leave the second waiting, often forever. Separate children let both streams update the UI during the same active interval, and both are cancelled when the owner falls below STARTED."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For an Activity UI, pass its owner. For Fragment widgets, pass the current View owner, never a saved owner from a previous View. Install the arrangement once per owner, typically in onCreate for an Activity or onViewCreated for a Fragment View. Calling this helper from every onStart would create another outer coroutine each time, and those coroutines would all repeat their collections on subsequent starts."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "STARTED is a useful default for rendering visible UI. A paused but still visible Activity remains at least STARTED, so its subscription continues. RESUMED is appropriate when the work requires the owner’s resumed state, for example interaction associated with the current Fragment. On Android 10 and higher, multi-resume means RESUMED alone does not establish exclusive window focus; an exclusive-resource requirement needs further handling."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For one stream, flowWithLifecycle is a convenient alternative. This function uses the same owner choice and STARTED threshold, while the collecting coroutine is still bounded by that owner’s scope."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import android.widget.TextView\nimport androidx.lifecycle.Lifecycle\nimport androidx.lifecycle.LifecycleOwner\nimport androidx.lifecycle.flowWithLifecycle\nimport androidx.lifecycle.lifecycleScope\nimport kotlinx.coroutines.flow.Flow\nimport kotlinx.coroutines.flow.collect\nimport kotlinx.coroutines.launch\n\nfun observeTitle(\n    owner: LifecycleOwner,\n    title: TextView,\n    titles: Flow<String>,\n) {\n    owner.lifecycleScope.launch {\n        titles.flowWithLifecycle(owner.lifecycle, Lifecycle.State.STARTED)\n            .collect { title.text = it }\n    }\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "flowWithLifecycle gates collection of the upstream Flow. Downstream operators and the coroutine collecting the result can remain alive below the threshold, so operator placement matters if a pipeline combines multiple streams or does other work. repeatOnLifecycle makes a group of subscriptions easier to bound together. Use one arrangement for a given subscription; installing both examples would create two collectors."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In Compose, collectAsStateWithLifecycle applies a lifecycle threshold while converting a Flow into Compose State. Its default threshold is STARTED, using the owner supplied at the call site unless one is passed explicitly. Collection also ends when that conversion leaves Composition. Lifecycle-Aware Collection and the Screen’s Lifecycle explains that combination of Composition and lifecycle lifetime in detail."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "lifecycleScope.launch { flow.collect { ... } } ends at destruction, not at stop. Adding repeatOnLifecycle supplies the active-state policy; choosing the View owner supplies the correct destruction boundary."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "title": "Stopping a subscriber does not decide the producer’s lifetime",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "When a UI collector stops, a shared producer may continue in another scope. A StateFlow held by a ViewModel still has its current value; a producer shared in a longer-lived scope follows its own sharing policy. By contrast, a cold producer executed for this collection normally ends when that collection is cancelled and runs again on recollection. Lifecycle-aware collection saves the resources owned by that subscription, but cannot promise that every upstream resource in the application has stopped."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A restart also does not guarantee replay of every event emitted while the UI was inactive. StateFlow provides its current state on recollection; other streams have their own replay or buffering contracts. Choose a state or event model that can tolerate periods without this subscriber. Lifecycle APIs cannot provide persistence or delivery guarantees merely by selecting STARTED."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Cancellation is cooperative. It cannot immediately stop arbitrary blocking code, and repeatOnLifecycle waits for an earlier invocation to finish before starting the next one. A slow cleanup or non-cooperative operation can delay a restart. Let cancellation propagate, release callback registrations when a cancellable adapter ends, and avoid UI mutation from cleanup after the View has ended. A lifecycle-aware launch also starts on the main dispatcher; it does not move blocking work off the UI thread."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An uncaught failure inside the repeated block ends that repeating call rather than waiting for a later lifecycle event to retry it. Handle expected source errors in a way that produces useful screen state; cancellation should still propagate. Visibility changes are a scheduling condition, not a general error-recovery policy."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Choose the View owner for work that writes to Fragment widgets.",
+                    "Use lifecycleScope for cancellation at owner destruction, and repeatOnLifecycle for repeated active intervals.",
+                    "Create one repeating arrangement per owner; use child coroutines for concurrent collections.",
+                    "Make repeated work safe to start again and inspect the source’s state, replay, and sharing behavior.",
+                    "Debug the owner’s actual state and the producer’s scope separately when collection or resource use continues unexpectedly."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Explain a stop-and-return sequence by naming the owner, the threshold, the cancelled child work, and the new invocation. Then distinguish the UI subscription’s lifetime from the scope and sharing policy of its data source."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_lifecycle_aware_collection",
+            "lesson_flow_collection_lifetime",
+            "lesson_cooperative_cancellation"
+          ],
+          "sources": [
+            {
+              "title": "Use Kotlin coroutines with lifecycle-aware components (Views)",
+              "url": "https://developer.android.com/topic/libraries/architecture/views/coroutines-views"
+            },
+            {
+              "title": "repeatOnLifecycle and flowWithLifecycle API contracts",
+              "url": "https://developer.android.com/reference/kotlin/androidx/lifecycle/package-summary"
+            },
+            {
+              "title": "Fragment lifecycle",
+              "url": "https://developer.android.com/guide/fragments/lifecycle"
+            },
+            {
+              "title": "Lifecycle-aware Flow collection in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state#use-other-types-of-state-in-jetpack-compose"
+            },
+            {
+              "title": "CoroutineScope.cancel and cooperative cancellation",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/cancel.html"
+            },
+            {
+              "title": "repeatOnLifecycle serial restart contract",
+              "url": "https://developer.android.com/reference/androidx/lifecycle/RepeatOnLifecycleKt"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_recreation_retention_and_restoration",
+      "topicId": "lifecycle_navigation",
+      "title": "Recreation, Retention and Restoration",
+      "summary": "UI recreation, retained process memory, saved reconstruction inputs, and durable data provide different survival guarantees. The event that removes an owner determines which mechanism a screen needs.",
+      "lessons": [
+        {
+          "id": "lesson_recreation_configuration_process_and_dismissal",
+          "title": "Configuration Change, Process Death and Permanent Dismissal",
+          "primarySubtopicIds": [
+            "configuration_changes",
+            "process_death"
+          ],
+          "supportingSubtopicIds": [
+            "activity_lifecycle",
+            "viewmodel_lifecycle",
+            "saved_state",
+            "android_process_model"
+          ],
+          "summary": "Configuration recreation replaces UI objects while normally retaining the process. Process death removes every in-memory object; restoring a task reconstructs state from saved records and data. Finishing a screen or dismissing a task ends a different lifetime.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "title": "Identify what actually disappeared",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A search screen can look unchanged after rotation, after returning from another app, or after reopening from Recents. The appearance does not reveal whether Android reused its objects or constructed replacements. State survives for one of three reasons: its owner remained in memory, a saved record rebuilt it, or a data source supplied it again."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A configuration describes the environment used to display the UI, such as orientation, locale, or available size. By default, an unhandled configuration change destroys the Activity instance and creates a replacement that can use the new resources. The old Views are obsolete. The process normally stays alive, so process-wide objects and a retained ViewModelStore can remain. The replacement Activity reconnects to that store and can receive the same ViewModel instance."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "System-initiated process death destroys the entire heap: Activities, Views, ViewModels, singletons, and ordinary caches. Android can keep information about a task outside that process. A task is the system’s history of Activities associated with a user activity. When Android later restores it, fresh component and ViewModel instances use available saved state and reload data. This is reconstruction, not recovery of the old objects."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Event",
+                    "UI objects",
+                    "ViewModel and process memory",
+                    "Restoration inputs"
+                  ],
+                  "rows": [
+                    [
+                      "Unhandled configuration change",
+                      "Activity and Views are replaced",
+                      "Process normally remains; retained stores can keep the same ViewModels",
+                      "Saved UI values and retained owner state can both contribute"
+                    ],
+                    [
+                      "System kills process; task is later restored",
+                      "Fresh instances in a new process",
+                      "All old objects are gone, including stores and singletons",
+                      "Previously captured saved state, if available, plus reloadable data"
+                    ],
+                    [
+                      "Activity finishes normally",
+                      "That Activity is removed",
+                      "Its store is cleared; unrelated process objects may remain",
+                      "Its old instance state is not a promise to restore that finished screen"
+                    ],
+                    [
+                      "User removes task from Recents",
+                      "That task is dismissed",
+                      "No retained screen owner can be relied on for a later launch",
+                      "Use durable data for anything a fresh launch must recover"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Saved state belongs to the restoration of an associated screen or task. Removing the task from Recents, force-stopping the app, or rebooting the device is not the same restoration path as the system reclaiming a background process. A database or file can remain across those events; saved instance state is not that durable storage."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Process death may occur without onDestroy or another final cleanup callback. A callback that would normally run during orderly Activity destruction cannot guarantee that a last write or network request happens before the process disappears."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Name the destroyed layer before explaining survival: UI instance, retained owner store, whole process, or task. Configuration retention and reconstruction after process death can produce the same display through different mechanisms."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Test the lifetime that failed",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider a product search screen whose query is in SavedStateHandle, whose loaded rows are in a ViewModel, and whose repository has an in-memory catalog cache backed by a database. Rotation can keep both the ViewModel and cache. After process death, the query can return from a saved snapshot, but the ViewModel and cache must be rebuilt and the catalog read again. A crash on that read may stay hidden through hundreds of rotation tests."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The developer option “Don’t keep activities” destroys Activities when the user leaves them. It stresses Activity recreation, but does not itself kill the application process. Singletons and static caches can remain populated. It therefore cannot prove that code works with an empty process heap, and it is not a substitute for a process-death test."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "To test background process reconstruction, first populate the screen and record the values it should restore. Press Home and allow the host to stop and capture its state. Terminate the background process with tooling that kills the process while retaining the task, then select that task in Recents. For a sample package com.example.catalog, adb provides this command:"
+                },
+                {
+                  "type": "code",
+                  "language": "shell",
+                  "code": "adb shell am kill com.example.catalog"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "am kill kills only processes the system considers safe to kill. Verify that the old process actually ended and that a new process starts on return; a foreground service or other active component can prevent this command from exercising the intended case. Keep the task in Recents. Force-stop, removing the task, or using a run action that force-stops and relaunches the app exercises a different start path."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Compare separate runs: rotate to check retained state, kill the stopped process and return through Recents to check reconstruction, then finish the screen or dismiss the task and relaunch to check fresh-start behavior. Check both restored inputs and reloaded results. A restored query with missing results identifies a different failure from a query that was never captured."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Declaring android:configChanges for selected changes lets an Activity handle those changes through onConfigurationChanged rather than the usual recreation. That also makes the application responsible for adapting its UI and resources. It neither prevents all recreation nor protects against process death, so it should not be used merely to hide state-loss bugs."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "A singleton can survive rotation because the process survived. It cannot restore an identifier after process death unless another mechanism recorded that identifier."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "title": "Restoration and fresh launch need different contracts",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A finished Activity does not necessarily end the application process or every Activity in its task. Conversely, a killed process does not necessarily erase the system’s task history. These facts explain why “the app closed” is too vague to diagnose state loss: inspect the event and the remaining owners, rather than infer them from what vanished from the display."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "State needed for an ongoing interaction can reasonably reset after dismissal, while a submitted order or a valuable draft may need to survive a fresh launch. Make that distinction explicit in the requirement. Durable writes should follow the action that makes data valuable; waiting for a destruction callback makes correctness depend on a callback process death cannot guarantee."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Rotation usually replaces Activity and View objects within the same process.",
+                    "Retained ViewModel state is ordinary process memory, not a serialized heap.",
+                    "Process reconstruction needs captured inputs and data sources that work without old caches.",
+                    "Finishing an owner and removing a task differ from background process death.",
+                    "A restoration test must both end the old process and preserve the task being restored."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Trace a query, loaded rows, a singleton cache, and database records through rotation and through process death. For each value, explain whether it remained in memory, was reconstructed, was reloaded, or was lost."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_activity_lifecycle_visibility_and_work",
+            "lesson_viewmodel_lifetime_and_persistence"
+          ],
+          "sources": [
+            {
+              "title": "Activity state changes",
+              "url": "https://developer.android.com/guide/components/activities/state-changes"
+            },
+            {
+              "title": "Handle configuration changes (Views)",
+              "url": "https://developer.android.com/topic/architecture/views/resources/runtime-changes-views"
+            },
+            {
+              "title": "Processes and app lifecycle",
+              "url": "https://developer.android.com/guide/components/activities/process-lifecycle"
+            },
+            {
+              "title": "Save UI states",
+              "url": "https://developer.android.com/topic/libraries/architecture/saving-states"
+            },
+            {
+              "title": "Saved State module for ViewModel",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel/viewmodel-savedstate"
+            },
+            {
+              "title": "Configure on-device developer options",
+              "url": "https://developer.android.com/studio/debug/dev-options"
+            },
+            {
+              "title": "Android Debug Bridge: activity manager commands",
+              "url": "https://developer.android.com/tools/adb"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_viewmodel_owner_and_scope",
+          "title": "ViewModel Lifetime Is the Lifetime of Its Owner",
+          "primarySubtopicIds": [
+            "viewmodel_lifecycle"
+          ],
+          "supportingSubtopicIds": [
+            "configuration_changes",
+            "process_death",
+            "navigation_fundamentals",
+            "saved_state",
+            "state_ownership"
+          ],
+          "summary": "A ViewModel is retained by a keyed store belonging to a concrete owner. Retaining that store preserves the instance across configuration recreation; clearing it ends the instance’s lifetime. The chosen owner determines which consumers share state and when it is released.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "title": "The store connects successive UI instances",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A ViewModel does not belong to a screen name or a Kotlin class. It belongs to a ViewModelStore, a collection of ViewModels indexed by keys. A ViewModelStoreOwner supplies that store. AndroidX Activities, Fragments, and appropriately scoped navigation entries can be owners."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "During configuration recreation, the old Activity instance is destroyed, but its store can be retained and associated with the replacement Activity. A ViewModel lookup then returns the stored instance. The ViewModel has not been serialized into the saved-instance-state Bundle, and the old Activity and its Views have not been kept alive as the new UI."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "When an owner is permanently removed, its store is cleared and its ViewModels receive cleanup, including onCleared. An Activity finishing normally clears its Activity-scoped store. A Fragment’s View being destroyed does not by itself clear the Fragment-scoped store: the Fragment may still be retained for a return to that screen."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Process death removes the store and every ViewModel it holds. onCleared is a normal owner-cleanup hook, not a guaranteed last callback before process termination. Restoring a small value through SavedStateHandle constructs a new ViewModel with restored inputs; it never restores the old instance."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a compatible type, repeated lookups with the same store and key return the same instance. The default key is based on the ViewModel class, so two lookups of the same class under one owner usually share it. Different owners, or deliberately distinct keys within one store, can hold independent instances of that class."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "To explain a ViewModel’s identity, name its store and key. To explain its lifetime, name the owner and the event that retains or clears that store."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Choose a scope that fits the interaction",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A detail screen and a search screen usually need independent state, so each can retrieve its ViewModel from its own destination owner. Moving both lookups to the Activity gives them a wider lifetime. That can be useful for state genuinely shared by the Activity’s screens, but merely navigating away from one destination will no longer release its Activity-scoped instance."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Required lifetime",
+                    "Suitable owner",
+                    "When the state ends"
+                  ],
+                  "rows": [
+                    [
+                      "One Fragment, including returns after its View is recreated",
+                      "That Fragment",
+                      "Permanent Fragment removal, not just onDestroyView"
+                    ],
+                    [
+                      "One navigation entry",
+                      "That entry with ViewModel scoping installed",
+                      "Permanent entry removal and store cleanup"
+                    ],
+                    [
+                      "Several destinations in one checkout flow",
+                      "Their shared checkout graph entry",
+                      "The graph entry is permanently removed"
+                    ],
+                    [
+                      "Screens belonging to one Activity",
+                      "That Activity",
+                      "The Activity finishes; configuration recreation retains its store"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In Navigation 2, a parent graph has a back-stack entry as well as its child destinations. Sharing through the graph means sharing that concrete entry’s store, rather than storing state in the static graph declaration. Two checkout destinations can retrieve the same CheckoutViewModel from their shared parent entry. Separate destination entries would instead give them independent instances."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This helper uses AndroidX Navigation 2 and Lifecycle on Android. The NavController must already contain a graph entry whose route is checkout; call it from destinations in that active graph, on the main thread. CheckoutViewModel has no constructor dependencies, so the owner’s normal factory can construct it. Rendering and navigation operations are omitted to keep the owner choice visible."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import androidx.lifecycle.ViewModel\nimport androidx.lifecycle.ViewModelProvider\nimport androidx.navigation.NavController\n\nclass CheckoutViewModel : ViewModel() {\n    var deliveryOption: String = \"standard\"\n        private set\n\n    fun chooseDelivery(option: String) {\n        deliveryOption = option\n    }\n}\n\nfun checkoutState(navController: NavController): CheckoutViewModel {\n    val checkoutEntry = navController.getBackStackEntry(\"checkout\")\n    return ViewModelProvider(checkoutEntry)[CheckoutViewModel::class.java]\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Both destinations get the same instance while they use this graph entry and the same default key. Moving from delivery to payment keeps the shared state. Permanently removing the checkout graph clears that scope, so a new checkout can start clean. Popping only a child destination does not by itself remove the parent graph owner. The plain property here demonstrates retention; an actual reactive UI also needs an observable state representation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Application-wide memory is usually too broad for one checkout: an abandoned delivery choice can appear in a later checkout or another account. Use a wider owner when consumers truly need to share that lifetime. What a Screen State Holder Is Responsible For explains the responsibilities and readers that inform this choice."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A retained ViewModel must not retain the old Activity, Fragment View, binding, or a callback that captures them. If it keeps a binding through rotation, it keeps an obsolete View tree and its context alive. It may also update the wrong UI on completion. Keep data and intentions in the holder; attach View observation to the current View owner and release View references when that View ends."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Using the same ViewModel class in two destinations does not establish sharing. Using the same owner and key does. Inspect the owner at the lookup site when unexpectedly shared or unexpectedly reset state appears."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "title": "Retention also retains dependencies and work",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Choosing a longer scope keeps more than field values. It also keeps the ViewModel’s collaborators and work alive. viewModelScope follows clearing of the ViewModel, so stopping an Activity or destroying a Fragment View does not automatically cancel that scope. UI work that requires a current View still needs the View’s own lifecycle policy."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Construction and retention are separate. A factory or dependency-injection container constructs a missing ViewModel; the owner’s store retains it afterwards. Passing a new creation argument does not update an instance already stored under the same key. Use an explicit update operation if the requirement changes within that instance’s lifetime."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Different destruction paths also change cleanup guarantees. Permanent owner removal can run onCleared to release process resources. Process death ends those resources without promising that callback. Durable data must already have been recorded by a mechanism appropriate to the user action. Extending the owner’s lifetime cannot turn memory into persistence."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "An owner supplies a keyed ViewModelStore; a class alone does not define instance identity.",
+                    "Configuration recreation can reconnect the UI to the same store.",
+                    "Destination and graph scope differ in which concrete entry must be removed to clear state.",
+                    "A Fragment-scoped ViewModel can outlive its current View, making retained bindings unsafe.",
+                    "Saved-state restoration supplies inputs to a new instance after process death."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "For two screens that need shared temporary state, identify a concrete shared owner and explain both reuse and cleanup. Then explain why that scope survives rotation yet still needs reconstruction after process death."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_fragment_and_view_lifecycles",
+            "lesson_state_holder_responsibility",
+            "lesson_viewmodel_lifetime_and_persistence"
+          ],
+          "sources": [
+            {
+              "title": "ViewModel overview",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel"
+            },
+            {
+              "title": "ViewModelStore: retention and clearing",
+              "url": "https://developer.android.com/reference/androidx/lifecycle/ViewModelStore"
+            },
+            {
+              "title": "ViewModelProvider: store and keyed retrieval",
+              "url": "https://developer.android.com/reference/androidx/lifecycle/ViewModelProvider"
+            },
+            {
+              "title": "ViewModel scoping APIs (Views)",
+              "url": "https://developer.android.com/topic/libraries/architecture/views/viewmodel/viewmodel-apis-views"
+            },
+            {
+              "title": "Share UI-related data between destinations with ViewModel",
+              "url": "https://developer.android.com/guide/navigation/use-graph/programmatic"
+            },
+            {
+              "title": "Fragment lifecycle",
+              "url": "https://developer.android.com/guide/fragments/lifecycle"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_saved_state_and_reconstruction",
+          "title": "Saved State Is a Reconstruction Hint, Not a Database",
+          "primarySubtopicIds": [
+            "saved_state"
+          ],
+          "supportingSubtopicIds": [
+            "process_death",
+            "configuration_changes",
+            "viewmodel_lifecycle",
+            "compose_state"
+          ],
+          "summary": "Saved state records small inputs for reconstructing an ongoing UI when Android restores its owner. It can outlive a killed process without retaining the old ViewModel, but depends on lifecycle saving and task restoration. Durable or large data requires a separate storage mechanism.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "title": "Save enough to rebuild the interaction",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A catalog screen can contain thousands of products while needing only a query and selected product ID to return to the same interaction. Saving those inputs lets a recreated screen request the products again. Saving the whole loaded list couples restoration to a large snapshot that may already be stale."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Saved instance state is a record for reconstructing an Android UI owner. Activity onSaveInstanceState contributes values to that record. SavedStateRegistry lets components register their own saving contributions. SavedStateHandle connects a ViewModel to the owner’s saved-state machinery; on Android, its supported values join the saved-instance-state Bundle. Compose’s saved-state APIs connect local UI values to the host’s saving mechanism."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "When Android restores an associated task after system-initiated process death, that record can supply values to a newly constructed ViewModel. Every old in-process object is gone. Navigation arguments can provide initial inputs, but values later written into SavedStateHandle return through saved-state restoration, not merely by replaying the original arguments."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This guarantee requires an available saved snapshot and restoration of the associated owner. Finishing the screen or permanently removing its entry ends that interaction. Removing the task from Recents, force-stopping the app, or rebooting is not a durable saved-state recovery contract. Data needed on a fresh launch belongs in storage such as a database or file."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Saved state is also limited in size and cost. The Bundle is transferred through Binder, whose transaction buffer is limited and shared by in-flight transactions. Large lists, images, or object graphs can cause TransactionTooLargeException. No single per-screen size is universally safe. Saving and restoring also requires serialization work on lifecycle-sensitive paths, so keep the representation small even if it technically fits."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "A saved query or identifier describes how to rebuild the interaction. It does not retain a ViewModel, store an entire data source, or promise recovery after every kind of dismissal."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Use a handle connected to the real owner",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This Android example has a Fragment-scoped SearchViewModel. It uses AndroidX Fragment’s viewModels delegate and the default saved-state-aware factory. The Fragment’s owner supplies the registry and creation information needed to obtain a connected SavedStateHandle. The Fragment methods run on the main thread after the Fragment is attached, for example during UI initialization and event callbacks. SavedStateHandle get/set also require the main thread. The functions show reading and writing the search input; View creation, event wiring, observation, and repository loading are omitted."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import androidx.fragment.app.Fragment\nimport androidx.fragment.app.viewModels\nimport androidx.lifecycle.SavedStateHandle\nimport androidx.lifecycle.ViewModel\n\nclass SearchViewModel(private val savedState: SavedStateHandle) : ViewModel() {\n    val query: String\n        get() = savedState[\"query\"] ?: \"\"\n\n    fun changeQuery(value: String) {\n        savedState[\"query\"] = value\n    }\n}\n\nclass SearchFragment : Fragment() {\n    private val model: SearchViewModel by viewModels()\n\n    fun currentQuery(): String = model.query\n\n    fun onQueryChanged(value: String) {\n        model.changeQuery(value)\n    }\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "When the Fragment’s UI starts, the current query can initialize its field and select the repository request. Later user edits call changeQuery. A default is used when no query was restored. Rotation can reuse the ViewModel; process recreation constructs a new one whose connected handle receives the captured query. get and set are not a UI observation mechanism, so a reactive rendering arrangement would additionally observe or publish changes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Creating SearchViewModel(SavedStateHandle()) directly does not reproduce this integration. A directly constructed handle is useful in tests but is not connected to an owner’s registry for process-death restoration. For a new custom factory, use the owner-provided CreationExtras with createSavedStateHandle to obtain the connected handle; accepting a parameter named SavedStateHandle alone establishes no restoration contract."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Choose the mechanism from the value’s responsibility as well as its lifetime. A small expanded-row flag used only by a Compose subtree can use rememberSaveable. A query consumed by screen logic can live in the ViewModel’s SavedStateHandle. Loaded business state can be produced by that ViewModel from a repository. A catalog, audit log, media cache, or valuable draft needs an appropriate data store. These mechanisms can coexist without putting every value into one saved Bundle."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "rememberSaveable participates in the host’s saved-state restoration, but does not by itself keep state after its call leaves the Composition. Retaining a removed subtree needs an owner that remains or a SaveableStateHolder arrangement. For local UI state and custom savers, see `rememberSaveable` and State That Must Survive."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With basic SavedStateHandle get/set, use values supported by the Android Bundle contract, such as strings and primitive values. A custom representation may require a Parcelable, saver, serializer, or saved-state provider suited to the chosen API. Being serializable answers whether a representation can be saved; it does not establish that saving its size or contents is a good decision."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Putting loaded rows in SavedStateHandle duplicates the data source and increases restoration cost. Save the small query or selection that lets the ViewModel rebuild the rows."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "title": "Live writes and saved snapshots are different",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Assigning savedState[\"query\"] changes the live handle immediately. It is not an immediate durable write outside the process. Registered providers supply values when the owner captures saved state during lifecycle saving. The Android saving contract is associated with the host Activity stopping; writes made while it is already stopped are not saved unless it subsequently starts and stops again. Observable handle APIs use the same saving mechanism and do not strengthen that guarantee."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For example, the user types “boots” and backgrounds the Activity, producing a snapshot with that query. While the Activity remains stopped, work applies an update to the live handle on the main thread, changing it to “coats”. A main-thread read in that process can now return “coats”, while process death can leave restoration using the earlier captured “boots”. If the Activity returns and later stops again, a new capture can include the later value. A value that must survive a background update needs a suitable durable write, not an assumption that a live handle assignment was committed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Reconstruction also has to tolerate changes in the source data. A saved product ID may point to a deleted item, and a restored filter may be invalid for the current account. Read the small restored input, validate it against the current context, then produce useful loading, content, or unavailable state. Saving the former screen’s full object graph would preserve neither its validity nor its authorization."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A database-backed repository can reload records after the process has lost its caches. If a network source is the only source, restoring an ID does not guarantee offline content. Decide separately whether the user needs the same interaction, offline data, or recovery of important edits after dismissal. These requirements determine which values need durable storage and when writes must complete."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Save small, stable reconstruction inputs rather than whole loaded results.",
+                    "Use a handle connected to an AndroidX owner and its saved-state-aware creation path.",
+                    "Treat saved state as a lifecycle snapshot; live writes while stopped can be lost.",
+                    "Keep Bundle size and serialization work small; the Binder limit is shared.",
+                    "Restore with current data and a safe fallback for invalid or missing inputs."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Explain how a new ViewModel obtains a captured query after process death, then distinguish that guarantee from the live value after a stopped-state update. Compare a local UI flag, the query, loaded rows, and durable records by owner, saving mechanism, and required recovery event."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_remember_saveable",
+            "lesson_screen_state_owner_boundary",
+            "lesson_state_holder_responsibility"
+          ],
+          "sources": [
+            {
+              "title": "Saved State module for ViewModel",
+              "url": "https://developer.android.com/topic/libraries/architecture/viewmodel/viewmodel-savedstate"
+            },
+            {
+              "title": "Saved State module for ViewModel (Views)",
+              "url": "https://developer.android.com/topic/libraries/architecture/views/viewmodel/viewmodel-savedstate-views"
+            },
+            {
+              "title": "SavedStateHandle: connected creation and supported values",
+              "url": "https://developer.android.com/reference/androidx/lifecycle/SavedStateHandle"
+            },
+            {
+              "title": "Save UI states: saved-state registry and lifecycle saving",
+              "url": "https://developer.android.com/topic/libraries/architecture/saving-states"
+            },
+            {
+              "title": "Save UI state in Compose",
+              "url": "https://developer.android.com/develop/ui/compose/state-saving"
+            },
+            {
+              "title": "TransactionTooLargeException",
+              "url": "https://developer.android.com/reference/android/os/TransactionTooLargeException"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_navigation_state_and_destination_lifetime",
+      "topicId": "lifecycle_navigation",
+      "title": "Navigation State and Destination Lifetime",
+      "summary": "Navigation history determines the entries available for return and the owners that retain destination state. Controller-managed and app-owned histories express different ownership choices; Activity task history remains a separate Android mechanism.",
+      "lessons": [
+        {
+          "id": "lesson_navigation_back_stacks_tasks_and_entry_lifetimes",
+          "title": "Back Stacks, Tasks and Entry Lifetimes",
+          "primarySubtopicIds": [
+            "navigation_fundamentals"
+          ],
+          "supportingSubtopicIds": [
+            "viewmodel_lifecycle",
+            "saved_state",
+            "back_handling",
+            "android_intents",
+            "android_components"
+          ],
+          "summary": "A navigation stack records concrete visits, while a graph declares destinations. Each retained entry can own state independently of the Activity that hosts it. Permanently removing that owner ends its scoped state; Android tasks describe a separate history of Activities.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "title": "A destination declaration is not a visit",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A catalog opens product A, then product B. Back should reveal A and then the catalog. The application needs an ordered record of these visits, not just a list of screens it knows how to draw. That record is the navigation back stack. In a simple single-pane stack, the last entry is current and the preceding entry is the next return point."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A navigation graph declares destinations and relationships, including a starting destination. It can declare ProductDetail once while the running stack contains several ProductDetail visits with different arguments. Declaring a destination does not mean the user has visited it. Navigation operations change runtime history; editing the graph is not how a running application records each visit."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A route identifies what destination to resolve and the arguments it needs. An entry identifies one occurrence in history. Two visits to the same product can be separate entries even when their route and product ID are equal. In Navigation 2, NavController creates NavBackStackEntry objects to represent those occurrences. Each entry can provide a Lifecycle, a SavedStateRegistry, and a ViewModelStore."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "These owners solve different problems. Lifecycle describes when entry-related UI work can be active. Saved state supplies small reconstruction inputs. ViewModelStore retains entry-scoped state holders in memory. Keeping the entry on the stack can preserve its state while another destination is shown; being hidden is not the same as being removed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Permanently popping an entry ends its owner, clears its entry-scoped ViewModels, and releases its associated state. Returning to the same route by a later navigation creates a new occurrence, rather than reviving that removed owner. Cleanup can wait for the outgoing transition to complete. A pop that deliberately saves a stack for later restoration is a different policy from permanent removal."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android also maintains task back stacks. A task records Activities associated with a user activity. A single Activity can host a navigation stack containing catalog, detail, and checkout destinations. Moving between these destinations does not necessarily add or remove any Activity. Conversely, finishing a separate Activity changes task history, not merely the inner navigation stack."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Task behavior needs the same concrete trace. Suppose a task contains MainActivity, CheckoutActivity, and ReceiptActivity, with ReceiptActivity on top. MainActivity is declared singleTask. When a launch reuses that existing instance, Android clears the Activities above it and delivers the new Intent to MainActivity through onNewIntent. CheckoutActivity and ReceiptActivity do not stay underneath the reused MainActivity."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Distinguish the declared destination, the concrete navigation entry, and the Activity in a task. A screen name alone does not identify its owner or its lifetime."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Trace the owner through a checkout",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider a Navigation 2 checkout graph with delivery and payment destinations. The controller keeps a concrete checkout graph entry while its child destinations are active. Both children can obtain a CheckoutViewModel from that graph entry’s store. A destination lookup would give each child its own store; an Activity lookup would keep the state beyond the checkout."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Action",
+                    "History and owners",
+                    "Consequence for temporary checkout state"
+                  ],
+                  "rows": [
+                    [
+                      "Enter checkout and open delivery",
+                      "Checkout graph entry and delivery entry are added",
+                      "Graph-scoped state can be created for this checkout"
+                    ],
+                    [
+                      "Open payment",
+                      "Payment is added; delivery and the graph remain",
+                      "Both children use the same graph owner and ViewModel key"
+                    ],
+                    [
+                      "Return from payment to delivery",
+                      "Payment is permanently popped; graph remains",
+                      "Payment-local state ends; shared checkout state remains"
+                    ],
+                    [
+                      "Leave the whole flow permanently",
+                      "Children and the checkout graph entry are removed",
+                      "Graph-scoped state is cleared after removal is completed"
+                    ],
+                    [
+                      "Start another checkout",
+                      "A new graph entry represents a new flow",
+                      "It receives a fresh temporary state holder"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The static graph declaration is reused across checkouts. The shared owner is the graph’s runtime back-stack entry. Popping one child cannot be treated as finishing the flow while that graph entry still exists. Conversely, removing only the visible payment UI does not guarantee that the graph owner has been removed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Unexpectedly shared product state often means a lookup used the Activity instead of the destination entry. Unexpectedly reset checkout state can mean each child used its own entry. Inspect the actual owner passed to the ViewModel lookup and the history remaining after the operation. The ViewModel class name and the visible screen title cannot establish sharing."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Reusing an existing singleTask Activity is an Activity launch policy. It does not automatically choose which Compose destination should be current inside MainActivity. Code receiving the Intent must translate the request into the appropriate internal navigation state. The surviving Activity may still have its previous inner history unless that code changes it. Choosing singleTask just to avoid a duplicate destination can therefore remove entire Activities without solving the intended navigation problem."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "An Activity-scoped ViewModel can remain after a destination is popped. If a checkout must end with its flow, identify and remove the flow owner; clearing a composable or intercepting Back does not change an unrelated store’s lifetime."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "title": "Retention, visibility and removal are separate decisions",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An entry has both a lifetime and a current availability. Navigation 2 caps entry lifecycles according to the host, destination type, and transitions. An underlying destination can remain visible behind a dialog without being RESUMED. A destination can also remain on history without its UI being composed. Use the destination’s supplied lifecycle for UI activity; the Activity being RESUMED does not prove that every destination it hosts is interactive."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Saved-stack restoration adds another distinction. Navigation 2 can pop with saveState and later navigate with restoreState, retaining restoration information and associated stores for that saved history. A tab switch using such a policy is not permanent dismissal. Cleanup decisions must account for retained saved stacks, and for explicit clearing of them, rather than treating every removal from the currently displayed stack as the end of all state."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Entry scope also limits memory and work. A graph owner retained after an abandoned flow can retain every collaborator held by its ViewModels. Permanently removing the flow makes its cleanup possible; process termination instead loses all those objects without guaranteeing orderly cleanup. Saving a route or input for reconstruction does not preserve an in-memory ViewModel instance."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "A graph declares possibilities; a back stack records actual occurrences.",
+                    "Route equality does not prove entry identity or shared state.",
+                    "A parent graph entry can retain shared state after a child entry is popped.",
+                    "Separate Activity task history from the navigation history hosted inside an Activity.",
+                    "Distinguish hidden, retained for restoration, transitioning out, and permanently removed."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "For a navigation event, name the entries before and after it, the owner used for each state holder, and whether removal is permanent or saved for restoration. Then explain any Activity task operation separately."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_viewmodel_owner_and_scope",
+            "lesson_saved_state_and_reconstruction"
+          ],
+          "sources": [
+            {
+              "title": "Navigation and the back stack",
+              "url": "https://developer.android.com/guide/navigation/backstack"
+            },
+            {
+              "title": "NavBackStackEntry owner and lifetime contract",
+              "url": "https://developer.android.com/reference/androidx/navigation/NavBackStackEntry"
+            },
+            {
+              "title": "Navigation graph entries and shared ViewModels",
+              "url": "https://developer.android.com/guide/navigation/use-graph/programmatic"
+            },
+            {
+              "title": "Tasks and the back stack: singleTask",
+              "url": "https://developer.android.com/guide/components/activities/tasks-and-back-stack"
+            },
+            {
+              "title": "Multiple back stacks and saved navigation state",
+              "url": "https://developer.android.com/guide/navigation/backstack/multi-back-stacks"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_navigation_2_vs_3_state_ownership",
+          "title": "Navigation 2 and Navigation 3: Who Owns the Stack?",
+          "primarySubtopicIds": [
+            "navigation_2_vs_3"
+          ],
+          "supportingSubtopicIds": [
+            "navigation_fundamentals",
+            "viewmodel_lifecycle",
+            "saved_state",
+            "compose_state"
+          ],
+          "summary": "Navigation 2 keeps runtime history behind NavController. Navigation 3 renders entries from app-owned navigation keys. Making the stack explicit gives the application more control over history, while stack saving, entry state, and entry-scoped ViewModels still require distinct mechanisms.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "title": "Identify the state that drives the display",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A navigation action changes the history that the UI renders. Navigation 2 and Navigation 3 place that history behind different boundaries. In Navigation 2, application code commands NavController through operations such as navigate and popBackStack. The controller manages concrete entries, and NavHost connects its graph destinations to UI content."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Navigation 2 supports typed routes: serializable objects and classes can describe destinations and their arguments. Typed routes do not make the controller’s internal stack an application-owned list. The controller still creates entries and applies navigation options. Its NavBackStackEntry exposes lifecycle, saved-state, and ViewModel ownership for a destination or graph occurrence."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In Navigation 3, the application holds the navigation state, usually an observable list of keys. A key is small data identifying the content to show, such as ProductKey with a product ID. Adding a key expresses forward navigation; removing keys expresses a history change. An entry provider resolves keys to NavEntry content, and NavDisplay renders the resulting entries."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "NavDisplay normally uses a single-pane scene showing the top entry, but history and display are distinct. An adaptive scene can show more than one entry. The application still chooses the history; the display chooses how the relevant content appears. Neither model means that every entry must always have a live UI instance."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "There are three separate retention arrangements. rememberNavBackStack saves the keys and their order through the host’s saved-state path. The saveable-state decorator keeps entry-associated saveable UI values available when that content leaves composition. The ViewModel-store decorator supplies an entry ViewModelStoreOwner, so a viewModel lookup inside entry content uses that scope. The saveable-state decorator comes first and is required for the add-on’s SavedStateHandle integration."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Concern",
+                    "Navigation 2",
+                    "Navigation 3"
+                  ],
+                  "rows": [
+                    [
+                      "Runtime history",
+                      "Managed by NavController",
+                      "Held in application state supplied to the display"
+                    ],
+                    [
+                      "Content resolution",
+                      "Graph destination rendered by NavHost",
+                      "Key resolved by an entry provider and rendered by NavDisplay"
+                    ],
+                    [
+                      "Forward navigation",
+                      "Command the controller with a route",
+                      "Apply a change to application navigation state"
+                    ],
+                    [
+                      "Destination owners",
+                      "Provided by NavBackStackEntry",
+                      "Supplied around entry content by the display and state decorators"
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "The ownership change concerns navigation state, not whether routes are typed or screens use Compose. Navigation 3 exposes history as application data; Navigation 2 centralizes it in a controller."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Connect history, saving and entry scope",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "These Android Compose examples show the same catalog-to-product interaction. They assume Material 3 and the Kotlin serialization compiler plugin. The first uses Navigation Compose with its typed-route APIs. Each route declaration describes content; navigate creates the runtime visit and popBackStack removes the current visit. Button callbacks perform navigation, rather than changing history while the UI is being composed."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import androidx.compose.material3.Button\nimport androidx.compose.material3.Text\nimport androidx.compose.runtime.Composable\nimport androidx.navigation.compose.NavHost\nimport androidx.navigation.compose.composable\nimport androidx.navigation.compose.rememberNavController\nimport androidx.navigation.toRoute\nimport kotlinx.serialization.Serializable\n\n@Serializable\ndata object CatalogRoute\n\n@Serializable\ndata class ProductRoute(val productId: String)\n\n@Composable\nfun ControllerCatalog() {\n    val controller = rememberNavController()\n    NavHost(controller, startDestination = CatalogRoute) {\n        composable<CatalogRoute> {\n            Button(onClick = { controller.navigate(ProductRoute(\"A17\")) }) {\n                Text(\"Open product\")\n            }\n        }\n        composable<ProductRoute> { entry ->\n            val route = entry.toRoute<ProductRoute>()\n            Button(onClick = { controller.popBackStack() }) {\n                Text(\"Product ${route.productId}: return\")\n            }\n        }\n    }\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The second uses stable Navigation 3 1.2.0 and the Lifecycle ViewModel Navigation 3 add-on 2.11.0. Call it beneath an Android ComponentActivity’s Compose content, which supplies the surrounding lifecycle, saved-state machinery, and ViewModelStoreOwner. Its keys implement NavKey and are @Serializable, so the Android rememberNavBackStack overload can save them. Material UI and serialization setup are required as in the first example."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import androidx.compose.material3.Button\nimport androidx.compose.material3.Text\nimport androidx.compose.runtime.Composable\nimport androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator\nimport androidx.navigation3.runtime.NavKey\nimport androidx.navigation3.runtime.entryProvider\nimport androidx.navigation3.runtime.rememberNavBackStack\nimport androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator\nimport androidx.navigation3.ui.NavDisplay\nimport kotlinx.serialization.Serializable\n\n@Serializable\ndata object CatalogKey : NavKey\n\n@Serializable\ndata class ProductKey(val productId: String) : NavKey\n\n@Composable\nfun AppOwnedCatalog() {\n    val backStack = rememberNavBackStack(CatalogKey)\n    NavDisplay(\n        backStack = backStack,\n        onBack = {\n            if (backStack.size > 1) backStack.removeLastOrNull()\n        },\n        entryDecorators = listOf(\n            rememberSaveableStateHolderNavEntryDecorator<NavKey>(),\n            rememberViewModelStoreNavEntryDecorator<NavKey>(),\n        ),\n        entryProvider = entryProvider<NavKey> {\n            entry<CatalogKey> {\n                Button(onClick = { backStack.add(ProductKey(\"A17\")) }) {\n                    Text(\"Open product\")\n                }\n            }\n            entry<ProductKey> { key ->\n                Button(onClick = {\n                    if (backStack.size > 1) backStack.removeLastOrNull()\n                }) {\n                    Text(\"Product ${key.productId}: return\")\n                }\n            }\n        },\n    )\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The example preserves a nonempty root because NavDisplay requires nonempty history. System Back at the root belongs to the host’s back behavior; on Android 12 and higher, Back from a launcher-root Activity normally backgrounds its task rather than finishing that Activity. The application owns the list above the individual destinations; each destination receives only the navigation actions it needs. Private remember state inside ProductKey’s content would not describe the application’s complete history."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The back-stack overload of NavDisplay includes the saveable-state decorator by default. Supplying entryDecorators replaces that list, so the example includes it explicitly before adding the ViewModel decorator. Saving the keys alone neither retains arbitrary local remember values nor establishes destination-scoped ViewModels. Without the ViewModel decorator, a lookup uses the surrounding available owner, often the Activity."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A ViewModel is created when it is requested, not merely when its key is added. It can remain while the entry stays in history and its content is absent. After process death, saved keys reconstruct navigation and saved inputs can reconstruct state; old ViewModel objects do not return. A stack held only in a ViewModel also needs an explicit saving mechanism for process recreation."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "A restored product route can coexist with reset form fields or an Activity-scoped ViewModel. Check stack serialization, entry saveable state, and entry store ownership independently."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "title": "History policy includes identity and disposal",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Navigation 3 decorators associate state with NavEntry.contentKey. Entries sharing a contentKey share that decorator state. The default derives from the key’s string representation and class; repeatedly adding an equal ProductKey does not manufacture independent visit state. If two visits to product A17 need independent drafts, include a stable visit identifier in the key and derive a distinct saveable contentKey from that identifier when necessary. Preserve it during restoration instead of generating a new identifier during composition."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Permanent removal and UI disposal can occur at different moments. Decorator cleanup runs after the last entry with a contentKey has left the stack and its content has left composition. An outgoing transition can delay that second event. NavDisplay caps content whose contentKey is no longer in the current history at CREATED while it animates out, so it can still be drawn while STARTED- or RESUMED-dependent work has stopped. The supplied lifecycle is also capped by the parent and scene; a settled scene, overlay, or visible multi-pane arrangement can change which entries are active."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An application with several retained histories must retain both the keys and the entry-state ownership for each history. Switching a tab is often a temporary selection change, while abandoning its flow is a permanent removal. Keeping an inactive list in memory while destroying its decorators can retain history but lose its state holders. Hoisting decorated-entry management for retained stacks makes that lifetime explicit; saving keys and retaining stores remain separate decisions."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Navigation 2 remains a valid choice when its controller, graphs, existing integrations, and state-restoration behavior fit the application. Navigation 3 can make custom histories and adaptive presentation easier to express, but application ownership also exposes invalid-history bugs. A migration needs decisions about root behavior, duplicate visits, saved histories, entry identity, and state clearing. Replacing navigate calls with list additions without those decisions changes syntax while leaving the lifetime contract undefined."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Keep navigation state above the destinations whose content it controls.",
+                    "Save stack keys separately from entry UI values and in-memory ViewModels.",
+                    "Give independent visits stable, distinct state identities.",
+                    "Follow the entry’s supplied lifecycle rather than composition presence or the host Activity alone.",
+                    "Choose the navigation model from history requirements and integration cost."
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "INTERVIEW_FOCUS",
+                  "text": "Compare the owner of history first. Then trace adding a key, rendering its entry, obtaining an entry-scoped ViewModel, hiding the content, restoring after process death, and permanently removing it. Those steps expose the practical consequences of the ownership model."
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_navigation_back_stacks_tasks_and_entry_lifetimes",
+            "lesson_saved_state_and_reconstruction",
+            "lesson_viewmodel_lifetime_and_persistence"
+          ],
+          "sources": [
+            {
+              "title": "Navigation 3 basics and destination lifecycle",
+              "url": "https://developer.android.com/guide/navigation/navigation-3/basics"
+            },
+            {
+              "title": "Type safety in Kotlin DSL and Navigation Compose",
+              "url": "https://developer.android.com/guide/navigation/design/type-safety"
+            },
+            {
+              "title": "Save and manage Navigation 3 state",
+              "url": "https://developer.android.com/guide/navigation/navigation-3/save-state"
+            },
+            {
+              "title": "Navigation 3 releases",
+              "url": "https://developer.android.com/jetpack/androidx/releases/navigation3"
+            },
+            {
+              "title": "Lifecycle releases and stable Navigation 3 integration",
+              "url": "https://developer.android.com/jetpack/androidx/releases/lifecycle"
+            },
+            {
+              "title": "Navigation 3 NavEntry identity at the 1.2.0 release revision",
+              "url": "https://android.googlesource.com/platform/frameworks/support/+/811e8c9c37f4955d520fe0cf7e39d96866066abc/navigation3/navigation3-runtime/src/commonMain/kotlin/androidx/navigation3/runtime/NavEntry.kt"
+            },
+            {
+              "title": "Navigation 3 decorator cleanup at the 1.2.0 release revision",
+              "url": "https://android.googlesource.com/platform/frameworks/support/+/811e8c9c37f4955d520fe0cf7e39d96866066abc/navigation3/navigation3-runtime/src/commonMain/kotlin/androidx/navigation3/runtime/NavEntryDecorator.kt"
+            },
+            {
+              "title": "Navigation 3 decorated-entry retention at the 1.2.0 release revision",
+              "url": "https://android.googlesource.com/platform/frameworks/support/+/811e8c9c37f4955d520fe0cf7e39d96866066abc/navigation3/navigation3-runtime/src/commonMain/kotlin/androidx/navigation3/runtime/DecoratedNavEntries.kt"
+            },
+            {
+              "title": "Navigation 3 entry provider at the 1.2.0 release revision",
+              "url": "https://android.googlesource.com/platform/frameworks/support/+/811e8c9c37f4955d520fe0cf7e39d96866066abc/navigation3/navigation3-runtime/src/commonMain/kotlin/androidx/navigation3/runtime/EntryProvider.kt"
+            },
+            {
+              "title": "Navigation 3 Android back-stack saving at the 1.2.0 release revision",
+              "url": "https://android.googlesource.com/platform/frameworks/support/+/811e8c9c37f4955d520fe0cf7e39d96866066abc/navigation3/navigation3-runtime/src/androidMain/kotlin/androidx/navigation3/runtime/RememberNavBackStack.android.kt"
+            },
+            {
+              "title": "Navigation 3 entry lifecycle cap at the 1.2.0 release revision",
+              "url": "https://android.googlesource.com/platform/frameworks/support/+/811e8c9c37f4955d520fe0cf7e39d96866066abc/navigation3/navigation3-ui/src/commonMain/kotlin/androidx/navigation3/scene/BackStackAwareLifecycleNavEntryDecorator.kt"
+            },
+            {
+              "title": "Navigation 3 display and lifecycle at the 1.2.0 release revision",
+              "url": "https://android.googlesource.com/platform/frameworks/support/+/811e8c9c37f4955d520fe0cf7e39d96866066abc/navigation3/navigation3-ui/src/commonMain/kotlin/androidx/navigation3/ui/NavDisplay.kt"
+            },
+            {
+              "title": "Lifecycle ViewModel entry scoping at the 2.11.0 release revision",
+              "url": "https://android.googlesource.com/platform/frameworks/support/+/a01f1a6c29523dd9b046b7f2a383d7d24559e316/lifecycle/lifecycle-viewmodel-navigation3/src/commonMain/kotlin/androidx/lifecycle/viewmodel/navigation3/ViewModelStoreNavEntryDecorator.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_external_entry_and_back_navigation",
+      "topicId": "lifecycle_navigation",
+      "title": "External Entry and Back Navigation",
+      "summary": "External entry constructs a valid destination and return history from a request. Back follows that history, while predictive gestures preview a reversible transition before the lasting navigation action commits.",
+      "lessons": [
+        {
+          "id": "lesson_deep_links_app_links_and_reconstruction",
+          "title": "Deep Links and App Links: Entering the Right State",
+          "primarySubtopicIds": [
+            "deep_links"
+          ],
+          "supportingSubtopicIds": [
+            "navigation_fundamentals",
+            "android_intents",
+            "saved_state"
+          ],
+          "summary": "An external link requests app content without supplying a valid internal history. Android App Links verify the relationship between a domain and an app; the app still validates inputs, checks access, and constructs navigation state with an intentional return path.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "title": "A link requests a destination, not a past journey",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A customer taps an order link in an email. The app may be closed, showing a different order, or signed out. The URL identifies desired content, but none of those starting states provides the same journey as opening the order from the app’s order list. Deep-link handling has to resolve the request and choose the history that will surround it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "On Android, an external link normally arrives as an Intent with action ACTION_VIEW and a URI. Manifest intent filters tell Android which requests an Activity can receive. Once the Activity receives the request, application navigation decides which destination to show. Android routing and the internal navigation transition are separate operations."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A custom scheme such as shopdemo://orders/O17 can identify content, but another application can declare the same scheme. An ordinary HTTPS intent filter also does not prove ownership of the website. Android App Links add a verified association between a web domain and an Android app. The app declares a web-link filter with autoVerify, and the domain publishes a Digital Asset Links statement at /.well-known/assetlinks.json identifying the app’s package and signing-certificate fingerprint."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a matching, verified link, Android can route directly to the associated app without a chooser. Actual opening also depends on the installed app, device verification state, applicable URL rules, and the user’s link preferences. An HTTPS website supplies a useful fallback when the app is unavailable or the link opens in the browser. On Android 12 and higher, unapproved web links generally resolve to the browser rather than automatically to an app declaring a matching filter."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Verification answers which app is associated with the domain. It does not prove that an order ID is valid or that the current account may read it. Anyone can construct a URL with a different ID, and an exported Activity can receive other external requests. Parse accepted routes, validate their arguments, and check authorization when loading the requested resource."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Treat the received URL as a request to build valid app state. Domain verification, input validation, access checks, and navigation history answer different questions."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Convert the request into a small, validated target",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An order link needs an order ID, rather than a serialized order, an account credential, or a caller-supplied list of screens to restore. This Android parser accepts the literal HTTPS authority orders.example.com and the literal path /orders/ followed by the ID. Its ID grammar is an invented application rule: one uppercase letter followed by one to eight digits. Ports, user information, queries, fragments, repeated or trailing slashes, and percent-encoded aliases are rejected. This deliberately restricted policy does not normalize equivalent URL spellings. A production parser should express the formats the product actually supports."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import android.content.Intent\n\ndata class OrderTarget(val orderId: String)\n\nfun readOrderTarget(intent: Intent): OrderTarget? {\n    if (intent.action != Intent.ACTION_VIEW) return null\n    val uri = intent.data ?: return null\n    if (uri.scheme != \"https\" || uri.encodedAuthority != \"orders.example.com\") return null\n    if (uri.query != null || uri.fragment != null) return null\n    val path = uri.encodedPath ?: return null\n    if (!Regex(\"/orders/[A-Z][0-9]{1,8}\").matches(path)) return null\n    val id = path.removePrefix(\"/orders/\")\n    return OrderTarget(id)\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Call this conversion from the Activity’s incoming-Intent path: onCreate for a new launch and onNewIntent when Android reuses an Activity and delivers another request. Pass the accepted target to the same navigation owner used for internal actions. A failed conversion should produce a safe default or an explanatory unavailable screen. It should not partially mutate history before validation finishes."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For this order viewer, a fresh external entry constructs Orders → Order(O17). Orders is a synthetic parent: the customer did not actually visit it during this launch, but it provides a meaningful place to return. If sign-in is needed, show SignIn while keeping only the validated pending target O17. Successful sign-in checks current access and constructs Orders → Order(O17), removing SignIn from the return path. Sign-in cancellation clears the pending request and leaves a safe destination."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Starting condition",
+                    "State during handling",
+                    "State after resolution"
+                  ],
+                  "rows": [
+                    [
+                      "Signed out; link requests O17",
+                      "SignIn with pending target O17",
+                      "Orders → Order(O17), if the authenticated account has access"
+                    ],
+                    [
+                      "Signed in; O17 is unavailable",
+                      "Loading or access check",
+                      "Safe unavailable state with an intentional return path"
+                    ],
+                    [
+                      "Old account history remains in memory",
+                      "Validate request and establish current account",
+                      "New account-appropriate history; no former account’s private entries"
+                    ],
+                    [
+                      "Same validated request delivered again",
+                      "Apply the chosen repeat-request policy",
+                      "Reuse the current target or replace history, rather than blindly append another copy"
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Saving the pending ID through connected saved-state machinery can preserve the request across eligible process recreation during sign-in. It does not preserve authentication or authorize the order. After restoration, establish the current account and recheck access. After successful handling or cancellation, clear that pending target so a later launch cannot accidentally replay it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Test both entry and return behavior. Open the real HTTPS URL without restricting the Intent to the app’s package to test Android’s resolution. Inspect domain verification separately, for example with pm get-app-links. A package-restricted launch can test the parser while bypassing the question of which app Android would normally choose. Exercise cold launch, reused Activity delivery, signed-out entry, rejected input, unavailable orders, and Back after sign-in."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Opening the requested detail and appending it to whatever history happens to exist can expose stale private screens on Back. Preserving the intended order ID does not require preserving the previous account’s navigation entries."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "title": "Choose history from the interaction’s meaning",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Synthetic parent history is useful when an external detail should lead into browsing related app content. Preserving existing history can be useful when a signed-in customer opens a link while already browsing the same account. A standalone detail can instead let Back return to the calling task. These are product choices. Define the expected result for fresh entry, active-session entry, and account change; Activity flags alone cannot determine the app’s inner history."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A safe history also has valid owners. Reusing a private destination from an earlier account can reuse its entry-scoped state even if a new detail is displayed above it. Reconstructing account-appropriate history removes that return path and ends the old entry scopes according to the navigation library’s disposal contract. Resource access still needs authorization, since deleting old UI entries is not an access-control mechanism."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Navigation 2 can match graph deep links and construct a back stack according to its graph and Intent handling. Navigation 3 1.2.0 provides DeepLinkRequest and DeepLinkMatcher to map incoming requests to navigation keys, with helpers for building history. These tools reduce matching work; the application still decides authentication, accepted arguments, repeat delivery, and the history appropriate to its current session."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Dynamic App Links are an optional extension on Android 15 and higher with Google services installed. Devices can periodically fetch server-side matching refinements from assetlinks.json. Those rules cannot expand beyond the scope declared in the app’s static manifest, and devices without that support still need useful static rules. Changing link matching on the server does not replace the app’s target validation or navigation policy."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Explain how Android resolves the link before the app resolves its destination.",
+                    "Keep the accepted target small and validate it before changing history.",
+                    "Preserve the intended destination through authentication, then recheck access.",
+                    "Choose and test the history visible after a successful entry or a cancelled sign-in.",
+                    "Keep domain verification separate from resource authorization."
+                  ]
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_navigation_back_stacks_tasks_and_entry_lifetimes",
+            "lesson_navigation_2_vs_3_state_ownership",
+            "lesson_saved_state_and_reconstruction"
+          ],
+          "sources": [
+            {
+              "title": "Create deep links and receive incoming Intents",
+              "url": "https://developer.android.com/training/app-links/create-deeplinks"
+            },
+            {
+              "title": "Verify Android App Links",
+              "url": "https://developer.android.com/training/app-links/verify-applinks"
+            },
+            {
+              "title": "Add Intent filters for App Links",
+              "url": "https://developer.android.com/training/app-links/add-applinks"
+            },
+            {
+              "title": "Website associations and Dynamic App Links scope",
+              "url": "https://developer.android.com/training/app-links/configure-assetlinks"
+            },
+            {
+              "title": "Deep-link input validation and access checks",
+              "url": "https://developer.android.com/privacy-and-security/risks/unsafe-use-of-deeplinks"
+            },
+            {
+              "title": "Navigation 3 deep-link support",
+              "url": "https://developer.android.com/guide/navigation/navigation-3/deep-links"
+            },
+            {
+              "title": "Navigation 2 deep-link history",
+              "url": "https://developer.android.com/guide/navigation/design/deep-link"
+            },
+            {
+              "title": "Android Uri encoded authority and path components",
+              "url": "https://developer.android.com/reference/android/net/Uri"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_back_navigation_and_predictive_back",
+          "title": "Back Is a Navigation Transition, Including Predictive Back",
+          "primarySubtopicIds": [
+            "back_handling"
+          ],
+          "supportingSubtopicIds": [
+            "navigation_fundamentals",
+            "lifecycle_aware_apis",
+            "coroutine_cancellation"
+          ],
+          "summary": "Back follows the history and temporary UI state available before it starts. Predictive Back adds a cancellable preview before commitment. Navigation libraries handle ordinary destination transitions; custom handlers need narrow enabled conditions and must preserve history when a gesture is cancelled.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "title": "History defines the return transition",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A sign-in screen opens Home. If SignIn remains beneath Home, Back returns to SignIn. The navigation stack is accurately following its recorded history, but that history no longer matches the completed interaction. Remove the completed sign-in entry when navigating forward, so future ordinary and predictive Back both have a meaningful destination."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Within a navigation host, Back usually removes the current destination and reveals the preceding entry. When no inner transition remains, the host can let Android handle task navigation. On Android 12 and higher, Back from a root launcher Activity normally moves its task to the background rather than finishing that Activity. Leaving the visible app is therefore not a universal signal that its Activity or ViewModels were destroyed."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A custom Back handler is useful when temporary UI should respond before destination navigation: dismissing an open panel, traversing a WebView’s own history, or asking whether to discard edits. Use supported AndroidX dispatch through OnBackPressedDispatcher and OnBackPressedCallback; Compose supplies BackHandler for a custom action on committed Back. Register the handler while its owner is valid and keep its enabled state aligned with the UI condition that needs it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Predictive Back lets a user see a transition while swiping and then either complete or cancel it. The system needs to know before the gesture whether application handling is active. A legacy onBackPressed override supplies a decision at commitment rather than a registered, state-dependent callback ahead of time. For apps targeting API 36 or higher and running on Android 16 or higher, predictive system animations are enabled by default and legacy onBackPressed is not called unless the app temporarily opts out of the new behavior."
+                },
+                {
+                  "type": "callout",
+                  "kind": "COMMON_MISTAKE",
+                  "text": "Removing an entry as soon as progress starts destroys history before the user commits. A cancelled gesture must leave lasting navigation state unchanged."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Registration does not itself draw an app destination preview. Supported callbacks establish participation and precedence; the navigation library or application renders an in-app transition. BackHandler supplies a committed action without custom progress. NavHost and NavDisplay provide their normal predictive integration. Prefer that integration for destination navigation; PredictiveBackHandler supplies gesture progress when a custom UI transition needs it."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Fix history when the return destination is wrong. Use a custom handler when the current UI has a distinct Back action, and decide its enabled state before the gesture."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "title": "Remove completed history and commit only after progress",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "This helper uses Navigation 2 typed-route APIs and the Kotlin serialization compiler plugin. Call it on the main thread after successful sign-in. The active graph must declare these routes and contain SignInRoute on its current history. Navigation removes entries above SignInRoute and, because inclusive is true, removes SignInRoute itself before adding HomeRoute. Entries beneath SignInRoute remain; this is not an instruction to clear every possible stack."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import androidx.navigation.NavController\nimport kotlinx.serialization.Serializable\n\n@Serializable\ndata object SignInRoute\n\n@Serializable\ndata object HomeRoute\n\nfun completeSignIn(controller: NavController) {\n    controller.navigate(HomeRoute) {\n        popUpTo<SignInRoute> { inclusive = true }\n        launchSingleTop = true\n    }\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "launchSingleTop prevents another copy of the destination when that destination is already at the top. It does not search and delete arbitrary earlier SignIn entries. In Navigation 3, the equivalent policy is a change to app-owned history: remove the completed sign-in flow and add or select Home. Apply the policy through the existing navigation owner, including its entry identity and retained-stack rules. An always-enabled Home Back callback that ignores Back leaves the unwanted history in place and also blocks legitimate task navigation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a custom transient overlay, preview changes should be reversible. This Android Compose example keeps the underlying content mounted and fades and scales the overlay as gesture progress arrives. It uses stable activity-compose 1.13.0, Compose UI and Material 3 beneath a ComponentActivity. The caller owns visible and changes it to false in onDismiss. The handler stays at the same composition location; its enabled parameter follows visibility. Do not install a second BackHandler for the same overlay."
+                },
+                {
+                  "type": "code",
+                  "language": "kotlin",
+                  "code": "import androidx.activity.compose.PredictiveBackHandler\nimport androidx.compose.foundation.layout.Box\nimport androidx.compose.material3.Text\nimport androidx.compose.runtime.Composable\nimport androidx.compose.runtime.getValue\nimport androidx.compose.runtime.mutableFloatStateOf\nimport androidx.compose.runtime.remember\nimport androidx.compose.runtime.setValue\nimport androidx.compose.ui.Modifier\nimport androidx.compose.ui.graphics.graphicsLayer\nimport kotlinx.coroutines.CancellationException\nimport kotlinx.coroutines.flow.collect\n\n@Composable\nfun OrderPreviewOverlay(\n    visible: Boolean,\n    onDismiss: () -> Unit,\n    underlyingContent: @Composable () -> Unit,\n) {\n    var previewProgress by remember { mutableFloatStateOf(0f) }\n    PredictiveBackHandler(enabled = visible) { progress ->\n        try {\n            progress.collect { event ->\n                previewProgress = event.progress.coerceIn(0f, 1f)\n            }\n            onDismiss()\n        } catch (cancelled: CancellationException) {\n            throw cancelled\n        } finally {\n            previewProgress = 0f\n        }\n    }\n    Box {\n        underlyingContent()\n        if (visible) {\n            Box(Modifier.graphicsLayer {\n                alpha = 1f - previewProgress\n                scaleX = 1f - 0.05f * previewProgress\n                scaleY = 1f - 0.05f * previewProgress\n            }) {\n                Text(\"Order preview\")\n            }\n        }\n    }\n}"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The handler receives a Flow of BackEventCompat values. Collecting it tracks progress. Normal collection completion means Back committed, so onDismiss changes the lasting state afterwards. Cancellation throws CancellationException and skips that action; finally resets the transient visual value. The same API also handles non-gesture Back, where collection can finish without progress events. No pop, draft deletion, or network operation belongs in each progress update."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The catch preserves cancellation, and the reset performs only an immediate local state assignment. Cancellation is cooperative: blocking work or a broad catch that suppresses cancellation can delay or corrupt recovery. A suspend animation used for cleanup needs an explicit cancellation-safe arrangement; the small reset above needs no suspending cleanup. This example previews overlay dismissal, not the destination beneath a navigation host."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Test a completed swipe, a cancelled swipe, repeated gestures, and button Back. Check that cancellation keeps the overlay visible and resets its appearance, while a completed gesture dismisses once. Also test the disabled state and destination Back after the overlay closes. The Activity API documents a same-frame enabled-state timing edge, so state transitions immediately followed by a gesture deserve a device test."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "title": "Separate preview state from committed state",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A predictive interaction has two kinds of state: transient progress that can be discarded, and lasting navigation or visibility state. Keeping those separate avoids restoring an entry that was already popped, together with its cleared state holders. Preview can render a preceding destination or scale an overlay without granting a preview access to an irreversible operation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An enabled custom callback takes precedence over other eligible handling. In Compose, later composed enabled handlers take precedence; lifecycle-aware AndroidX callbacks also require an active owner. Keeping handlers installed and adjusting enabled conditions preserves a comprehensible ordering. A handler enabled only while a panel is visible can yield to the navigation host after dismissal. A handler that consumes Back merely to log it can suppress system animations and task navigation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The meaning of Back can change while a gesture is underway: an account may sign out, another action may replace history, or the handler’s owner may disappear. Resolve these changes in the navigation owner’s transition policy. A stale callback should not blindly pop a newly replaced stack. Cancellation from owner disposal also follows the coroutine cancellation path, so recovery must not depend on the obsolete UI remaining mounted."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Root task behavior and in-app previews are different layers. Android supplies predictive back-to-home, cross-task, and cross-activity animations under the applicable platform conditions. A navigation library supplies its destination transition. A custom handler supplies its own UI effect. The temporary manifest opt-out is a migration aid, not a substitute for defining correct history and state-dependent supported handling."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Describe the entries that remain after a completed forward interaction.",
+                    "Use popUpTo with inclusive to remove the named Navigation 2 entry as well as entries above it.",
+                    "Enable custom handling only for the UI state that needs it.",
+                    "Keep preview updates reversible and perform the lasting action after successful completion.",
+                    "On cancellation, restore transient visuals and preserve the current history."
+                  ]
+                }
+              ]
+            }
+          ],
+          "relatedLessonIds": [
+            "lesson_navigation_back_stacks_tasks_and_entry_lifetimes",
+            "lesson_navigation_2_vs_3_state_ownership",
+            "lesson_cooperative_cancellation"
+          ],
+          "sources": [
+            {
+              "title": "Navigation and back-stack mutation",
+              "url": "https://developer.android.com/guide/navigation/backstack"
+            },
+            {
+              "title": "Provide custom Back navigation",
+              "url": "https://developer.android.com/guide/navigation/custom-back"
+            },
+            {
+              "title": "Predictive Back participation and system animations",
+              "url": "https://developer.android.com/guide/navigation/custom-back/predictive-back-gesture"
+            },
+            {
+              "title": "Android 16 target-dependent Back changes",
+              "url": "https://developer.android.com/about/versions/16/behavior-changes-16#predictive-back"
+            },
+            {
+              "title": "Tasks and launcher-root Back behavior",
+              "url": "https://developer.android.com/guide/components/activities/tasks-and-back-stack"
+            },
+            {
+              "title": "Activity stable release notes",
+              "url": "https://developer.android.com/jetpack/androidx/releases/activity"
+            },
+            {
+              "title": "PredictiveBackHandler progress, completion and cancellation: Activity 1.13.0 source",
+              "url": "https://android.googlesource.com/platform/frameworks/support/+/475afe04599ffc0893939effda40187916c4ceb0/activity/activity-compose/src/main/java/androidx/activity/compose/PredictiveBackHandler.kt"
+            },
+            {
+              "title": "BackHandler registration and committed action: Activity 1.13.0 source",
+              "url": "https://android.googlesource.com/platform/frameworks/support/+/475afe04599ffc0893939effda40187916c4ceb0/activity/activity-compose/src/main/java/androidx/activity/compose/BackHandler.kt"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
       "id": "unit_kmp_shared_viewmodels_and_host_lifecycles",
       "topicId": "kmp",
       "title": "Shared ViewModels and Host Lifecycles",

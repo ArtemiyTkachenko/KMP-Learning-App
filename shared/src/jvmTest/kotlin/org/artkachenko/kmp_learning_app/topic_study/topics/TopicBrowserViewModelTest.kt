@@ -1433,17 +1433,18 @@ internal class TopicBrowserViewModelTest {
     fun productionLearningContentCountsAuthoredTopicsAndPreservesUnauthoredAvailability() = runViewModelTest {
         val androidUi = Topic("android_ui", "UI — Views & Jetpack Compose")
         val kotlin = Topic("kotlin_language", "Kotlin Language")
+        val lifecycle = Topic("lifecycle_navigation", "Lifecycle, State & Navigation")
         val testing = Topic("testing", "Testing")
         val viewModel = viewModel(
             repository = FakeCurriculumRepository(
-                topicResults = resultsOf(listOf(androidUi, kotlin, testing)),
+                topicResults = resultsOf(listOf(androidUi, kotlin, lifecycle, testing)),
             ),
             learningContent = BundledLearningContentRepository(),
         )
         advanceUntilIdle()
 
         val learningContent = BundledLearningContentRepository()
-        for (topicId in listOf("android_ui", "kotlin_language")) {
+        for (topicId in listOf("android_ui", "kotlin_language", "lifecycle_navigation")) {
             val authoredUnitCount = learningContent.getActiveUnitsByTopic(topicId).size
             assertEquals(authoredUnitCount, topic(viewModel, topicId).learningUnitCount)
         }

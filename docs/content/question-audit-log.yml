@@ -1,6 +1,6 @@
 # Question bank audit log
 #
-# One entry per bank-wide semantic review, newest first. The rubric, statuses, severities,
+# One entry per semantic review or scoped remediation pass, newest first. The rubric, statuses, severities,
 # and source-verification values are defined in docs/content/question-validation.md; this
 # file records results so a later session reads the verdict instead of re-deriving it.
 #
@@ -23,6 +23,93 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Lifecycle State and Navigation bounded assessment integration
+    date: 2026-10-07
+    baseline: 4f9cf13649a5bb7cb71e763dc90478b743cf039c
+    scope: >-
+      Four new questions justified by the ten-Lesson program, plus three existing Lifecycle
+      corrections. Exactly seven final records received the independent acceptance gate;
+      this is not a semantic audit of the rest of the bank. Two redundant candidates were
+      omitted without replacement. All shipped answer texts, IDs, keys and modes are unchanged.
+    reviewed: 7
+    active: 7
+    retired: 0
+    deterministic_checks: PASS
+    method: |
+      Separate author, fresh read-only reviewer and correction editor stages preceded a fresh
+      final blind gate. The final reviewer saved D/A/C/B/D/B/B before opening keys and levels;
+      all match the final answers. Every option, explanation, minimum-sufficient level,
+      nearest-neighbor duplication and actual teaching depth was checked. All final hard
+      gates pass. Registration retains preexisting weak B/C distractors (non-hard Q6),
+      recorded rather than silently rewriting historical claims.
+
+      Decisive official sources were opened and read by independent reviewers and editors.
+      The final gate freshly verified process/task/developer-option, cancellation and Nav3
+      contracts; unchanged source provenance was explicitly carried from the earlier
+      independent review, not represented as fresh retrieval. Fifteen assessment citation
+      URLs have successful body checks. A broader 66-URL staged sweep includes learning
+      citations and anchors; HTTP status alone was not treated as semantic verification.
+
+      Actual production Kotlin validators and codec round trips pass, as do coverage checks,
+      cross-revision identity, 111 Python tests and the mechanical anti-cue sweep. Local
+      Gradle was blocked before test execution by wrapper-download network failure; exact-head
+      CI is recorded separately in the draft PR. No Android runtime example execution claimed.
+    summary:
+      status: { PASS: 4, FIXED: 3, REVIEW_REQUIRED: 0, REPLACE: 0 }
+      severity: { BLOCKER: 0, MAJOR: 3, MINOR: 0 }
+      source_verification: { VERIFIED: 7, PARTIALLY_VERIFIED: 0, UNVERIFIED: 0, INVALID: 0 }
+      final_counts:
+        questions: 493
+        active: 452
+        deprecated: 41
+        lifecycle_active: 27
+        single: 446
+        multiple: 47
+        levels_active: { FOUNDATION: 209, APPLIED: 215, ADVANCED: 28 }
+    passed:
+      source_verified:
+        - { n: 490, id: fragment_captured_binding_callback_cleanup }
+        - { n: 491, id: navigation3_keys_and_entry_state_scopes }
+        - { n: 492, id: external_target_account_history_after_sign_in }
+        - { n: 493, id: predictive_back_cancel_preserves_history }
+    findings:
+      - id: predictive_back_handler_registration
+        n: 10
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q15_EXPLANATION_CORRECT]
+        issues:
+          - Explanation conflated advance callback participation with rendering an in-app preview.
+        changes:
+          - Distinguished registration, enabled dispatch, committed BackHandler and progress rendering.
+        residual: Preexisting non-hard Q6 weakness in B/C remains; options and key are unchanged.
+      - id: navigation_pop_up_to_inclusive
+        n: 18
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q15_EXPLANATION_CORRECT]
+        issues:
+          - Explanation implied inclusive removal clears all history; APPLIED exceeded direct-contract reasoning.
+        changes:
+          - Explained that entries below SignIn can remain and classified FOUNDATION.
+      - id: process_death_reproducing_restoration
+        n: 395
+        status: FIXED
+        severity: MAJOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q2_SELF_CONTAINED, Q3_UNAMBIGUOUS, Q15_EXPLANATION_CORRECT]
+        issues:
+          - Unspecified tooling termination did not establish task-preserving process loss.
+          - Explanation treated finishing one Activity as necessarily ending its task; level exceeded direct reasoning.
+        changes:
+          - Clarified the verified background-process kill premise, preserving task and Recents and excluding force-stop.
+          - Qualified finish, added official task and developer-option sources, and classified FOUNDATION.
+
   - review: KMP content-separation question migration
     date: 2026-09-29
     baseline: 6efbcfa (origin/main, Quality improvements #437)

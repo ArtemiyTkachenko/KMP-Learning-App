@@ -16,7 +16,9 @@ import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 import org.artkachenko.kmp_learning_app.assessment.selection.AssessmentQuestionSelector
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.lesson_study.studyProgressStateHolder
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicUiState
+import org.artkachenko.kmp_learning_app.progress.ProgressUiState
 import org.artkachenko.kmp_learning_app.progress.ProgressTopicViewModel
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonUiState
 import org.artkachenko.kmp_learning_app.topic_study.learning_lesson.LearningLessonViewModel
@@ -163,8 +165,8 @@ internal class DestinationVisibilityGuardTest {
         val attempts = FixtureAssessmentRepository(completedAttempt("kmp", 1_000, "k1" to true))
         val curriculum = VisibleCurriculumRepository(FixtureCurriculumRepository(), holder.visibility)
         val service = LearningProgressService(attempts.asCompletedHistory(), curriculum)
-        val kmp = ProgressTopicViewModel("kmp", service, holder)
-        val compose = ProgressTopicViewModel("compose", service, holder)
+        val kmp = ProgressTopicViewModel("kmp", service, holder, MutableStateFlow(ProgressUiState.Loading))
+        val compose = ProgressTopicViewModel("compose", service, holder, MutableStateFlow(ProgressUiState.Loading))
         advanceUntilIdle()
 
         assertEquals(ProgressTopicUiState.Unavailable, kmp.uiState.value)

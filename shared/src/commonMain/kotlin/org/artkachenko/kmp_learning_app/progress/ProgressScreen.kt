@@ -20,6 +20,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +59,7 @@ import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_deta
 import kmp_learning_app.shared.generated.resources.progress_weak_areas_none_title
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessTarget
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.AccuracyRow
@@ -135,6 +140,7 @@ internal fun ProgressScreen(
     onPracticePreset: (PracticePreset) -> Unit,
     onReviewMistakes: () -> Unit,
     modifier: Modifier = Modifier,
+    onChooseReadinessTarget: (ReadinessTarget) -> Unit = {},
 ) {
     val scrollBehavior = rememberAppTopBarScrollBehavior()
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
@@ -168,6 +174,7 @@ internal fun ProgressScreen(
                         onHistoryClick = onHistoryClick,
                         onPracticePreset = onPracticePreset,
                         onReviewMistakes = onReviewMistakes,
+                        onChooseReadinessTarget = onChooseReadinessTarget,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -204,14 +211,27 @@ private fun ProgressContent(
     onHistoryClick: (CompletedAssessmentType, String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
     onReviewMistakes: () -> Unit,
+    onChooseReadinessTarget: (ReadinessTarget) -> Unit,
     modifier: Modifier,
 ) {
+    // Whether the readiness chooser is reopened under the header. Presentation state only: the
+    // target itself is the app-scoped preference, and choosing one closes the chooser again.
+    var choosingTarget by rememberSaveable { mutableStateOf(false) }
+    val readiness = ReadinessCallbacks(
+        choosingTarget = choosingTarget,
+        onChangeTarget = { choosingTarget = !choosingTarget },
+        onChooseTarget = { target ->
+            choosingTarget = false
+            onChooseReadinessTarget(target)
+        },
+        onTopicClick = onTopicClick,
+    )
     if (LocalAppWindowSizeClass.current.isExpanded) {
         AppTwoPaneRow(
             modifier = modifier,
             primary = {
                 ProgressPane(Modifier.weight(1f).testTag(ProgressStandingPaneTag)) {
-                    standingSection(state)
+                    standingSection(state, readiness)
                 }
             },
             secondary = {
@@ -228,7 +248,7 @@ private fun ProgressContent(
         contentPadding = appScreenContentPadding(),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.Grouped),
     ) {
-        standingSection(state)
+        standingSection(state, readiness)
         actionableSection(state, onPracticePreset, onReviewMistakes)
         detailSection(state, onTopicClick, onHistoryClick)
     }
@@ -260,8 +280,17 @@ private fun ProgressPane(
  * is context for the accuracy above it and now sits inside the hero saying so. Recent performance
  * keeps its own surface, because it is a genuinely different window over genuinely different
  * evidence and routinely reads a different number.
+ *
+ * Readiness closes the group. It is a standing answer too — "where am I against the level I am
+ * aiming for?" — so it reads before anything the learner acts on, and on a wide window it sits in
+ * the standing pane rather than among the actions. It comes after the two accuracy surfaces rather
+ * than before them because it is built from that same evidence and reads as its conclusion; the
+ * hero stays the screen's one gradient.
  */
-private fun LazyListScope.standingSection(state: ProgressUiState.Content) {
+private fun LazyListScope.standingSection(
+    state: ProgressUiState.Content,
+    readiness: ReadinessCallbacks,
+) {
     item {
         ProgressHero(
             percentage = state.percentage,
@@ -276,7 +305,22 @@ private fun LazyListScope.standingSection(state: ProgressUiState.Content) {
             RecentPerformanceSummary(recent)
         }
     }
+    readinessSection(
+        readiness = state.readiness,
+        choosingTarget = readiness.choosingTarget,
+        onChangeTarget = readiness.onChangeTarget,
+        onChooseTarget = readiness.onChooseTarget,
+        onTopicClick = readiness.onTopicClick,
+    )
 }
+
+/** What the readiness section needs from the composable that owns the dashboard's presentation state. */
+private class ReadinessCallbacks(
+    val choosingTarget: Boolean,
+    val onChangeTarget: () -> Unit,
+    val onChooseTarget: (ReadinessTarget) -> Unit,
+    val onTopicClick: (String) -> Unit,
+)
 
 /** What the learner can do something about: the mistake queue, and the areas going badly. */
 private fun LazyListScope.actionableSection(

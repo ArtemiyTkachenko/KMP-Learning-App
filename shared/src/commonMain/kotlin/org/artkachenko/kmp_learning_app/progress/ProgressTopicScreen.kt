@@ -24,6 +24,7 @@ import kmp_learning_app.shared.generated.resources.progress_topic_unavailable
 import kmp_learning_app.shared.generated.resources.progress_not_enough_data
 import kmp_learning_app.shared.generated.resources.progress_score
 import kmp_learning_app.shared.generated.resources.progress_weak_label
+import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressPolicy
 import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.jetbrains.compose.resources.stringResource
@@ -50,7 +51,13 @@ internal fun ProgressTopicScreen(
     onBack: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    readiness: ProgressTopicReadinessUiModel? = null,
+    onReviewMistakes: () -> Unit = {},
+    onPracticePreset: (PracticePreset) -> Unit = {},
 ) {
+    val readinessBlock: (@Composable () -> Unit)? = readiness?.let {
+        { ProgressTopicReadinessBlock(it, onReviewMistakes, onPracticePreset) }
+    }
     val scrollBehavior = rememberAppTopBarScrollBehavior()
     Column(modifier.fillMaxSize().nestedScroll(scrollBehavior.nestedScrollConnection)) {
         // The topic name is the aggregate card's title, so the bar keeps a stable label rather
@@ -68,10 +75,29 @@ internal fun ProgressTopicScreen(
                         testTag = ProgressTopicLoadingTag,
                         modifier = Modifier.fillMaxSize(),
                     )
-                    ProgressTopicUiState.Empty -> ScreenMessage(
-                        message = stringResource(Res.string.progress_topic_empty),
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    // A Topic with no answers yet still has a readiness — not enough evidence — and
+                    // something to do about it, so the block leads the message when there is one.
+                    ProgressTopicUiState.Empty -> if (readinessBlock == null) {
+                        ScreenMessage(
+                            message = stringResource(Res.string.progress_topic_empty),
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = appScreenContentPadding(),
+                            verticalArrangement = Arrangement.spacedBy(AppSpacing.Comfortable),
+                        ) {
+                            item { readinessBlock() }
+                            item {
+                                Text(
+                                    text = stringResource(Res.string.progress_topic_empty),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                     ProgressTopicUiState.Unavailable -> ScreenMessage(
                         message = stringResource(Res.string.progress_topic_unavailable),
                         modifier = Modifier.fillMaxSize(),
@@ -83,6 +109,7 @@ internal fun ProgressTopicScreen(
                     )
                     is ProgressTopicUiState.Content -> ProgressTopicContent(
                         state = current,
+                        readinessBlock = readinessBlock,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -94,6 +121,7 @@ internal fun ProgressTopicScreen(
 @Composable
 private fun ProgressTopicContent(
     state: ProgressTopicUiState.Content,
+    readinessBlock: (@Composable () -> Unit)?,
     modifier: Modifier,
 ) {
     LazyColumn(
@@ -103,6 +131,11 @@ private fun ProgressTopicContent(
     ) {
         item {
             TopicAggregateHero(state)
+        }
+        // Directly under the hero: the same Topic read against the learner's target, before the
+        // Subtopic breakdown that explains it.
+        readinessBlock?.let { block ->
+            item { block() }
         }
         // Only Subtopics with completed observations reach the snapshot, so an observed Topic can
         // still have no Subtopic rows. Omit the heading rather than leaving it dangling.

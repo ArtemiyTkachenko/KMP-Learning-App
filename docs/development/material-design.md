@@ -309,6 +309,14 @@ are marked where they appear.
   `ReviewQuestionCard(statesOutcome = false)` are how a caller says the context already
   states it. A badge that distinguishes a *different* state, such as "Partially correct"
   in the mistake queue, always stays.
+- **A verdict that is not a fault takes no warning or error tone.** The readiness badges on
+  Progress (`ReadinessStatusBadge`) use three existing pairs: "Ready" the `correct` container
+  pair with the check mark, "Getting there" `secondaryContainer` / `onSecondaryContainer` (the
+  learning-units badge's pair), and "Not enough evidence yet" `surfaceContainerHighest` /
+  `onSurfaceVariant` (the in-progress Lesson badge's pair). Being part way to a target is
+  guidance, so the `partiallyCorrect` amber stays reserved for the weak-area verdict and the
+  error and `incorrect` roles for errors and wrong answers; `ProgressReadinessScreenTest` holds
+  that in both themes.
 - **A marker is not a heading.** Metadata about *where* content sits — a depth layer, a position,
   a band label — takes `labelLarge` in `primary` and publishes no `heading()`. `SectionHeading` is
   for the thing that introduces content, and giving it to a marker makes the metadata outrank the

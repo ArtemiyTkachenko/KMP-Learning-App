@@ -40,6 +40,7 @@ import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
@@ -644,6 +645,7 @@ private class TestContext(
     val curriculum = FakeCurriculumRepository(questions, topics, subtopics)
     /** The application scope the holder and the history cache run on. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    val readinessTarget = readinessTargetStateHolder()
     val viewModel = run {
         val store = AssessmentHistoryStore(assessment, scope)
         ProgressViewModel(
@@ -652,9 +654,12 @@ private class TestContext(
                 learningProgressService = LearningProgressService(assessment.asCompletedHistory(), curriculum),
                 curriculumRepository = curriculum,
                 mistakeReviewService = MistakeReviewService(assessment.asCompletedHistory(), AssessmentReviewLoader(curriculum)),
+                readinessService = ReadinessService(curriculum),
                 visibleHistory = store.visibleHistory(scope),
+                readinessTarget = readinessTarget.target,
                 scope = scope,
             ),
+            readinessTargetStateHolder = readinessTarget,
         )
     }
 }

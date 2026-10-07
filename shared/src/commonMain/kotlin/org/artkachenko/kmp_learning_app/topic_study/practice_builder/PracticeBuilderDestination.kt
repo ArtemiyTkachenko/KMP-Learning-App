@@ -1,5 +1,7 @@
 package org.artkachenko.kmp_learning_app.topic_study.practice_builder
 
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,8 +26,9 @@ internal fun PracticeBuilderDestination(
     onBack: () -> Unit,
     onPracticeStarted: (String) -> Unit,
     initialSource: PracticeQuestionSource = PracticeQuestionSource.ALL,
+    initialLevels: Set<QuestionLevel> = AllQuestionLevels,
     viewModel: PracticeBuilderViewModel = koinViewModel {
-        parametersOf(target, initialSource)
+        parametersOf(target, initialSource, initialLevels)
     },
     launchViewModel: AssessmentLaunchViewModel = koinViewModel(),
 ) {

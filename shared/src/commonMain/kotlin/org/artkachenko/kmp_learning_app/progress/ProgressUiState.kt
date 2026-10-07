@@ -1,6 +1,9 @@
 package org.artkachenko.kmp_learning_app.progress
 
 import kotlin.time.Instant
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessGap
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessStatus
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessTarget
 
 internal sealed interface ProgressUiState {
     data object Loading : ProgressUiState
@@ -26,8 +29,50 @@ internal sealed interface ProgressUiState {
         val weakAreas: List<WeakAreaUiModel>,
         val topics: List<ProgressTopicUiModel>,
         val history: List<CompletedAttemptUiModel>,
+        /** Readiness for the learner's chosen interview level, or the chooser when there is none. */
+        val readiness: ProgressReadinessUiModel = ProgressReadinessUiModel.TargetNotChosen,
     ) : ProgressUiState
 }
+
+/**
+ * The readiness section's state. Either the learner has not said what they are preparing for, and
+ * the section asks, or every measurable visible Topic has a status against that target.
+ */
+internal sealed interface ProgressReadinessUiModel {
+    data object TargetNotChosen : ProgressReadinessUiModel
+
+    /**
+     * [readyTopicCount] of [topics] are `READY`. There is no overall score: the count says what it
+     * counts, and an average of verdicts would claim something none of them supports.
+     */
+    data class Assessed(
+        val target: ReadinessTarget,
+        val readyTopicCount: Int,
+        val topics: List<ProgressTopicReadinessUiModel>,
+    ) : ProgressReadinessUiModel
+}
+
+/**
+ * One Topic's readiness, with the evidence behind it, mapped straight from the domain's
+ * `TopicReadiness`. The drill-down selects its block from these rather than deriving its own.
+ */
+internal data class ProgressTopicReadinessUiModel(
+    val target: ReadinessTarget,
+    val topicId: String,
+    val topicName: String?,
+    val status: ReadinessStatus,
+    val answeredCount: Int,
+    val coveredQuestionCount: Int,
+    val targetQuestionCount: Int,
+    val recentAnsweredCount: Int,
+    val recentCorrectCount: Int,
+    /** `null` when nothing has been answered at the target levels. */
+    val recentAccuracy: Double?,
+    val dueMistakeCount: Int,
+    val advancedUnavailable: Boolean,
+    /** Empty exactly when [status] is `READY`; most actionable first. */
+    val gaps: List<ReadinessGap>,
+)
 
 /**
  * How much of the CURRENT ACTIVE question bank the learner has encountered.

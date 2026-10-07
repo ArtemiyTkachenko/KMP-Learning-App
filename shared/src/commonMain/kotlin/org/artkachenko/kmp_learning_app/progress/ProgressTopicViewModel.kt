@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibility
 import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibilityStateHolder
@@ -24,15 +27,34 @@ import org.artkachenko.kmp_learning_app.learning_progress.SubtopicPerformance
  * against the learner's [CurriculumVisibility] first and a hidden one is
  * [ProgressTopicUiState.Unavailable]. Visibility is observed while this screen is alive, because a
  * Progress drill-down can be parked in its area's stack while Settings changes it.
+ *
+ * [readiness] is not part of [uiState]. It is the dashboard's own row for this Topic, read from the
+ * live [ProgressStateHolder] state ([dashboardState]), so the block cannot disagree with the row the
+ * learner tapped and follows every refresh the dashboard does — a completed assessment, a visibility
+ * change, a mistake falling due, a new target — without a second readiness derivation. It is
+ * separate because it exists even where [uiState] is `Empty`: a Topic with no answers yet still has
+ * a readiness, `NOT_ENOUGH_EVIDENCE`, and still has something to do about it.
  */
 internal class ProgressTopicViewModel(
     private val topicId: String,
     private val learningProgressService: LearningProgressService,
     private val visibilityStateHolder: CurriculumVisibilityStateHolder,
+    dashboardState: StateFlow<ProgressUiState>,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<ProgressTopicUiState>(ProgressTopicUiState.Loading)
     val uiState: StateFlow<ProgressTopicUiState> = _uiState.asStateFlow()
     private var loadJob: Job? = null
+
+    /**
+     * `null` while the dashboard has no readiness for this Topic: no target chosen, nothing at the
+     * target's levels to measure, the Topic hidden, or the dashboard not loaded.
+     */
+    val readiness: StateFlow<ProgressTopicReadinessUiModel?> = dashboardState
+        .map { state ->
+            val readiness = (state as? ProgressUiState.Content)?.readiness
+            (readiness as? ProgressReadinessUiModel.Assessed)?.topics?.firstOrNull { it.topicId == topicId }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** The visibility the newest load was made under; the replayed startup value is ignored. */
     private var loadVisibility: CurriculumVisibility? = null

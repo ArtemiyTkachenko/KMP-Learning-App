@@ -41,6 +41,7 @@ import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessService
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
 import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 import org.artkachenko.kmp_learning_app.assessment.history.visibleHistory
@@ -165,6 +166,7 @@ private fun harness(repository: AssessmentRepository): ProgressHarness {
     return run {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val store = AssessmentHistoryStore(repository, scope)
+        val readinessTarget = readinessTargetStateHolder()
         ProgressHarness(
             ProgressViewModel(
             historyStore = store,
@@ -172,9 +174,12 @@ private fun harness(repository: AssessmentRepository): ProgressHarness {
                 learningProgressService = LearningProgressService(repository.asCompletedHistory(), curriculum),
                 curriculumRepository = curriculum,
                 mistakeReviewService = MistakeReviewService(repository.asCompletedHistory(), AssessmentReviewLoader(curriculum)),
+                readinessService = ReadinessService(curriculum),
                 visibleHistory = store.visibleHistory(scope),
+                readinessTarget = readinessTarget.target,
                 scope = scope,
             ),
+            readinessTargetStateHolder = readinessTarget,
             ),
             store,
         )

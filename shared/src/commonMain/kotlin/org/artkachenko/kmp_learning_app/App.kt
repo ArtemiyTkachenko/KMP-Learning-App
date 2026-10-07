@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app
 
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -255,6 +256,15 @@ private fun AppShell(
                         ProgressTopicDestination(
                             topicId = route.topicId,
                             onBack = { popBack() },
+                            // The readiness block's actions use the two operations the dashboard
+                            // already uses: a preset opens the builder, and due mistakes select the
+                            // Mistakes area rather than pushing a second copy of it.
+                            onConfigurePractice = { preset ->
+                                navigator.push(preset.toPracticeBuilderRoute())
+                            },
+                            onReviewMistakes = {
+                                navigator.select(AppTopLevelDestination.MISTAKES)
+                            },
                         )
                     }
                     entry<AppRoute.MistakeReview> {
@@ -382,8 +392,10 @@ private fun AppShell(
                             onBack = { popBack() },
                             onPracticeStarted = navigator::pushFocusedAttempt,
                             // Only the selection the builder opens on. It still applies its own count
-                            // and level defaults and runs its normal preflight, so nothing starts here.
+                            // default and runs its normal preflight, so nothing starts here; levels
+                            // are seeded only when a readiness action asked for its target's.
                             initialSource = route.source,
+                            initialLevels = route.levels ?: AllQuestionLevels,
                         )
                     }
                     entry<AppRoute.PracticeBuilderSubtopic> { route ->

@@ -37,6 +37,16 @@ untouched. `AssessmentEngine` collapses every no-content reason into
 no-content state and availability is read from selection before starting; what it
 guarantees is that a refused request creates and persists no attempt.
 
+### Readiness presets
+
+A `PracticePreset` may carry `levels`, and `AppRoute.PracticeBuilderTopic` an optional `levels`
+field, which seed the builder's initial level selection. Only Progress readiness sets them, to its
+target's levels, so "Practice unseen questions" for a Junior target cannot spend the run on
+Applied or Advanced Questions that Junior coverage does not count. Every other entry passes `null`
+and the builder opens on every level, as before. Like `source`, the field is a starting selection
+and nothing more — the learner can change it, and preflight and Start are unchanged. It is
+optional with a `null` default, so a back stack saved before it existed still restores.
+
 ### Scope
 
 `AssessmentScope` has three shapes: one `Topic`, one `Subtopic`, and a

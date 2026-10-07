@@ -3,6 +3,7 @@ package org.artkachenko.kmp_learning_app.progress
 import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.StateFlow
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessTarget
 
 /**
  * Presents the progress dashboard.
@@ -15,6 +16,7 @@ import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStor
 internal class ProgressViewModel(
     private val historyStore: AssessmentHistoryStore,
     stateHolder: ProgressStateHolder,
+    private val readinessTargetStateHolder: ReadinessTargetStateHolder,
 ) : ViewModel() {
     val uiState: StateFlow<ProgressUiState> = stateHolder.state
 
@@ -29,5 +31,13 @@ internal class ProgressViewModel(
      */
     fun refresh() {
         historyStore.invalidate()
+    }
+
+    /**
+     * Records the interview level readiness is measured against. The dashboard state follows from
+     * the app-scoped holder, so there is nothing to re-read here.
+     */
+    fun chooseReadinessTarget(target: ReadinessTarget) {
+        readinessTargetStateHolder.setTarget(target)
     }
 }

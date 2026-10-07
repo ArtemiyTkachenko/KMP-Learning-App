@@ -4,6 +4,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
@@ -17,6 +18,9 @@ import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
 import org.artkachenko.kmp_learning_app.learning_progress.CurriculumCoverage
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessService
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessTarget
+import org.artkachenko.kmp_learning_app.learning_progress.TopicReadiness
 import org.artkachenko.kmp_learning_app.learning_progress.RecentPerformance
 import org.artkachenko.kmp_learning_app.learning_progress.RecentTrendAvailability
 import org.artkachenko.kmp_learning_app.learning_progress.TopicPerformance
@@ -35,7 +39,9 @@ internal class ProgressStateHolder(
     private val learningProgressService: LearningProgressService,
     private val curriculumRepository: CurriculumRepository,
     private val mistakeReviewService: MistakeReviewService,
+    private val readinessService: ReadinessService,
     visibleHistory: VisibleAssessmentHistory,
+    readinessTarget: StateFlow<ReadinessTarget?>,
     scope: CoroutineScope,
 ) {
     /**
@@ -49,13 +55,19 @@ internal class ProgressStateHolder(
      * well — an unavailable curriculum — is recovered only by running the derivation again. One
      * [VisibleAssessmentHistory.invalidate] reaches both, because the store re-announces the cached
      * history whether or not the re-read changed it.
+     *
+     * Readiness rides the same stream rather than a second one, which is what gives it every refresh
+     * the rest of the dashboard already has: a completed assessment, a visibility change, and — since
+     * [VisibleAssessmentHistory.history] re-announces itself when a scheduled mistake falls due — the
+     * moment a mistake starts blocking `READY`. The chosen target is the one input of its own, so a
+     * change of target re-derives the dashboard too.
      */
-    val state: StateFlow<ProgressUiState> = visibleHistory.history
-        .map { history ->
+    val state: StateFlow<ProgressUiState> = combine(visibleHistory.history, readinessTarget, ::Pair)
+        .map { (history, target) ->
             when (history) {
                 AssessmentHistory.Loading -> ProgressUiState.Loading
                 AssessmentHistory.Failed -> ProgressUiState.Error
-                is AssessmentHistory.Loaded -> runCatching { loadState(history.attempts) }
+                is AssessmentHistory.Loaded -> runCatching { loadState(history.attempts, target) }
                     .getOrElse { failure ->
                         // Cancellation means this holder's own scope is ending, which is not an
                         // operational failure to report as dashboard state.
@@ -66,7 +78,10 @@ internal class ProgressStateHolder(
         }
         .stateIn(scope, SharingStarted.Eagerly, ProgressUiState.Loading)
 
-    private suspend fun loadState(completedAttempts: List<TestAttempt>): ProgressUiState {
+    private suspend fun loadState(
+        completedAttempts: List<TestAttempt>,
+        readinessTarget: ReadinessTarget?,
+    ): ProgressUiState {
         // Reuses the history the cache already holds, so one derivation is one read.
         val snapshot = learningProgressService.load(completedAttempts)
         if (snapshot.completedAttemptCount == 0) return ProgressUiState.Empty
@@ -91,8 +106,56 @@ internal class ProgressStateHolder(
             weakAreas = snapshot.weakAreas.map(::toUiModel),
             topics = snapshot.topics.map(::toUiModel),
             history = mapHistory(completedAttempts),
+            readiness = readiness(completedAttempts, readinessTarget),
         )
     }
+
+    /**
+     * No curriculum is read for readiness until the learner has chosen a target: the section is a
+     * question then, not a derivation.
+     */
+    private suspend fun readiness(
+        completedAttempts: List<TestAttempt>,
+        target: ReadinessTarget?,
+    ): ProgressReadinessUiModel {
+        if (target == null) return ProgressReadinessUiModel.TargetNotChosen
+        val snapshot = readinessService.load(completedAttempts, target)
+        val topicsById = mutableMapOf<String, Topic?>()
+        return ProgressReadinessUiModel.Assessed(
+            target = target,
+            readyTopicCount = snapshot.readyTopicCount,
+            topics = snapshot.topics.map { topic ->
+                toUiModel(
+                    target = target,
+                    readiness = topic,
+                    topicName = topicsById.getOrLoad(topic.topicId) {
+                        curriculumRepository.getTopicById(topic.topicId)
+                    }?.name,
+                )
+            },
+        )
+    }
+
+    private fun toUiModel(
+        target: ReadinessTarget,
+        readiness: TopicReadiness,
+        topicName: String?,
+    ): ProgressTopicReadinessUiModel =
+        ProgressTopicReadinessUiModel(
+            target = target,
+            topicId = readiness.topicId,
+            topicName = topicName,
+            status = readiness.status,
+            answeredCount = readiness.answeredCount,
+            coveredQuestionCount = readiness.coveredQuestionCount,
+            targetQuestionCount = readiness.targetQuestionCount,
+            recentAnsweredCount = readiness.recentAnsweredCount,
+            recentCorrectCount = readiness.recentCorrectCount,
+            recentAccuracy = readiness.recentAccuracy,
+            dueMistakeCount = readiness.dueMistakeCount,
+            advancedUnavailable = readiness.advancedUnavailable,
+            gaps = readiness.gaps,
+        )
 
     private fun toUiModel(coverage: CurriculumCoverage): ProgressCoverageUiModel =
         ProgressCoverageUiModel(

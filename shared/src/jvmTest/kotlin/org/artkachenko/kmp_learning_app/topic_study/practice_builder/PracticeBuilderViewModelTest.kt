@@ -440,6 +440,34 @@ internal class PracticeBuilderViewModelTest {
         assertEquals(2, availableCount(viewModel))
     }
 
+    /** Readiness opens the builder at its target's levels, so the run counts towards the gap. */
+    @Test
+    fun arrivingLevelsSeedTheSelectionAndArePreflightedAndStarted() = runViewModelTest {
+        val viewModel = viewModel(
+            target = PracticeBuilderTarget.Topic("topic_a"),
+            curriculum = FakeCurriculumRepository(),
+            initialSource = PracticeQuestionSource.UNSEEN,
+            initialLevels = setOf(QuestionLevel.FOUNDATION),
+        )
+        advanceUntilIdle()
+
+        assertEquals(setOf(QuestionLevel.FOUNDATION), viewModel.uiState.value.levels)
+        assertEquals(1, availableCount(viewModel))
+        assertEquals(setOf(QuestionLevel.FOUNDATION), startedConfig(viewModel).levels)
+    }
+
+    @Test
+    fun noArrivingLevelsKeepsEveryLevel() = runViewModelTest {
+        val viewModel = viewModel(
+            target = PracticeBuilderTarget.Topic("topic_a"),
+            curriculum = FakeCurriculumRepository(),
+            initialLevels = emptySet(),
+        )
+        advanceUntilIdle()
+
+        assertEquals(AllQuestionLevels, viewModel.uiState.value.levels)
+    }
+
     @Test
     fun anArrivingPresetStartsNothingByItself() = runViewModelTest {
         val viewModel = viewModel(
@@ -787,6 +815,7 @@ internal class PracticeBuilderViewModelTest {
         seenQuestionIds: List<String> = emptyList(),
         completedAttempts: List<TestAttempt>? = null,
         initialSource: PracticeQuestionSource = PracticeQuestionSource.ALL,
+        initialLevels: Set<QuestionLevel> = AllQuestionLevels,
         // Fails on every read by default. A Topic or Subtopic target must resolve without touching
         // learning content at all, so a suite that quietly started depending on it would turn every
         // one of these cases into a resolution error instead of passing silently.
@@ -809,6 +838,7 @@ internal class PracticeBuilderViewModelTest {
                 randomize = { it },
             ),
             initialSource = initialSource,
+            initialLevels = initialLevels,
             visibilityStateHolder = visibility,
         )
 

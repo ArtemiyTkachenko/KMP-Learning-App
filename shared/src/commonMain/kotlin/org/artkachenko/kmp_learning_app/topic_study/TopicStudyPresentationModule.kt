@@ -7,9 +7,13 @@ import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHist
 import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewStateHolder
 import org.artkachenko.kmp_learning_app.mixed_interview.InterviewHistoryStateHolder
 import org.artkachenko.kmp_learning_app.progress.ProgressStateHolder
+import org.artkachenko.kmp_learning_app.progress.ReadinessTargetPreferenceStore
+import org.artkachenko.kmp_learning_app.progress.ReadinessTargetStateHolder
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessService
 import org.artkachenko.kmp_learning_app.assessment.session.AssessmentSessionLoader
 import org.artkachenko.kmp_learning_app.assessment.start.AssessmentLaunchViewModel
 import org.artkachenko.kmp_learning_app.assessment_review.AssessmentReviewLoader
+import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment_taking.AssessmentTakingViewModel
 import org.artkachenko.kmp_learning_app.guided_learning.ContinueStudyingResolver
@@ -109,12 +113,21 @@ internal val topicStudyPresentationModule = module {
             scope = get<AppCoroutineScope>(),
         )
     }
+    single { ReadinessTargetPreferenceStore(storage = get()) }
+    single {
+        // App-scoped, like the appearance and visibility holders: the dashboard holder below derives
+        // from it and outlives the Progress entry that changes it.
+        ReadinessTargetStateHolder(store = get())
+    }
+    single { ReadinessService(curriculumRepository = get()) }
     single {
         ProgressStateHolder(
             learningProgressService = get(),
             curriculumRepository = get(),
             mistakeReviewService = get(),
+            readinessService = get(),
             visibleHistory = get(),
+            readinessTarget = get<ReadinessTargetStateHolder>().target,
             scope = get<AppCoroutineScope>(),
         )
     }
@@ -192,6 +205,7 @@ internal val topicStudyPresentationModule = module {
         ProgressViewModel(
             historyStore = get(),
             stateHolder = get(),
+            readinessTargetStateHolder = get(),
         )
     }
     viewModel { parameters ->
@@ -199,6 +213,9 @@ internal val topicStudyPresentationModule = module {
             topicId = parameters.get(),
             learningProgressService = get(),
             visibilityStateHolder = get(),
+            // The live dashboard state, so the drill-down's readiness block is the dashboard's own
+            // row and follows the same refreshes without a derivation of its own.
+            dashboardState = get<ProgressStateHolder>().state,
         )
     }
     viewModel { parameters ->
@@ -265,6 +282,7 @@ internal val topicStudyPresentationModule = module {
             // preset or its own ALL default. The read stays optional because the graph is also
             // resolved with a target alone, and then it opens on the same ALL the destination uses.
             initialSource = parameters.getOrNull() ?: PracticeQuestionSource.ALL,
+            initialLevels = parameters.getOrNull() ?: AllQuestionLevels,
         )
     }
     viewModel { parameters ->

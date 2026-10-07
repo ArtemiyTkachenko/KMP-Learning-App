@@ -228,6 +228,11 @@ internal fun PerformanceCard(
  * nodes, and inside a group there is no longer a card edge to imply that the name, the score, and
  * the rate belong together. A Mixed interview's breakdown would have been read as nine unrelated
  * fragments. Merging is what makes a row a row to a screen reader as well as to the eye.
+ *
+ * [trailing] takes the figure's place for a row whose reading on the right is a status rather than
+ * a rate — the Progress readiness table puts its `StatusBadge` there. It is the same slot, measured
+ * and reflowed the same way, so a status row and an accuracy row in one app read alike; a row has
+ * one or the other, never both.
  */
 @Composable
 internal fun AccuracyRow(
@@ -237,7 +242,11 @@ internal fun AccuracyRow(
     modifier: Modifier = Modifier,
     caption: String? = null,
     onClick: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
+    require(trailing == null || percentage == null) {
+        "An AccuracyRow shows either an accuracy figure or a trailing status, not both."
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -258,7 +267,7 @@ internal fun AccuracyRow(
         // labour: the figure is measured against the title, the chevron is not.
         TrailingFigureRow(
             modifier = Modifier.weight(1f),
-            figure = { AccuracyFigure(percentage) },
+            figure = { trailing?.invoke() ?: AccuracyFigure(percentage) },
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.Tight)) {
                 Text(

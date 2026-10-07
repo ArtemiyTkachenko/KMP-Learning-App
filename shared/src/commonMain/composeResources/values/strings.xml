@@ -106,6 +106,54 @@
     <string name="progress_topic_empty">No completed answers have been recorded for this topic yet.</string>
     <string name="progress_topic_error">Topic performance could not be loaded.</string>
     <string name="progress_topic_coverage">%1$d of %2$d current questions explored</string>
+    <string name="progress_readiness_title">Readiness</string>
+    <string name="progress_readiness_chooser_question">What are you preparing for?</string>
+    <string name="progress_readiness_chooser_detail">Each topic is checked against the interview level you choose. You can change it at any time.</string>
+    <string name="progress_readiness_target_junior">Junior</string>
+    <string name="progress_readiness_target_mid_level">Mid-level</string>
+    <string name="progress_readiness_target_senior">Senior</string>
+    <string name="progress_readiness_target_label">Preparing for %1$s</string>
+    <string name="progress_readiness_change_target">Change</string>
+    <string name="progress_readiness_change_target_description">Change the level you are preparing for</string>
+    <plurals name="progress_readiness_ready_count">
+        <item quantity="one">%1$d of %2$d topic ready</item>
+        <item quantity="other">%1$d of %2$d topics ready</item>
+    </plurals>
+    <string name="progress_readiness_none_measurable">No topic has questions at this level yet.</string>
+    <string name="progress_readiness_status_ready">Ready</string>
+    <string name="progress_readiness_status_getting_there">Getting there</string>
+    <string name="progress_readiness_status_not_enough_evidence">Not enough evidence yet</string>
+    <plurals name="progress_readiness_answered">
+        <item quantity="one">%1$d answer at this level</item>
+        <item quantity="other">%1$d answers at this level</item>
+    </plurals>
+    <string name="progress_readiness_row_evidence">Recent accuracy %1$s · seen %2$d of %3$d</string>
+    <plurals name="progress_readiness_gap_more_answers">
+        <item quantity="one">Answer %1$d more question</item>
+        <item quantity="other">Answer %1$d more questions</item>
+    </plurals>
+    <plurals name="progress_readiness_gap_due_mistakes">
+        <item quantity="one">Review %1$d due mistake</item>
+        <item quantity="other">Review %1$d due mistakes</item>
+    </plurals>
+    <string name="progress_readiness_gap_recent_accuracy">Recent accuracy %1$s (aim for %2$s)</string>
+    <string name="progress_readiness_gap_coverage">Seen %1$s of questions (aim for %2$s)</string>
+    <string name="progress_readiness_advanced_unavailable">No Advanced questions in this topic yet, so it is judged on Foundation and Applied.</string>
+    <string name="progress_readiness_block_title">Readiness for %1$s</string>
+    <string name="progress_readiness_evidence_coverage">Seen %1$d of %2$d questions at this level</string>
+    <plurals name="progress_readiness_evidence_recent">
+        <item quantity="one">Recent accuracy %1$s over your last %2$d answer</item>
+        <item quantity="other">Recent accuracy %1$s over your last %2$d answers</item>
+    </plurals>
+    <string name="progress_readiness_evidence_recent_insufficient">Recent accuracy is shown after %1$d answers at this level.</string>
+    <string name="progress_readiness_evidence_no_due_mistakes">No due mistakes</string>
+    <plurals name="progress_readiness_evidence_due_mistakes">
+        <item quantity="one">%1$d due mistake</item>
+        <item quantity="other">%1$d due mistakes</item>
+    </plurals>
+    <string name="progress_readiness_missing_title">Still to do</string>
+    <string name="progress_readiness_action_practice">Practice this topic</string>
+    <string name="progress_readiness_action_practice_unseen">Practice unseen questions</string>
     <plurals name="mistake_review_unresolved_count">
         <item quantity="one">%1$d unresolved mistake to review</item>
         <item quantity="other">%1$d unresolved mistakes to review</item>

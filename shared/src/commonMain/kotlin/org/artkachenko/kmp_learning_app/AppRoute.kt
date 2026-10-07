@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app
 
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
@@ -114,6 +115,12 @@ internal sealed interface AppRoute : NavKey {
     data class PracticeBuilderTopic(
         val topicId: String,
         val source: PracticeQuestionSource = PracticeQuestionSource.ALL,
+        /**
+         * The builder's *initial* level selection, or `null` for its own every-level default.
+         * Only Progress readiness passes one, so its actions open at the target's levels. Optional
+         * with a `null` default, so a back stack saved before this field existed still restores.
+         */
+        val levels: Set<QuestionLevel>? = null,
     ) : AppRoute
 
     @Serializable

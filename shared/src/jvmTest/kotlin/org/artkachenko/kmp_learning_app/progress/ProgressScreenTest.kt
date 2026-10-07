@@ -403,6 +403,9 @@ internal class ProgressScreenTest {
             .assertIsDisplayed()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
             .performClick()
+        // The standing group now ends with the readiness section, so the second row can start
+        // below the fold.
+        onNodeWithTag(ProgressContentTag).performScrollToNode(hasText("Kotlin · Coroutines"))
         onNodeWithText("Practice")
             .assertIsDisplayed()
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))

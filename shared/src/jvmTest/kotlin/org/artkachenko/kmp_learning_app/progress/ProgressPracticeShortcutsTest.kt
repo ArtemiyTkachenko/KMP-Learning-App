@@ -1,5 +1,7 @@
 package org.artkachenko.kmp_learning_app.progress
 
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessGap
+import org.artkachenko.kmp_learning_app.learning_progress.ReadinessTarget
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -93,4 +95,25 @@ internal class ProgressPracticeShortcutsTest {
             correctCount = 2,
             percentage = percentage,
         )
+}
+
+internal class ReadinessPracticeShortcutsTest {
+    @Test
+    fun gapsOpenTheBuilderOnTheTopicAtTheTargetLevelsOrTheMistakesArea() {
+        val junior = ReadinessTarget.JUNIOR.levels
+
+        assertEquals(null, ReadinessGap.DueMistakes(2).toPracticePreset("topic_a", junior))
+        assertEquals(
+            AppRoute.PracticeBuilderTopic("topic_a", PracticeQuestionSource.ALL, junior),
+            ReadinessGap.MoreAnswersNeeded(3).toPracticePreset("topic_a", junior)?.toPracticeBuilderRoute(),
+        )
+        assertEquals(
+            AppRoute.PracticeBuilderTopic("topic_a", PracticeQuestionSource.ALL, junior),
+            ReadinessGap.RecentAccuracyBelow(64.0, 80.0).toPracticePreset("topic_a", junior)?.toPracticeBuilderRoute(),
+        )
+        assertEquals(
+            AppRoute.PracticeBuilderTopic("topic_a", PracticeQuestionSource.UNSEEN, junior),
+            ReadinessGap.CoverageBelow(40.0, 60.0).toPracticePreset("topic_a", junior)?.toPracticeBuilderRoute(),
+        )
+    }
 }

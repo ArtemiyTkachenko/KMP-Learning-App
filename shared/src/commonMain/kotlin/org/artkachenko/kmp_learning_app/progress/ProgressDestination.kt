@@ -27,6 +27,7 @@ internal fun ProgressDestination(
         onTopicClick = onOpenTopic,
         onPracticePreset = onConfigurePractice,
         onReviewMistakes = onReviewMistakes,
+        onChooseReadinessTarget = viewModel::chooseReadinessTarget,
         onHistoryClick = { assessmentType, attemptId ->
             when (assessmentType) {
                 CompletedAssessmentType.FOCUSED -> onOpenFocusedResult(attemptId)

@@ -60,6 +60,12 @@ internal class PracticeBuilderViewModel(
      * so an arriving preset is inspected and preflighted exactly like a hand-made selection.
      */
     private val initialSource: PracticeQuestionSource = PracticeQuestionSource.ALL,
+    /**
+     * Which levels the builder opens on. Every level is the default; Progress readiness supplies
+     * its target's levels. Like [initialSource] it only seeds the state, and an empty set — which
+     * the builder never offers as a selection — falls back to every level.
+     */
+    private val initialLevels: Set<QuestionLevel> = AllQuestionLevels,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(initialState())
     val uiState: StateFlow<PracticeBuilderUiState> = _uiState.asStateFlow()
@@ -164,7 +170,7 @@ internal class PracticeBuilderViewModel(
             questionCountOptions = PracticeQuestionCountOptions,
             // Opening on every level reproduces the run the old one-tap entry started, so the
             // builder costs a returning learner one extra tap and no decisions.
-            levels = AllQuestionLevels,
+            levels = initialLevels.ifEmpty { AllQuestionLevels },
             // A source with no selection policy is refused here for the same reason selectSource
             // refuses it: an unselectable source must not become the state the screen opens on.
             source = initialSource.takeIf(questionSelector::isSourceSupported)

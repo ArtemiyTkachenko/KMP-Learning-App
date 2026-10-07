@@ -28,8 +28,8 @@ Group and Card share a tone on purpose. Gathering is not promotion — what chan
 the number of edges, and the number of edges is what the eye reads as the number of things.
 
 The Progress dashboard uses all four in one scroll, which is the clearest worked example: the
-standing hero, the recent-performance card, the per-Topic table as a group, and session history as
-bare rows. None of them changes colour to say where it sits.
+standing hero, the recent-performance card, the per-Topic tables (readiness, then performance) as
+groups, and session history as bare rows. None of them changes colour to say where it sits.
 
 ## The components
 
@@ -37,10 +37,10 @@ bare rows. None of them changes colour to say where it sits.
 | --- | --- | --- |
 | `ProgressHero`, `AssessmentCompletionHero`, the interview hero | their own features | 3 — the only gradient surfaces |
 | `AccuracyHeroCard` | `ui/ContentHierarchy.kt` | 2 — Topic drill-down, Topic practice page |
-| `SecondarySummaryCard` | `ui/ContentHierarchy.kt` | 2 — Progress recent performance, Topic practice |
+| `SecondarySummaryCard` | `ui/ContentHierarchy.kt` | 4 — Progress recent performance and readiness chooser, Topic practice, the Progress drill-down's readiness block |
 | the Practice Builder's summary surface | `practice_builder/PracticeBuilderScreen.kt` | 1 — level 2, see below |
 | the Mistakes remediation surface | `mistake_review/MistakeReviewScreen.kt` | 1 — level 2, see below |
-| `ContentGroup` + `AccuracyRow` | `ui/ContentHierarchy.kt`, `ui/PerformanceCard.kt` | 4 groups, 3 rows |
+| `ContentGroup` + `AccuracyRow` | `ui/ContentHierarchy.kt`, `ui/PerformanceCard.kt` | 5 groups, 4 rows |
 | `PerformanceCard` | `ui/PerformanceCard.kt` | weak areas, Subtopic rows, Topic drill-down |
 | bare rows | written per feature | Units, Subtopics, Lessons, session history |
 
@@ -154,6 +154,11 @@ cannot.
 | Action line | yes | no: it would bleed into the divider below |
 | Navigable | `onClick` → chevron + `Role.Button` | same |
 | Merges descendants | only when navigable | always |
+| Trailing slot | the accuracy figure | the accuracy figure, or a `trailing` status in its place |
+
+The `trailing` slot is not a fourth card feature leaking into the row: it is the same right-hand
+reading, a status in words instead of a rate. The readiness table puts its `StatusBadge` there, and a
+row carries one or the other, never both.
 
 A `PerformanceCard(inGroup = true)` flag would have to answer for all three of those, and the answer
 is the same every time: they are card features. That is also the general rule — prefer a second

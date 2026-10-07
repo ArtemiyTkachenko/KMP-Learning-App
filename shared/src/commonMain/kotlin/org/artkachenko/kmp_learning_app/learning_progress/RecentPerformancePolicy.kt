@@ -47,8 +47,9 @@ internal object RecentPerformancePolicy {
     /**
      * Matches the persistence ordering in `AssessmentAttemptDao` (`completed_at DESC, started_at
      * DESC, id ASC`) so the window is the same set of attempts however the history reached us.
+     * Readiness orders its own window of answers by the same comparator, for the same reason.
      */
-    private val newestFirst: Comparator<TestAttempt> =
+    val newestFirst: Comparator<TestAttempt> =
         compareByDescending<TestAttempt> { requireNotNull(it.completedAt) }
             .thenByDescending(TestAttempt::startedAt)
             .thenBy(TestAttempt::id)

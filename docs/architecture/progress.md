@@ -510,6 +510,152 @@ its percentage below five questions under its own run-size constant in
 `AssessmentCompletionHero`, and the Interview record row on the Interview start
 screen, which covers whole interviews rather than one Topic.
 
+## Readiness
+
+Progress answers "how have I done?". Readiness answers the question a learner preparing for an
+interview actually has — "am I ready for the level I am aiming for?" — and it answers it the way
+the rest of this document answers anything: a verdict only where the evidence supports one, and a
+plain "not enough evidence yet" everywhere else.
+
+### Target and levels
+
+The learner picks a `ReadinessTarget`. Each target counts its own level and every level below it,
+because a Senior interview still asks Foundation questions:
+
+| Target | Question levels counted |
+| --- | --- |
+| Junior | `FOUNDATION` |
+| Mid-level | `FOUNDATION`, `APPLIED` |
+| Senior | `FOUNDATION`, `APPLIED`, `ADVANCED` |
+
+The choice is the one thing readiness persists: `ReadinessTargetPreferenceStore` writes the key
+`readiness.target` with one explicit token per target, and absence means "not chosen yet" (see
+[Application Preferences](overview.md#readiness-target)). Until there is a choice the Progress
+section shows a chooser — "What are you preparing for?" — instead of statuses, because a status
+against a level the learner never picked would be a verdict nobody asked for. It is chosen on
+Progress, not in Settings.
+
+### The three states
+
+Each visible Topic gets exactly one `ReadinessStatus`, always shown with the evidence behind it,
+and there is no overall score — the section header states a count, "4 of 15 topics ready", which
+says what it counts where an average of fifteen verdicts would say nothing any one of them
+supports.
+
+`ReadinessDerivation` is the single definition. It is a pure function of
+`(visible completed history, ACTIVE bank, historical resolver, target, now)`, in the style of
+`MistakeScheduleDerivation`; the clock enters only as `now`, injected by `ReadinessService`. For
+each Topic with ACTIVE Questions at the target's levels:
+
+1. **Coverage** — the distinct target-level ACTIVE Question IDs in `QuestionExposure`, over the
+   Topic's target-level ACTIVE count. The same semantics as coverage everywhere else: each
+   Question once, correct or not, and a DEPRECATED Question leaves it.
+2. **Recent accuracy** — the newest `RecentWindow` target-level answers in the Topic, from
+   persisted correctness. Attempts are ordered by `RecentPerformancePolicy.newestFirst`, the
+   persistence order, and within an attempt the later assessment position counts as newer,
+   since no answer timestamp is stored. Topic and level come from the historical resolver, the
+   attribution performance derivation uses, so a DEPRECATED Question keeps its history here.
+3. **Due mistakes** — `MistakeScheduleDerivation` entries in the Topic at the target levels that
+   are `isDue(now)`. A scheduled mistake that is not yet due does not count: the learner cannot
+   act on it today.
+4. **Status** — fewer than `MinimumAnsweredForVerdict` target-level answers is
+   `NOT_ENOUGH_EVIDENCE`; otherwise all three conditions met is `READY`, and anything else is
+   `GETTING_THERE`.
+
+A Topic with no ACTIVE Question at the target's levels is omitted: there is nothing to measure,
+and it is not counted in "N of M". Interview answers are not weighted separately; they count like
+any other completed occurrence, as everywhere else on this page.
+
+Every non-`READY` Topic carries its `ReadinessGap`s, most actionable first: answers still needed,
+then due mistakes, then recent accuracy, then coverage. Below the evidence minimum only the first
+two are listed — "Answer 3 more questions", and any due mistake, which is a fact about a Question
+rather than a judgement on a few answers. Accuracy and coverage gaps are not stated there for the
+same reason no accuracy figure is: a percentage over three answers describes three answers.
+Threshold comparisons are exact (`part * 100 >= threshold * whole`), so 3 of 5 reaches 60%, and
+presentation rounds a gap's figure down, so "80% (aim for 80%)" can never appear beside a
+condition the derivation says is unmet.
+
+### Policy values
+
+The values live in `ReadinessPolicy`, beside `LearningProgressPolicy`, and are first values to be
+tuned:
+
+| Value | Setting | Reason |
+| --- | --- | --- |
+| `MinimumAnsweredForVerdict` | `LearningProgressPolicy.WeakAreaMinimumAnswered` (5) | Reused, not restated: "ready" is a verdict exactly as "weak" is, and should rest on a pattern. |
+| `RecentWindow` | 10 answers | Twice the evidence minimum, so one wrong answer moves the figure ten points rather than twenty, and still short enough that improvement shows within a session or two. |
+| `ReadyRecentAccuracy` | 80% | Well above the 70% weak line: "not weak" and "ready for an interview" are different claims. |
+| `ReadyCoverage` | 60% of the Topic's target-level ACTIVE Questions | High accuracy over a small corner of a Topic is not readiness for it; finishing every Question is not what an interview asks, and new content would otherwise keep taking `READY` away. |
+| `MaximumDueMistakesForReady` | 0 | A due mistake is a Question answered wrong and not yet recalled a day later — exactly the gap readiness exists to surface. |
+
+### Advanced where it exists
+
+Only some Topics have `ADVANCED` Questions. A Senior target judges each Topic on whichever of its
+target-level Questions exist, so a Topic without Advanced ones is judged on Foundation and Applied
+and is not held back by content the app does not have. It is not silently passed either: the
+derivation records `advancedUnavailable`, and both the dashboard row and the drill-down say "No
+Advanced questions in this topic yet", so a "Ready" badge never claims senior readiness on
+evidence the app lacks. As Advanced content is published it enters the target set, and coverage,
+automatically.
+
+### Why this verdict is consistent with the rest of Progress
+
+The app derives no direction, momentum or velocity score, and the weak-area flag is suppressed
+below the evidence minimum. Readiness keeps the same discipline rather than relaxing it:
+
+- it states a verdict only above the same evidence minimum, and below it says so in words;
+- it is a per-Topic status with its evidence, never a score, and the overall figure is a count;
+- each condition is a figure already shown elsewhere on this page — coverage, a bounded recent
+  window, the mistake schedule — compared with a published threshold, not a new signal;
+- it says what is missing and links to what addresses it, which is guidance, not a judgement.
+
+### Pipeline and refresh
+
+Readiness is derived, never persisted (except the chosen target). `ProgressStateHolder` combines
+`VisibleAssessmentHistory.history` with `ReadinessTargetStateHolder.target` and derives readiness
+from the history it already holds, so there is no second history read path. Riding that one stream
+is what gives readiness every refresh the dashboard already has: a completed assessment
+invalidates the store, a visibility change re-projects history, and the
+[due re-announcement](#due-ness-while-the-app-stays-open) re-emits it when a mistake falls due. A
+change of target is the one trigger of its own. With no target chosen, no curriculum is read for
+readiness. With one, `ReadinessService` adds one ACTIVE read and one batched historical
+resolution per derivation.
+
+The drill-down does not derive readiness. `ProgressTopicViewModel.readiness` selects its Topic's
+row from the live `ProgressStateHolder` state, so the block cannot disagree with the row the
+learner tapped, and it follows the same refreshes even though the rest of the drill-down is loaded
+once. It is separate from the drill-down's `uiState` because it exists where that state is `Empty`:
+a Topic with no answers yet still has a readiness, and something to do about it.
+
+### Presentation
+
+The section closes the dashboard's standing group — after the hero and the recent-performance
+card, before the mistake row and weak areas — because it is a standing answer too, built from the
+same evidence and read as its conclusion. On a wide window it sits in the standing pane. It takes
+no gradient: the hero stays the screen's one.
+
+The Topic rows are one `ContentGroup` of `AccuracyRow`s, the shape of the Topic performance table
+below, with a `StatusBadge` in the row's trailing slot where the accuracy figure would be. Each row
+shows the evidence, the most important missing item, and, when it applies, the Advanced note. A row
+opens the Topic drill-down; a grouped row has no room for an action line, and fifteen action
+buttons would turn the standing group into a to-do list. The header states the target with a
+"Change" action that reopens the chooser.
+
+Badge tones are words first, colour second, and never red or amber: `READY` takes the `correct`
+container pair and a check mark, `GETTING_THERE` the `secondaryContainer` pair, because being part
+way is not a fault, and `NOT_ENOUGH_EVIDENCE` the quietest neutral. See
+[Material Design 3](../development/material-design.md).
+
+The drill-down's readiness block, a `SecondarySummaryCard` beneath the Topic hero, states the
+status, coverage x/y at this level, recent accuracy over its window (or that it appears after five
+answers), the due-mistake count, the Advanced note, and every missing item. Each item with an
+obvious action links to an existing destination: due mistakes select the Mistakes area as the
+dashboard's mistake row does; too few answers and low accuracy open the Practice Builder on the
+Topic with `ALL`; low coverage opens it with `UNSEEN`. Both open at the target's levels, through
+the optional `levels` on `PracticePreset` and `AppRoute.PracticeBuilderTopic`, because a run drawn
+from levels the target does not count could not close the gap it was opened for; see
+[practice selection](practice-selection.md#readiness-presets).
+
 ## Curriculum visibility
 
 Every learner-visible assessment statistic is derived from two already-narrowed inputs —
@@ -531,6 +677,8 @@ With KMP content hidden:
 - the coverage denominator is the visible ACTIVE bank, so hidden Questions neither count
   as covered nor lower the percentage;
 - the unresolved-mistake count and queue omit KMP mistakes;
+- readiness has no hidden Topic to measure: the ACTIVE bank it reads omits it, so it is neither a
+  row nor part of "N of M";
 - a Progress Topic route to `kmp` is `Unavailable`, not `Empty`.
 
 Showing the content again restores every figure exactly, because the projection is

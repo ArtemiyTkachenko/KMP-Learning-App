@@ -46,6 +46,7 @@ internal fun PracticePreset.toPracticeBuilderRoute(): AppRoute =
         is AssessmentScope.Topic -> AppRoute.PracticeBuilderTopic(
             topicId = scope.topicId,
             source = source,
+            levels = levels,
         )
 
         is AssessmentScope.Subtopic -> AppRoute.PracticeBuilderSubtopic(

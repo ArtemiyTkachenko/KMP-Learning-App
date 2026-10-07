@@ -240,11 +240,11 @@ checks rather than Linux CI guarantees.
 
 ## Application Preferences
 
-The product has two independent application-level preferences, both on the Settings screen:
-the theme and curriculum visibility. Each has its own store, which owns its key and tokens
-over the shared `AppPreferenceStorage`, and its own app-scoped state holder. There is no
-generic settings framework, and Settings owns neither preference: `SettingsDestination`
-resolves the two holders directly. Its one ViewModel, `ProgressResetViewModel`, owns only the
+The product has three independent application-level preferences: the theme and curriculum
+visibility, both on the Settings screen, and the readiness target, chosen on Progress. Each has
+its own store, which owns its key and tokens over the shared `AppPreferenceStorage`, and its own
+app-scoped state holder. There is no generic settings framework, and Settings owns neither of its
+two: `SettingsDestination` resolves those holders directly. Its one ViewModel, `ProgressResetViewModel`, owns only the
 "Reset progress" confirmation; see [persistence](persistence.md#resetting-progress).
 
 Settings has four sections: Appearance (the theme switch), Learning content (the Kotlin
@@ -317,6 +317,16 @@ the same no-flash reason the appearance holder does. It is consumed below presen
 the repository decorators and the history projection — as well as by Settings, the Topic
 Browser, the destination guards and back-stack pruning. What the setting hides, and why
 hiding never deletes anything, is [curriculum visibility](curriculum-visibility.md).
+
+### Readiness Target
+
+The interview level Progress measures readiness against — Junior, Mid-level or Senior.
+`ReadinessTargetPreferenceStore` owns the key `readiness.target` and one explicit token per
+level (`junior`, `mid`, `senior`); absence, and any unrecognised token, mean "not chosen yet",
+which Progress shows as a chooser rather than a guessed level. `ReadinessTargetStateHolder` is
+the app-scoped holder, read once synchronously like the other two, and `ProgressStateHolder`
+derives from it. It is chosen inside the Progress readiness section, not in Settings. See
+[progress](progress.md#readiness).
 
 ## Curriculum Content Model
 

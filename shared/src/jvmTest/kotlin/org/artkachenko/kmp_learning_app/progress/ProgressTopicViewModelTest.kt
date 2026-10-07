@@ -10,6 +10,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -364,6 +365,7 @@ private fun topicViewModel(
         topicId = topicId,
         learningProgressService = LearningProgressService(context.repository.asCompletedHistory(), context.curriculum),
         visibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
+        dashboardState = MutableStateFlow(ProgressUiState.Loading),
     )
 
 private fun completedAttempt(

@@ -1,5 +1,7 @@
 package org.artkachenko.kmp_learning_app.guided_learning
 
+import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
+
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.learning_progress.SubtopicCoverage
@@ -53,12 +55,18 @@ internal sealed interface RecentStudyContext {
 /**
  * Semantic intent for opening EPIC-16 practice.
  *
- * Question count and levels stay absent so the Practice Builder remains authoritative for its
- * established defaults and lets the learner inspect or edit them before starting.
+ * Question count stays absent so the Practice Builder remains authoritative for its established
+ * default, and the learner inspects or edits everything before starting.
+ *
+ * [levels] is `null` for every caller except Progress readiness, which opens the builder at the
+ * readiness target's levels: a run drawn from levels the target does not count could not close the
+ * gap it was opened to close. It seeds the builder's level selection and nothing more, and is
+ * carried only for a Topic scope, the one readiness produces.
  */
 internal data class PracticePreset(
     val scope: AssessmentScope,
     val source: PracticeQuestionSource,
+    val levels: Set<QuestionLevel>? = null,
 )
 
 /** A destination concept, independent from Navigation 3 and presentation models. */

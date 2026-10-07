@@ -102,9 +102,9 @@ repository decorators, the history projection, the Topic Browser, the destinatio
 the back-stack pruning pass all share it and it has to outlive every destination.
 
 Settings does not own the preference. `SettingsDestination` resolves the two app-scoped
-holders and calls them directly, and there is no Settings ViewModel. The app has exactly two
-independent application preferences — theme and curriculum visibility — each with its own
-store and holder, and no generic settings framework. See
+holders and calls them directly, and there is no Settings ViewModel. Like the theme and the
+readiness target, curriculum visibility is an independent application preference with its own
+store and holder, and there is no generic settings framework. See
 [Application Preferences](overview.md#application-preferences).
 
 ## Runtime Visibility Graph
@@ -362,7 +362,7 @@ inputs are already narrowed:
 
 | Consumer | Visible curriculum via | Projected history via |
 | --- | --- | --- |
-| Progress dashboard and Topic progress | ACTIVE coverage denominator | `LearningProgressService`, `ProgressStateHolder` |
+| Progress dashboard and Topic progress | ACTIVE coverage and readiness denominators | `LearningProgressService`, `ReadinessService`, `ProgressStateHolder` |
 | Mistake Review, its badge, the mistake → Lesson link | `getActiveUnits` for the link | `MistakeReviewService`, `MistakeReviewStateHolder`, `AppShellViewModel` |
 | Recommended Next, Continue Studying, row learning context | ACTIVE catalogue | Topic Browser and Topic Detail snapshots |
 | Practice selection, every source | ACTIVE candidate reads | `AssessmentQuestionSelector`'s `CompletedAssessmentHistory` |

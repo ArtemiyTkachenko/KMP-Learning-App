@@ -149,27 +149,43 @@ randomization, and requested-count truncation run after this eligibility filter.
 
 ### Unresolved-mistake practice
 
-Mistake practice consumes the same `UnresolvedMistakeDerivation` as Mistake
-Review. Completed attempts arrive newest first through `CompletedAssessmentHistory`;
-the first persisted occurrence of each stable Question ID wins, and its stored
-`QuestionAnswerState.Answered.isCorrect` is authoritative. The current authored
-answer key is not consulted, so editing curriculum content cannot rewrite history.
-IN_PROGRESS attempts are excluded before latest-occurrence state is derived, and
-assessment type or retake origin does not partition the history.
+Mistake practice consumes the same `MistakeScheduleDerivation` as Mistake Review; the
+review schedule itself — ladder, grace, and when a correct answer counts — is described
+in [progress](progress.md#the-mistake-review-schedule). Completed attempts arrive through
+`CompletedAssessmentHistory` and are replayed by completion time; each occurrence's stored
+`QuestionAnswerState.Answered.isCorrect` is authoritative. The current authored answer key
+is not consulted, so editing curriculum content cannot rewrite history. IN_PROGRESS
+attempts are excluded, and assessment type or retake origin does not partition the
+history.
 
-The selector intersects those unresolved IDs with its ordinary scoped,
+The selector intersects every scheduled ID — due or coming up — with its ordinary scoped,
 level-aware ACTIVE repository read. History therefore decides whether an ID is
 unresolved, while current curriculum decides whether it is askable: missing and
 deprecated Questions remain available to historical review but cannot enter a new
 assessment. Scope and levels are never widened, and an empty intersection returns
-`NoEligibleQuestions`. The resulting pool still passes through the common
-stable-ID deduplication, randomization, and requested-count truncation.
+`NoEligibleQuestions`.
 
-Nothing records a mistake as resolved or dismissed. When mistake practice is
-completed correctly, the normal completion save creates the newest correct
-occurrence and `AssessmentTakingViewModel` invalidates `AssessmentHistoryStore`.
-The next Mistake Review or selection derivation therefore excludes that Question;
-a later completed incorrect occurrence reopens it through exactly the same path.
+**Due first.** The eligible pool is deduplicated and randomized as usual, then split
+into the due tier and the coming-up tier using the selector's injected clock
+(`now: () -> Instant`). The scope's ordinary narrowing — the randomized prefix, or
+Subtopic coverage for a multi-Subtopic scope — runs over the due tier first, and the
+coming-up tier fills whatever count remains. A run shorter than the queue therefore
+spends its questions where a correct answer counts. Coming-up Questions stay eligible
+because practising early is allowed; their correct answers are simply not counted. The
+source stays `UNRESOLVED_MISTAKES`: it is serialized into routes, and due-ness is a
+property of the moment of selection, not of the configuration.
+
+The Results screen's "Practice N mistakes" shares this ordering. It carries no Question
+IDs, only the run's Subtopics and N, so an older mistake in those Subtopics that is due
+now is asked before one of the run's fresh mistakes. That is accepted: a fresh mistake's
+answer would come too early to count, while the due one's counts.
+
+Nothing records a mistake as resolved or dismissed. When mistake practice is completed,
+the normal completion save adds the new occurrences and `AssessmentTakingViewModel`
+invalidates `AssessmentHistoryStore`. The next Mistake Review or selection derivation
+replays them: a counted correct answer moves the Question up the ladder, the last one
+resolves it, an early correct answer changes nothing, and an incorrect answer puts it
+back at the start — all through exactly the same path.
 
 ### Curriculum visibility
 
@@ -179,7 +195,7 @@ before they reach it:
 | Input | Arrives through | Effect with KMP hidden |
 | --- | --- | --- |
 | ACTIVE candidate pools | `CurriculumRepository`, bound to `VisibleCurriculumRepository` | No `kmp` Question is a candidate, at any scope or level |
-| Completed history | `CompletedAssessmentHistory`, bound to `VisibleAssessmentHistory` | Hidden answers are projected out, so they are not exposure, weak-area evidence or unresolved mistakes |
+| Completed history | `CompletedAssessmentHistory`, bound to `VisibleAssessmentHistory` | Hidden answers are projected out, so they are not exposure, weak-area evidence or scheduled mistakes |
 
 The four sources — `ALL`, `UNSEEN`, `WEAK_AREAS`, and `UNRESOLVED_MISTAKES` — therefore
 behave identically with the content hidden or shown. They simply operate on a smaller

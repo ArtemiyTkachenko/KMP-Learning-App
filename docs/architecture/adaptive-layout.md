@@ -108,7 +108,7 @@ same position, and neither arrangement can quietly acquire something the other l
 | Progress | Standing: all-time accuracy, coverage, recent window | Actionable: mistake queue, weak areas, then Topic performance and history |
 | Interview landing | The invitation and what an Interview is | The learner's record |
 | Practice Builder | The four configuration decisions | Availability, its retry, and Start |
-| Mistakes | The count, what unresolved means, and practise-all | The queue |
+| Mistakes | The count, what unresolved means, and practise-all | The queue, split into Due now and Coming up |
 | Interview result / Practice result | Score, notices, repeat, per-Topic breakdown | The question transcript |
 
 Everything else keeps one column at every width.

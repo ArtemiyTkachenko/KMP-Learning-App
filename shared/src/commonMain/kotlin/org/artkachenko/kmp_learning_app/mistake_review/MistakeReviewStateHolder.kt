@@ -34,8 +34,9 @@ internal class MistakeReviewStateHolder(
 ) {
     /**
      * Re-derives the queue on every settled refresh of the shared history, which is what makes one
-     * [VisibleAssessmentHistory.invalidate] recover both failures this screen can show, and on
-     * every visibility change: the queue is derived from the visible projection only.
+     * [VisibleAssessmentHistory.invalidate] recover both failures this screen can show, on every
+     * visibility change — the queue is derived from the visible projection only — and when a
+     * coming-up entry becomes due, which the history re-announces so the entry moves to Due now.
      *
      * Re-reading the attempt table recovers an unreadable one. It also recovers a queue derivation
      * that failed over history which read perfectly well — an unavailable curriculum while
@@ -54,9 +55,9 @@ internal class MistakeReviewStateHolder(
 
     private suspend fun queueFor(attempts: List<org.artkachenko.kmp_learning_app.assessment.TestAttempt>) =
         runCatching {
-            // The service already orders the queue by most recent unresolved occurrence, so
-            // presentation preserves that list exactly. Handing over the cached history keeps this
-            // to the curriculum reads for the unresolved items alone.
+            // The service already orders the queue soonest due first and decides which entries are
+            // due, so presentation preserves that list exactly and only splits it. Handing over the
+            // cached history keeps this to the curriculum reads for the scheduled items alone.
             attachStudyLessons(mistakeReviewService.load(attempts))
         }.fold(
             onSuccess = { mistakes ->

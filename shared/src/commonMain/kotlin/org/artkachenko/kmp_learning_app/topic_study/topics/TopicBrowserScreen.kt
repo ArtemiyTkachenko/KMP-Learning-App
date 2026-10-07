@@ -972,7 +972,7 @@ private fun RecommendedNextUiModel.actionLabel(): String =
         LearningRecommendationRationale.NewUser ->
             stringResource(Res.string.recommended_next_topics_action)
 
-        is LearningRecommendationRationale.UnresolvedMistakes ->
+        is LearningRecommendationRationale.DueMistakes ->
             stringResource(Res.string.recommended_next_mistakes_action)
 
         is LearningRecommendationRationale.WeakArea -> rationale.areaName
@@ -996,7 +996,7 @@ private fun RecommendedNextUiModel.rationaleLabel(): String =
         LearningRecommendationRationale.NewUser ->
             stringResource(Res.string.recommended_next_topics_reason)
 
-        is LearningRecommendationRationale.UnresolvedMistakes -> pluralStringResource(
+        is LearningRecommendationRationale.DueMistakes -> pluralStringResource(
             Res.plurals.recommended_next_mistakes_reason,
             rationale.count,
             rationale.count,

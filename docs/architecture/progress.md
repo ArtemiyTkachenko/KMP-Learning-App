@@ -100,7 +100,8 @@ result destinations; no progress snapshot or history summary is persisted. A row
 completion time travels as the domain `Instant` and is phrased at the point of
 display — see *Dates* below — so no pre-formatted timestamp reaches the state.
 
-The unresolved mistake count is both a report and a route. Progress exists to answer
+The unresolved mistake count — every scheduled mistake, due or coming up; see
+[the mistake review schedule](#the-mistake-review-schedule) — is both a report and a route. Progress exists to answer
 two questions — how am I doing, and what should I work on next — and the most concrete
 answer it holds to the second is a queue of questions the learner has already got
 wrong, so the row opens Mistake Review by selecting that area exactly as the
@@ -363,32 +364,107 @@ accuracy colour is never treated as the weak-state source of truth. Below the
 evidence minimum neither appears; see
 [the accuracy evidence minimum](#the-accuracy-evidence-minimum).
 
-Unresolved mistake state is derived once, never persisted:
+## The mistake review schedule
+
+A mistake is resolved only after correct answers spread over growing gaps, not by
+one correct answer given straight after reading the explanation. Which Questions are
+unresolved, and which of those are due, is derived once and never persisted:
 
     VisibleAssessmentHistory                      (newest first, projected)
-        -> first occurrence per stable Question ID
-        -> that occurrence's persisted correctness
-        -> incorrect only
-        -> UnresolvedMistakeDerivation
-             |-> AssessmentReviewLoader.loadQuestion(...) -> mistake queue
-             `-> current ACTIVE scoped/level candidates -> targeted practice
+        -> completed attempts replayed oldest first, by completedAt
+        -> each occurrence's persisted correctness
+        -> MistakeScheduleDerivation               (ladder per stable Question ID)
+             |-> ScheduledMistake(stage, dueAt, latest mistake), isDue(now)
+             |-> AssessmentReviewLoader.loadQuestions(...) -> mistake queue
+             `-> current ACTIVE scoped/level candidates -> targeted practice (due first)
 
-Because completed history is already ordered newest first, the first occurrence
-of a Question ID is its latest one, so a later correct answer resolves the
-Question automatically and a later incorrect answer reopens it. Both Mistake
-Review and unresolved-mistake practice consume `UnresolvedMistakeDerivation`, so
-they cannot disagree about that lifecycle. This is
-deliberately narrower than `LearningProgressService`, which stays
-occurrence-based and counts every completed answer. Review content is
-reconstructed only for unresolved candidates, and a Question whose content no
-longer resolves stays in the queue as `ReviewQuestionItem.Missing`. No mistake,
-resolved, or dismissed state is stored; Room remains assessment-history
-persistence only.
+`MistakeScheduleDerivation` is the single definition. It is a pure function of the
+completed attempts; the current time enters only through `ScheduledMistake.isDue(now)`,
+and every caller injects its clock (`now: () -> Instant`, as `AssessmentEngine` does)
+rather than reading `Clock.System` inside the rule. It uses elapsed `Instant`/`Duration`
+arithmetic, not calendar dates, so it needs no time zone and no date-time library.
+
+### Rules
+
+Applied to one Question's completed occurrences, oldest first:
+
+| Occurrence | Effect |
+| --- | --- |
+| Incorrect, at any time | `stage = 0`, `due = t + Ladder[0]`. A Question enters the schedule at its first incorrect occurrence; one never answered wrong is never scheduled. A resolved Question answered wrong again re-enters here. |
+| Correct, `t >= due - Grace` | Counted: `stage += 1`. At `ResolveAfterCountedCorrect` the Question is resolved and leaves the schedule; otherwise `due = t + Ladder[stage]`. |
+| Correct, `t < due - Grace` | Recorded in history as usual, ignored by the schedule. |
+
+The last row is what keeps drilling from resolving anything: a Results-screen "Practice
+N mistakes" run, or any same-session or same-day re-practice, answers early and so does
+not count. No practice source is special-cased for this. In-progress attempts are
+ignored, assessment type and retake origin do not partition history, and attempts that
+completed at the same instant are replayed oldest first by the repository's tie order. The queue carries each
+Question's latest *incorrect* occurrence, because that is the answer a review card shows;
+a later early correct answer counted for nothing.
+
+### Policy values
+
+The values live in `MistakeReviewPolicy`, beside `LearningProgressPolicy`:
+
+| Value | Setting | Reason |
+| --- | --- | --- |
+| `Ladder` | 1 day, 3 days, 7 days | Growing gaps: recall overnight, then recall that outlasts a week of cramming. Fixed rather than adaptive, so a learner can predict when an entry returns, and a wrong answer always drops back to the start. |
+| `ResolveAfterCountedCorrect` | 3 | One counted correct answer per ladder step. |
+| `Grace` | 4 hours | The ladder is elapsed time, so studying at 21:00 one day and 19:00 the next would otherwise fall two hours short of "a day later". Four hours keeps an evening routine counting while still ruling out a same-session repeat. |
+
+`isDue(now)` uses the same predicate as counting (`now >= due - Grace`), so "Due now"
+always means "a correct answer now would count". A fresh mistake therefore becomes due
+about 20 hours after it was made.
+
+### Due and scheduled
+
+Every scheduled Question is unresolved; only some are due. Each surface shows the
+count that matches what it asks of the learner:
+
+| Surface | Count | Why |
+| --- | --- | --- |
+| Navigation badge (`AppShellViewModel.dueMistakeCount`) | Due | A prompt to act now; an entry that cannot advance today should not nag. |
+| Recommended Next, "Review mistakes" | Due | Same reason; see [recommendations](recommendations.md). |
+| Mistake Review header ("N unresolved") | All scheduled | The queue shows both sections, so the headline counts both. |
+| Mistake Review sections | Split | "Due now", then "Coming up" with each entry's relative due time. |
+| Progress dashboard mistake row | All scheduled | A report of what is outstanding, and the row opens the queue that shows both. |
+| Topic detail mistake count | All scheduled | It backs the Topic's mistake practice shortcut, whose run draws from every scheduled mistake in the Topic. |
+| `UNRESOLVED_MISTAKES` practice | All scheduled, due first | See [practice selection](practice-selection.md). |
+
+### Due-ness while the app stays open
+
+A coming-up entry becomes due with no new history, and history announcements are the
+only thing consumers re-derive on. So `VisibleAssessmentHistory.snapshots` also
+re-announces its latest snapshot, unchanged, at each distinct instant a scheduled
+mistake becomes due (`reannouncedWhenMistakesFallDue`). Every consumer — the badge, the
+queue, the recommendation — already re-derives on each announcement, including equal
+ones, and reads its own clock, so all of them move together without a restart. Questions
+failed in one attempt share one due instant, so this is a handful of re-derivations a
+day, not polling. The wait is a coroutine `delay` capped at 15 minutes between
+wall-clock checks: a monotonic delay stops while a laptop sleeps, and the cap bounds how
+late an entry that fell due overnight is noticed after waking.
+
+### Existing history
+
+Nothing is migrated. Replaying history recorded before this rule turns some Questions
+that one correct answer used to resolve back into scheduled entries — typically ones
+answered correctly minutes after the mistake. That is intended: those answers were
+exactly the recall-of-the-answer-key the schedule exists to discount.
+
+### Relation to other derivations
+
+Both Mistake Review and unresolved-mistake practice consume `MistakeScheduleDerivation`,
+so they cannot disagree about the lifecycle. This is deliberately narrower than
+`LearningProgressService`, which stays occurrence-based and counts every completed
+answer. Review content is reconstructed only for scheduled candidates, and a Question
+whose content no longer resolves stays in the queue as `ReviewQuestionItem.Missing`. No
+mistake, stage, due, resolved, or dismissed state is stored; Room remains
+assessment-history persistence only.
 
 Mistake Review also presents the shared Saved Questions state described in
 [assessment](assessment.md), through the same `ReviewQuestionCard` the result screens use. The two
-are independent: saving or unsaving an entry never resolves it, and only a later correct answer
-takes it out of the queue. The E17-04 scoped practice shortcut is unchanged and stays a separate
+are independent: saving or unsaving an entry never resolves it, and only correct answers at its
+spaced reviews take it out of the queue. The E17-04 scoped practice shortcut is unchanged and stays a separate
 action on the entry.
 
 ## The accuracy evidence minimum

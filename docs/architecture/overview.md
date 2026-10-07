@@ -100,11 +100,12 @@ ordinary content can pass behind the surface, while the final item can still mov
 The decision is made from measured window width rather than platform, because the same host can
 be either size — a desktop or browser window can be dragged narrow.
 
-`AppShellViewModel` supplies the one piece of state the control itself needs: the
-unresolved mistake count, badged onto the Mistakes item in a neutral `secondary` badge that
+`AppShellViewModel` supplies the one piece of state the control itself needs: the count of
+mistakes due for review, badged onto the Mistakes item in a neutral `secondary` badge that
 draws up to "99+" and announces the real count in words — it is a queue to work through, not an
-error; see [Material Design 3](../development/material-design.md). The Progress dashboard
-reports the same count and routes into the same destination — see [Progress](progress.md) —
+error; see [Material Design 3](../development/material-design.md). Mistakes that are scheduled
+but not yet due are not badged; see [the mistake review schedule](progress.md#the-mistake-review-schedule).
+The Progress dashboard reports every unresolved mistake and routes into the same destination — see [Progress](progress.md) —
 because a dashboard that names a queue of questions the learner has already got wrong and then
 declines to open it stops one step short of answering "what should I work on next?".
 

@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 import kotlinx.coroutines.test.runTest
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
@@ -38,7 +40,7 @@ import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
  * `LearningRecommendationPolicyTest` already pins precedence, weak-area ordering, and coverage
  * tie-breaking, so none of that is retested here. What these tests establish is that the resolver
  * supplies the *established* facts: the caller's progress snapshot rather than a second derivation,
- * the shared unresolved-mistake semantics rather than a count of its own, and the shared
+ * the shared mistake schedule's due count rather than a count of its own, and the shared
  * recent-study definition rather than Continue Studying's navigation answer.
  */
 internal class LearningRecommendationResolverTest {
@@ -72,13 +74,14 @@ internal class LearningRecommendationResolverTest {
     }
 
     @Test
-    fun theUnresolvedCountComesFromTheSharedMistakeSemantics() = runTest {
-        // q_one was answered incorrectly and then correctly, so it is resolved; q_two's latest
-        // completed occurrence is still incorrect. The count the recommendation reports has to be
-        // the mistake queue's own answer, not a tally of wrong answers in history.
+    fun theDueCountComesFromTheSharedMistakeSchedule() = runTest {
+        // Both Questions are still scheduled, but only q_two is due: q_one's correct answer a day
+        // later counted and moved its next review three days out. The count the recommendation
+        // reports has to be the schedule's due answer, not a tally of wrong answers in history,
+        // and not every scheduled mistake either.
         val history = listOf(
-            completedAttempt("newer", "q_one" to true),
-            completedAttempt("older", "q_one" to false, "q_two" to false),
+            completedAttempt("newer", "q_one" to true, completedAt = MistakeAt + 1.days),
+            completedAttempt("older", "q_one" to false, "q_two" to false, completedAt = MistakeAt),
         )
         val recommendation = resolve(
             completedAttempts = history,
@@ -88,12 +91,12 @@ internal class LearningRecommendationResolverTest {
                 // Present and usable, and still outranked: mistakes come first.
                 weakAreas = listOf(weakTopic("kotlin")),
             ),
-            unresolvedMistakeCounter = SharedMistakeSemantics,
+            dueMistakeCounter = SharedMistakeSemantics,
         )
 
         assertEquals(LearningRecommendationTarget.MistakeReview, recommendation?.target)
         assertEquals(
-            LearningRecommendationRationale.UnresolvedMistakes(count = 1),
+            LearningRecommendationRationale.DueMistakes(count = 1),
             recommendation?.rationale,
         )
     }
@@ -108,7 +111,7 @@ internal class LearningRecommendationResolverTest {
                 subtopicCoverage = listOf(SubtopicCoverage("kotlin", "coroutines", 4, 6)),
                 weakAreas = listOf(weakSubtopic(topicId = "kotlin", subtopicId = "coroutines")),
             ),
-            unresolvedMistakeCounter = SharedMistakeSemantics,
+            dueMistakeCounter = SharedMistakeSemantics,
         )
 
         assertEquals(
@@ -140,7 +143,7 @@ internal class LearningRecommendationResolverTest {
                     TopicCoverage("compose", 2, 10),
                 ),
             ),
-            unresolvedMistakeCounter = SharedMistakeSemantics,
+            dueMistakeCounter = SharedMistakeSemantics,
         )
 
         assertEquals(
@@ -172,7 +175,7 @@ internal class LearningRecommendationResolverTest {
                     completedAttemptCount = 1,
                     topicCoverage = listOf(TopicCoverage("kotlin", 10, 10)),
                 ),
-                unresolvedMistakeCounter = SharedMistakeSemantics,
+                dueMistakeCounter = SharedMistakeSemantics,
             ),
         )
     }
@@ -192,7 +195,7 @@ internal class LearningRecommendationResolverTest {
         val withoutContext = resolve(
             completedAttempts = listOf(completedAttempt("mixed", "q_one" to true)),
             progress = progress,
-            unresolvedMistakeCounter = SharedMistakeSemantics,
+            dueMistakeCounter = SharedMistakeSemantics,
         )
         assertEquals(
             LearningRecommendationRationale.UnseenCoverage("compose", 8),
@@ -205,7 +208,7 @@ internal class LearningRecommendationResolverTest {
                 completedAttempt("older", "q_one" to true),
             ),
             progress = progress,
-            unresolvedMistakeCounter = SharedMistakeSemantics,
+            dueMistakeCounter = SharedMistakeSemantics,
         )
         assertEquals(
             LearningRecommendationRationale.UnseenCoverage("kotlin", 8),
@@ -226,7 +229,7 @@ internal class LearningRecommendationResolverTest {
                     TopicCoverage("kotlin", 2, 10),
                 ),
             ),
-            unresolvedMistakeCounter = SharedMistakeSemantics,
+            dueMistakeCounter = SharedMistakeSemantics,
         )
 
         assertEquals(
@@ -251,7 +254,7 @@ internal class LearningRecommendationResolverTest {
                     TopicCoverage("kotlin", 2, 10),
                 ),
             ),
-            unresolvedMistakeCounter = SharedMistakeSemantics,
+            dueMistakeCounter = SharedMistakeSemantics,
         )
 
         assertEquals(
@@ -273,7 +276,7 @@ internal class LearningRecommendationResolverTest {
                     topicCoverage = listOf(TopicCoverage("kotlin", 2, 10)),
                     weakAreas = listOf(weakTopic("kotlin")),
                 ),
-                unresolvedMistakeCounter = { error("Unresolved mistakes unavailable") },
+                dueMistakeCounter = { error("Unresolved mistakes unavailable") },
             )
         }
     }
@@ -281,9 +284,9 @@ internal class LearningRecommendationResolverTest {
     private suspend fun resolve(
         completedAttempts: List<TestAttempt>,
         progress: LearningProgressSnapshot,
-        unresolvedMistakeCounter: UnresolvedMistakeCounter = UnresolvedMistakeCounter { 0 },
+        dueMistakeCounter: DueMistakeCounter = DueMistakeCounter { 0 },
     ): LearningRecommendation? =
-        LearningRecommendationResolver(unresolvedMistakeCounter)
+        LearningRecommendationResolver(dueMistakeCounter)
             .resolve(completedAttempts = completedAttempts, progress = progress)
 
     private companion object {
@@ -294,12 +297,15 @@ internal class LearningRecommendationResolverTest {
          * which is the point: counting unresolved mistakes for history the caller already holds
          * must not read the shared cache again or reconstruct any review content.
          */
-        val SharedMistakeSemantics = UnresolvedMistakeCounter { completedAttempts ->
+        val SharedMistakeSemantics = DueMistakeCounter { completedAttempts ->
             MistakeReviewService(
                 completedHistory = UnreadableAssessmentRepository.asCompletedHistory(),
                 assessmentReviewLoader = AssessmentReviewLoader(UnusedCurriculumRepository),
-            ).countUnresolved(completedAttempts)
+                now = { MistakeAt + 1.days + 1.hours },
+            ).countDue(completedAttempts)
         }
+
+        val MistakeAt: Instant = Instant.parse("2026-08-29T00:15:00Z")
 
         fun snapshot(
             completedAttemptCount: Int,
@@ -353,6 +359,7 @@ internal class LearningRecommendationResolverTest {
         fun completedAttempt(
             id: String,
             vararg answers: Pair<String, Boolean>,
+            completedAt: Instant = MistakeAt,
         ): TestAttempt =
             TestAttempt(
                 id = id,
@@ -365,7 +372,7 @@ internal class LearningRecommendationResolverTest {
                 },
                 status = AssessmentStatus.COMPLETED,
                 startedAt = Instant.parse("2026-08-29T00:00:00Z"),
-                completedAt = Instant.parse("2026-08-29T00:15:00Z"),
+                completedAt = completedAt,
                 score = AssessmentScore(answers.size, answers.count { it.second }),
             )
 

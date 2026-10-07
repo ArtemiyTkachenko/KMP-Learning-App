@@ -38,9 +38,11 @@ import org.artkachenko.kmp_learning_app.mistake_review.MistakeReviewService
  * | kmpFocus  | k1–k6 ✗                                      | 0/6  | dropped         |
  * | core      | a1 ✗, a2 ✓, a3 ✓, a4 ✓, a5 ✓, c2 ✗            | 4/6  | 4/6             |
  *
- * With KMP hidden: 2 attempts, 8 answers, 6 correct (75%), no weak area, coverage 7/9, one
- * unresolved mistake (c2). With KMP shown: 3 attempts, 15 answers, 6 correct (40%), one weak area
- * (the `kmp_expect_actual` Subtopic), coverage 13/16, seven unresolved mistakes (c2, k1–k6).
+ * With KMP hidden: 2 attempts, 8 answers, 6 correct (75%), no weak area, coverage 7/9, two
+ * unresolved mistakes (a1, c2). With KMP shown: 3 attempts, 15 answers, 6 correct (40%), one weak
+ * area (the `kmp_expect_actual` Subtopic), coverage 13/16, eight unresolved mistakes (a1, c2,
+ * k1–k6). `a1`'s correct answer in `mixed` came minutes after its mistake, before the review was
+ * due, so it does not move `a1` off the review schedule.
  */
 internal class VisibilityDerivationTest {
 
@@ -127,8 +129,8 @@ internal class VisibilityDerivationTest {
         val harness = harness(includeKmpContent = false)
 
         assertEquals(8, harness.progress.load().answeredQuestionCount)
-        assertEquals(1, harness.mistakes.countUnresolved())
-        assertEquals(listOf("c2"), harness.mistakes.load().map { it.questionId })
+        assertEquals(2, harness.mistakes.countUnresolved())
+        assertEquals(listOf("a1", "c2"), harness.mistakes.load().map { it.questionId })
         // One read of the attempt table, by the cache the projection sits on.
         assertEquals(1, harness.raw.completedReads)
     }
@@ -137,9 +139,9 @@ internal class VisibilityDerivationTest {
     fun shownKmpMistakesReturnInTheStateTheirHistoryLeavesThem() = runTest {
         val harness = harness(includeKmpContent = true)
 
-        assertEquals(7, harness.mistakes.countUnresolved())
+        assertEquals(8, harness.mistakes.countUnresolved())
         assertEquals(
-            setOf("c2", "k1", "k2", "k3", "k4", "k5", "k6"),
+            setOf("a1", "c2", "k1", "k2", "k3", "k4", "k5", "k6"),
             harness.mistakes.load().mapTo(mutableSetOf()) { it.questionId },
         )
     }
@@ -148,14 +150,14 @@ internal class VisibilityDerivationTest {
     @Test
     fun aVisibilityRoundTripRederivesWithoutReadingOrWritingAttempts() = runTest {
         val harness = harness(includeKmpContent = false)
-        assertEquals(1, harness.mistakes.countUnresolved())
+        assertEquals(2, harness.mistakes.countUnresolved())
 
         harness.visibility.value = CurriculumVisibility.from(includeKmpContent = true)
-        assertEquals(7, harness.mistakes.countUnresolved())
+        assertEquals(8, harness.mistakes.countUnresolved())
         assertEquals(15, harness.progress.load().answeredQuestionCount)
 
         harness.visibility.value = CurriculumVisibility.from(includeKmpContent = false)
-        assertEquals(1, harness.mistakes.countUnresolved())
+        assertEquals(2, harness.mistakes.countUnresolved())
         assertEquals(8, harness.progress.load().answeredQuestionCount)
 
         assertEquals(1, harness.raw.completedReads)
@@ -227,9 +229,9 @@ internal class VisibilityDerivationTest {
         )
 
         val hidden = assertIs<AssessmentSelectionResult.Selected>(harness(includeKmpContent = false).selector.select(config))
-        assertEquals(listOf("c2"), hidden.questions.map { it.id })
+        assertEquals(listOf("a1", "c2"), hidden.questions.map { it.id })
         val shown = assertIs<AssessmentSelectionResult.Selected>(harness(includeKmpContent = true).selector.select(config))
-        assertEquals(setOf("c2", "k1", "k2", "k3", "k4", "k5", "k6"), shown.questions.mapTo(mutableSetOf()) { it.id })
+        assertEquals(setOf("a1", "c2", "k1", "k2", "k3", "k4", "k5", "k6"), shown.questions.mapTo(mutableSetOf()) { it.id })
     }
 
     // --- Harness ----------------------------------------------------------------------------

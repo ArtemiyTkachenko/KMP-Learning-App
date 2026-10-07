@@ -75,8 +75,9 @@ internal class MistakeReviewViewModelTest {
         advanceUntilIdle()
 
         val content = assertIs<MistakeReviewUiState.Content>(state.value)
-        // Recency ordering belongs to the service; the ViewModel must not re-sort it.
-        assertEquals(listOf("q3", "q1", "q2"), content.mistakes.map { it.questionId })
+        // Due-time ordering belongs to the service — q2's mistake is oldest, so it falls due
+        // first; the ViewModel must not re-sort it.
+        assertEquals(listOf("q2", "q3", "q1"), content.mistakes.map { it.questionId })
     }
 
     @Test

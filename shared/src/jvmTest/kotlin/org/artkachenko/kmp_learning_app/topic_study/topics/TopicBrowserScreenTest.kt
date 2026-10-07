@@ -951,7 +951,7 @@ internal class TopicBrowserScreenTest {
     }
 
     @Test
-    fun unresolvedMistakesAreExplainedWithTheirExactCount() = runComposeUiTest {
+    fun dueMistakesAreExplainedWithTheirExactCount() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
@@ -959,7 +959,7 @@ internal class TopicBrowserScreenTest {
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         recommendedNext = RecommendedNextUiModel(
                             target = LearningRecommendationTarget.MistakeReview,
-                            rationale = LearningRecommendationRationale.UnresolvedMistakes(3),
+                            rationale = LearningRecommendationRationale.DueMistakes(3),
                         ),
                     ),
                     onTopicClick = {},
@@ -969,11 +969,11 @@ internal class TopicBrowserScreenTest {
         }
 
         onNodeWithText("Review mistakes").assertIsDisplayed()
-        onNodeWithText("You have 3 unresolved mistakes to revisit.").assertIsDisplayed()
+        onNodeWithText("You have 3 mistakes due for review.").assertIsDisplayed()
     }
 
     @Test
-    fun aSingleUnresolvedMistakeReadsAsOne() = runComposeUiTest {
+    fun aSingleDueMistakeReadsAsOne() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
@@ -981,7 +981,7 @@ internal class TopicBrowserScreenTest {
                         topics = listOf(topicItem("kotlin", "Kotlin")),
                         recommendedNext = RecommendedNextUiModel(
                             target = LearningRecommendationTarget.MistakeReview,
-                            rationale = LearningRecommendationRationale.UnresolvedMistakes(1),
+                            rationale = LearningRecommendationRationale.DueMistakes(1),
                         ),
                     ),
                     onTopicClick = {},
@@ -990,7 +990,7 @@ internal class TopicBrowserScreenTest {
             }
         }
 
-        onNodeWithText("You have 1 unresolved mistake to revisit.").assertIsDisplayed()
+        onNodeWithText("You have 1 mistake due for review.").assertIsDisplayed()
     }
 
     @Test
@@ -1145,7 +1145,7 @@ internal class TopicBrowserScreenTest {
                         // asserts the screen cannot reintroduce it even if one arrives.
                         recommendedNext = RecommendedNextUiModel(
                             target = LearningRecommendationTarget.MistakeReview,
-                            rationale = LearningRecommendationRationale.UnresolvedMistakes(3),
+                            rationale = LearningRecommendationRationale.DueMistakes(3),
                         ),
                     ),
                     onTopicClick = {},
@@ -1177,7 +1177,7 @@ internal class TopicBrowserScreenTest {
                             // action now, and the most recent learning context.
                             recommendedNext = RecommendedNextUiModel(
                                 target = LearningRecommendationTarget.MistakeReview,
-                                rationale = LearningRecommendationRationale.UnresolvedMistakes(3),
+                                rationale = LearningRecommendationRationale.DueMistakes(3),
                             ),
                             continueStudying = ContinueStudyingContext(
                                 target = ContinueStudyingTarget.Topic("kotlin", "coroutines"),
@@ -1195,7 +1195,7 @@ internal class TopicBrowserScreenTest {
         // Neither suppresses the other, and neither replaces the Topic rows below them.
         onNodeWithTag(TopicBrowserRecommendedNextTag).assertIsDisplayed()
         onNodeWithText("Review mistakes").assertIsDisplayed()
-        onNodeWithText("You have 3 unresolved mistakes to revisit.").assertIsDisplayed()
+        onNodeWithText("You have 3 mistakes due for review.").assertIsDisplayed()
         onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
         onNodeWithText("Pick up where you left off").assertIsDisplayed()
         onNodeWithText("Coroutines").assertIsDisplayed()
@@ -1420,7 +1420,7 @@ internal class TopicBrowserScreenTest {
                             ),
                             recommendedNext = RecommendedNextUiModel(
                                 target = LearningRecommendationTarget.MistakeReview,
-                                rationale = LearningRecommendationRationale.UnresolvedMistakes(3),
+                                rationale = LearningRecommendationRationale.DueMistakes(3),
                             ),
                             continueStudying = ContinueStudyingContext(
                                 target = ContinueStudyingTarget.Topic("kotlin", "coroutines"),

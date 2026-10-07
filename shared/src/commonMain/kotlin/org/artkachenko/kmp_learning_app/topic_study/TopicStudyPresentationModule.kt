@@ -60,11 +60,11 @@ internal val topicStudyPresentationModule = module {
     single {
         // The count only, taken from the same completed history the caller already holds: the
         // recommendation never loads the mistake queue's review content to find out how many
-        // Questions are unresolved.
+        // Questions are due.
         val mistakeReviewService = get<MistakeReviewService>()
         LearningRecommendationResolver(
-            unresolvedMistakeCounter = { completedAttempts ->
-                mistakeReviewService.countUnresolved(completedAttempts)
+            dueMistakeCounter = { completedAttempts ->
+                mistakeReviewService.countDue(completedAttempts)
             },
         )
     }

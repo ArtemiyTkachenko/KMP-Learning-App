@@ -11,8 +11,8 @@ import kotlinx.coroutines.launch
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
-import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeDerivation
-import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeOccurrence
+import org.artkachenko.kmp_learning_app.assessment.history.MistakeScheduleDerivation
+import org.artkachenko.kmp_learning_app.assessment.history.ScheduledMistake
 import org.artkachenko.kmp_learning_app.curriculum.Subtopic
 import org.artkachenko.kmp_learning_app.curriculum.Topic
 import org.artkachenko.kmp_learning_app.curriculum.learning.LearningUnit
@@ -207,14 +207,16 @@ internal class TopicDetailViewModel(
                     }
                 }
                 // The same shared derivation the Mistakes queue uses, over the same attempts, so
-                // this screen can never disagree with that queue about what is unresolved. It is
-                // kept separate from the analytics above because the two fail independently: a
-                // failed progress derivation must not also take away a mistake count that was read.
+                // this screen can never disagree with that queue about what is unresolved. Every
+                // scheduled mistake counts, due or coming up: the count backs the Topic's mistake
+                // practice shortcut, whose run draws from all of them (due first). It is kept
+                // separate from the analytics above because the two fail independently: a failed
+                // progress derivation must not also take away a mistake count that was read.
                 unresolvedMistakeQuestionIds = when (history) {
                     AssessmentHistory.Loading, AssessmentHistory.Failed -> null
                     is AssessmentHistory.Loaded -> try {
-                        UnresolvedMistakeDerivation.derive(history.attempts)
-                            .mapTo(mutableSetOf(), UnresolvedMistakeOccurrence::questionId)
+                        MistakeScheduleDerivation.derive(history.attempts)
+                            .mapTo(mutableSetOf(), ScheduledMistake::questionId)
                     } catch (cancellation: CancellationException) {
                         throw cancellation
                     } catch (_: Exception) {

@@ -26,6 +26,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 
 internal class AssessmentQuestionSelectorTest {
@@ -808,7 +811,7 @@ internal class AssessmentQuestionSelectorTest {
     }
 
     @Test
-    fun unresolvedMistakesSelectsOnlyQuestionsWhoseLatestOccurrenceIsIncorrect() = runSelectorTest {
+    fun mistakePracticeSelectsOnlyQuestionsOnTheReviewSchedule() = runSelectorTest {
         repository.topicQuestions = mapOf(
             "android_ui" to questions("q1", "q2"),
         )
@@ -822,11 +825,26 @@ internal class AssessmentQuestionSelectorTest {
     }
 
     @Test
-    fun aLaterCorrectOccurrenceRemovesMistakePracticeEligibility() = runSelectorTest {
+    fun anImmediateCorrectAnswerKeepsMistakePracticeEligibility() = runSelectorTest {
         repository.topicQuestions = mapOf("android_ui" to questions("q1"))
         history.attempts = listOf(
-            completedAttemptWithOutcomes("newest", "q1" to true),
-            completedAttemptWithOutcomes("oldest", "q1" to false),
+            completedAttemptWithOutcomes("re_practice", "q1" to true, completedAt = MistakeAt + 2.minutes),
+            completedAttemptWithOutcomes("mistake", "q1" to false),
+        )
+
+        val selected = selector().selectQuestions(mistakePractice(questionCount = 10))
+
+        assertEquals(listOf("q1"), selected.map { it.id })
+    }
+
+    @Test
+    fun correctAnswersAtEachReviewRemoveMistakePracticeEligibility() = runSelectorTest {
+        repository.topicQuestions = mapOf("android_ui" to questions("q1"))
+        history.attempts = listOf(
+            completedAttemptWithOutcomes("week", "q1" to true, completedAt = MistakeAt + 11.days),
+            completedAttemptWithOutcomes("three_days", "q1" to true, completedAt = MistakeAt + 4.days),
+            completedAttemptWithOutcomes("next_day", "q1" to true, completedAt = MistakeAt + 1.days),
+            completedAttemptWithOutcomes("mistake", "q1" to false),
         )
 
         val result = selector().select(mistakePractice(questionCount = 10))
@@ -835,7 +853,7 @@ internal class AssessmentQuestionSelectorTest {
     }
 
     @Test
-    fun incorrectCorrectIncorrectLifecycleClosesAndReopensEligibility() = runSelectorTest {
+    fun incorrectResolvedIncorrectLifecycleClosesAndReopensEligibility() = runSelectorTest {
         repository.topicQuestions = mapOf("android_ui" to questions("q1"))
         val selector = selector()
         val oldestIncorrect = completedAttemptWithOutcomes("oldest", "q1" to false)
@@ -843,15 +861,55 @@ internal class AssessmentQuestionSelectorTest {
         history.attempts = listOf(oldestIncorrect)
         assertEquals(listOf("q1"), selector.selectQuestions(mistakePractice(10)).map { it.id })
 
-        val laterCorrect = completedAttemptWithOutcomes("correct", "q1" to true)
-        history.attempts = listOf(laterCorrect, oldestIncorrect)
+        val reviews = listOf(11.days, 4.days, 1.days).map { offset ->
+            completedAttemptWithOutcomes("review_$offset", "q1" to true, completedAt = MistakeAt + offset)
+        }
+        history.attempts = reviews + oldestIncorrect
         assertEquals(
             AssessmentSelectionResult.NoContent.NoEligibleQuestions,
             selector.select(mistakePractice(10)),
         )
 
-        val latestIncorrect = completedAttemptWithOutcomes("reopened", "q1" to false)
-        history.attempts = listOf(latestIncorrect, laterCorrect, oldestIncorrect)
+        val latestIncorrect = completedAttemptWithOutcomes(
+            "reopened",
+            "q1" to false,
+            completedAt = MistakeAt + 20.days,
+        )
+        history.attempts = listOf(latestIncorrect) + reviews + oldestIncorrect
+        assertEquals(listOf("q1"), selector.selectQuestions(mistakePractice(10)).map { it.id })
+    }
+
+    /**
+     * A run shorter than the queue spends its questions where a correct answer counts. Without the
+     * due tier, the reversed randomization below would pick q3 and the coming-up q2.
+     */
+    @Test
+    fun dueMistakesAreSelectedBeforeComingUpOnes() = runSelectorTest {
+        repository.topicQuestions = mapOf("android_ui" to questions("q1", "q2", "q3"))
+        history.attempts = listOf(
+            completedAttemptWithOutcomes("recent", "q2" to false, completedAt = MistakeAt + 3.days),
+            completedAttemptWithOutcomes("old", "q1" to false, "q3" to false),
+        )
+        val selector = selector(
+            randomize = { it.reversed() },
+            now = { MistakeAt + 3.days + 1.hours },
+        )
+
+        assertEquals(listOf("q3", "q1"), selector.selectQuestions(mistakePractice(2)).map { it.id })
+        // Coming-up mistakes still fill the rest: practising one early is allowed and simply
+        // does not count.
+        assertEquals(
+            listOf("q3", "q1", "q2"),
+            selector.selectQuestions(mistakePractice(3)).map { it.id },
+        )
+    }
+
+    @Test
+    fun aQueueWithNothingDueStillOffersItsComingUpMistakes() = runSelectorTest {
+        repository.topicQuestions = mapOf("android_ui" to questions("q1"))
+        history.attempts = listOf(completedAttemptWithOutcomes("mistake", "q1" to false))
+        val selector = selector(now = { MistakeAt + 5.minutes })
+
         assertEquals(listOf("q1"), selector.selectQuestions(mistakePractice(10)).map { it.id })
     }
 
@@ -1488,6 +1546,38 @@ internal class AssessmentQuestionSelectorTest {
         assertEquals(listOf("a_unresolved"), selected.map { it.id })
     }
 
+    /**
+     * The Results screen's "Practice N mistakes" shape: the run's Subtopics and its mistake count,
+     * no Question IDs. Due-first applies to it too, so yesterday's due mistake in the same Subtopic
+     * is asked before one of the two just made — whose answers would come too early to count.
+     */
+    @Test
+    fun theResultsShortcutAsksAnOlderDueMistakeBeforeTheRunsFreshOnes() = runSelectorTest {
+        repository.subtopicQuestions = mapOf(
+            "sub_a" to listOf(
+                question("q_old", topicId = "topic_a", subtopicId = "sub_a"),
+                question("q_new_1", topicId = "topic_a", subtopicId = "sub_a"),
+                question("q_new_2", topicId = "topic_a", subtopicId = "sub_a"),
+            ),
+        )
+        history.attempts = listOf(
+            completedAttemptWithOutcomes(
+                "today",
+                "q_new_1" to false,
+                "q_new_2" to false,
+                completedAt = MistakeAt + 1.days,
+            ),
+            completedAttemptWithOutcomes("yesterday", "q_old" to false),
+        )
+        val selector = selector(now = { MistakeAt + 1.days + 1.minutes })
+
+        val selected = selector.selectQuestions(
+            mistakePractice(questionCount = 2, scope = AssessmentScope.Subtopics(setOf("sub_a"))),
+        )
+
+        assertEquals(listOf("q_old", "q_new_1"), selected.map { it.id })
+    }
+
     // endregion
 
     private fun runSelectorTest(
@@ -1514,11 +1604,14 @@ internal class AssessmentQuestionSelectorTest {
 
         fun selector(
             randomize: (List<Question>) -> List<Question> = { it },
+            // Well after every fixture mistake, so each is due unless a test says otherwise.
+            now: () -> Instant = { MistakeAt + 30.days },
         ): AssessmentQuestionSelector =
             AssessmentQuestionSelector(
                 curriculumRepository = repository,
                 completedHistory = history,
                 randomize = randomize,
+                now = now,
             )
     }
 
@@ -1610,6 +1703,7 @@ internal class AssessmentQuestionSelectorTest {
     private fun completedAttemptWithOutcomes(
         id: String,
         vararg outcomes: Pair<String, Boolean>,
+        completedAt: Instant = MistakeAt,
     ): TestAttempt =
         TestAttempt(
             id = id,
@@ -1625,7 +1719,7 @@ internal class AssessmentQuestionSelectorTest {
             },
             status = AssessmentStatus.COMPLETED,
             startedAt = Instant.fromEpochSeconds(0),
-            completedAt = Instant.fromEpochSeconds(60),
+            completedAt = completedAt,
             score = AssessmentScore(
                 totalQuestions = outcomes.size,
                 correctAnswers = outcomes.count { it.second },
@@ -1819,3 +1913,6 @@ internal class AssessmentQuestionSelectorTest {
         )
     }
 }
+
+/** When the fixtures' completed attempts finish unless a test gives another time. */
+private val MistakeAt: Instant = Instant.fromEpochSeconds(60)

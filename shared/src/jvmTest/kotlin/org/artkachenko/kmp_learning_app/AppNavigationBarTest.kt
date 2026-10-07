@@ -422,7 +422,7 @@ internal class AppNavigationBarTest {
 
     /**
      * The visible cap is a drawing concern only. A screen reader hears the real count in words —
-     * "120 unresolved mistakes", never "99+" or a bare number — on the compact bar and on
+     * "120 mistakes due for review", never "99+" or a bare number — on the compact bar and on
      * the rail, and the singular form is used for one.
      */
     @Test
@@ -449,13 +449,13 @@ internal class AppNavigationBarTest {
             }
             waitForIdle()
             val mistakes = onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.MISTAKES))
-            mistakes.assert(hasText("120 unresolved mistakes"))
+            mistakes.assert(hasText("120 mistakes due for review"))
             mistakes.assert(hasText("99+", substring = true).not())
             mistakes.assert(hasText("120").not())
 
             runOnIdle { badges = mapOf(AppTopLevelDestination.MISTAKES to 1) }
             waitForIdle()
-            mistakes.assert(hasText("1 unresolved mistake"))
+            mistakes.assert(hasText("1 mistake due for review"))
         }
     }
 
@@ -663,7 +663,7 @@ private val AppTopLevelDestination.labelText: String
         AppTopLevelDestination.MISTAKES -> "Mistakes"
     }
 
-private const val SevenUnresolved = "7 unresolved mistakes"
+private const val SevenUnresolved = "7 mistakes due for review"
 private const val ScaffoldContentTag = "scaffold_content"
 private const val SnackbarMessage = "Copied"
 private const val MinimumTouchTargetPx = 48f

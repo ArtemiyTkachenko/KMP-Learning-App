@@ -70,9 +70,11 @@ internal class ProgressStateHolder(
         // Reuses the history the cache already holds, so one derivation is one read.
         val snapshot = learningProgressService.load(completedAttempts)
         if (snapshot.completedAttemptCount == 0) return ProgressUiState.Empty
-        // Reuses the mistake queue's own latest-occurrence rule instead of re-deriving it here,
-        // and asks only for the size so no review content is reconstructed. Handing over the
-        // history already loaded above keeps this refresh to two repository reads, not three.
+        // Reuses the mistake queue's own schedule instead of re-deriving it here, and asks only for
+        // the size so no review content is reconstructed. Every scheduled mistake is counted, due or
+        // coming up: this is a report of what is outstanding, and the row leads to the queue that
+        // shows both. Handing over the history already loaded above keeps this refresh to two
+        // repository reads, not three.
         val unresolvedMistakeCount = mistakeReviewService.countUnresolved(completedAttempts)
 
         return ProgressUiState.Content(

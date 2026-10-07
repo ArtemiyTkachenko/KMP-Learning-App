@@ -31,7 +31,7 @@ internal class LearningRecommendationPolicyTest {
     fun noActiveCurriculumProducesNoRecommendation() {
         val recommendation = LearningRecommendationPolicy.recommend(
             inputs(
-                unresolvedMistakeCount = 2,
+                dueMistakeCount = 2,
                 weakAreas = listOf(weakTopic("retired_topic")),
                 topicCoverage = emptyList(),
             ),
@@ -41,10 +41,10 @@ internal class LearningRecommendationPolicyTest {
     }
 
     @Test
-    fun unresolvedMistakesOutrankWeakAreasAndCoverage() {
+    fun dueMistakesOutrankWeakAreasAndCoverage() {
         val recommendation = recommend(
             inputs(
-                unresolvedMistakeCount = 3,
+                dueMistakeCount = 3,
                 weakAreas = listOf(weakTopic("topic_a")),
                 topicCoverage = listOf(coverage("topic_a", attempted = 1, total = 5)),
             ),
@@ -52,7 +52,7 @@ internal class LearningRecommendationPolicyTest {
 
         assertEquals(LearningRecommendationTarget.MistakeReview, recommendation.target)
         assertEquals(
-            LearningRecommendationRationale.UnresolvedMistakes(count = 3),
+            LearningRecommendationRationale.DueMistakes(count = 3),
             recommendation.rationale,
         )
     }
@@ -304,7 +304,7 @@ internal class LearningRecommendationPolicyTest {
             ),
             recommend(
                 inputs(
-                    unresolvedMistakeCount = 1,
+                    dueMistakeCount = 1,
                     topicCoverage = listOf(coverage("topic_a", 1, 1)),
                 ),
             ),
@@ -325,7 +325,7 @@ internal class LearningRecommendationPolicyTest {
                     assertIs<LearningRecommendationRationale.NewUser>(recommendation.rationale)
 
                 LearningRecommendationTarget.MistakeReview ->
-                    assertIs<LearningRecommendationRationale.UnresolvedMistakes>(
+                    assertIs<LearningRecommendationRationale.DueMistakes>(
                         recommendation.rationale,
                     )
 
@@ -358,7 +358,7 @@ internal class LearningRecommendationPolicyTest {
 
 private fun inputs(
     completedAttemptCount: Int = 1,
-    unresolvedMistakeCount: Int = 0,
+    dueMistakeCount: Int = 0,
     weakAreas: List<WeakArea> = emptyList(),
     topicCoverage: List<TopicCoverage> = listOf(coverage("topic_a", 1, 1)),
     subtopicCoverage: List<SubtopicCoverage> = emptyList(),
@@ -366,7 +366,7 @@ private fun inputs(
 ): LearningRecommendationInputs =
     LearningRecommendationInputs(
         completedAttemptCount = completedAttemptCount,
-        unresolvedMistakeCount = unresolvedMistakeCount,
+        dueMistakeCount = dueMistakeCount,
         weakAreas = weakAreas,
         topicCoverage = topicCoverage,
         subtopicCoverage = subtopicCoverage,

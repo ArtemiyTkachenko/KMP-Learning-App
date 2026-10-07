@@ -33,8 +33,14 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
+import kmp_learning_app.shared.generated.resources.mistake_review_coming_up
 import kmp_learning_app.shared.generated.resources.mistake_review_description
+import kmp_learning_app.shared.generated.resources.mistake_review_due_in_days
+import kmp_learning_app.shared.generated.resources.mistake_review_due_in_hours
+import kmp_learning_app.shared.generated.resources.mistake_review_due_now
+import kmp_learning_app.shared.generated.resources.mistake_review_due_within_hour
 import kmp_learning_app.shared.generated.resources.mistake_review_empty
 import kmp_learning_app.shared.generated.resources.mistake_review_empty_action
 import kmp_learning_app.shared.generated.resources.mistake_review_empty_detail
@@ -59,6 +65,7 @@ import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
 import org.artkachenko.kmp_learning_app.saved_questions.SavedQuestionsState
 import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.MetricFigure
+import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.AppTopBar
 import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.artkachenko.kmp_learning_app.ui.theme.AppStroke
@@ -69,6 +76,7 @@ import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenStateTransition
 import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.artkachenko.kmp_learning_app.ui.theme.AppContentWidth
@@ -79,9 +87,16 @@ import org.artkachenko.kmp_learning_app.ui.AppTwoPaneRow
 import org.artkachenko.kmp_learning_app.ui.theme.AppMotion
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppWindowSizeClass
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 internal const val MistakeReviewLoadingTag = "mistake_review_loading"
 internal const val MistakeReviewPracticeAllTag = "mistake_review_practice_all"
+internal const val MistakeReviewDueNowHeadingTag = "mistake_review_due_now_heading"
+internal const val MistakeReviewComingUpHeadingTag = "mistake_review_coming_up_heading"
+
+/** Per-entry handle for a coming-up entry's due time. */
+internal fun mistakeDueInTag(questionId: String): String = "mistake_review_due_in_$questionId"
 
 /** The level-2 block the screen leads with, so a test can reach it without matching its lines. */
 internal const val MistakeRemediationSurfaceTag = "mistake_remediation_surface"
@@ -100,9 +115,9 @@ internal fun mistakePracticeShortcutTag(questionId: String): String =
 
 /**
  * [onPracticePreset] carries the Subtopic the tapped entry already belongs to, together with the
- * existing unresolved-mistake source. The queue itself is unchanged: which Questions are unresolved
- * remains `UnresolvedMistakeDerivation`'s answer, and which of a Subtopic's unresolved Questions are
- * currently eligible remains the selector's.
+ * existing unresolved-mistake source. Which Questions are unresolved, and which are due, remains
+ * `MistakeScheduleDerivation`'s answer, and which of a Subtopic's unresolved Questions are currently
+ * eligible — due ones first — remains the selector's.
  */
 @Composable
 internal fun MistakeReviewScreen(
@@ -217,6 +232,7 @@ private fun MistakeReviewContent(
                 MistakePane(Modifier.weight(QueuePaneWeight).testTag(MistakeQueuePaneTag)) {
                     queueSection(
                         state = state,
+                        leadsPane = true,
                         onSourceClick = onSourceClick,
                         onPracticePreset = onPracticePreset,
                         onStudyLesson = onStudyLesson,
@@ -242,6 +258,7 @@ private fun MistakeReviewContent(
         )
         queueSection(
             state = state,
+            leadsPane = false,
             onSourceClick = onSourceClick,
             onPracticePreset = onPracticePreset,
             onStudyLesson = onStudyLesson,
@@ -466,9 +483,73 @@ private fun OutstandingCount(mistakeCount: Int) {
     }
 }
 
-/** The queue itself, in the domain's order. */
+/**
+ * The queue itself, in the domain's order, split into what is due now and what is coming up.
+ *
+ * The split is the schedule made visible: only a due entry's correct answer counts, so the learner
+ * needs to see which those are, and a coming-up entry says when it will be. Both stay on one screen
+ * rather than hiding the coming-up ones, because they are still unresolved and the count above
+ * includes them. [leadsPane] drops the first heading's section break when nothing sits above it.
+ */
 private fun LazyListScope.queueSection(
     state: MistakeReviewUiState.Content,
+    leadsPane: Boolean,
+    onSourceClick: (String) -> Unit,
+    onPracticePreset: (PracticePreset) -> Unit,
+    onStudyLesson: (MistakeStudyLesson) -> Unit,
+    savedQuestions: SavedQuestionsState,
+    onToggleSaved: (String) -> Unit,
+    failedSourceUrl: String?,
+) {
+    val (due, comingUp) = state.mistakes.partition(UnresolvedMistake::isDue)
+    val entries = { mistakes: List<UnresolvedMistake> ->
+        queueEntries(
+            mistakes = mistakes,
+            onSourceClick = onSourceClick,
+            onPracticePreset = onPracticePreset,
+            onStudyLesson = onStudyLesson,
+            savedQuestions = savedQuestions,
+            onToggleSaved = onToggleSaved,
+            failedSourceUrl = failedSourceUrl,
+        )
+    }
+    if (due.isNotEmpty()) {
+        queueHeading(Res.string.mistake_review_due_now, MistakeReviewDueNowHeadingTag, leadsPane)
+        entries(due)
+    }
+    if (comingUp.isNotEmpty()) {
+        queueHeading(
+            Res.string.mistake_review_coming_up,
+            MistakeReviewComingUpHeadingTag,
+            leadsPane && due.isEmpty(),
+        )
+        entries(comingUp)
+    }
+}
+
+/**
+ * A section heading in the queue. Keyed so `animateItem` on the entries does not mistake a heading
+ * for an entry when the sections change size.
+ */
+private fun LazyListScope.queueHeading(
+    text: StringResource,
+    tag: String,
+    leadsPane: Boolean,
+) {
+    item(key = tag) {
+        SectionHeading(
+            text = stringResource(text),
+            modifier = Modifier.testTag(tag).animateItem(),
+            // At the top of its own pane the list's content padding already separates it from the
+            // bar, as the first heading in Settings does; below the remediation block it is a
+            // section break.
+            topPadding = if (leadsPane) 0.dp else AppSpacing.Section,
+        )
+    }
+}
+
+private fun LazyListScope.queueEntries(
+    mistakes: List<UnresolvedMistake>,
     onSourceClick: (String) -> Unit,
     onPracticePreset: (PracticePreset) -> Unit,
     onStudyLesson: (MistakeStudyLesson) -> Unit,
@@ -478,10 +559,10 @@ private fun LazyListScope.queueSection(
 ) {
     // Review rendering is reused from the shared assessment-review components so selected
     // answers, correct answers, explanation, and sources stay consistent with result screens.
-    // A mistake leaves this list the moment it is answered correctly elsewhere, so entries are
-    // genuinely removed while the learner is looking at them. Animating the removal is what
-    // shows which one resolved; without it the remaining cards simply jump up a slot.
-    items(state.mistakes, key = UnresolvedMistake::questionId) { mistake ->
+    // A mistake leaves this list the moment it is resolved, and moves between the sections when it
+    // falls due or is reset, so entries genuinely move while the learner is looking at them.
+    // Animating that is what shows which one changed; without it the cards simply jump.
+    items(mistakes, key = UnresolvedMistake::questionId) { mistake ->
         when (val item = mistake.reviewItem) {
             is ReviewQuestionItem.Available -> ReviewQuestionCard(
                 question = item.question,
@@ -500,6 +581,12 @@ private fun LazyListScope.queueSection(
                 ),
                 modifier = Modifier.animateItem(),
             ) {
+                if (!mistake.isDue) {
+                    DueInText(
+                        dueFrom = mistake.dueFrom,
+                        modifier = Modifier.testTag(mistakeDueInTag(mistake.questionId)),
+                    )
+                }
                 // Inside the card, in a row that wraps. These two were siblings of the card, so on
                 // a phone they were two full-width text links on the page background between
                 // entries and on a desktop they sat in the gutter — either way reading as
@@ -555,6 +642,34 @@ private fun LazyListScope.queueSection(
             )
         }
     }
+}
+
+/**
+ * When a coming-up entry becomes due, relative to [now]; see [mistakeDueIn].
+ *
+ * [now] defaults to the system clock and is a parameter for the reason `timestampText`'s is: a test
+ * pins it. The wording is coarse — hours, then days — so it stays true for as long as the screen is
+ * likely to be open; the entry moves to Due now through the history re-announcement, not this text.
+ */
+@Composable
+private fun DueInText(
+    dueFrom: Instant,
+    modifier: Modifier = Modifier,
+    now: Instant = Clock.System.now(),
+) {
+    val text = when (val dueIn = mistakeDueIn(dueFrom, now)) {
+        MistakeDueIn.WithinHour -> stringResource(Res.string.mistake_review_due_within_hour)
+        is MistakeDueIn.Hours ->
+            pluralStringResource(Res.plurals.mistake_review_due_in_hours, dueIn.hours, dueIn.hours)
+        is MistakeDueIn.Days ->
+            pluralStringResource(Res.plurals.mistake_review_due_in_days, dueIn.days, dueIn.days)
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
 }
 
 /**

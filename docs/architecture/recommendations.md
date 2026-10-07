@@ -28,7 +28,7 @@ start an assessment, or reproduce any learning-signal derivation. Its typed
 | Input | Source |
 | --- | --- |
 | Completed-attempt count | `LearningProgressSnapshot.completedAttemptCount` |
-| Unresolved-mistake count | `MistakeReviewService.countUnresolved`, backed by `UnresolvedMistakeDerivation` |
+| Due-mistake count | `MistakeReviewService.countDue`, backed by `MistakeScheduleDerivation` — scheduled mistakes that are due now, not the coming-up ones |
 | Ordered weak areas | `LearningProgressSnapshot.weakAreas`, backed by `LearningPerformanceDerivation` |
 | Topic and Subtopic coverage | `LearningProgressSnapshot.topicCoverage` and `subtopicCoverage` |
 | Optional recent study context | Scope/configuration kind from the newest completed history entry |
@@ -44,13 +44,22 @@ Recommendation priority is a deterministic product policy, not a ranking score:
 | --- | --- |
 | No usable ACTIVE curriculum | None |
 | New user (zero completed attempts) | Browse Topics |
-| One or more unresolved mistakes | Open Mistake Review |
+| One or more mistakes due for review | Open Mistake Review |
 | Currently usable weak area | Open weak-area practice preset |
 | Remaining unseen ACTIVE Questions | Open Topic-scoped unseen-practice preset |
 | Otherwise | None |
 
-Mistakes therefore outrank weakness, and weakness outranks ordinary coverage.
-The unresolved count is consumed as one fact; the policy never scans attempts.
+Due mistakes therefore outrank weakness, and weakness outranks ordinary coverage.
+The count is the **due** count rather than every scheduled mistake: the recommendation
+is a prompt to act now, and a mistake whose next review is days away cannot be advanced
+today, so it falls through to weakness or coverage instead. Right after a session the
+fresh mistakes are scheduled but not yet due, so they do not take over the card; they
+claim it about 20 hours later. That moment arrives without new history, so
+`VisibleAssessmentHistory` re-announces its snapshot when a mistake falls due and the
+Topic Browser re-derives the recommendation then; see
+[progress](progress.md#due-ness-while-the-app-stays-open). The rationale is
+`LearningRecommendationRationale.DueMistakes(count)`, phrased as "mistakes due for
+review". The due count is consumed as one fact; the policy never scans attempts.
 Weakness is consumed as the ordered `WeakArea` output and never recalculates the
 70% or minimum-evidence rules. That established ordering (accuracy, then evidence,
 then stable identity) selects the first weak area that still intersects current
@@ -224,7 +233,7 @@ and is never inferred from the accuracy figure displayed beside it.
 observation about whether the action is worth offering — the unseen stable IDs
 themselves are still computed by `AssessmentQuestionSelector` from completed
 history at the moment practice is configured. The unresolved queue stays
-`UnresolvedMistakeDerivation`'s, and the clicked Question supplies its Subtopic as
+`MistakeScheduleDerivation`'s, and the clicked Question supplies its Subtopic as
 *context*, never as a candidate list; no Question ID travels in a route.
 
 ### The Topic Practice tab promotes one action
@@ -242,7 +251,7 @@ read of its own.
 | Rank | Signal | Why here |
 | --- | --- | --- |
 | 1 | `LearningContextUiModel.isWeak` | The domain's verdict, already past `LearningProgressPolicy`'s evidence threshold. It names a demonstrated gap rather than an absence |
-| 2 | Unresolved mistakes in this Topic | Questions actually got wrong and not since got right. Concrete and finite, but narrower than a weak area |
+| 2 | Unresolved mistakes in this Topic | Questions actually got wrong and still on the review schedule, due or coming up. Concrete and finite, but narrower than a weak area |
 | 3 | Unseen questions, once something has been attempted | Coverage rather than performance — the weakest claim, because nothing has gone wrong yet |
 | 4 | Nothing | No evidence, so no recommendation is invented and `ALL` practice leads |
 
@@ -274,10 +283,11 @@ at zero, because `0 of 28 questions explored` is true and is already what says n
 happened; an empty bar beside it is a reading the learner never produced, which is what
 [Material Design 3](../development/material-design.md) rules out for an empty state.
 
-The mistake count is `TopicDetailViewModel`'s intersection of `UnresolvedMistakeDerivation`
+The mistake count is `TopicDetailViewModel`'s intersection of `MistakeScheduleDerivation`
 over the history cache with the ACTIVE Question IDs the curriculum read already produced,
 so it costs no extra read and cannot count a mistake against a Question the Topic no longer
-holds. It is nullable for the same reason `learningContext` is: unknown history is not an
+holds. It counts every scheduled mistake, due or coming up, because the run it promotes
+draws from all of them, due ones first. It is nullable for the same reason `learningContext` is: unknown history is not an
 empty queue. The two are asked separately, so an absent signal neither produces a
 recommendation nor suppresses one that *was* read.
 

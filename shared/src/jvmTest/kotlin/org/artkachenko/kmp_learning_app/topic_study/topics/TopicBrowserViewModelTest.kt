@@ -4,11 +4,16 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlin.test.assertNotEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -52,7 +57,7 @@ import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationRa
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationResolver
 import org.artkachenko.kmp_learning_app.guided_learning.LearningRecommendationTarget
 import org.artkachenko.kmp_learning_app.guided_learning.PracticePreset
-import org.artkachenko.kmp_learning_app.guided_learning.UnresolvedMistakeCounter
+import org.artkachenko.kmp_learning_app.guided_learning.DueMistakeCounter
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressService
 import org.artkachenko.kmp_learning_app.learning_progress.WeakArea
 import org.artkachenko.kmp_learning_app.lesson_study.ContinueLearningTarget
@@ -854,15 +859,15 @@ internal class TopicBrowserViewModelTest {
         // The existing Mistake Review capability, not targeted mistake practice.
         assertEquals(LearningRecommendationTarget.MistakeReview, recommendation.target)
         assertEquals(
-            LearningRecommendationRationale.UnresolvedMistakes(count = 2),
+            LearningRecommendationRationale.DueMistakes(count = 2),
             recommendation.rationale,
         )
     }
 
     @Test
     fun aWeakAreaIsRecommendedAsAnEditableWeakAreaPreset() = runViewModelTest {
-        // Every Question was answered wrongly once and correctly since, so nothing is unresolved
-        // while the all-time accuracy is still 50% over six occurrences — weak by the policy.
+        // Every Question was answered wrongly once and correctly at its next-day review, so nothing
+        // is due while the all-time accuracy is still 50% over six occurrences — weak by the policy.
         val viewModel = loadedViewModel(
             repository = namedCatalogRepository(),
             history = historyRepository(
@@ -872,6 +877,7 @@ internal class TopicBrowserViewModelTest {
                         answer("q_compose_1", true),
                         answer("q_compose_2", true),
                         answer("q_compose_3", true),
+                        completedAt = FirstStudy + 1.days,
                     ),
                     completedAttempt(
                         "older",
@@ -1051,7 +1057,7 @@ internal class TopicBrowserViewModelTest {
         val refreshed = assertNotNull(recommendedNext(viewModel))
         assertEquals(LearningRecommendationTarget.MistakeReview, refreshed.target)
         assertEquals(
-            LearningRecommendationRationale.UnresolvedMistakes(count = 1),
+            LearningRecommendationRationale.DueMistakes(count = 1),
             refreshed.rationale,
         )
     }
@@ -1111,7 +1117,7 @@ internal class TopicBrowserViewModelTest {
         // Mistakes win, and the count is the mistake queue's own rather than a tally of answers.
         assertEquals(LearningRecommendationTarget.MistakeReview, recommendation.target)
         assertEquals(
-            LearningRecommendationRationale.UnresolvedMistakes(count = 3),
+            LearningRecommendationRationale.DueMistakes(count = 3),
             recommendation.rationale,
         )
     }
@@ -1143,7 +1149,7 @@ internal class TopicBrowserViewModelTest {
         val recommendation = assertNotNull(state.recommendedNext)
         assertEquals(LearningRecommendationTarget.MistakeReview, recommendation.target)
         assertEquals(
-            LearningRecommendationRationale.UnresolvedMistakes(count = 1),
+            LearningRecommendationRationale.DueMistakes(count = 1),
             recommendation.rationale,
         )
         // One emission produced both, so they cannot disagree about the history they describe.
@@ -1161,10 +1167,12 @@ internal class TopicBrowserViewModelTest {
         val repository = catalogRepository()
         val history = historyRepository(
             listOf(
+                // Correct at the next-day review, so neither mistake is due.
                 completedAttempt(
                     "newer",
                     answer("q_retired_scope_1", true),
                     answer("q_retired_scope_2", true),
+                    completedAt = FirstStudy + 1.days,
                 ),
                 completedAttempt(
                     "older",
@@ -1208,18 +1216,50 @@ internal class TopicBrowserViewModelTest {
     }
 
     /**
+     * A mistake made in the session just finished is not due, so it is not the next action. When it
+     * falls due while the screen stays open, the shared history re-announces itself and the
+     * recommendation becomes Review mistakes — with no new history and no restart.
+     */
+    @Test
+    fun aMistakeFallingDueWhileTheScreenIsOpenBecomesTheRecommendation() = runViewModelTest {
+        val repository = catalogRepository()
+        val history = historyRepository(
+            listOf(completedAttempt("session", answer("q_compose_1", false))),
+        )
+        // Virtual time, read by both the history cache's wait and the due count.
+        val now = { FirstStudy + testScheduler.currentTime.milliseconds }
+        val viewModel = viewModel(
+            repository,
+            history,
+            learningRecommendationResolver = recommendationResolver(repository, history, now),
+            historyClock = now,
+        )
+
+        advanceTimeBy(1.hours)
+        assertNotEquals(LearningRecommendationTarget.MistakeReview, recommendedNext(viewModel)?.target)
+
+        advanceTimeBy(20.hours)
+        assertEquals(LearningRecommendationTarget.MistakeReview, recommendedNext(viewModel)?.target)
+        assertEquals(
+            LearningRecommendationRationale.DueMistakes(count = 1),
+            recommendedNext(viewModel)?.rationale,
+        )
+    }
+
+    /**
      * E17-05: an experienced learner with a healthy history is told nothing rather than something.
      *
-     * Repeated Questions, a mistake resolved by a later correct answer, and answers to content that
-     * has since been retired are all present, and none of them manufactures an action once the
-     * current curriculum is fully covered.
+     * Repeated Questions, a mistake resolved by correct answers at each spaced review, and answers
+     * to content that has since been retired are all present, and none of them manufactures an
+     * action once the current curriculum is fully covered.
      */
     @Test
     fun anExtensiveHealthyHistoryIsOfferedNoFillerRecommendation() = runViewModelTest {
         val viewModel = loadedViewModel(
             history = historyRepository(
                 listOf(
-                    completedAttempt("third", answer("q_compose_1", true)),
+                    completedAttempt("fourth", answer("q_compose_1", true), completedAt = FirstStudy + 11.days),
+                    completedAttempt("third", answer("q_compose_1", true), completedAt = FirstStudy + 4.days),
                     completedAttempt(
                         "second",
                         answer("q_compose_1", true),
@@ -1229,6 +1269,7 @@ internal class TopicBrowserViewModelTest {
                         answer("q_compose_arch_1", true),
                         answer("q_architecture_1", true),
                         answer("q_architecture_2", true),
+                        completedAt = FirstStudy + 1.days,
                     ),
                     completedAttempt(
                         "first",
@@ -1775,13 +1816,14 @@ internal class TopicBrowserViewModelTest {
         learningContent: LearningContentRepository = FakeLearningContentRepository(),
         studyProgress: StudyProgressStateHolder = studyProgressStateHolder(),
         visibility: CurriculumVisibilityStateHolder = curriculumVisibilityStateHolder(includeKmpContent = true),
+        historyClock: () -> Instant = { kotlin.time.Clock.System.now() },
     ): TopicBrowserViewModel =
         TopicBrowserViewModel(
             curriculumRepository = repository,
             learningContentRepository = learningContent,
             learningProgressService = LearningProgressService(history.asCompletedHistory(), repository),
             visibleHistory = AssessmentHistoryStore(history, CoroutineScope(currentDispatcher()))
-                .visibleHistory(CoroutineScope(currentDispatcher())),
+                .visibleHistory(CoroutineScope(currentDispatcher()), now = historyClock),
             continueStudyingResolver = continueStudyingResolver,
             learningRecommendationResolver = learningRecommendationResolver,
             studyProgressStateHolder = studyProgress,
@@ -1789,19 +1831,23 @@ internal class TopicBrowserViewModelTest {
         )
 
     /**
-     * The production wiring: the real policy behind the real mistake semantics, counting from the
+     * The production wiring: the real policy behind the real due-mistake count, counting from the
      * same history emission the ViewModel already holds.
      */
     private fun recommendationResolver(
         repository: CurriculumRepository,
         history: AssessmentRepository,
+        // An hour after a next-day review of the fixtures' first study session: mistakes left from
+        // that session are due, and ones reviewed the next day are not.
+        now: () -> Instant = { FirstStudy + 1.days + 1.hours },
     ): LearningRecommendationResolver {
         val mistakeReviewService = MistakeReviewService(
             completedHistory = history.asCompletedHistory(),
             assessmentReviewLoader = AssessmentReviewLoader(repository),
+            now = now,
         )
         return LearningRecommendationResolver { completedAttempts ->
-            mistakeReviewService.countUnresolved(completedAttempts)
+            mistakeReviewService.countDue(completedAttempts)
         }
     }
 
@@ -2173,6 +2219,7 @@ internal class TopicBrowserViewModelTest {
         fun completedAttempt(
             id: String,
             vararg answers: Pair<String, Boolean>,
+            completedAt: Instant = FirstStudy,
         ): TestAttempt =
             TestAttempt(
                 id = id,
@@ -2185,9 +2232,12 @@ internal class TopicBrowserViewModelTest {
                 },
                 status = AssessmentStatus.COMPLETED,
                 startedAt = Instant.parse("2026-08-29T00:00:00Z"),
-                completedAt = Instant.parse("2026-08-29T00:15:00Z"),
+                completedAt = completedAt,
                 score = AssessmentScore(answers.size, answers.count { it.second }),
             )
+
+        /** When a fixture attempt completes unless it says otherwise. */
+        val FirstStudy: Instant = Instant.parse("2026-08-29T00:15:00Z")
 
         /**
          * Identity and home Topic are all availability counting reads need; [lessons] matter only

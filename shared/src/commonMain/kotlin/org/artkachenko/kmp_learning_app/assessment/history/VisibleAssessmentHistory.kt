@@ -1,6 +1,8 @@
 package org.artkachenko.kmp_learning_app.assessment.history
 
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
@@ -31,12 +33,14 @@ import org.artkachenko.kmp_learning_app.curriculum.visibility.CurriculumVisibili
  * @param curriculumRepository used only for its historical resolver,
  *   [CurriculumRepository.getQuestionsByIds], which is deliberately unfiltered: a hidden Question
  *   must still resolve for the projection to know that it is hidden.
+ * @param now the clock the due-mistake re-announcement reads; see [snapshots].
  */
 internal class VisibleAssessmentHistory(
     private val rawHistory: AssessmentHistoryStore,
     private val curriculumRepository: CurriculumRepository,
     private val visibility: StateFlow<CurriculumVisibility>,
     scope: CoroutineScope,
+    now: () -> Instant = { Clock.System.now() },
 ) : CompletedAssessmentHistory {
 
     /**
@@ -66,9 +70,14 @@ internal class VisibleAssessmentHistory(
      * guidance derived from content that is no longer visible beside a catalogue that already
      * hides it. [history] is this flow with the visibility dropped, so the projection runs once
      * per change whichever of the two is observed.
+     *
+     * The latest snapshot is also re-announced, unchanged, whenever a scheduled mistake becomes due
+     * (see [reannouncedWhenMistakesFallDue]), so every consumer re-derives due counts while the app
+     * stays open without anything new being read.
      */
     val snapshots: SharedFlow<VisibleHistorySnapshot> = combine(rawHistory.history, visibility, ::Pair)
         .map { (raw, current) -> VisibleHistorySnapshot(project(raw, current), current) }
+        .reannouncedWhenMistakesFallDue(now)
         .shareIn(scope, SharingStarted.Eagerly, replay = 1)
 
     /**

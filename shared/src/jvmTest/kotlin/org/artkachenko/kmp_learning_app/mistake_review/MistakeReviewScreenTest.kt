@@ -25,6 +25,11 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AllQuestionLevels
@@ -111,7 +116,7 @@ internal class MistakeReviewScreenTest {
                         listOf(
                             availableMistake("q1", subtopicId = "flows"),
                             availableMistake("q2", subtopicId = "coroutines"),
-                            UnresolvedMistake("gone", "attempt", ReviewQuestionItem.Missing("gone")),
+                            missingMistake("gone"),
                         ),
                     ),
                     onRetry = {},
@@ -219,7 +224,7 @@ internal class MistakeReviewScreenTest {
             MaterialTheme {
                 MistakeReviewScreen(
                     state = MistakeReviewUiState.Content(
-                        listOf(UnresolvedMistake("gone", "attempt", ReviewQuestionItem.Missing("gone"))),
+                        listOf(missingMistake("gone")),
                     ),
                     onRetry = {},
                     onBrowseTopics = {},
@@ -255,7 +260,7 @@ internal class MistakeReviewScreenTest {
 
         onNodeWithText("No unresolved mistakes.").assertIsDisplayed()
         onNodeWithText(
-            "Questions disappear from this list after your most recent completed answer is correct.",
+            "Questions leave this list after three correct answers at spaced reviews.",
         ).assertIsDisplayed()
     }
 
@@ -288,7 +293,7 @@ internal class MistakeReviewScreenTest {
             }
         }
 
-        onNodeWithText("Questions stay here until your most recent completed answer is correct.")
+        onNodeWithText("A mistake is resolved after three correct answers spread over growing gaps: a day, three days, then a week. A correct answer before a review is due is saved but does not count.")
             .assertIsDisplayed()
         onNodeWithText("Question q1").assertIsDisplayed()
         // Rendered by the shared ReviewQuestionCard rather than a mistake-specific copy — but
@@ -310,7 +315,7 @@ internal class MistakeReviewScreenTest {
                 MistakeReviewScreen(
                     state = MistakeReviewUiState.Content(
                         listOf(
-                            UnresolvedMistake("gone", "attempt", ReviewQuestionItem.Missing("gone")),
+                            missingMistake("gone"),
                         ),
                     ),
                     onBack = {},
@@ -323,6 +328,75 @@ internal class MistakeReviewScreenTest {
         }
 
         onNodeWithText("Question gone is no longer available.").assertIsDisplayed()
+    }
+
+    /**
+     * The schedule made visible: what a correct answer would count for now, and what is waiting,
+     * with each waiting entry saying when. The headline still counts both, because both are
+     * unresolved.
+     */
+    @Test
+    fun dueAndComingUpEntriesAreShownInTheirOwnSections() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(
+                            availableMistake("q_due"),
+                            availableMistake(
+                                "q_later",
+                                isDue = false,
+                                dueFrom = Clock.System.now() + 3.days + 1.hours,
+                            ),
+                        ),
+                    ),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithText("2 unresolved mistakes to review").assertIsDisplayed()
+        onNodeWithTag(MistakeReviewDueNowHeadingTag).assert(isHeading()).assert(hasText("Due now"))
+        onNodeWithTag(mistakeDueInTag("q_due")).assertDoesNotExist()
+
+        onNodeWithTag(MistakeQueuePaneTag).performScrollToNode(hasTestTag(mistakeDueInTag("q_later")))
+        onNodeWithTag(mistakeDueInTag("q_later")).assert(hasText("Due in 3 days"))
+        onNodeWithTag(MistakeQueuePaneTag)
+            .performScrollToNode(hasTestTag(MistakeReviewComingUpHeadingTag))
+        onNodeWithTag(MistakeReviewComingUpHeadingTag)
+            .assert(isHeading())
+            .assert(hasText("Coming up"))
+    }
+
+    @Test
+    fun aQueueWithNothingDueShowsOnlyTheComingUpSection() = runComposeUiTest {
+        setContent {
+            MaterialTheme {
+                MistakeReviewScreen(
+                    state = MistakeReviewUiState.Content(
+                        listOf(
+                            availableMistake(
+                                "q_later",
+                                isDue = false,
+                                dueFrom = Clock.System.now() + 19.hours + 30.minutes,
+                            ),
+                        ),
+                    ),
+                    onRetry = {},
+                    onBrowseTopics = {},
+                    onSourceClick = {},
+                    onPracticePreset = {},
+                )
+            }
+        }
+
+        onNodeWithTag(MistakeReviewDueNowHeadingTag).assertDoesNotExist()
+        onNodeWithTag(MistakeReviewComingUpHeadingTag).assertIsDisplayed()
+        onNodeWithTag(MistakeQueuePaneTag).performScrollToNode(hasTestTag(mistakeDueInTag("q_later")))
+        onNodeWithTag(mistakeDueInTag("q_later")).assert(hasText("Due in 20 hours"))
     }
 
     @Test
@@ -437,7 +511,7 @@ internal class MistakeReviewScreenTest {
             MaterialTheme {
                 MistakeReviewScreen(
                     state = MistakeReviewUiState.Content(
-                        listOf(UnresolvedMistake("gone", "attempt", ReviewQuestionItem.Missing("gone"))),
+                        listOf(missingMistake("gone")),
                     ),
                     onBack = {},
                     onRetry = {},
@@ -526,7 +600,7 @@ internal class MistakeReviewScreenTest {
             MaterialTheme {
                 MistakeReviewScreen(
                     state = MistakeReviewUiState.Content(
-                        listOf(UnresolvedMistake("gone", "attempt", ReviewQuestionItem.Missing("gone"))),
+                        listOf(missingMistake("gone")),
                     ),
                     onBack = {},
                     onRetry = {},
@@ -661,7 +735,7 @@ internal class MistakeReviewScreenTest {
         onNodeWithTag(MistakeRemediationSurfaceTag).assertIsDisplayed()
         onNodeWithText("1 unresolved mistake to review").assertIsDisplayed()
         onNodeWithText(
-            "Questions stay here until your most recent completed answer is correct.",
+            "A mistake is resolved after three correct answers spread over growing gaps: a day, three days, then a week. A correct answer before a review is due is saved but does not count.",
         ).assertIsDisplayed()
         onNodeWithTag(MistakeReviewPracticeAllTag).assertIsDisplayed()
         onNodeWithText("Question q1").assertIsDisplayed()
@@ -722,13 +796,29 @@ internal class MistakeReviewScreenTest {
     }
 }
 
+/** Due unless a test says otherwise: most of the screen's behaviour is the same in either section. */
+private fun missingMistake(questionId: String): UnresolvedMistake =
+    UnresolvedMistake(
+        questionId = questionId,
+        sourceAttemptId = "attempt",
+        reviewItem = ReviewQuestionItem.Missing(questionId),
+        dueFrom = PastDue,
+        isDue = true,
+    )
+
+private val PastDue = Instant.parse("2026-01-01T00:00:00Z")
+
 private fun availableMistake(
     questionId: String,
     subtopicId: String = "kotlin_coroutines",
+    isDue: Boolean = true,
+    dueFrom: Instant = PastDue,
 ): UnresolvedMistake =
     UnresolvedMistake(
         questionId = questionId,
         sourceAttemptId = "attempt",
+        dueFrom = dueFrom,
+        isDue = isDue,
         reviewItem = ReviewQuestionItem.Available(
             ReviewQuestionUiModel(
                 questionId = questionId,

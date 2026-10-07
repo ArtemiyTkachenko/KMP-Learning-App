@@ -4,17 +4,17 @@ import org.artkachenko.kmp_learning_app.assessment.TestAttempt
 import org.artkachenko.kmp_learning_app.learning_progress.LearningProgressSnapshot
 
 /**
- * How many Questions are currently unresolved, for completed history the caller already holds.
+ * How many mistakes are due for review now, for completed history the caller already holds.
  *
  * Deliberately one number and one input: the recommendation needs the count and nothing else, so it
  * cannot reach review content, the repository, or the shared history cache through this. The
- * production implementation is `MistakeReviewService::countUnresolved`, which owns the
- * latest-occurrence semantics; this interface exists so the recommendation domain does not have to
- * depend on the Mistake Review feature to ask for its own input, and so a failing count can be
- * exercised without a malformed persisted attempt.
+ * production implementation is `MistakeReviewService::countDue`, which owns the review schedule;
+ * this interface exists so the recommendation domain does not have to depend on the Mistake Review
+ * feature to ask for its own input, and so a failing count can be exercised without a malformed
+ * persisted attempt.
  */
-internal fun interface UnresolvedMistakeCounter {
-    suspend fun countUnresolved(completedAttempts: List<TestAttempt>): Int
+internal fun interface DueMistakeCounter {
+    suspend fun countDue(completedAttempts: List<TestAttempt>): Int
 }
 
 /**
@@ -27,17 +27,17 @@ internal fun interface UnresolvedMistakeCounter {
  * - the learning-progress facts are read off a [LearningProgressSnapshot] the caller has already
  *   derived, rather than by loading one. One history emission therefore produces one progress
  *   derivation, shared with whatever else the caller enriches from it;
- * - the unresolved-mistake count is asked for with that same completed history, so the shared cache
- *   is not read again;
+ * - the due-mistake count is asked for with that same completed history, so the shared cache is
+ *   not read again;
  * - recent study context comes from [toRecentStudyContext], the one definition guided learning has
  *   of what a stored attempt says about recent study.
  *
- * A failing count propagates rather than being read as zero. Zero unresolved mistakes is a decision
+ * A failing count propagates rather than being read as zero. Zero due mistakes is a decision
  * the policy acts on — it falls through to weak areas and then to coverage — so substituting it for
  * an unknown count would recommend practice on the strength of a fact nobody established.
  */
 internal class LearningRecommendationResolver(
-    private val unresolvedMistakeCounter: UnresolvedMistakeCounter,
+    private val dueMistakeCounter: DueMistakeCounter,
 ) {
     /**
      * @param completedAttempts completed history, newest first, exactly as the caller received it
@@ -51,7 +51,7 @@ internal class LearningRecommendationResolver(
     ): LearningRecommendation? {
         val inputs = LearningRecommendationInputs(
             completedAttemptCount = progress.completedAttemptCount,
-            unresolvedMistakeCount = unresolvedMistakeCounter.countUnresolved(completedAttempts),
+            dueMistakeCount = dueMistakeCounter.countDue(completedAttempts),
             weakAreas = progress.weakAreas,
             topicCoverage = progress.topicCoverage,
             subtopicCoverage = progress.subtopicCoverage,

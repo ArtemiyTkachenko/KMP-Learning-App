@@ -1,5 +1,7 @@
 package org.artkachenko.kmp_learning_app.assessment.history
 
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,12 +38,14 @@ internal fun AssessmentHistoryStore.visibleHistory(
     curriculumRepository: CurriculumRepository = UnreadHistoryCurriculum,
     visibility: StateFlow<CurriculumVisibility> =
         MutableStateFlow(CurriculumVisibility.from(includeKmpContent = true)),
+    now: () -> Instant = { Clock.System.now() },
 ): VisibleAssessmentHistory =
     VisibleAssessmentHistory(
         rawHistory = this,
         curriculumRepository = curriculumRepository,
         visibility = visibility,
         scope = scope,
+        now = now,
     )
 
 /** Retained so call sites read the same; the caches share eagerly and need no collector. */

@@ -14,8 +14,8 @@
     <string name="destination_mistakes">Mistakes</string>
     <string name="navigation_badge_overflow">99+</string>
     <plurals name="navigation_mistakes_badge_description">
-        <item quantity="one">%1$d unresolved mistake</item>
-        <item quantity="other">%1$d unresolved mistakes</item>
+        <item quantity="one">%1$d mistake due for review</item>
+        <item quantity="other">%1$d mistakes due for review</item>
     </plurals>
     <string name="topic_browser_subtitle">Pick a topic to study or practise.</string>
     <string name="topic_browser_title">Learn</string>
@@ -46,8 +46,8 @@
     <string name="recommended_next_topics_reason">Start with a topic you want to explore.</string>
     <string name="recommended_next_mistakes_action">Review mistakes</string>
     <plurals name="recommended_next_mistakes_reason">
-        <item quantity="one">You have %1$d unresolved mistake to revisit.</item>
-        <item quantity="other">You have %1$d unresolved mistakes to revisit.</item>
+        <item quantity="one">You have %1$d mistake due for review.</item>
+        <item quantity="other">You have %1$d mistakes due for review.</item>
     </plurals>
     <string name="recommended_next_weak_area_action">Practice %1$s</string>
     <string name="recommended_next_weak_area_reason">This is currently one of your weak areas.</string>
@@ -128,11 +128,22 @@
     <string name="mistake_review_none">No unresolved mistakes — nice work.</string>
     <string name="mistake_review_empty_action">Browse topics</string>
     <string name="mistake_review_title">Mistake Review</string>
-    <string name="mistake_review_description">Questions stay here until your most recent completed answer is correct.</string>
+    <string name="mistake_review_description">A mistake is resolved after three correct answers spread over growing gaps: a day, three days, then a week. A correct answer before a review is due is saved but does not count.</string>
+    <string name="mistake_review_due_now">Due now</string>
+    <string name="mistake_review_coming_up">Coming up</string>
+    <string name="mistake_review_due_within_hour">Due within the hour</string>
+    <plurals name="mistake_review_due_in_hours">
+        <item quantity="one">Due in %1$d hour</item>
+        <item quantity="other">Due in %1$d hours</item>
+    </plurals>
+    <plurals name="mistake_review_due_in_days">
+        <item quantity="one">Due in %1$d day</item>
+        <item quantity="other">Due in %1$d days</item>
+    </plurals>
     <string name="mistake_review_unavailable">%1$d of %2$d are no longer in the curriculum and cannot be practised.</string>
     <string name="mistake_review_loading">Loading mistakes</string>
     <string name="mistake_review_empty">No unresolved mistakes.</string>
-    <string name="mistake_review_empty_detail">Questions disappear from this list after your most recent completed answer is correct.</string>
+    <string name="mistake_review_empty_detail">Questions leave this list after three correct answers at spaced reviews.</string>
     <string name="mistake_review_error">Mistakes could not be loaded.</string>
     <string name="mistake_review_study_lesson">Review lesson: %1$s</string>
     <string name="mixed_interview_title">Mixed Android Interview</string>
@@ -168,7 +179,7 @@
     <string name="topic_detail_start_practice">Start Practice</string>
     <string name="topic_detail_custom_practice">Custom practice…</string>
     <string name="topic_detail_recommended_weak_reason">Recommended: this is currently one of your weak areas.</string>
-    <string name="topic_detail_recommended_mistakes_reason">Recommended: questions you got wrong and have not answered correctly since.</string>
+    <string name="topic_detail_recommended_mistakes_reason">Recommended: questions you got wrong that are still on your review schedule.</string>
     <string name="topic_detail_recommended_unseen_reason">Recommended: questions in this topic you have not met yet.</string>
     <string name="topic_detail_accuracy_caption">All-time accuracy</string>
     <string name="topic_detail_subtopics">Subtopics</string>

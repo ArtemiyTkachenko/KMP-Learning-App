@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -306,17 +307,33 @@ internal class ProgressViewModelTest {
     }
 
     @Test
-    fun unresolvedMistakeCountComesFromTheMistakeQueuesLatestOccurrenceRule() = runTest {
+    fun unresolvedMistakeCountComesFromTheMistakeScheduleAndCountsComingUpMistakes() = runTest {
         setMain(testScheduler)
-        // q1 was wrong then right, so it is resolved; q2 is still wrong. Only q2 should count.
+        // q1 was wrong, then right at each review, so it is resolved. q2 was wrong and answered
+        // right a day later: counted, but still on the schedule and not due again for days. q3 is
+        // still wrong. Progress reports everything outstanding, so q2 and q3 both count.
+        val mistakeAt = Instant.parse("2026-08-29T00:15:00Z")
         val context = TestContext(
             attempts = listOf(
-                completedAttempt("new", AssessmentConfig.Mixed(2), listOf("q1" to true, "q2" to false)),
-                completedAttempt("old", AssessmentConfig.Mixed(1), listOf("q1" to false)),
+                completedAttempt("week", AssessmentConfig.Mixed(1), listOf("q1" to true), mistakeAt + 11.days),
+                completedAttempt("three_days", AssessmentConfig.Mixed(1), listOf("q1" to true), mistakeAt + 4.days),
+                completedAttempt(
+                    "next_day",
+                    AssessmentConfig.Mixed(2),
+                    listOf("q1" to true, "q2" to true),
+                    mistakeAt + 1.days,
+                ),
+                completedAttempt(
+                    "mistakes",
+                    AssessmentConfig.Mixed(3),
+                    listOf("q1" to false, "q2" to false, "q3" to false),
+                    mistakeAt,
+                ),
             ),
             questions = listOf(
                 question("q1", "topic", "subtopic"),
                 question("q2", "topic", "subtopic"),
+                question("q3", "topic", "subtopic"),
             ),
             topics = listOf(Topic("topic", "Kotlin")),
             subtopics = listOf(Subtopic("subtopic", "topic", "Core")),
@@ -325,7 +342,7 @@ internal class ProgressViewModelTest {
         context.viewModel.refresh()
         advanceUntilIdle()
 
-        assertEquals(1, content(context.viewModel).unresolvedMistakeCount)
+        assertEquals(2, content(context.viewModel).unresolvedMistakeCount)
     }
 
     @Test
@@ -739,6 +756,7 @@ private fun completedAttempt(
     id: String,
     config: AssessmentConfig,
     answers: List<Pair<String, Boolean>>,
+    completedAt: Instant = Instant.parse("2026-08-29T00:15:00Z"),
 ): TestAttempt =
     TestAttempt(
         id = id,
@@ -751,7 +769,7 @@ private fun completedAttempt(
         },
         status = AssessmentStatus.COMPLETED,
         startedAt = Instant.parse("2026-08-29T00:00:00Z"),
-        completedAt = Instant.parse("2026-08-29T00:15:00Z"),
+        completedAt = completedAt,
         score = AssessmentScore(answers.size, answers.count { it.second }),
     )
 

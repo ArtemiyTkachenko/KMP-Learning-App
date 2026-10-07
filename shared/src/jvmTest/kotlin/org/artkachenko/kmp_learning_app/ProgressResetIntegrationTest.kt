@@ -1,5 +1,7 @@
 package org.artkachenko.kmp_learning_app
 
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -78,7 +80,8 @@ internal class ProgressResetIntegrationTest {
             }
             koin.get<StudyProgressStateHolder>().refresh()
 
-            // Before: Progress has content and the Mistakes badge counts the wrong answers.
+            // Before: Progress has content and the Mistakes badge counts the wrong answers, which
+            // are due because the practice was completed two days ago.
             onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS)).performClick()
             waitUntil(timeoutMillis = AwaitTimeoutMillis) { onAllNodesWithTag(ProgressContentTag).fetchSemanticsNodes().isNotEmpty() }
             waitUntil(timeoutMillis = AwaitTimeoutMillis) {
@@ -178,6 +181,18 @@ internal class ProgressResetIntegrationTest {
                             topicStudyPresentationModule,
                             appearanceModule,
                             curriculumVisibilityModule,
+                            module {
+                                // The practice below finishes two days in the past, so its
+                                // mistakes are due and the badge has something to count before
+                                // the reset. A practice finished just now would be scheduled but
+                                // not yet due, and the badge only counts due mistakes.
+                                single {
+                                    AssessmentEngine(
+                                        questionSelector = get(),
+                                        now = { Clock.System.now() - 2.days },
+                                    )
+                                }
+                            },
                         )
                     }.koin
 

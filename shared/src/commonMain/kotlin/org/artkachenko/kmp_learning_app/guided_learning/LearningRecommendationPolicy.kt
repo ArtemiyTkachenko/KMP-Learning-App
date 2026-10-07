@@ -33,11 +33,11 @@ internal object LearningRecommendationPolicy {
             )
         }
 
-        if (inputs.unresolvedMistakeCount > 0) {
+        if (inputs.dueMistakeCount > 0) {
             return LearningRecommendation(
                 target = LearningRecommendationTarget.MistakeReview,
-                rationale = LearningRecommendationRationale.UnresolvedMistakes(
-                    count = inputs.unresolvedMistakeCount,
+                rationale = LearningRecommendationRationale.DueMistakes(
+                    count = inputs.dueMistakeCount,
                 ),
             )
         }

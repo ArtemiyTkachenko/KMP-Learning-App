@@ -3,12 +3,17 @@ package org.artkachenko.kmp_learning_app
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -60,7 +65,7 @@ internal class AppShellViewModelTest {
      * that number and not, say, the number of incorrect answers ever given.
      */
     @Test
-    fun theBadgeCountsTheUnresolvedMistakesInTheSharedHistory() = runShellTest {
+    fun theBadgeCountsTheDueMistakesInTheSharedHistory() = runShellTest {
         val repository = FakeAssessmentRepository(
             listOf(
                 completedAttempt(
@@ -74,7 +79,7 @@ internal class AppShellViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(2, viewModel.unresolvedMistakeCount.value)
+        assertEquals(2, viewModel.dueMistakeCount.value)
     }
 
     /**
@@ -102,15 +107,15 @@ internal class AppShellViewModelTest {
             visibleHistory = store.visibleHistory(testCacheScope(), FixtureCurriculumRepository(), visibility),
         )
         advanceUntilIdle()
-        assertEquals(1, viewModel.unresolvedMistakeCount.value)
+        assertEquals(1, viewModel.dueMistakeCount.value)
 
         visibility.value = CurriculumVisibility.from(includeKmpContent = true)
         advanceUntilIdle()
-        assertEquals(3, viewModel.unresolvedMistakeCount.value)
+        assertEquals(3, viewModel.dueMistakeCount.value)
 
         visibility.value = CurriculumVisibility.from(includeKmpContent = false)
         advanceUntilIdle()
-        assertEquals(1, viewModel.unresolvedMistakeCount.value)
+        assertEquals(1, viewModel.dueMistakeCount.value)
         assertEquals(1, repository.reads)
     }
 
@@ -131,12 +136,12 @@ internal class AppShellViewModelTest {
         val viewModel = shellViewModel(repository)
 
         advanceUntilIdle()
-        assertEquals(0, viewModel.unresolvedMistakeCount.value)
+        assertEquals(0, viewModel.dueMistakeCount.value)
 
         gate.complete(Unit)
         advanceUntilIdle()
 
-        assertEquals(1, viewModel.unresolvedMistakeCount.value)
+        assertEquals(1, viewModel.dueMistakeCount.value)
     }
 
     /**
@@ -161,16 +166,17 @@ internal class AppShellViewModelTest {
 
         advanceUntilIdle()
 
-        assertEquals(0, viewModel.unresolvedMistakeCount.value)
+        assertEquals(0, viewModel.dueMistakeCount.value)
     }
 
     /**
      * Why the badge is derived from the shared cache rather than counted on navigation.
      *
-     * Answering `q_a` correctly in a later assessment resolves it, and the badge has to follow that
-     * while the shell stays alive — the learner is looking at the navigation bar when the result
-     * screen appears. One completion is one invalidation is one further read: the shell contributes
-     * no read of its own, which is the property that kept this count off the Progress dashboard.
+     * Answering `q_a` correctly at its review a day later counts, which moves its next review days
+     * out, and the badge has to follow that while the shell stays alive — the learner is looking at
+     * the navigation bar when the result screen appears. One completion is one invalidation is one
+     * further read: the shell contributes no read of its own, which is the property that kept this
+     * count off the Progress dashboard.
      */
     @Test
     fun completingAnAssessmentMovesTheBadgeOnTheSameReadEveryScreenUses() = runShellTest {
@@ -183,24 +189,29 @@ internal class AppShellViewModelTest {
                 ),
             ),
         )
+        val reviewAtSeconds = 60 + 1.days.inWholeSeconds
         val store = testHistoryStore(repository, testCacheScope())
-        val viewModel = shellViewModel(repository, store)
+        val viewModel = shellViewModel(
+            repository,
+            store,
+            now = { Instant.fromEpochSeconds(reviewAtSeconds) + 1.hours },
+        )
         advanceUntilIdle()
-        assertEquals(2, viewModel.unresolvedMistakeCount.value)
+        assertEquals(2, viewModel.dueMistakeCount.value)
         assertEquals(1, repository.reads)
 
         // Newest first, exactly as the repository returns completed history.
         repository.attempts = listOf(
             completedAttempt(
                 id = "attempt_2",
-                completedAtSeconds = 120,
+                completedAtSeconds = reviewAtSeconds,
                 answers = listOf("q_a" to true),
             ),
         ) + repository.attempts
         store.invalidate()
         advanceUntilIdle()
 
-        assertEquals(1, viewModel.unresolvedMistakeCount.value)
+        assertEquals(1, viewModel.dueMistakeCount.value)
         assertEquals(2, repository.reads)
     }
 
@@ -227,13 +238,75 @@ internal class AppShellViewModelTest {
         val rebuilt = shellViewModel(repository, store)
         advanceUntilIdle()
 
-        assertEquals(2, rebuilt.unresolvedMistakeCount.value)
+        assertEquals(2, rebuilt.dueMistakeCount.value)
         assertEquals(1, repository.reads, "A rebuilt shell must not start a read of its own.")
+    }
+
+    /**
+     * A mistake answered again straight away is still a mistake, but not one the learner can act on
+     * today: the immediate correct answer does not count, and the entry is not due until about a day
+     * later. A badge is a prompt to act now, so it shows nothing yet.
+     */
+    @Test
+    fun mistakesThatAreNotDueYetAreNotBadged() = runShellTest {
+        val repository = FakeAssessmentRepository(
+            listOf(
+                completedAttempt(
+                    id = "re_practice",
+                    completedAtSeconds = SessionStartSeconds + 120,
+                    answers = listOf("q_a" to true, "q_b" to true),
+                ),
+                completedAttempt(
+                    id = "interview",
+                    completedAtSeconds = SessionStartSeconds,
+                    answers = listOf("q_a" to false, "q_b" to false),
+                ),
+            ),
+        )
+        val viewModel = shellViewModel(
+            repository,
+            now = { Instant.fromEpochSeconds(SessionStartSeconds) + 5.minutes },
+        )
+
+        advanceUntilIdle()
+
+        assertEquals(0, viewModel.dueMistakeCount.value)
+    }
+
+    /**
+     * The badge follows the clock as well as the history: an entry that becomes due while the app
+     * stays open is badged at that moment, without a new assessment, a navigation, or a restart —
+     * and without another read of the attempt table.
+     */
+    @Test
+    fun aComingUpMistakeIsBadgedWhenItBecomesDueWithoutRestarting() = runShellTest {
+        val repository = FakeAssessmentRepository(
+            listOf(
+                completedAttempt(
+                    id = "interview",
+                    completedAtSeconds = SessionStartSeconds,
+                    answers = listOf("q_a" to false),
+                ),
+            ),
+        )
+        // The clock is the test scheduler's virtual time, so the wait inside the history cache and
+        // the due check read the same clock.
+        val start = Instant.fromEpochSeconds(SessionStartSeconds)
+        val now = { start + testScheduler.currentTime.milliseconds }
+        val viewModel = shellViewModel(repository, now = now)
+
+        advanceTimeBy(19.hours)
+        assertEquals(0, viewModel.dueMistakeCount.value)
+
+        advanceTimeBy(1.hours + 1.minutes)
+        assertEquals(1, viewModel.dueMistakeCount.value)
+        assertEquals(1, repository.reads)
     }
 
     private fun TestScope.shellViewModel(
         repository: AssessmentRepository,
         store: AssessmentHistoryStore = testHistoryStore(repository, testCacheScope()),
+        now: () -> Instant = { kotlin.time.Clock.System.now() },
     ): AppShellViewModel =
         AppShellViewModel(
             mistakeReviewService = MistakeReviewService(
@@ -242,9 +315,15 @@ internal class AppShellViewModelTest {
                 // repository that refuses every read is the assertion: reaching for a Question
                 // here would fail the test rather than quietly cost a curriculum round trip.
                 assessmentReviewLoader = AssessmentReviewLoader(UnreadCurriculumRepository),
+                now = now,
             ),
-            visibleHistory = store.visibleHistory(testCacheScope()),
+            visibleHistory = store.visibleHistory(testCacheScope(), now = now),
         )
+
+    private companion object {
+        /** A study session well after the epoch fixtures above, so its reviews are in the future. */
+        val SessionStartSeconds: Long = Instant.parse("2026-01-05T21:00:00Z").epochSeconds
+    }
 
     private fun runShellTest(block: suspend TestScope.() -> Unit) = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))

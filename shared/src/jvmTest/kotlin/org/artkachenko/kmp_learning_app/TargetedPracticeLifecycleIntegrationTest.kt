@@ -5,10 +5,14 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -30,6 +34,7 @@ import org.artkachenko.kmp_learning_app.assessment.QuestionAnswerState
 import org.artkachenko.kmp_learning_app.assessment.history.AppCoroutineScope
 import org.artkachenko.kmp_learning_app.assessment.history.AssessmentHistoryStore
 import org.artkachenko.kmp_learning_app.assessment.history.QuestionExposure
+import org.artkachenko.kmp_learning_app.assessment.history.VisibleAssessmentHistory
 import org.artkachenko.kmp_learning_app.assessment.repository.AssessmentRepository
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeResult
 import org.artkachenko.kmp_learning_app.assessment.retake.AssessmentRetakeService
@@ -329,8 +334,38 @@ internal class TargetedPracticeLifecycleIntegrationTest {
         assertEquals(progressService.load(history), progressService.load(asOrdinaryPractice))
     }
 
+    /**
+     * The demo that motivated spaced review: fail a Question, then drill it straight away with the
+     * answer key fresh in mind. The drill is allowed and recorded, but it must not resolve anything.
+     */
     @Test
-    fun mistakePracticeCorrectAnswerResolvesAndALaterMistakeReopensIt() = runPracticeTest {
+    fun anImmediateCorrectRePracticeLeavesTheMistakeScheduled() = runPracticeTest {
+        val mistakeConfig = practiceOnA1(source = PracticeQuestionSource.UNRESOLVED_MISTAKES)
+        runPractice(
+            practiceOnA1(levels = setOf(QuestionLevel.FOUNDATION)),
+            correctFor = emptySet(),
+        )
+        assertEquals(listOf(FoundationQuestion), mistakeReviewService.load().map { it.questionId })
+
+        val rePracticeId = runPractice(mistakeConfig, correctFor = setOf(FoundationQuestion))
+
+        // The correct answer is in history like any other...
+        assertEquals(
+            AssessmentScore(totalQuestions = 1, correctAnswers = 1),
+            requireNotNull(assessmentRepository.getById(rePracticeId)).score,
+        )
+        // ...but it came before the review was due, so the Question is still scheduled, still not
+        // due, and still offered by mistake practice.
+        val mistake = mistakeReviewService.load().single()
+        assertEquals(FoundationQuestion, mistake.questionId)
+        assertFalse(mistake.isDue)
+        assertEquals(1, mistakeReviewService.countUnresolved())
+        assertEquals(0, mistakeReviewService.countDue())
+        assertEquals(listOf(FoundationQuestion), selectedIds(mistakeConfig))
+    }
+
+    @Test
+    fun mistakePracticeAtEachReviewResolvesAndALaterMistakeReopensIt() = runPracticeTest {
         val mistakeConfig = practiceOnA1(source = PracticeQuestionSource.UNRESOLVED_MISTAKES)
         runPractice(
             practiceOnA1(levels = setOf(QuestionLevel.FOUNDATION)),
@@ -341,10 +376,15 @@ internal class TargetedPracticeLifecycleIntegrationTest {
         assertEquals(1, mistakeReviewService.countUnresolved())
         assertEquals(listOf(FoundationQuestion), selectedIds(mistakeConfig))
 
-        runPractice(mistakeConfig, correctFor = setOf(FoundationQuestion))
+        // One correct answer at each review: a day, three days, then a week after the last.
+        for (gap in listOf(1.days, 3.days, 7.days)) {
+            clock.advance(gap)
+            assertTrue(mistakeReviewService.load().single().isDue)
+            runPractice(mistakeConfig, correctFor = setOf(FoundationQuestion))
+        }
 
-        // Nothing was resolved by hand. The newest completed occurrence is correct, so the same
-        // derivation that feeds Mistake Review also stops offering it for practice.
+        // Nothing was resolved by hand. The schedule replayed from completed history is complete,
+        // so the same derivation that feeds Mistake Review also stops offering it for practice.
         assertEquals(emptyList(), mistakeReviewService.load().map { it.questionId })
         assertEquals(0, mistakeReviewService.countUnresolved())
         assertIs<AssessmentSelectionResult.NoContent>(questionSelector.select(mistakeConfig))
@@ -562,7 +602,7 @@ private fun runPracticeTest(block: suspend PracticeGraph.() -> Unit) = runTest {
     )
 
     var attemptSequence = 0
-    var clockSequence = 0L
+    val clock = PracticeClock()
     val app = koinApplication {
         modules(
             curriculumDataModule,
@@ -580,16 +620,21 @@ private fun runPracticeTest(block: suspend PracticeGraph.() -> Unit) = runTest {
                         curriculumRepository = get(),
                         completedHistory = get<AssessmentHistoryStore>(),
                         randomize = { it },
+                        now = clock::read,
                     )
                 }
                 single {
                     AssessmentEngine(
                         questionSelector = get(),
                         generateAttemptId = { "attempt-${++attemptSequence}" },
-                        now = {
-                            clockSequence += 1
-                            Instant.fromEpochMilliseconds(FixtureEpochMillis + clockSequence * 1_000)
-                        },
+                        now = clock::tick,
+                    )
+                }
+                single {
+                    MistakeReviewService(
+                        completedHistory = get<VisibleAssessmentHistory>(),
+                        assessmentReviewLoader = get(),
+                        now = clock::read,
                     )
                 }
             },
@@ -597,7 +642,7 @@ private fun runPracticeTest(block: suspend PracticeGraph.() -> Unit) = runTest {
     }
 
     try {
-        PracticeGraph(database, app.koin).block()
+        PracticeGraph(database, app.koin, clock).block()
     } finally {
         // The history store's refresh is app-scoped and eagerly started, so it outlives every
         // screen by design and would outlive this test too. Cancelling that scope before closing
@@ -611,9 +656,29 @@ private fun runPracticeTest(block: suspend PracticeGraph.() -> Unit) = runTest {
     }
 }
 
+/**
+ * A monotonic clock: every engine read moves it one second, so attempts are strictly ordered, and a
+ * scenario can jump it forward to reach a mistake's next review.
+ */
+private class PracticeClock {
+    private var elapsed: Duration = Duration.ZERO
+
+    fun read(): Instant = Instant.fromEpochMilliseconds(FixtureEpochMillis) + elapsed
+
+    fun tick(): Instant {
+        elapsed += 1.seconds
+        return read()
+    }
+
+    fun advance(by: Duration) {
+        elapsed += by
+    }
+}
+
 private class PracticeGraph(
     val database: CurriculumDatabase,
     private val koin: Koin,
+    val clock: PracticeClock,
 ) {
     val curriculumRepository: CurriculumRepository get() = koin.get()
     val assessmentRepository: AssessmentRepository get() = koin.get()

@@ -1,11 +1,13 @@
 package org.artkachenko.kmp_learning_app.assessment.selection
 
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.artkachenko.kmp_learning_app.assessment.AssessmentConfig
 import org.artkachenko.kmp_learning_app.assessment.AssessmentScope
 import org.artkachenko.kmp_learning_app.assessment.PracticeQuestionSource
 import org.artkachenko.kmp_learning_app.assessment.history.CompletedAssessmentHistory
+import org.artkachenko.kmp_learning_app.assessment.history.MistakeScheduleDerivation
 import org.artkachenko.kmp_learning_app.assessment.history.QuestionExposure
-import org.artkachenko.kmp_learning_app.assessment.history.UnresolvedMistakeDerivation
 import org.artkachenko.kmp_learning_app.curriculum.Question
 import org.artkachenko.kmp_learning_app.curriculum.QuestionLevel
 import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumRepository
@@ -24,6 +26,7 @@ internal class AssessmentQuestionSelector(
     private val curriculumRepository: CurriculumRepository,
     private val completedHistory: CompletedAssessmentHistory,
     private val randomize: (List<Question>) -> List<Question> = { it.shuffled() },
+    private val now: () -> Instant = { Clock.System.now() },
 ) {
     // Built over this selector's own repository rather than injected: the derivation is stateless,
     // and weak-area selection must attribute evidence through the same curriculum it selects from.
@@ -66,10 +69,37 @@ internal class AssessmentQuestionSelector(
             PracticeQuestionSource.WEAK_AREAS ->
                 loadWeakAreaQuestions(config.scope, config.levels)
             PracticeQuestionSource.UNRESOLVED_MISTAKES ->
-                loadUnresolvedMistakeQuestions(config.scope, config.levels)
+                return selectScheduledMistakes(config)
         }
 
         return toResult(config.scope.narrow(randomizeUnique(eligible), config.questionCount))
+    }
+
+    /**
+     * Every scheduled mistake is eligible, but the due ones are asked first.
+     *
+     * Only a due Question's correct answer moves it along the review ladder, so a run shorter than
+     * the queue spends its questions where they count. Coming-up Questions still fill the rest:
+     * practising one early is allowed and simply does not count. Each tier is randomized and
+     * narrowed by the scope exactly as any other source is, so Subtopic coverage applies within the
+     * due tier before it applies to the fill.
+     */
+    private suspend fun selectScheduledMistakes(
+        config: AssessmentConfig.Focused,
+    ): AssessmentSelectionResult {
+        val evaluatedAt = now()
+        val dueQuestionIds = mutableSetOf<String>()
+        val scheduledQuestionIds = mutableSetOf<String>()
+        MistakeScheduleDerivation.derive(completedHistory.completedAttempts()).forEach { mistake ->
+            scheduledQuestionIds += mistake.questionId
+            if (mistake.isDue(evaluatedAt)) dueQuestionIds += mistake.questionId
+        }
+
+        val (due, comingUp) = loadScheduledMistakeQuestions(config.scope, config.levels, scheduledQuestionIds)
+            .let(::randomizeUnique)
+            .partition { it.id in dueQuestionIds }
+        val dueFirst = config.scope.narrow(due, config.questionCount)
+        return toResult(dueFirst + config.scope.narrow(comingUp, config.questionCount - dueFirst.size))
     }
 
     /**
@@ -207,20 +237,16 @@ internal class AssessmentQuestionSelector(
     }
 
     /**
-     * Historical state decides which stable IDs are unresolved; current curriculum eligibility
+     * Historical state decides which stable IDs are scheduled; current curriculum eligibility
      * decides which of those IDs can be asked now. This keeps missing and deprecated Questions in
      * Mistake Review history without resurrecting them into a new assessment.
      */
-    private suspend fun loadUnresolvedMistakeQuestions(
+    private suspend fun loadScheduledMistakeQuestions(
         scope: AssessmentScope,
         levels: Set<QuestionLevel>,
-    ): List<Question> {
-        val unresolvedQuestionIds = UnresolvedMistakeDerivation
-            .derive(completedHistory.completedAttempts())
-            .mapTo(mutableSetOf()) { it.questionId }
-
-        return loadScopedQuestions(scope, levels).filter { it.id in unresolvedQuestionIds }
-    }
+        scheduledQuestionIds: Set<String>,
+    ): List<Question> =
+        loadScopedQuestions(scope, levels).filter { it.id in scheduledQuestionIds }
 
     /**
      * Level filtering belongs to the repository, not to this class or to presentation: the scoped

@@ -1,5 +1,6 @@
 package org.artkachenko.kmp_learning_app.mistake_review
 
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -52,6 +53,8 @@ internal class MistakeStudyLessonMappingTest {
     private fun mistake(subtopicId: String) = UnresolvedMistake(
         questionId = "q1",
         sourceAttemptId = "attempt",
+        dueFrom = Instant.parse("2026-01-01T00:00:00Z"),
+        isDue = true,
         reviewItem = ReviewQuestionItem.Available(
             ReviewQuestionUiModel(
                 questionId = "q1",

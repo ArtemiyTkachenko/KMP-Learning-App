@@ -25,6 +25,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -218,21 +219,23 @@ internal class ProgressLearningJourneyIntegrationTest {
                     waitForText("Progress")
 
                     // The dashboard reports the size of the queue; opening it is the Mistakes
-                    // navigation item's job, and that item carries the same count as a badge.
-                    // Coverage has no say in this: every current Question has been explored and
-                    // two mistakes are still unresolved, because resolution is decided solely by
-                    // the latest completed occurrence of each Question.
+                    // navigation item's job, and that item badges the ones that are due. Coverage
+                    // has no say in this: every current Question has been explored and three
+                    // mistakes are still unresolved, because resolution takes correct answers at
+                    // spaced reviews — State's correct answer seconds after its mistake did not
+                    // count. All three are long past due, so the badge counts all three.
                     scrollToTextStartingWith("unresolved mistakes to review")
-                    onNodeWithText("2 unresolved mistakes to review").assertIsDisplayed()
+                    onNodeWithText("3 unresolved mistakes to review").assertIsDisplayed()
                     // The badge is asserted on the Mistakes target's merged node — what is
-                    // announced with it — as the count in words rather than a bare "2".
+                    // announced with it — as the count in words rather than a bare "3".
                     onNodeWithTag(
                         appNavigationBarItemTag(AppTopLevelDestination.MISTAKES),
-                    ).assert(hasText("2 unresolved mistakes")).performClick()
-                    waitForText("Lifecycle question")
+                    ).assert(hasText("3 mistakes due for review")).performClick()
+                    // State fell due first, so it leads the queue.
+                    waitForText("State question")
+                    scrollToText("Lifecycle question")
                     onNodeWithText("Lifecycle question").assertIsDisplayed()
                     onNodeWithText("Newest lifecycle selection").performScrollTo().assertIsDisplayed()
-                    onNodeWithText("State question").assertDoesNotExist()
                     scrollToText("Legacy question")
                     onNodeWithText("Legacy question").assertIsDisplayed()
                     onNodeWithText("Selected legacy answer").performScrollTo().assertIsDisplayed()
@@ -255,7 +258,7 @@ internal class ProgressLearningJourneyIntegrationTest {
     }
 
     @Test
-    fun realHistoryMakesAMistakeResolveAndReappearFromItsLatestOccurrence() = runTest {
+    fun realHistoryResolvesAMistakeAtItsReviewsAndReopensItFromItsLatestOccurrence() = runTest {
         val database = createImportedDatabase()
         try {
             val curriculumRepository = LocalCurriculumRepository(database)
@@ -270,13 +273,32 @@ internal class ProgressLearningJourneyIntegrationTest {
             )
             assertEquals(listOf(LifecycleQuestionId), service.load().map { it.questionId })
 
+            // An immediate correct answer is recorded but does not count.
             repository.save(
-                singleQuestionAttempt("attempt_correct", 2_000, true, LifecycleCorrectId),
+                singleQuestionAttempt("attempt_drill", 2_000, true, LifecycleCorrectId),
             )
+            assertEquals(listOf(LifecycleQuestionId), service.load().map { it.questionId })
+
+            // One correct answer at each review — a day, three days, then a week later — does.
+            listOf(1.days, 4.days, 11.days).forEach { offset ->
+                repository.save(
+                    singleQuestionAttempt(
+                        "attempt_review_${offset.inWholeDays}",
+                        1_000 + offset.inWholeMilliseconds,
+                        true,
+                        LifecycleCorrectId,
+                    ),
+                )
+            }
             assertEquals(emptyList(), service.load())
 
             repository.save(
-                singleQuestionAttempt("attempt_wrong_2", 3_000, false, LifecycleNewestSelectionId),
+                singleQuestionAttempt(
+                    "attempt_wrong_2",
+                    1_000 + 12.days.inWholeMilliseconds,
+                    false,
+                    LifecycleNewestSelectionId,
+                ),
             )
             val mistake = service.load().single()
             assertEquals("attempt_wrong_2", mistake.sourceAttemptId)
@@ -436,8 +458,13 @@ internal class ProgressLearningJourneyIntegrationTest {
         assertEquals(RecentTrendAvailability.Available, recent.trendAvailability)
 
         val mistakes = components.mistakeService.load()
-        assertEquals(listOf(LifecycleQuestionId, LegacyQuestionId), mistakes.map { it.questionId })
-        val lifecycle = assertIs<ReviewQuestionItem.Available>(mistakes.first().reviewItem)
+        // State's correct answer came two seconds after its mistake, so it does not count. State
+        // fell due first; Lifecycle and Legacy share the newest attempt's due time.
+        assertEquals(
+            listOf(StateQuestionId, LifecycleQuestionId, LegacyQuestionId),
+            mistakes.map { it.questionId },
+        )
+        val lifecycle = assertIs<ReviewQuestionItem.Available>(mistakes[1].reviewItem)
         assertEquals(
             listOf(LifecycleNewestSelectionId),
             lifecycle.question.answers.filter { it.wasSelected }.map { it.id },

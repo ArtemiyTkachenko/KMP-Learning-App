@@ -13,18 +13,18 @@ import org.artkachenko.kmp_learning_app.learning_progress.WeakArea
  *
  * - [completedAttemptCount], [weakAreas], [topicCoverage], and [subtopicCoverage] come from
  *   `LearningProgressSnapshot`;
- * - [unresolvedMistakeCount] comes from `MistakeReviewService.countUnresolved`, which delegates to
- *   `UnresolvedMistakeDerivation`;
+ * - [dueMistakeCount] comes from `MistakeReviewService.countDue`, which delegates to
+ *   `MistakeScheduleDerivation`: scheduled mistakes that are due now, not the coming-up ones;
  * - [recentStudyContext] is the configuration kind and stable scope of the newest completed
  *   history entry. Completed history is already newest first; callers must not include an
  *   in-progress attempt or presentation navigation state.
  *
  * The policy consumes these facts as given. It does not recalculate weakness thresholds, exposure,
- * unresolved-mistake lifecycle, or history ordering.
+ * the mistake review schedule, or history ordering.
  */
 internal data class LearningRecommendationInputs(
     val completedAttemptCount: Int,
-    val unresolvedMistakeCount: Int,
+    val dueMistakeCount: Int,
     val weakAreas: List<WeakArea>,
     val topicCoverage: List<TopicCoverage>,
     val subtopicCoverage: List<SubtopicCoverage>,
@@ -34,8 +34,8 @@ internal data class LearningRecommendationInputs(
         require(completedAttemptCount >= 0) {
             "completedAttemptCount must not be negative."
         }
-        require(unresolvedMistakeCount >= 0) {
-            "unresolvedMistakeCount must not be negative."
+        require(dueMistakeCount >= 0) {
+            "dueMistakeCount must not be negative."
         }
     }
 }
@@ -78,7 +78,7 @@ internal sealed interface LearningRecommendationTarget {
 internal sealed interface LearningRecommendationRationale {
     data object NewUser : LearningRecommendationRationale
 
-    data class UnresolvedMistakes(
+    data class DueMistakes(
         val count: Int,
     ) : LearningRecommendationRationale
 

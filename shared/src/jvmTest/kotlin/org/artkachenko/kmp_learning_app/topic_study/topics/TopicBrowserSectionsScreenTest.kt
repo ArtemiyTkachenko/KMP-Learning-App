@@ -104,7 +104,7 @@ internal class TopicBrowserSectionsScreenTest {
                 sections = listOf(androidSection, kmpSection),
                 recommendedNext = RecommendedNextUiModel(
                     target = LearningRecommendationTarget.MistakeReview,
-                    rationale = LearningRecommendationRationale.UnresolvedMistakes(2),
+                    rationale = LearningRecommendationRationale.DueMistakes(2),
                 ),
             ),
         )

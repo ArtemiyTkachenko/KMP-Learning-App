@@ -28,8 +28,10 @@ import org.artkachenko.kmp_learning_app.curriculum.repository.CurriculumReposito
 import org.artkachenko.kmp_learning_app.assessment.history.asCompletedHistory
 
 /**
- * The queue is derived from the LATEST completed occurrence of each stable Question ID. Attempts
- * below are listed newest first, matching the repository contract the service consumes.
+ * The queue is the review schedule replayed from every completed occurrence of each stable Question
+ * ID; `MistakeScheduleDerivationTest` pins the ladder itself. Attempts below are listed newest first,
+ * matching the repository contract the service consumes. Occurrences a couple of hours apart are
+ * all "early", so only a wrong answer changes anything between them.
  */
 internal class MistakeReviewServiceTest {
     @Test
@@ -66,11 +68,28 @@ internal class MistakeReviewServiceTest {
     }
 
     @Test
-    fun laterCorrectOccurrenceResolvesAnEarlierMistake() = runTest {
+    fun aCorrectAnswerHoursAfterTheMistakeDoesNotResolveIt() = runTest {
         val service = service(
             attempts = listOf(
                 attempt("newest", "2026-08-29T12:00:00Z", "q1" to true),
                 attempt("oldest", "2026-08-29T10:00:00Z", "q1" to false),
+            ),
+        )
+
+        val mistake = service.load().single()
+        assertEquals("q1", mistake.questionId)
+        assertEquals("oldest", mistake.sourceAttemptId)
+        assertEquals(Instant.parse("2026-08-30T06:00:00Z"), mistake.dueFrom)
+    }
+
+    @Test
+    fun correctAnswersAtEachReviewResolveTheMistake() = runTest {
+        val service = service(
+            attempts = listOf(
+                attempt("week", "2026-09-09T10:00:00Z", "q1" to true),
+                attempt("three_days", "2026-09-02T10:00:00Z", "q1" to true),
+                attempt("next_day", "2026-08-30T10:00:00Z", "q1" to true),
+                attempt("mistake", "2026-08-29T10:00:00Z", "q1" to false),
             ),
         )
 
@@ -105,7 +124,7 @@ internal class MistakeReviewServiceTest {
     }
 
     @Test
-    fun queueOrdersByNewestAttemptThenPersistedQuestionAttemptOrder() = runTest {
+    fun queueOrdersSoonestDueFirstThenPersistedQuestionAttemptOrder() = runTest {
         val service = service(
             attempts = listOf(
                 attempt("newest", "2026-08-29T12:00:00Z", "q3" to false, "q1" to false),
@@ -113,16 +132,19 @@ internal class MistakeReviewServiceTest {
             ),
         )
 
-        // q3 before q1 because that is the persisted order inside the newest attempt.
-        assertEquals(listOf("q3", "q1", "q2"), service.load().map { it.questionId })
+        // q2 falls due first because its mistake is the oldest; q3 before q1 because that is the
+        // persisted order inside the newest attempt, which shares one due time.
+        assertEquals(listOf("q2", "q3", "q1"), service.load().map { it.questionId })
     }
 
     @Test
-    fun newestCorrectOccurrenceRemovesOnlyThatQuestion() = runTest {
+    fun resolvingOneQuestionLeavesTheOthersFromTheSameAttempt() = runTest {
         val service = service(
             attempts = listOf(
-                attempt("newest", "2026-08-29T12:00:00Z", "q1" to true),
-                attempt("oldest", "2026-08-29T10:00:00Z", "q1" to false, "q2" to false),
+                attempt("week", "2026-09-09T10:00:00Z", "q1" to true),
+                attempt("three_days", "2026-09-02T10:00:00Z", "q1" to true),
+                attempt("next_day", "2026-08-30T10:00:00Z", "q1" to true),
+                attempt("mistake", "2026-08-29T10:00:00Z", "q1" to false, "q2" to false),
             ),
         )
 
@@ -130,12 +152,12 @@ internal class MistakeReviewServiceTest {
     }
 
     @Test
-    fun aLaterFocusedCorrectAnswerResolvesAnEarlierMixedMistake() = runTest {
+    fun aFocusedReviewCountsTowardsAMixedMistake() = runTest {
         val service = service(
             attempts = listOf(
                 attempt(
                     "focused",
-                    "2026-08-29T12:00:00Z",
+                    "2026-08-30T10:00:00Z",
                     "q1" to true,
                     config = AssessmentConfig.Focused(AssessmentScope.Topic("kotlin"), 1),
                 ),
@@ -143,7 +165,8 @@ internal class MistakeReviewServiceTest {
             ),
         )
 
-        assertEquals(emptyList(), service.load())
+        // Counted: the next review is the three-day step from the focused answer, less the grace.
+        assertEquals(Instant.parse("2026-09-02T06:00:00Z"), service.load().single().dueFrom)
     }
 
     @Test
@@ -261,7 +284,7 @@ internal class MistakeReviewServiceTest {
      * The queue rebuilds on every settled refresh of the shared history — which its app-scoped
      * holder observes for the whole process, whether or not the screen is open — so one read
      * transaction per unresolved mistake was a cost repeated per completed assessment rather than
-     * per visit. Order is the derivation's, newest unresolved occurrence first, and is unchanged.
+     * per visit. Order is the derivation's, soonest due first, and is unchanged.
      */
     @Test
     fun theWholeQueueIsResolvedInOneHistoricalRead() = runTest {
@@ -280,9 +303,9 @@ internal class MistakeReviewServiceTest {
 
         assertEquals(1, curriculum.questionReads)
         assertEquals(setOf("q1", "q2", "q3"), curriculum.questionLookups.toSet())
-        assertEquals(listOf("q1", "q2", "q3"), queue.map { it.questionId })
+        assertEquals(listOf("q3", "q1", "q2"), queue.map { it.questionId })
         assertEquals(
-            listOf("newest", "newest", "oldest"),
+            listOf("oldest", "newest", "newest"),
             queue.map { it.sourceAttemptId },
         )
     }
@@ -346,7 +369,7 @@ internal class MistakeReviewServiceTest {
     }
 
     @Test
-    fun historyOrderIsConsumedAsGivenWithoutReSorting() = runTest {
+    fun theQueueIsOrderedByDueTimeAndHistoryIsReadOncePerLoad() = runTest {
         val repository = HistoryRepository(
             listOf(
                 attempt("newest", "2026-08-29T12:00:00Z", "q2" to false),
@@ -355,18 +378,41 @@ internal class MistakeReviewServiceTest {
         )
         val service = MistakeReviewService(repository.asCompletedHistory(), AssessmentReviewLoader(RecordingCurriculumRepository(defaultQuestions())))
 
-        assertEquals(listOf("q2", "q1"), service.load().map { it.questionId })
+        assertEquals(listOf("q1", "q2"), service.load().map { it.questionId })
         assertTrue(repository.readCount == 1, "History should be read once per load.")
+    }
+
+    /**
+     * The badge and the recommendation ask for the due count; the queue marks each entry. Both use
+     * the same injected clock and the same schedule, so they cannot disagree.
+     */
+    @Test
+    fun dueEntriesAreMarkedAndCountedAgainstTheInjectedClock() = runTest {
+        val attempts = listOf(
+            attempt("today", "2026-08-30T09:00:00Z", "q2" to false),
+            attempt("yesterday", "2026-08-29T09:00:00Z", "q1" to false),
+        )
+        val service = service(attempts, now = Instant.parse("2026-08-30T10:00:00Z"))
+
+        val queue = service.load()
+        assertEquals(listOf("q1" to true, "q2" to false), queue.map { it.questionId to it.isDue })
+        assertEquals(1, service.countDue())
+        assertEquals(2, service.countUnresolved())
+
+        val later = service(attempts, now = Instant.parse("2026-08-31T05:00:00Z"))
+        assertEquals(2, later.countDue())
     }
 }
 
 private fun service(
     attempts: List<TestAttempt>,
     questions: List<Question> = defaultQuestions(),
+    now: Instant = Instant.parse("2026-08-29T12:30:00Z"),
 ): MistakeReviewService =
     MistakeReviewService(
         completedHistory = HistoryRepository(attempts).asCompletedHistory(),
         assessmentReviewLoader = AssessmentReviewLoader(RecordingCurriculumRepository(questions)),
+        now = { now },
     )
 
 private fun defaultQuestions(): List<Question> =

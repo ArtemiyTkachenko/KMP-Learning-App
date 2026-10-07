@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -82,7 +83,8 @@ internal class GuidedLearningPracticePresetIntegrationTest {
     @Test
     fun aWeakAreaRecommendationOpensAValidBuilderOnTheBuildersOwnDefaults() = runGuidedTest {
         val curriculum = FakeCurriculumRepository()
-        // Nothing is unresolved, and five observations establish a credible weak area.
+        // Nothing is due for review yet — every mistake was made in the session just finished — and
+        // five observations establish a credible weak area.
         val history = MutableHistoryRepository(weakCoroutinesHistory())
 
         val recommendation = assertNotNull(recommend(curriculum, history))
@@ -192,9 +194,11 @@ internal class GuidedLearningPracticePresetIntegrationTest {
         val mistakeReviewService = MistakeReviewService(
             completedHistory = history.asCompletedHistory(),
             assessmentReviewLoader = AssessmentReviewLoader(curriculum),
+            // An hour after the fixtures' study session, so their mistakes are not yet due.
+            now = { StudiedAt + 1.hours },
         )
         val resolver = LearningRecommendationResolver { attempts ->
-            mistakeReviewService.countUnresolved(attempts)
+            mistakeReviewService.countDue(attempts)
         }
         return resolver.resolve(completedAttempts = completedAttempts, progress = progress)
     }
@@ -315,6 +319,8 @@ internal class GuidedLearningPracticePresetIntegrationTest {
         )
 
         /** Newest first, as the repository contract requires. */
+        val StudiedAt: Instant = Instant.parse("2026-09-01T00:15:00Z")
+
         fun weakCoroutinesHistory(): List<TestAttempt> =
             listOf(
                 completedAttempt("newer", "q_coroutines_1" to true, "q_coroutines_2" to true),
@@ -337,7 +343,7 @@ internal class GuidedLearningPracticePresetIntegrationTest {
                 },
                 status = AssessmentStatus.COMPLETED,
                 startedAt = Instant.parse("2026-09-01T00:00:00Z"),
-                completedAt = Instant.parse("2026-09-01T00:15:00Z"),
+                completedAt = StudiedAt,
                 score = AssessmentScore(answers.size, answers.count { it.second }),
             )
 

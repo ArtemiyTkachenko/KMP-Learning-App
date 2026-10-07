@@ -110,12 +110,15 @@ internal fun AssessmentResultOutcome(
 }
 
 /**
- * Practice exactly the Questions this run got wrong.
+ * Practice the mistakes in the Subtopics this run got wrong.
  *
  * The scope is the Subtopics those Questions came from and the count is how many there were, so the
  * run the learner starts covers what they just missed rather than the Topic it happened to sit in.
  * `PracticeQuestionSource.UNRESOLVED_MISTAKES` is what narrows it from "questions in these
- * Subtopics" to "questions in these Subtopics you still have wrong"; selection does the rest.
+ * Subtopics" to "questions in these Subtopics still on the review schedule"; selection does the
+ * rest. No Question IDs travel, so this is not exactly the run's mistakes: selection asks due
+ * mistakes first, and an older mistake in the same Subtopics that is due now is asked before one of
+ * this run's, whose answers would come too early to count anyway.
  */
 @Composable
 private fun PracticeMistakesButton(

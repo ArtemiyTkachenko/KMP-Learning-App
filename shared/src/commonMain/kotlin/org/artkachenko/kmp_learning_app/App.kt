@@ -88,8 +88,8 @@ private fun AppShell(
     val shellViewModel: AppShellViewModel = koinViewModel()
     // Derived from the shared history cache, so it follows an assessment completing rather than
     // being recounted every time navigation moves between areas.
-    val unresolvedMistakeCount by shellViewModel.unresolvedMistakeCount.collectAsStateWithLifecycle()
-    val badges = mapOf(AppTopLevelDestination.MISTAKES to unresolvedMistakeCount)
+    val dueMistakeCount by shellViewModel.dueMistakeCount.collectAsStateWithLifecycle()
+    val badges = mapOf(AppTopLevelDestination.MISTAKES to dueMistakeCount)
 
     // NavDisplay enables its own back handler only while the stack it was given has a previous
     // entry, so at an area's root back reaches nothing and the host closes the app. This handler

@@ -1831,7 +1831,8 @@ internal class TopicDetailScreenTest {
         val title = unmergedBounds("Weak Subtopic")
         val weakShortcut = unmergedBounds("Practice weak area")
         val unseenShortcut = unmergedBounds("Practice 15 unseen questions")
-        val badge = unmergedBounds("Weak area")
+        // The row's lowest line of text; the weak pill that used to sit under it is gone.
+        val rowBottom = unmergedBounds("9 of 24 explored")
         val nextRow = unmergedBounds("Next Subtopic")
 
         // Only the shortcut that starts a line can align with the row: the block wraps, so on a
@@ -1842,7 +1843,7 @@ internal class TopicDetailScreenTest {
             "The shortcuts do not start where the row they belong to does.",
         )
 
-        val above = weakShortcut.top - badge.bottom
+        val above = weakShortcut.top - rowBottom.bottom
         val below = nextRow.top - unseenShortcut.bottom
         assertTrue(
             above < below,
@@ -1906,11 +1907,14 @@ internal class TopicDetailScreenTest {
         }
 
         selectTab(TopicSubtopicsTabTag)
-        onAllNodesWithText("Weak area").assertCountEquals(1)
+        // The verdict is the trailing figure's label, as on a Topic card, not a pill.
+        onAllNodesWithText("weak area", useUnmergedTree = true).assertCountEquals(1)
+        onAllNodesWithText("Weak area").assertCountEquals(0)
         onNodeWithText("41%").assertIsDisplayed()
-        // A real answer is stated as one and is not relabelled as unstudied, but one answer earns
-        // no percentage.
-        onNodeWithText("1 answered").assertIsDisplayed()
+        // A real answer is not relabelled as unstudied, but one answer earns no percentage: a dash
+        // over "accuracy", explained to a screen reader.
+        onNode(hasText("Sparse Subtopic") and hasText("Accuracy shown after 5 answers, 1 so far"))
+            .assertIsDisplayed()
         onAllNodesWithText("0%").assertCountEquals(0)
         onAllNodesWithText("Not studied yet").assertCountEquals(0)
     }

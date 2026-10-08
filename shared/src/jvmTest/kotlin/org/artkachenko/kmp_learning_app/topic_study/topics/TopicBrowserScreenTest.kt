@@ -479,7 +479,7 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("76%").assertIsDisplayed()
         onNodeWithText("accuracy").assertIsDisplayed()
         onNodeWithText("Not studied yet").assertDoesNotExist()
-        onNodeWithText("Weak area").assertDoesNotExist()
+        onNodeWithText("weak area").assertDoesNotExist()
     }
 
     /**
@@ -510,7 +510,7 @@ internal class TopicBrowserScreenTest {
         // Never answered is not the same as answered and got none right.
         onNodeWithText("0%").assertDoesNotExist()
         onNodeWithText("accuracy").assertDoesNotExist()
-        onNodeWithText("Weak area").assertDoesNotExist()
+        onNodeWithText("weak area").assertDoesNotExist()
     }
 
     @Test
@@ -557,20 +557,23 @@ internal class TopicBrowserScreenTest {
             }
         }
 
-        onAllNodesWithText("Weak area").assertCountEquals(1)
+        // The verdict is the weak card's figure label now, not a pill under its text.
+        onAllNodesWithText("weak area").assertCountEquals(1)
         onNodeWithText("41%").assertIsDisplayed()
         onNodeWithText("0%").assertDoesNotExist()
-        onNodeWithText("1 answered").assertIsDisplayed()
+        // The sparse card keeps a neutral dash, explained to a screen reader.
+        onNode(hasText("Sparse Topic") and hasText("Accuracy shown after 5 answers, 1 so far")).assertIsDisplayed()
         // One answer is a real answered result, so the row is not "not studied".
         onNodeWithText("Not studied yet").assertDoesNotExist()
     }
 
     /**
-     * Below the evidence minimum the card states how many answers it has instead of a percentage,
-     * keeping the labelled slot so the column does not change shape down the list.
+     * Below the evidence minimum the card shows a neutral dash instead of a percentage, keeping the
+     * labelled slot so the column does not change shape down the list. It used to show "4 answered"
+     * over the "accuracy" label, which read as nonsense.
      */
     @Test
-    fun aTopicBelowTheEvidenceMinimumStatesItsAnswersInsteadOfAPercentage() = runComposeUiTest {
+    fun aTopicBelowTheEvidenceMinimumShowsADashOverAccuracyInsteadOfAPercentage() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
@@ -589,8 +592,13 @@ internal class TopicBrowserScreenTest {
             }
         }
 
-        onNodeWithText("4 answered").assertIsDisplayed()
-        onNodeWithText("accuracy").assertIsDisplayed()
+        // The dash is read as its explanation, on the same card as the Topic's name.
+        onNode(
+            hasText("Kotlin Language & JVM Fundamentals") and
+                hasText("Accuracy shown after 5 answers, 4 so far") and
+                hasText("accuracy"),
+        ).assertIsDisplayed()
+        onNodeWithText("answered", substring = true).assertDoesNotExist()
         onNodeWithText("100%").assertDoesNotExist()
         onAllNodesWithText("%", substring = true).assertCountEquals(0)
         onNodeWithText("1 of 17 explored").assertIsDisplayed()
@@ -619,7 +627,7 @@ internal class TopicBrowserScreenTest {
 
         onNodeWithText("80%").assertIsDisplayed()
         onNodeWithText("accuracy").assertIsDisplayed()
-        onNodeWithText("5 answered").assertDoesNotExist()
+        onNodeWithText("—").assertDoesNotExist()
     }
 
     @Test
@@ -682,13 +690,13 @@ internal class TopicBrowserScreenTest {
         }
 
         // Nothing is clipped off a 320.dp card: the wrapped name, the marker, the coverage line,
-        // the accuracy figure, and the badge are all on screen together.
+        // the accuracy figure, and its weak-area label are all on screen together.
         onNodeWithText("Application Architecture & Design Principles").assertIsDisplayed()
         onNodeWithTag(topicVisualMarkerTag("architecture"), useUnmergedTree = true)
             .assertIsDisplayed()
         onNodeWithText("14 of 31 explored").assertIsDisplayed()
         onNodeWithText("68%").assertIsDisplayed()
-        onNodeWithText("Weak area").assertIsDisplayed()
+        onNodeWithText("weak area").assertIsDisplayed()
         onNodeWithText("Application Architecture & Design Principles")
             .assertHasClickAction()
             .assertHeightIsAtLeast(MinimumTouchTarget)
@@ -718,7 +726,7 @@ internal class TopicBrowserScreenTest {
         onNodeWithText("Coroutines").assertIsDisplayed()
         // The card is a shortcut, not a report: no score, coverage, or rationale appears on it.
         onNodeWithText("accuracy").assertDoesNotExist()
-        onNodeWithText("Weak area").assertDoesNotExist()
+        onNodeWithText("weak area").assertDoesNotExist()
     }
 
     @Test
@@ -1528,7 +1536,7 @@ internal class TopicBrowserScreenTest {
     }
 
     @Test
-    fun aTopicWithOneLearningUnitShowsTheSingularAvailabilityIndicator() = runComposeUiTest {
+    fun aTopicWithOneLearningUnitShowsTheSingularCount() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
@@ -1543,7 +1551,8 @@ internal class TopicBrowserScreenTest {
             }
         }
 
-        onNodeWithText("1 learning unit").assertIsDisplayed()
+        // Plain text on the supporting line now, not a pill.
+        onNodeWithText("1 unit").assertIsDisplayed()
     }
 
     @Test
@@ -1560,7 +1569,7 @@ internal class TopicBrowserScreenTest {
             }
         }
 
-        onNodeWithText("3 learning units").assertIsDisplayed()
+        onNodeWithText("3 units").assertIsDisplayed()
     }
 
     @Test
@@ -1580,8 +1589,8 @@ internal class TopicBrowserScreenTest {
             }
         }
 
-        onNodeWithText("0 learning units").assertDoesNotExist()
-        onNodeWithText("0 learning unit").assertDoesNotExist()
+        onNodeWithText("0 units", substring = true).assertDoesNotExist()
+        onNodeWithText("0 unit", substring = true).assertDoesNotExist()
         onNodeWithText("Kotlin").performClick()
 
         assertEquals("kotlin", clicked)
@@ -1604,11 +1613,11 @@ internal class TopicBrowserScreenTest {
         }
 
         onNodeWithText("Kotlin").assertIsDisplayed().assertHasClickAction()
-        onAllNodesWithText("learning unit", substring = true).assertCountEquals(0)
+        onAllNodesWithText("unit", substring = true).assertCountEquals(0)
     }
 
     @Test
-    fun aTopicSearchMatchKeepsItsLearningAvailabilityIndicator() = runComposeUiTest {
+    fun aTopicSearchMatchKeepsItsUnitCount() = runComposeUiTest {
         setContent {
             MaterialTheme {
                 TopicBrowserScreen(
@@ -1627,8 +1636,8 @@ internal class TopicBrowserScreenTest {
             }
         }
 
-        // A Topic match is the same enriched row, so it carries the same availability marker.
-        onNodeWithText("1 learning unit").assertIsDisplayed()
+        // A Topic match is the same enriched row, so it carries the same unit count.
+        onNodeWithText("1 unit").assertIsDisplayed()
     }
 
     @Test

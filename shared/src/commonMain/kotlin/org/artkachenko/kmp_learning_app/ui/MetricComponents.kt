@@ -250,6 +250,25 @@ internal fun formatAccuracy(percentage: Double): String {
     return "$number%"
 }
 
+/**
+ * A whole percentage, for the trailing figure of a dense list row — the Learn Topic cards and Topic
+ * Detail's Subtopic rows — where a column of one-decimal figures is harder to scan than it is
+ * precise. Everywhere else keeps [formatAccuracy].
+ *
+ * Rounded to the nearest whole number, except that a rate that is not perfect never reads "100%"
+ * and a rate above zero never reads "0%": those two figures make claims ("all right", "none right")
+ * that rounding must not invent.
+ */
+internal fun formatWholeAccuracy(percentage: Double): String {
+    val rounded = percentage.roundToInt()
+    val whole = when {
+        rounded >= 100 && percentage < 100.0 -> 99
+        rounded <= 0 && percentage > 0.0 -> 1
+        else -> rounded
+    }
+    return "$whole%"
+}
+
 /** Compact status pill. Replaces bare coloured body text for weak areas and outcomes. */
 @Composable
 internal fun StatusBadge(

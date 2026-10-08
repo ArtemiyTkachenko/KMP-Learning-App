@@ -400,10 +400,10 @@ has loaded, counts `getActiveUnitsByTopic` per Topic into
 `TopicBrowserItemUiModel.learningUnitCount`. That count is strictly optional
 enrichment: the assessment curriculum remains the authoritative catalogue and is
 the only input that can produce Loading, Empty, or Error, so an unreadable
-learning document costs a row its availability badge and nothing else. The count
+learning document costs a row its unit count and nothing else. The count
 is nullable on purpose — `null` is availability nobody could read, `0` is a
 successful read that found no authored material, and only a positive count
-renders a badge. It is publisher-owned availability only, and it stays that way:
+is shown, as plain text ("12 units") at the start of the card's supporting line. It is publisher-owned availability only, and it stays that way:
 E22-04 deliberately added no aggregate study progress to the browser, for the
 reasons recorded in [study progress](study-progress.md).
 
@@ -703,10 +703,11 @@ retired, and both are then reported normally.
 
 **Learning-unit counts on Topic cards are real, and unevenly present on purpose.** Only
 `android_ui` and `async_reactive` currently publish authored Learning Units — six each — so
-fifteen of the seventeen Topics carry no unit badge. That is content availability rather
+fifteen of the seventeen Topics carry no unit count. That is content availability rather
 than a rendering bug: `TopicBrowserViewModel` counts `getActiveUnitsByTopic` for every
 Topic through the same call, and `learningUnitCount` distinguishes three states —
 `null` (the learning document could not be read), `0` (no authored Units yet), and a
-positive count. The badge is drawn only for the third, because "0 learning units" is noise
+positive count. The count ("6 units", at the start of the card's supporting line) is shown
+only for the third, because "0 units" is noise
 on most rows of a seventeen-Topic list and a guess when the document is unreadable. Nothing
 fabricates a count to make the list look uniform.

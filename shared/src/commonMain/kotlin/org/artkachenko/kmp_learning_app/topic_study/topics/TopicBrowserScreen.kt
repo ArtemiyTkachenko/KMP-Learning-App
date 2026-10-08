@@ -53,7 +53,6 @@ import kmp_learning_app.shared.generated.resources.continue_studying_source_unse
 import kmp_learning_app.shared.generated.resources.continue_studying_source_weak_areas
 import kmp_learning_app.shared.generated.resources.learning_context_explored
 import kmp_learning_app.shared.generated.resources.learning_context_not_started
-import kmp_learning_app.shared.generated.resources.progress_weak_label
 import kmp_learning_app.shared.generated.resources.recommended_next_mistakes_action
 import kmp_learning_app.shared.generated.resources.recommended_next_mistakes_reason
 import kmp_learning_app.shared.generated.resources.recommended_next_title
@@ -71,7 +70,8 @@ import kmp_learning_app.shared.generated.resources.saved_questions_entry_subtitl
 import kmp_learning_app.shared.generated.resources.saved_questions_title
 import kmp_learning_app.shared.generated.resources.topic_browser_empty
 import kmp_learning_app.shared.generated.resources.topic_browser_error
-import kmp_learning_app.shared.generated.resources.topic_browser_learning_units
+import kmp_learning_app.shared.generated.resources.topic_browser_supporting_facts
+import kmp_learning_app.shared.generated.resources.topic_browser_unit_count
 import kmp_learning_app.shared.generated.resources.topic_browser_loading
 import kmp_learning_app.shared.generated.resources.topic_browser_clear_search
 import kmp_learning_app.shared.generated.resources.topic_browser_search_label
@@ -101,7 +101,6 @@ import org.artkachenko.kmp_learning_app.ui.SectionHeading
 import org.artkachenko.kmp_learning_app.ui.ScreenError
 import org.artkachenko.kmp_learning_app.ui.ScreenLoading
 import org.artkachenko.kmp_learning_app.ui.ScreenMessage
-import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.TopicVisualMarker
 import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
@@ -110,7 +109,6 @@ import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
 import org.artkachenko.kmp_learning_app.ui.theme.AppListBottomPadding
 import org.artkachenko.kmp_learning_app.ui.theme.AppTheme
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
-import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -1017,12 +1015,20 @@ private fun RecommendedNextUiModel.rationaleLabel(): String =
     }
 
 /**
- * One Topic card, in the order a learner reads it: what the Topic is, how much of it they have
- * explored, and — trailing, where a column of figures forms — how accurately they have answered it.
+ * One Topic card, in the order a learner reads it: what the Topic is, what it holds and how much of
+ * it they have explored, and — trailing, where a column of figures forms — how accurately they have
+ * answered it.
+ *
+ * Every card has the same structure, whatever state its Topic is in: the name, at most one
+ * supporting line in one style, and a trailing figure whose label always describes its value (see
+ * [LearningContextAccuracy]). The card used to stack a learning-units pill, a coverage line and a
+ * weak-area pill — two pills in different colours either side of plain text, so neighbouring cards
+ * looked unrelated and a weak card was taller than the rest. The unit count is now a fact on the
+ * supporting line, and the weak verdict is the figure's own label, so nothing was dropped.
  *
  * Restraint is the point. The card carries no chart, no recent performance, and no recommendation:
- * a learner scanning seventeen Topics on a phone needs each one to stay two or three short lines,
- * and long Topic names here run to two lines on their own.
+ * a learner scanning seventeen Topics on a phone needs each one to stay two short lines, and long
+ * Topic names here run to two lines on their own.
  */
 @Composable
 private fun TopicRow(
@@ -1053,8 +1059,8 @@ private fun TopicRow(
             TrailingFigureRow(
                 modifier = Modifier.weight(1f),
                 // Absent for an unseen Topic rather than showing 0%: never answered is not the
-                // same statement as answered and got none right. Below the evidence minimum it
-                // states the answer count instead of a percentage.
+                // same statement as answered and got none right. Below the evidence minimum it is
+                // a neutral dash, still labelled "accuracy".
                 figure = {
                     topic.learningContext?.let { LearningContextAccuracy(it) }
                 },
@@ -1065,11 +1071,13 @@ private fun TopicRow(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    // Above the learner's own figures, and only when there is something to read:
-                    // what the Topic contains is a fact about the content, so it is stated before
-                    // anything about the person reading it.
-                    TopicLearningAvailability(topic.learningUnitCount)
-                    topic.learningContext?.let { TopicLearningContext(it) }
+                    topicSupportingLine(topic.learningUnitCount, topic.learningContext)?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
@@ -1077,87 +1085,52 @@ private fun TopicRow(
 }
 
 /**
- * Whether this Topic publishes explanatory material, and how much of it.
+ * The one line under a Topic name: what the Topic holds, then how much of it has been explored,
+ * joined by " · ". `null` when there is nothing to say.
  *
- * Drawn as a neutral badge, deliberately not in the semantic colours the weak-area badge below it
- * uses: this states what exists to read, never how the learner is doing. There is no studied,
- * started, or completed fact behind it, and E21 has no learner-owned study progress to show.
+ * **Units first**, because what the Topic contains is a fact about the content and is stated before
+ * anything about the person reading it. It is plain text in the line's own neutral style, not a
+ * badge: it states what exists to read, never how the learner is doing, and a pill drew more
+ * attention to it than to the learner's own figures. It is silent for both non-positive cases, for
+ * different reasons. A `null` count is availability nobody could read, so claiming anything would
+ * be a guess; a `0` count is a Topic with no authored material, and "0 units" is noise on most rows
+ * of a seventeen-Topic list.
  *
- * Silent for both of the non-positive cases, for different reasons. A `null` count is availability
- * nobody could read, so claiming anything would be a guess; a `0` count is a Topic with no authored
- * material, and "0 learning units" is noise on most rows of a seventeen-Topic list. Either way the
- * row stays an ordinary, clickable Topic.
+ * **Coverage** is a count rather than a bare percentage, because "12 of 28 explored" says what it
+ * measures and "43%" beside an accuracy percentage does not; a learner at 10% coverage has not done
+ * anything wrong, so it stays in the neutral variant colour.
+ *
+ * An untouched Topic says "Not started · 28 questions" instead — one statement of the absence, with
+ * the size of the Topic attached — rather than "0 of 28 explored" over "Not studied yet". That is
+ * deliberately only the all-zero case: the moment either figure is non-zero the two are genuinely
+ * independent — historical accuracy can exist beside zero current coverage after the Questions it
+ * was earned on were retired — so coverage is reported normally.
  */
 @Composable
-private fun TopicLearningAvailability(learningUnitCount: Int?) {
-    if (learningUnitCount == null || learningUnitCount <= 0) return
-    StatusBadge(
-        text = pluralStringResource(
-            Res.plurals.topic_browser_learning_units,
-            learningUnitCount,
-            learningUnitCount,
-        ),
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-    )
-}
-
-/**
- * The supporting lines under a Topic name.
- *
- * Coverage is a count rather than a bare percentage, because "12 of 28 explored" says what the
- * figure measures and "43%" beside an accuracy percentage does not. It stays in the neutral
- * variant colour: a learner at 10% coverage has not done anything wrong, they simply have most of
- * the bank still ahead of them.
- *
- * An untouched Topic gets one line instead of two. It used to print "0 of 28 explored" and then
- * "Not studied yet" underneath, which is the same absence stated twice — the second line adding
- * nothing except the length of the card, on the rows of a seventeen-Topic list where most rows are
- * untouched to begin with. "Not started · 28 questions" says both facts once and keeps the size of
- * the Topic, which is the part a learner choosing what to open actually wants.
- *
- * This is deliberately only the all-zero case. The moment either figure is non-zero the two are
- * genuinely independent — historical accuracy can exist beside zero current coverage after the
- * Questions it was earned on were retired — so both are reported normally.
- */
-@Composable
-private fun TopicLearningContext(context: LearningContextUiModel) {
-    if (context.isUnstudied) {
-        if (context.hasCoverageScope) {
-            Text(
-                text = pluralStringResource(
-                    Res.plurals.learning_context_not_started,
-                    context.totalQuestionCount,
-                    context.totalQuestionCount,
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        // A weak verdict cannot coexist with an unstudied scope — weakness needs answers — so the
-        // badge below is unreachable from here and the early return costs nothing.
-        return
+private fun topicSupportingLine(
+    learningUnitCount: Int?,
+    context: LearningContextUiModel?,
+): String? {
+    val units = learningUnitCount?.takeIf { it > 0 }?.let { count ->
+        pluralStringResource(Res.plurals.topic_browser_unit_count, count, count)
     }
-    if (context.hasCoverageScope) {
-        Text(
-            text = stringResource(
-                Res.string.learning_context_explored,
-                context.attemptedQuestionCount,
-                context.totalQuestionCount,
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+    val exploration = when {
+        context == null || !context.hasCoverageScope -> null
+        context.isUnstudied -> pluralStringResource(
+            Res.plurals.learning_context_not_started,
+            context.totalQuestionCount,
+            context.totalQuestionCount,
+        )
+        else -> stringResource(
+            Res.string.learning_context_explored,
+            context.attemptedQuestionCount,
+            context.totalQuestionCount,
         )
     }
-    // Only the domain's verdict raises this badge. A Topic can read as low accuracy without being
-    // weak, when too few answers have been recorded to meet the policy's evidence threshold.
-    if (context.isWeak) {
-        StatusBadge(
-            text = stringResource(Res.string.progress_weak_label),
-            contentColor = AppThemeExtras.semanticColors.onPartiallyCorrectContainer,
-            containerColor = AppThemeExtras.semanticColors.partiallyCorrectContainer,
-            icon = AppIcons.Warning,
-        )
+    return when {
+        units != null && exploration != null ->
+            stringResource(Res.string.topic_browser_supporting_facts, units, exploration)
+        else -> units ?: exploration
     }
 }
 

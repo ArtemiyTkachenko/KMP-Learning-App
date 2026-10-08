@@ -114,7 +114,8 @@ Three questions, in order. A "no" to any of them means cards.
 
 A group is for the supporting set. The Topics catalogue stays a column of cards even though its rows
 are as uniform as any table's, because browsing it *is* what that screen is for — and its rows carry
-a colour marker, a variable badge, and an accuracy block that make them genuinely different heights.
+a colour marker, a name that often wraps, and a labelled accuracy block, which make them genuinely
+different heights.
 The Progress dashboard's per-Topic table is the mirror case: the same kind of content, but supporting
 detail under a hero, and two plain lines per row. One is content, one is reference.
 

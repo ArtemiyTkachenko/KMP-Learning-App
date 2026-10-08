@@ -28,10 +28,11 @@
     <string name="topic_browser_search_subtopics">Subtopics</string>
     <string name="topic_browser_section_android_engineering">Android Engineering</string>
     <string name="topic_browser_section_kotlin_multiplatform">Kotlin Multiplatform</string>
-    <plurals name="topic_browser_learning_units">
-        <item quantity="one">%1$d learning unit</item>
-        <item quantity="other">%1$d learning units</item>
+    <plurals name="topic_browser_unit_count">
+        <item quantity="one">%1$d unit</item>
+        <item quantity="other">%1$d units</item>
     </plurals>
+    <string name="topic_browser_supporting_facts">%1$s · %2$s</string>
     <string name="topic_browser_search_no_results">No topics or subtopics match &quot;%1$s&quot;</string>
     <string name="topic_browser_search_no_results_detail">Search covers topic and subtopic names. Try a shorter word, or clear the search to browse the full curriculum.</string>
     <string name="topic_browser_search_clear">Clear search</string>
@@ -68,9 +69,11 @@
         <item quantity="other">Not started · %1$d questions</item>
     </plurals>
     <string name="learning_context_accuracy">accuracy</string>
-    <plurals name="learning_context_answered">
-        <item quantity="one">%1$d answered</item>
-        <item quantity="other">%1$d answered</item>
+    <string name="learning_context_weak_area">weak area</string>
+    <string name="learning_context_accuracy_pending">—</string>
+    <plurals name="learning_context_accuracy_pending_description">
+        <item quantity="one">Accuracy shown after %1$d answer, %2$d so far</item>
+        <item quantity="other">Accuracy shown after %1$d answers, %2$d so far</item>
     </plurals>
     <string name="progress_title">Progress</string>
     <string name="progress_loading">Loading progress</string>

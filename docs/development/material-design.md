@@ -308,7 +308,11 @@ are marked where they appear.
   mixed — `PerformanceCard(weakLabel = null)` and
   `ReviewQuestionCard(statesOutcome = false)` are how a caller says the context already
   states it. A badge that distinguishes a *different* state, such as "Partially correct"
-  in the mistake queue, always stays.
+  in the mistake queue, always stays. On the Learn Topic cards and Topic Detail's Subtopic
+  rows the weak verdict is not a badge at all: it is the trailing figure's own label, "⚠ weak
+  area" in the `partiallyCorrect` accent under the coloured percentage, because a pill under
+  the text repeated that figure and made weak rows taller than their neighbours
+  (`LearningContextAccuracy`).
 - **A marker is not a heading.** Metadata about *where* content sits — a depth layer, a position,
   a band label — takes `labelLarge` in `primary` and publishes no `heading()`. `SectionHeading` is
   for the thing that introduces content, and giving it to a marker makes the metadata outrank the

@@ -75,6 +75,9 @@ internal class BundledLearningCurriculumTest {
                 "unit_recreation_retention_and_restoration",
                 "unit_navigation_state_and_destination_lifetime",
                 "unit_external_entry_and_back_navigation",
+                "unit_android_processes_components_and_environment",
+                "unit_android_runtime_selection_and_dispatch",
+                "unit_android_cross_process_boundaries",
                 // Android Engineering Lab is Android-first: KMP Units follow every core Unit.
                 "unit_kmp_shared_viewmodels_and_host_lifecycles",
                 "unit_koin_and_dependency_injection_in_kmp",
@@ -122,6 +125,9 @@ internal class BundledLearningCurriculumTest {
                 "Recreation, Retention and Restoration",
                 "Navigation State and Destination Lifetime",
                 "External Entry and Back Navigation",
+                "Processes, Components and Android Environment",
+                "Runtime Selection and Dispatch",
+                "Cross-Process Boundaries",
                 "Shared ViewModels and Host Lifecycles",
                 "Koin and Dependency Injection in KMP",
             ),
@@ -129,7 +135,7 @@ internal class BundledLearningCurriculumTest {
         )
 
         // A Unit's home Topic decides where it is browsed, so it is asserted per Unit
-        // rather than as one value: the document now spans seven home Topics.
+        // rather than as one value: the document now spans eight home Topics.
         assertEquals(
             listOf(
                 "android_ui",
@@ -170,6 +176,9 @@ internal class BundledLearningCurriculumTest {
                 "lifecycle_navigation",
                 "lifecycle_navigation",
                 "lifecycle_navigation",
+                "android_platform",
+                "android_platform",
+                "android_platform",
                 "kmp",
                 "kmp",
             ),
@@ -800,6 +809,52 @@ internal class BundledLearningCurriculumTest {
 
         assertEquals(
             listOf(
+                "lesson_android_process_model_and_importance",
+                "lesson_android_components_and_manifest_contract",
+                "lesson_android_context_lifetime_theme_and_services",
+            ),
+            unit("unit_android_processes_components_and_environment").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "Your App Is Not Its Process",
+                "Android Components and the Manifest Form the System Entry Surface",
+                "Context Is an Environment Handle, Not a Lifetime-Free Utility Object",
+            ),
+            unit("unit_android_processes_components_and_environment").lessons.map { it.title },
+        )
+
+        assertEquals(
+            listOf(
+                "lesson_android_intents_filters_and_resolution",
+                "lesson_android_resources_qualifiers_and_selection",
+                "lesson_android_main_thread_looper_and_handler",
+            ),
+            unit("unit_android_runtime_selection_and_dispatch").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf(
+                "Intents Describe Work; Resolution Chooses a Component",
+                "Resources Are Selected From the Current Configuration",
+                "The Main Thread Is a Looper Processing a Queue",
+            ),
+            unit("unit_android_runtime_selection_and_dispatch").lessons.map { it.title },
+        )
+
+        assertEquals(
+            listOf("lesson_android_binder_ipc_and_remote_calls"),
+            unit("unit_android_cross_process_boundaries").lessons.map { it.id },
+        )
+
+        assertEquals(
+            listOf("Binder IPC: Remote Calls Are Not Local Object Calls"),
+            unit("unit_android_cross_process_boundaries").lessons.map { it.title },
+        )
+
+        assertEquals(
+            listOf(
                 "lesson_kmp_viewmodel_owners_across_hosts",
                 "lesson_kmp_lifecycle_collection_across_hosts",
             ),
@@ -829,6 +884,90 @@ internal class BundledLearningCurriculumTest {
             ),
             unit("unit_koin_and_dependency_injection_in_kmp").lessons.map { it.title },
         )
+    }
+
+    @Test
+    fun platformLessonsKeepTheirBlueprintPracticeSupportingAndRelatedMappingsAtEveryDepth() = runTest {
+        val lessons = units().filter { it.topicId == "android_platform" }.flatMap { it.lessons }
+        assertEquals(
+            mapOf(
+                "lesson_android_process_model_and_importance" to (
+                    listOf("android_process_model") to
+                        listOf(
+                            "android_components",
+                            "process_death",
+                            "background_process_death",
+                            "android_memory_model",
+                        )
+                ),
+                "lesson_android_components_and_manifest_contract" to (
+                    listOf("android_components", "android_manifest") to
+                        listOf(
+                            "android_intents",
+                            "android_ipc",
+                            "exported_components",
+                            "content_provider_security",
+                            "services",
+                            "bound_services",
+                        )
+                ),
+                "lesson_android_context_lifetime_theme_and_services" to (
+                    listOf("android_context") to
+                        listOf("android_resources", "context_leaks", "activity_lifecycle")
+                ),
+                "lesson_android_intents_filters_and_resolution" to (
+                    listOf("android_intents") to
+                        listOf("android_manifest", "android_components", "intent_security", "deep_links")
+                ),
+                "lesson_android_resources_qualifiers_and_selection" to (
+                    listOf("android_resources") to
+                        listOf("android_context", "configuration_changes", "build_variants", "source_sets")
+                ),
+                "lesson_android_main_thread_looper_and_handler" to (
+                    listOf("android_main_thread") to
+                        listOf("coroutine_dispatchers", "main_thread_performance", "anr", "strictmode")
+                ),
+                "lesson_android_binder_ipc_and_remote_calls" to (
+                    listOf("android_ipc") to
+                        listOf(
+                            "android_components",
+                            "android_main_thread",
+                            "bound_services",
+                            "content_provider_security",
+                        )
+                ),
+            ),
+            lessons.associate { it.id to (it.primarySubtopicIds to it.supportingSubtopicIds) },
+        )
+        assertEquals(
+            mapOf(
+                "lesson_android_process_model_and_importance" to listOf(
+                    "lesson_recreation_configuration_process_and_dismissal",
+                    "lesson_scope_is_a_rule_owner_is_a_lifetime",
+                ),
+                "lesson_android_components_and_manifest_contract" to listOf(
+                    "lesson_activity_lifecycle_visibility_and_work",
+                    "lesson_when_android_owns_construction",
+                ),
+                "lesson_android_context_lifetime_theme_and_services" to listOf("lesson_viewmodel_owner_and_scope"),
+                "lesson_android_intents_filters_and_resolution" to listOf(
+                    "lesson_deep_links_app_links_and_reconstruction",
+                ),
+                "lesson_android_resources_qualifiers_and_selection" to listOf(
+                    "lesson_recreation_configuration_process_and_dismissal",
+                ),
+                "lesson_android_main_thread_looper_and_handler" to listOf(
+                    "lesson_dispatchers",
+                    "lesson_with_context_and_main_safety",
+                ),
+                "lesson_android_binder_ipc_and_remote_calls" to listOf("lesson_shared_state_and_coordination"),
+            ),
+            lessons.associate { it.id to it.relatedLessonIds },
+        )
+        lessons.forEach { lesson ->
+            assertEquals(listOf("CORE", "PRACTICAL", "SENIOR"), lesson.sections.map { it.depth.name }, lesson.id)
+            assertTrue(lesson.sections.all { it.blocks.isNotEmpty() }, lesson.id)
+        }
     }
 
     @Test

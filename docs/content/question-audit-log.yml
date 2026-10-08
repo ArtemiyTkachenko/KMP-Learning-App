@@ -23,6 +23,77 @@
 # records are reserved for questions that were changed or flagged.
 
 audits:
+  - review: Android Platform bounded assessment integration
+    date: 2026-10-08
+    baseline: 7ab03f367c30abe55973c0c19c8eb552f1b2be1f
+    scope: >-
+      Four new questions justified by the seven-Lesson Platform program. Only these
+      final records received this acceptance gate; no baseline question, answer,
+      explanation, identity, mode, status or taxonomy changed. This is not a
+      semantic audit of the rest of the bank.
+    reviewed: 4
+    active: 4
+    retired: 0
+    deterministic_checks: PASS
+    method: |
+      Separate author, fresh read-only reviewer and correction editor stages.
+      The reviewer sealed C/A/B/D from stems/options before reading keys, levels,
+      explanations or author notes; all keys match. It assessed every option,
+      explanation, source, minimum-sufficient level, nearest semantic neighbors
+      and final lesson teaching support. The editor lowered Intent to FOUNDATION
+      and made component options parallel, concrete implementation choices.
+      The independent reviewer then revalidated the changed final bytes; that
+      follow-up is explicitly not a second blinded solve. All final hard gates pass.
+
+      All six new-question source URLs were independently opened and decisive
+      passages read. A final 41-URL mechanical sweep covers learning and new
+      assessment citations, with successful HTTP/body/anchor checks. Semantic
+      verification is independent evidence, not inferred from URL liveness.
+
+      Production Kotlin validators and codec round trips, both generated-coverage
+      checks, cross-revision identity, 111 Python tests and the mechanical anti-cue
+      sweep pass. The scoped rare-vocabulary neighbor pairs were read for
+      contradictions. Local Gradle was blocked before tests by wrapper-download
+      network failure; exact-head CI results are recorded separately in the draft
+      PR. No Android runtime example execution claimed.
+    summary:
+      status: { PASS: 2, FIXED: 2, REVIEW_REQUIRED: 0, REPLACE: 0 }
+      severity: { BLOCKER: 0, MAJOR: 0, MINOR: 2 }
+      source_verification: { VERIFIED: 4, PARTIALLY_VERIFIED: 0, UNVERIFIED: 0, INVALID: 0 }
+      final_counts:
+        questions: 497
+        active: 456
+        deprecated: 41
+        platform_active: 20
+        single: 450
+        multiple: 47
+        levels_active: { FOUNDATION: 211, APPLIED: 217, ADVANCED: 28 }
+    passed:
+      source_verified:
+        - { n: 494, id: android_resource_partial_translation_fallback }
+        - { n: 496, id: android_main_worker_result_without_wait }
+    findings:
+      - id: android_intent_resolution_action_category_type
+        n: 495
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        issues:
+          - APPLIED overstated the direct filter-contract reasoning required by the final options.
+        changes:
+          - Classified FOUNDATION without adding artificial complexity.
+      - id: android_component_independent_entry_dependency
+        n: 497
+        status: FIXED
+        severity: MINOR
+        confidence: HIGH
+        source_verification: VERIFIED
+        failed_checks: [Q8_OPTIONS_PARALLEL, Q9_NO_ANSWER_CLUES]
+        issues:
+          - Three repeated keep-launcher prefixes cued the independent-loader option.
+        changes:
+          - Expressed all options as affirmative concrete implementation choices with length parity.
   - review: Lifecycle State and Navigation bounded assessment integration
     date: 2026-10-07
     baseline: 4f9cf13649a5bb7cb71e763dc90478b743cf039c

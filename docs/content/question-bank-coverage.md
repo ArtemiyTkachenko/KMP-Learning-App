@@ -3,7 +3,7 @@
 ## Purpose
 
 This document records **what the interview question bank currently covers**, so
-that planning the next expansion does not require re-reading all 493 questions.
+that planning the next expansion does not require re-reading all 497 questions.
 A full coverage review is expensive; this is the checkpoint that replaces it.
 
 `docs/content/content-authoring.md` is the editorial contract and
@@ -87,21 +87,21 @@ its current output is reproduced under **Audit baselines** below.
 
 | Metric | Value |
 |---|---:|
-| Total questions | 493 |
-| ACTIVE | 452 |
+| Total questions | 497 |
+| ACTIVE | 456 |
 | DEPRECATED | 41 |
 | Topics | 17 |
 | Subtopics | 361 (360 ACTIVE, 1 DEPRECATED) |
 | Subtopics with ≥1 active question | 293 (81%) |
 | Subtopics with 0 active questions | 68 (67 ACTIVE, plus the DEPRECATED `koin_multiplatform`) |
-| SINGLE | 446 |
+| SINGLE | 450 |
 | MULTIPLE | 47 |
 | — of which exactly one correct answer | 3 |
-| Answer options | 1978 (487 questions with 4 options, 6 with 5) |
-| Source references | 676 across 365 unique URLs |
+| Answer options | 1994 (491 questions with 4 options, 6 with 5) |
+| Source references | 682 across 369 unique URLs |
 
-Subtopic depth distribution: **68** subtopics have 0 questions, **193** have 1,
-**65** have 2, **24** have 3, **6** have 4, **3** have 5, **1** has 8, and **1**
+Subtopic depth distribution: **68** subtopics have 0 questions, **192** have 1,
+**64** have 2, **25** have 3, **7** have 4, **3** have 5, **1** has 8, and **1**
 has 10.
 
 <!-- END GENERATED: question-bank-headline -->
@@ -109,7 +109,8 @@ has 10.
 The bank still averages roughly one question per subtopic, and the taxonomy is
 deliberately wider than the content, so most subtopics sitting at 1 is the
 designed steady state rather than a deficiency. The deliberate exceptions are the
-Topics whose learning Units were given practice pools: `architecture` at 2.22 per
+Topics whose learning Units were given practice pools: `android_platform` at 2.50,
+`architecture` at 2.22 per
 subtopic after E26-08, `async_reactive` at 2.19 after E24-08, `android_ui` at 2.04
 after E25-08, and `dependency_injection` at 1.52 after E27-08. The single subtopic
 holding ten questions is `compose_side_effects`, the sole primary concept of
@@ -126,11 +127,11 @@ where the next expansion should look first.
 
 | Topic | `topicId` | Active | Subtopics | Covered | Empty | Density |
 |---|---|---:|---:|---:|---:|---:|
+| Android Platform & Application Model | `android_platform` | 20 | 8 | 8 | 0 | 2.50 |
 | Lifecycle, State & Navigation | `lifecycle_navigation` | 27 | 11 | 11 | 0 | 2.45 |
 | Application Architecture & Design Principles | `architecture` | 40 | 18 | 18 | 0 | 2.22 |
 | Coroutines, Flow & Reactive Programming | `async_reactive` | 57 | 26 | 24 | 2 | 2.19 |
 | UI — Views & Jetpack Compose | `android_ui` | 49 | 24 | 20 | 4 | 2.04 |
-| Android Platform & Application Model | `android_platform` | 16 | 8 | 8 | 0 | 2.00 |
 | Dependency Injection | `dependency_injection` | 38 | 25 | 24 | 1 | 1.52 |
 | Kotlin Language & JVM Fundamentals | `kotlin_language` | 34 | 23 | 22 | 1 | 1.48 |
 | Local Persistence & Offline Data | `local_data` | 20 | 19 | 16 | 3 | 1.05 |
@@ -143,7 +144,7 @@ where the next expansion should look first.
 | Mobile System Design | `mobile_system_design` | 17 | 24 | 16 | 8 | 0.71 |
 | Build System, Modularization & Delivery | `build_delivery` | 17 | 25 | 15 | 10 | 0.68 |
 | Notifications & Push Messaging | `notifications` | 12 | 18 | 11 | 7 | 0.67 |
-| **Total** | | **452** | **361** | **293** | **68** | **1.25** |
+| **Total** | | **456** | **361** | **293** | **68** | **1.26** |
 
 <!-- END GENERATED: question-bank-topic-coverage -->
 
@@ -166,9 +167,9 @@ Current output of the `docs/content/question-authoring-playbook.md` Part 3 scrip
 the whole bank:
 
 ```
-correct-longest 188/449 (42%), mean ratio 1.03, over 10% limit: 0
+correct-longest 189/453 (42%), mean ratio 1.03, over 10% limit: 0
 absolutes: distractors 0.23/opt, correct 0.13/opt
-position: {0: 27%, 1: 28%, 2: 26%, 3: 19%, 4: 1%}
+position: {0: 27%, 1: 27%, 2: 26%, 3: 19%, 4: 1%}
 ```
 
 The Kotlin/JVM expansion combined a complete 341-URL baseline sweep with checks for
@@ -502,8 +503,11 @@ constraints/chaining/retries/expedited/long-running/reboot persistence · Servic
 foreground services, bound services, Doze, AlarmManager vs WorkManager ·
 notification channels, importance, permission, trampolines, back stack, actions ·
 FCM tokens, priority, app-state behaviour, delivery guarantees, handling window ·
-main thread and Looper/Handler/MessageQueue · Binder IPC · Context selection ·
-intent filters · process importance · sandbox and permission model · Keystore and
+main thread and Looper/Handler/MessageQueue, including worker results without
+waiting on main · Binder IPC · Context selection · intent filters, including
+carried categories and concrete MIME matching · per-entry partial-translation
+fallback · initialization for independent external component entry · process
+importance · sandbox and permission model · Keystore and
 auth-bound keys · PendingIntent mutability · WebView JS bridge · network security
 config · secret recoverability · root detection · GC reachability, leaks, heap
 limits, ANR, jank, startup, R8, Baseline Profiles, StrictMode, profiling modes ·
@@ -531,14 +535,14 @@ trade-offs.
   deprecated-only and several others have a retired predecessor whose concept is
   still taken.
 - **Author 15–25% of a new batch as MULTIPLE.** The bank sits at 9.5%
-  (47/493) because the earliest content used fewer, and E24-08 authored none —
+  (47/497) because the earliest content used fewer, and E24-08 authored none —
   every one of its nineteen questions asks for a single prediction or decision,
   which `SINGLE` expresses honestly. The band to aim for is still 15–25%. Only three questions in the whole bank are
   MULTIPLE with a single correct answer — keep authoring some that way, or
   `selectionMode` stays inferable from the answer key.
 - **Every question in the bank has 4 options except 6 with 5.** Stay at 4 unless
   there is a specific reason.
-- **Source hosts, for reference:** developer.android.com 395 · kotlinlang.org 160
+- **Source hosts, for reference:** developer.android.com 401 · kotlinlang.org 160
   · github.com 37 (kotlinx.serialization, OkHttp, Retrofit and SQLDelight —
   `square.github.io` returns 404, so each project's own repository is the primary
   source — plus four androidx runtime files cited where a contract is stated only
@@ -564,17 +568,17 @@ target subtopic here before authoring to avoid a near-duplicate.
 
 ### Android Platform & Application Model
 
-`android_platform` — **16 active** across 8 subtopics (8 covered, 0 empty)
+`android_platform` — **20 active** across 8 subtopics (8 covered, 0 empty)
 
 | Subtopic | n | Question IDs |
 |---|---:|---|
 | `android_process_model` — Application and process model | 2 | `android_process_model_001`, `process_importance_reclaim_order` |
-| `android_components` — Android application components | 2 | `content_provider_uri_permission_grant`, `android_component_process_lifetime` _(deprecated: `android_components_001`)_ |
+| `android_components` — Android application components | 3 | `content_provider_uri_permission_grant`, `android_component_process_lifetime`, `android_component_independent_entry_dependency` _(deprecated: `android_components_001`)_ |
 | `android_context` — Context | 2 | `android_context_001`, `android_context_theme_inflation` |
-| `android_intents` — Intents | 2 | `android_intents_001`, `android_intent_filter_matching` |
+| `android_intents` — Intents | 3 | `android_intents_001`, `android_intent_filter_matching`, `android_intent_resolution_action_category_type` |
 | `android_manifest` — Manifest and application configuration | 1 | `android_manifest_component_exported` |
-| `android_resources` — Android resources and qualifiers | 1 | `android_resources_001` |
-| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 3 | `android_main_thread_001`, `android_looper_message_queue`, `handler_looper_message_queue_roles` |
+| `android_resources` — Android resources and qualifiers | 2 | `android_resources_001`, `android_resource_partial_translation_fallback` |
+| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 4 | `android_main_thread_001`, `android_looper_message_queue`, `handler_looper_message_queue_roles`, `android_main_worker_result_without_wait` |
 | `android_ipc` — Android IPC fundamentals | 3 | `android_ipc_binder_contract`, `binder_ipc_marshalling_boundary`, `binder_thread_pool_ui_handoff` |
 
 ### Lifecycle, State & Navigation

@@ -24824,6 +24824,1285 @@
       "status": "ACTIVE"
     },
     {
+      "id": "unit_android_processes_components_and_environment",
+      "topicId": "android_platform",
+      "title": "Processes, Components and Android Environment",
+      "lessons": [
+        {
+          "id": "lesson_android_process_model_and_importance",
+          "title": "Your App Is Not Its Process",
+          "primarySubtopicIds": [
+            "android_process_model"
+          ],
+          "supportingSubtopicIds": [
+            "android_components",
+            "process_death",
+            "background_process_death",
+            "android_memory_model"
+          ],
+          "relatedLessonIds": [
+            "lesson_recreation_configuration_process_and_dismissal",
+            "lesson_scope_is_a_rule_owner_is_a_lifetime"
+          ],
+          "summary": "Android can remove a process together with its heap, threads and ordinary singletons. Active components and their dependencies influence how important the process is; retaining objects in memory does not preserve them across a later start.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An installed application and a running process have different lifetimes. The installed package supplies code and resources. A process is a running environment in which that code can execute. Android creates the process when a component needs it and can reclaim it when other work needs the resources. Opening the launcher is one possible reason to start it; it is not the only one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Most applications run their components together in one process. That process contains their heap, ordinary static fields and Kotlin objects, application-wide collaborators, and threads. A reference from a singleton can keep another object reachable while the process exists. It cannot keep the process itself alive."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Process removal ends all of that execution and memory together. A later entry creates new objects in a fresh process; the previous singleton is not waiting somewhere to be retrieved. Information already recorded outside the heap, such as a successfully written file or server-side record, has a different lifetime. That information still needs to be read into new objects."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A component can end without the process ending. Android may keep the process cached so a later return avoids some startup work. A stopped screen and a populated cache can therefore remain in memory for a while. Cached retention is an optimization the system may withdraw, not a promise that the cache will survive."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android ranks processes by their current importance to the user. It tries to reclaim less important processes before more important ones. The rank comes from active components and dependencies, rather than the number of references in the heap or a simple oldest-process-first rule."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Current situation",
+                    "Importance consequence"
+                  ],
+                  "rows": [
+                    [
+                      "The user is interacting with the top Activity, or a receiver is currently executing onReceive",
+                      "Foreground importance: interrupting the process would interrupt current work."
+                    ],
+                    [
+                      "A visible Activity is not the foreground Activity, or a foreground service is running",
+                      "Visible importance: the user is aware of the work even without direct interaction."
+                    ],
+                    [
+                      "A started service is doing work without a stronger active component",
+                      "Service importance, subject to system policy; it is not a permanent reservation of memory."
+                    ],
+                    [
+                      "No active work or dependent client requires the process",
+                      "Cached importance: among the first reclamation candidates."
+                    ]
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Higher importance improves the chance of staying alive. No ordinary component, including a foreground service, makes its process impossible to remove."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider a reading application that keeps the last opened page in an ordinary singleton. Reopening the screen in the same process appears to preserve the page, so the feature can pass repeated manual checks. After the system removes the background process, the same code starts with its initial value."
+                },
+                {
+                  "type": "code",
+                  "code": "object ReadingMemory {\n    var lastOpenedPage: Int = 0\n}\n\n// An in-process update after opening page 42.\nReadingMemory.lastOpenedPage = 42",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The assignment changes one running process. It does not record page 42 outside that process. If remembering the page is a product requirement, the page-opening action needs an appropriate saved-state or durable-data mechanism. The choice depends on whether the value belongs to an ongoing screen interaction or must survive a fresh launch. Moving this property into Application, a static field, or an application-wide dependency graph changes who retains it, not its durability."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Application is the process-wide application object Android makes available to components. It is useful for shared process setup and collaborators, but its fields still belong to the current heap. A fresh process gets fresh application state. Application.onTerminate is not a production-device shutdown notification; Android removes a process without executing that callback."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A finish call on one Activity says something about that Activity, not about every other component hosted with it. A service or another Activity may still be active. Conversely, a process can be removed without a complete sequence of destruction callbacks. A final onDestroy write cannot be the only protection for valuable data."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Importance can change during a short interaction. While a BroadcastReceiver is executing onReceive, its process has foreground importance even if no screen is visible. After the callback returns, that reason for protection ends. Merely starting a thread from the receiver does not tell Android that a component is still performing recognized work. Work that outlasts the callback needs a suitable system-managed execution contract."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Dependencies matter as well as local UI. Suppose a visible client binds with BIND_AUTO_CREATE to a service in another process. The documented dependency can raise the server process to at least the client’s importance. Using a provider in another process can also raise its importance. A server with no screen can therefore be important because another active process needs it; binding flags and the specific dependency contract matter."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A cache can improve the warm path without becoming the source of truth. Code that consumes it needs a cache-miss path that also works after a new process starts. A missing cache entry is an ordinary starting condition, rather than proof that another screen forgot to initialize it."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Garbage collection and process reclamation operate at different levels. The collector finds objects that running code can no longer reach and recovers space within a live heap. The system can instead remove the entire process, including objects the collector would keep because static fields still reach them. Strong references solve in-process reachability; they do not participate in the system’s process-importance contract."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Importance describes current obligations, not an app’s overall reputation or the age of its process. Several components can coexist, and the most important active component contributes the strongest reason to retain the process. Dependencies can strengthen that reason further. Exact ordering among cached processes is platform policy, so correctness should not depend on predicting which cached process will be evicted next."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Keeping a process cached also does not guarantee useful execution time. From Android 13, cached processes can receive limited or no execution time until they become active again. A background loop that happens to keep running on one device is insufficient evidence for a reliable work contract."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A component can be assigned another process with android:process. This creates a real address-space boundary. An ordinary Kotlin object named ReadingMemory in each process represents separate memory, and each process has its own application environment. Sharing changes then needs an explicit communication or storage contract. Moving a component to another process trades isolation against extra startup, memory and coordination costs; it is not a free extension of a singleton’s lifetime."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Component lifetime and process lifetime are related without being identical.",
+                    "Heap retention can speed a return, but a new process must work without the old heap.",
+                    "Active components and dependent clients influence importance; references do not prevent process removal.",
+                    "Record valuable information through the mechanism its required lifetime needs."
+                  ]
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "Processes and app lifecycle",
+              "url": "https://developer.android.com/guide/components/activities/process-lifecycle"
+            },
+            {
+              "title": "Processes and threads overview",
+              "url": "https://developer.android.com/guide/components/processes-and-threads"
+            },
+            {
+              "title": "Application reference: onTerminate and process application state",
+              "url": "https://developer.android.com/reference/android/app/Application"
+            },
+            {
+              "title": "Application fundamentals",
+              "url": "https://developer.android.com/guide/components/fundamentals"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_android_components_and_manifest_contract",
+          "title": "Android Components and the Manifest Form the System Entry Surface",
+          "primarySubtopicIds": [
+            "android_components",
+            "android_manifest"
+          ],
+          "supportingSubtopicIds": [
+            "android_intents",
+            "android_ipc",
+            "exported_components",
+            "content_provider_security",
+            "services",
+            "bound_services"
+          ],
+          "relatedLessonIds": [
+            "lesson_activity_lifecycle_visibility_and_work",
+            "lesson_when_android_owns_construction"
+          ],
+          "summary": "Android enters an application through declared components rather than one mandatory UI path. Component declarations, intent filters, exported boundaries and provider authorities determine how the system can deliver work or data requests.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An email application can ask a document viewer to open an attachment without first opening the viewer’s home screen. Android finds an eligible component, starts its hosting process if necessary, and delivers the request. The document viewer needs an entry that works directly with that request, even when no other screen has run."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android’s four core component types expose different kinds of entry. They are framework-visible contracts, rather than labels for every class that performs similar work. A repository that reads files is not a ContentProvider unless it implements and declares that platform boundary."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Component",
+                    "System-facing role",
+                    "Engineering consequence"
+                  ],
+                  "rows": [
+                    [
+                      "Activity",
+                      "A user-facing entry that can host a UI",
+                      "It may be opened directly by an allowed caller; its startup cannot require a visit to another screen."
+                    ],
+                    [
+                      "Service",
+                      "A component without its own UI, used for work or a client-facing API",
+                      "A client can start or bind to it under the platform’s rules. Declaring a Service does not create a worker thread."
+                    ],
+                    [
+                      "BroadcastReceiver",
+                      "An entry that receives a delivered broadcast event",
+                      "Its callback is for bounded work; the existence of a receiver class does not reserve ongoing execution."
+                    ],
+                    [
+                      "ContentProvider",
+                      "A URI-addressed boundary for data, accessed through ContentResolver",
+                      "The provider can expose files or other named data without exposing its internal storage design."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Activities, services and manifest-declared receivers are activated using Intents through the relevant system API. A ContentResolver request instead identifies a provider by a content URI. Calls to a bound service or provider may cross a process boundary depending on where the endpoint runs. They are not necessarily calls to an object in the caller’s heap."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The manifest tells Android which component implementations exist and how they are exposed. A class in source code is not, by that fact alone, a system-launchable Activity or Service. The installed declaration names the implementation and records capabilities and access-related metadata. The manifest also describes requirements such as permissions and device features; those declarations have runtime meaning beyond producing a build artifact."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Receivers can also be registered at runtime through a Context. Such a registration exists while its registration and registering environment remain valid; it is not a persistent declaration that can revive a removed process. Manifest delivery and runtime registration also have broadcast-specific restrictions, so neither should be treated as a promise to receive every event."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The system-visible entry can outlive a particular component instance. Android may keep a process cached after a component stops, or remove the process and create a new instance for later work. A started service changes the system’s view of active work, but it does not guarantee that the hosting process survives."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider an application with an internal editing screen and a public entry for opening a PDF. This manifest fragment belongs inside an application element; the enclosing manifest supplies the Android XML namespace. Both Activity classes must also exist."
+                },
+                {
+                  "type": "code",
+                  "code": "<activity\n    android:name=\"com.example.documents.EditorActivity\"\n    android:exported=\"false\" />\n\n<activity\n    android:name=\"com.example.documents.OpenDocumentActivity\"\n    android:exported=\"true\">\n    <intent-filter>\n        <action android:name=\"android.intent.action.VIEW\" />\n        <category android:name=\"android.intent.category.DEFAULT\" />\n        <data android:mimeType=\"application/pdf\" />\n    </intent-filter>\n</activity>",
+                  "language": "xml"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "EditorActivity expresses an internal launch boundary for ordinary callers from other apps. Components of the same app can still name it explicitly. The platform also has same-UID and privileged-system exceptions, so exported=false is not a universal statement about every possible caller. OpenDocumentActivity declares an external capability and accepts the normal implicit Activity-launch category. The filter helps choose a target; exported decides whether an ordinary external caller may reach it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Removing a filter changes discovery through implicit requests. It does not make an exported Activity private: an external caller can name an exposed component. Likewise, debuggable controls debugging, rather than expressing an internal component boundary. Exposure, accepted request format, and caller authorization are separate decisions."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For apps targeting Android 12, API 31, or higher, Activities, Services and BroadcastReceivers with intent filters must explicitly declare android:exported. Without it, the app cannot install on Android 12 or higher. The requirement has both a target-SDK condition and a component/filter condition; it is not the same declaration rule for every component type."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Providers have a different address. In content://com.example.documents.files/reports/quarter.pdf, com.example.documents.files is the authority naming the provider, and the remaining path identifies data within its namespace. ContentResolver sends the request to that provider. Knowing the URI does not by itself grant permission to read it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A common file-sharing requirement is to let a chosen viewer read one report while keeping other files private. FileProvider can translate an allowed file into a content URI. Its declaration can stay exported=false and allow URI grants. grantUriPermissions makes eligible data grantable; it does not give every app access automatically. The actual handoff names a URI and a read or write mode."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "In this Activity-result fragment, the user has selected an already-created PDF. The FileProvider authority and paths metadata are configured for files/reports/, and the original requesting app receives the result. AndroidX Core supplies FileProvider; imports and the selection UI are omitted."
+                },
+                {
+                  "type": "code",
+                  "code": "val report = File(filesDir, \"reports/quarter.pdf\")\nval uri = FileProvider.getUriForFile(\n    this,\n    \"com.example.documents.files\",\n    report,\n)\nval result = Intent().apply {\n    setDataAndType(uri, \"application/pdf\")\n    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)\n}\nsetResult(Activity.RESULT_OK, result)\nfinish()",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The grant allows the receiving app to read that URI without generally exporting the provider. There is no write flag or prefix grant in the example, so it does not delegate editing or a whole path tree. The documented Activity-result grant expires when the receiving task stack finishes. Other grant mechanisms have different lifetimes; a direct grantUriPermission call requires explicit revocation. FileProvider also rejects files outside its configured paths."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "An exported component is an external API entry, even if its implementation normally runs after an internal navigation step. Consider OpenDocumentActivity reading an in-memory “selected account” set only by EditorActivity. Direct launch can occur in a fresh process where that field has its initial value. The entry needs to establish the required account and document inputs through its own valid dependencies and request handling, rather than inheriting an assumed UI history."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An intent filter is still not authorization or evidence that incoming extras are trustworthy. On Android 13 and higher, external Intents delivered to exported, filtered components of an app targeting API 33 or higher must match declared actions and categories, including when the component is explicitly named. The documented exceptions include components without filters and requests from the same app, system UID or root. This adds an incoming-request check; it does not establish a caller’s right to perform a sensitive operation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a provider, broad external availability and one temporary URI capability are different contracts. Keeping the provider unexported can coexist with a valid temporary grant for one item. The recipient can use that capability through ContentResolver while it is valid, without gaining access to unrelated provider data. A URI names the item; the grant supplies access under a defined mode and lifetime."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Declaration, activation and process placement each answer a different runtime question: which entry exists, whether this request may enter, and where the code executes. Reviewing those together reveals failures that class-level review misses, such as a public entry depending on a private screen’s transient state or a data call unexpectedly crossing into a different process."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "System entry can occur independently of the app’s normal UI path.",
+                    "Filters describe accepted capabilities; exported boundaries and authorization have separate roles.",
+                    "Provider authorities route data requests, and URI grants can delegate narrow access.",
+                    "A declaration makes an entry known to Android without making its process immortal."
+                  ]
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "Application fundamentals: components and system activation",
+              "url": "https://developer.android.com/guide/components/fundamentals"
+            },
+            {
+              "title": "Activity manifest element: exported",
+              "url": "https://developer.android.com/guide/topics/manifest/activity-element#exported"
+            },
+            {
+              "title": "Android 12 target behavior: safer component exporting",
+              "url": "https://developer.android.com/about/versions/12/behavior-changes-12#exported"
+            },
+            {
+              "title": "Provider manifest element: authorities and URI grants",
+              "url": "https://developer.android.com/guide/topics/manifest/provider-element"
+            },
+            {
+              "title": "Sharing a file: URI permission handoff",
+              "url": "https://developer.android.com/training/secure-file-sharing/share-file"
+            },
+            {
+              "title": "Setting up file sharing: provider paths",
+              "url": "https://developer.android.com/training/secure-file-sharing/setup-sharing"
+            },
+            {
+              "title": "Broadcasts overview: receiver registration",
+              "url": "https://developer.android.com/develop/background-work/background-tasks/broadcasts"
+            },
+            {
+              "title": "Services overview: component and execution thread",
+              "url": "https://developer.android.com/develop/background-work/services"
+            },
+            {
+              "title": "Intents and intent filters: external intent enforcement",
+              "url": "https://developer.android.com/guide/components/intents-filters"
+            }
+          ],
+          "status": "ACTIVE"
+        },
+        {
+          "id": "lesson_android_context_lifetime_theme_and_services",
+          "title": "Context Is an Environment Handle, Not a Lifetime-Free Utility Object",
+          "primarySubtopicIds": [
+            "android_context"
+          ],
+          "supportingSubtopicIds": [
+            "android_resources",
+            "context_leaks",
+            "activity_lifecycle"
+          ],
+          "relatedLessonIds": [
+            "lesson_viewmodel_owner_and_scope"
+          ],
+          "summary": "A Context supplies an Android environment, including resources, theme and services. Choosing one requires both the environment an operation needs and the lifetime of the object that will retain it.",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A reusable UI factory can create the same layout with different colors depending on the Context it receives. A repository can retain the wrong Context and keep an obsolete screen reachable. Both behaviors follow from Context carrying an environment and participating in an object-reference chain."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Context is Android’s abstraction for access to resources, package information, private files, component operations and system services. These methods operate within a particular environment. Two Context instances are not interchangeable merely because both expose getString or getSystemService."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Application Context belongs to the application environment in the current process. It is separate from an individual Activity’s lifetime. An Activity is also a Context, with the theme and UI-related environment for that Activity. A Service provides a Context for its component environment, without being a substitute for the current screen’s UI Context."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A View holds the Context used to create it. That is often an Activity or a themed wrapper associated with the UI. A parent View’s context is therefore useful when a child should inherit that part of the UI environment. It is not guaranteed to be the Activity object itself, and detaching the View does not turn its Context into an application-wide one."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Retaining an Activity Context keeps a reference to that Activity. When a process-wide repository retains it after the screen ends, the Activity can stay reachable through the repository even though it no longer represents the current UI. The same risk exists when the repository retains a View, inflater, or callback that indirectly reaches the Activity."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A ContextWrapper delegates to a base Context and can alter selected behavior. ContextThemeWrapper can modify or replace the base theme. A wrapper around an Activity still holds the Activity through its base relationship; changing the wrapper type does not remove that ownership chain."
+                },
+                {
+                  "type": "callout",
+                  "kind": "KEY_TAKEAWAY",
+                  "text": "Choose a Context by asking which environment the operation requires and which owner will retain it. A safe lifetime and a suitable theme or configuration are independent requirements."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider a process-wide repository that needs ordinary application string resources and never creates UI. Retaining Application Context avoids tying the repository to whichever Activity first constructed it. This Android Kotlin fragment uses an invented string resource; imports and the surrounding repository operations are omitted."
+                },
+                {
+                  "type": "code",
+                  "code": "class DocumentLabels(context: Context) {\n    private val appContext = context.applicationContext\n\n    fun unnamedDocument(): String =\n        appContext.getString(R.string.unnamed_document)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The constructor receives any suitable application-component Context, then retains its application environment. The original parameter is not stored as a property. This is appropriate because the operation needs app resources, not the current screen theme. Application Context still ends with the process; this choice avoids Activity retention without adding persistence."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The string is resolved when requested rather than captured once in the constructor. Resource values can depend on configuration, such as language. A long-lived object that caches the rendered string forever can show a stale value even when the Context itself is safe to retain. Lifetime safety does not guarantee that previously derived values remain appropriate."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A UI factory has a different requirement. If a row belongs to the current themed parent, use that parent’s Context for inflation. The caller invokes this function on the UI thread; document_row is an XML layout. The function returns an unattached child whose layout parameters are derived from the parent."
+                },
+                {
+                  "type": "code",
+                  "code": "fun createDocumentRow(parent: ViewGroup): View =\n    LayoutInflater.from(parent.context).inflate(\n        R.layout.document_row,\n        parent,\n        false,\n    )",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Layout inflation consults the supplied Context’s theme for attribute defaults. A parent can already use a theme overlay, so switching to an unrelated Application Context can lose that environment. The result might have incorrect colors or text appearance, or fail if the widget requires theme attributes that the supplied environment lacks. Keeping this factory stateless avoids retaining a screen Context after the call; the resulting View still belongs to its UI owner."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "When an intentional theme override is needed, a ContextThemeWrapper around the current UI Context can supply it. The wrapper should follow the UI’s lifetime. Storing it in a global factory keeps its base Activity reachable just as storing the Activity directly would."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "System-service lookup is also environment access. A Context can return a service manager or other handle, while the underlying work may be owned by Android elsewhere. Acquiring a handle does not make its operations unrestricted, thread-safe, or valid for every display and window. Use the service’s contract to choose a Context and manage registrations or listeners; replacing an Activity Context with Application Context does not perform that cleanup."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a screen-scoped receiver registration, the registration should end with the intended screen scope. Registering through Application Context can make the registration process-scoped instead. If the receiver captures the Activity, the longer registration can still retain it. A longer-lived Context cannot repair a callback whose captured owner is short-lived."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Context choice involves two axes. One is ownership: which objects remain reachable for how long? The other is semantics: which package, configuration, theme and UI environment does the operation observe? A repository can be free of Activity references yet resolve the wrong localized value. A correctly themed wrapper can produce the right View yet leak its base Activity when retained too long."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Requirement",
+                    "Environment and retention decision"
+                  ],
+                  "rows": [
+                    [
+                      "Read ordinary app resources from a process-wide collaborator",
+                      "Application Context is suitable when its configuration and app resources meet the requirement. Resolve values when needed."
+                    ],
+                    [
+                      "Create a child View with the parent’s styling",
+                      "Use the current parent’s themed Context and keep the View and related handles with the UI owner."
+                    ],
+                    [
+                      "Apply a theme overlay to one UI region",
+                      "Use an appropriate themed wrapper whose retention follows that UI region."
+                    ],
+                    [
+                      "Resolve resources under a deliberate configuration override",
+                      "Use a configuration Context for that operation; do not silently replace it with a different environment."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "createConfigurationContext illustrates the environment model directly. On API 17 and higher it creates a Context whose resources reflect the supplied configuration overrides. Other configuration values can still follow changes in the base. Replacing it with applicationContext can discard the intended override, so normalizing every Context indiscriminately can change behavior. This API changes resource lookup; it does not restore UI state or decide an Activity’s lifecycle."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A long-lived collaborator can sometimes avoid retaining Context at all. If it needs only a document label at the moment an export begins, passing that value may make the requirement clearer. If it must repeatedly resolve Android resources, a deliberately chosen Context can be reasonable. Narrowing the dependency helps expose the choice, but does not eliminate configuration decisions: a label captured earlier can still be stale."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An ownership review follows indirect references as well as fields typed Context. A cached LayoutInflater has an environment; a cached View has a Context; a registered listener can capture a screen. Moving those into a process-wide holder extends their reachability even when the holder has no Activity-typed property. Conversely, a screen-owned helper using the current Activity Context can be exactly right when it is released with that screen."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Application Context suits app-wide non-UI operations when its environment is sufficient.",
+                    "Current themed UI Context suits styling and inflation tied to that UI.",
+                    "Wrappers can change behavior while retaining their base Context.",
+                    "Review both the retained reference chain and the meaning of the environment used."
+                  ]
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "Context reference: application, configuration and service access",
+              "url": "https://developer.android.com/reference/android/content/Context"
+            },
+            {
+              "title": "ContextWrapper: delegation to a base Context",
+              "url": "https://developer.android.com/reference/android/content/ContextWrapper"
+            },
+            {
+              "title": "ContextThemeWrapper: themed environment",
+              "url": "https://developer.android.com/reference/android/view/ContextThemeWrapper"
+            },
+            {
+              "title": "LayoutInflater: Context and View theme",
+              "url": "https://developer.android.com/reference/android/view/LayoutInflater"
+            },
+            {
+              "title": "Broadcasts overview: registration lifetime",
+              "url": "https://developer.android.com/develop/background-work/background-tasks/broadcasts"
+            }
+          ],
+          "status": "ACTIVE"
+        }
+      ],
+      "summary": "Android manages the processes that host component entry points. The manifest makes those entry points visible to the system, while Context supplies the environment in which their code operates.",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_android_runtime_selection_and_dispatch",
+      "topicId": "android_platform",
+      "title": "Runtime Selection and Dispatch",
+      "lessons": [
+        {
+          "id": "lesson_android_intents_filters_and_resolution",
+          "title": "Intents Describe Work; Resolution Chooses a Component",
+          "primarySubtopicIds": [
+            "android_intents"
+          ],
+          "supportingSubtopicIds": [
+            "android_manifest",
+            "android_components",
+            "intent_security",
+            "deep_links"
+          ],
+          "relatedLessonIds": [
+            "lesson_deep_links_app_links_and_reconstruction"
+          ],
+          "summary": "An Intent either names a component or describes a request for Android to resolve. A compatible filter establishes a candidate target; access rules and the receiving component’s interpretation still determine what can happen.",
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A document app can open its own editor because it knows which component implements that feature. Opening the document in an installed viewer is a different request: the caller knows the operation and the document, but may know nothing about the receiving app. Android supports both through Intents, messages used to start Activities or Services and to deliver broadcasts."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An explicit Intent contains a component name: a package and component class. An implicit Intent leaves the component unspecified and describes an action, data and categories. Android compares that description with component intent filters to discover compatible targets. Restricting an implicit Intent to a package narrows the search; it still does not name a particular component."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The action says what is requested, such as viewing a document or sharing text. Data describes what the action operates on through a URI, a MIME type, or both. Categories add requirements for the kind of component that can handle the request. Extras carry information for the receiving code, such as shared text or an internal document identifier. An extra named document_type does not substitute for setting the Intent’s MIME type during resolution."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A component can have several filters. For ordinary implicit resolution, the request must pass the action, category and data tests within at least one whole filter. It cannot borrow an action from one filter and a data declaration from another. A declared action must accept the requested action. Every category carried by the Intent must appear in that filter; extra categories declared by the filter do not require the sender to add them."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Normal implicit startActivity matching also requires the filter to include CATEGORY_DEFAULT. The launch API treats the request as requiring that category even when the caller did not explicitly add it. DEFAULT is eligibility for this kind of Activity launch, not a declaration that this Activity is the user’s preferred application. A launcher filter with MAIN and LAUNCHER serves a different discovery request."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The data test considers URI and MIME type together. A filter with no data declarations accepts a request with neither URI nor type; it is not a wildcard for arbitrary documents. A URI-only request with no explicit or inferred type needs compatible URI declarations and no filter MIME requirement. A MIME-only request needs a compatible MIME declaration without a URI constraint. When both URI and type are present, both must be accepted, with a useful exception: a MIME-only filter can also accept a matching type with a content: or file: URI. That matching allowance does not make a raw file URI a suitable cross-app sharing mechanism."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "After matching, Android still has to select a target. Multiple eligible Activities can lead to a resolver or chooser, while a prior user choice can affect ordinary launching. No eligible target can produce ActivityNotFoundException. Filter matching determines candidates; it does not promise that a particular installed app will open or that its code can read the supplied data."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider an exported image viewer that accepts viewing provider-backed images. This fragment sits inside the application element of its manifest. ImageViewerActivity is declared as an external entry point; the filter describes one capability."
+                },
+                {
+                  "type": "code",
+                  "code": "<activity android:name=\".ImageViewerActivity\" android:exported=\"true\">\n    <intent-filter>\n        <action android:name=\"android.intent.action.VIEW\" />\n        <category android:name=\"android.intent.category.DEFAULT\" />\n        <data android:mimeType=\"image/*\" />\n    </intent-filter>\n</activity>",
+                  "language": "xml"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A caller can supply a content URI and image/png. The MIME declaration accepts that type, the MIME-only filter admits the content scheme, and DEFAULT makes the viewer eligible for a normal implicit Activity launch. Changing the action to SEND would fail this filter even though the bytes are still an image. Adding BROWSABLE to the Intent would fail the category test because this filter does not declare it. Declaring BROWSABLE in the filter instead would not force every sender to include it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a viewing request, use setDataAndType when supplying both values. Calling setData and then setType clears the previously supplied URI; reversing those calls clears the type. The following Activity method fragment assumes photoUri is a valid, shareable content URI for an image the caller can grant permission to read."
+                },
+                {
+                  "type": "code",
+                  "code": "val viewRequest = Intent(Intent.ACTION_VIEW).apply {\n    setDataAndType(photoUri, \"image/png\")\n    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)\n}\ntry {\n    startActivity(viewRequest)\n} catch (missingViewer: ActivityNotFoundException) {\n    showViewerUnavailable()\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "showViewerUnavailable is an application UI function for explaining that no viewer is available. The read flag delegates access under the provider’s grant contract; it does not change which MIME types match. A matching Activity without data access can be selected and then fail to load the image. Conversely, access to a URI does not make an Activity compatible with an unsupported action or type."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A URI-specific filter can narrow the accepted scheme, authority and path. For example, a URI-only VIEW filter declaring scheme parcelnotes and host documents accepts parcelnotes://documents/42 if it has no MIME constraint and the request has no inferred type. A filter declaring only that scheme admits other authorities and paths using it. Declare the parts that matter to the capability rather than assume the action supplies those restrictions."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For an internal editor whose implementation is known, naming the component expresses the requirement directly:"
+                },
+                {
+                  "type": "code",
+                  "code": "val editRequest = Intent(this, DocumentEditorActivity::class.java)\n    .putExtra(\"com.example.parcelnotes.DOCUMENT_ID\", documentId)\nstartActivity(editRequest)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This Activity fragment assumes DocumentEditorActivity is declared and documentId is valid application input. The editor receives the extra and interprets it; Android does not use that identifier to resolve a filter. For Service operations, use an explicit component too. An implicit service request can reach an unintended service without a visible user choice, and bindService rejects implicit Intents from Android 5.0/API 21 onward. Naming a Service does not decide whether the requested workload is allowed to start under background-execution policy."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Choosing a target, obtaining access and interpreting the request are separate responsibilities. An explicit Intent can name an exported Activity in another package, so explicit does not mean internal. Export and permission rules still apply. Naming a component does not grant access to its private provider data, authenticate the sender, or prove that the extras describe a valid operation."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "On Android 13 and higher, external Intents delivered to exported filtered components of apps targeting API 33 or higher are additionally checked against declared actions and categories. This applies even when a component is explicitly named, regardless of the sender’s target SDK. The check is not enforced for a component with no filters, same-app senders, system-UID senders or root. It does not turn the entire incoming URI, MIME type or extra payload into validated application input."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A filter is therefore a capability declaration, with some platform-enforced incoming constraints, rather than a complete public API validation policy. A viewer receiving image/png still needs to handle unavailable content, malformed image bytes and unsupported operations. Its code cannot infer trust from the fact that Android delivered the Intent."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a received link, Android chooses a component; the app then decides which content and navigation state to construct. A successful URI match says nothing about an account’s access to document 42 or the history that should surround it. Keeping those decisions distinct makes both an internal explicit launch and an external implicit launch easier to reason about."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Use a component name when the requirement identifies a particular endpoint.",
+                    "Evaluate action, all requested categories and URI/type compatibility together within one filter.",
+                    "Keep normal Activity DEFAULT eligibility distinct from user preference.",
+                    "Treat target compatibility, launch access and data authorization as separate checks."
+                  ]
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "Intents and intent filters: requests, matching and external delivery",
+              "url": "https://developer.android.com/guide/components/intents-filters"
+            },
+            {
+              "title": "IntentFilter: category and data matching contract",
+              "url": "https://developer.android.com/reference/android/content/IntentFilter"
+            },
+            {
+              "title": "Activity declaration: exported launch boundary",
+              "url": "https://developer.android.com/guide/topics/manifest/activity-element#exported"
+            },
+            {
+              "title": "Sharing a file: content URI and read-grant mechanics",
+              "url": "https://developer.android.com/training/secure-file-sharing/share-file"
+            }
+          ]
+        },
+        {
+          "id": "lesson_android_resources_qualifiers_and_selection",
+          "title": "Resources Are Selected From the Current Configuration",
+          "primarySubtopicIds": [
+            "android_resources"
+          ],
+          "supportingSubtopicIds": [
+            "android_context",
+            "configuration_changes",
+            "build_variants",
+            "source_sets"
+          ],
+          "relatedLessonIds": [
+            "lesson_recreation_configuration_process_and_dismissal"
+          ],
+          "summary": "A resource ID identifies a logical resource whose value is selected through the current Resources configuration. Defaults and qualified alternatives provide runtime adaptation without changing that identity.",
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A document title can be English on one screen and French on another while both use R.string.document_title. A bitmap can have several resolutions while code refers to R.drawable.document_icon. The reference identifies what the app needs; the Resources environment determines which supplied version answers that request."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android compiles resources into named entries referenced through R. Qualified alternatives belong to the same logical entry, so changing locale, night mode or size does not require a different R class or a different reference in calling code. Stable identity here means one entry across its configuration alternatives; it is not a promise that a generated integer is an everlasting identifier across builds."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The unqualified directory, such as values/ or layout/, supplies the default. Qualified directories supply alternatives for particular configuration conditions. values-fr/ can contain French strings, values-night/ can contain night-mode colors, layout-land/ can contain a landscape layout, and width-qualified values can adapt spacing to available room. Alternatives supplement the default set; each lookup selects a value for the particular entry requested."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Selection uses the configuration associated with the Resources object, usually obtained through a Context. That environment includes locale, orientation, night mode, size and density. Two Contexts can represent different configurations, so an identical ID need not return an identical value. A global application Context is not necessarily the right environment for resources used by a particular window or display."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Qualifiers have defined meanings and precedence. Combining them means the alternative requires the applicable combination, and their order in the directory name is prescribed. Android selects the best applicable candidate according to its rules; it does not count suffixes and choose the longest directory name. A candidate that contradicts the configuration is normally eliminated. Density is an important exception because Android can select an available bitmap density and scale it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Defaults protect configurations for which no suitable alternative exists. A string defined only under values-fr/ can compile yet fail when code requests it in an unsupported locale. A complete default string set allows partial translations to fall back entry by entry. Specialized bitmap-density handling can supply a best match without an unqualified bitmap; that exception does not make missing defaults safe for arbitrary resource types."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Resource selection and Activity replacement answer different questions. Selection chooses a resource value for an environment. Recreation replaces a UI instance in response to applicable configuration behavior. A qualifier neither prevents recreation nor guarantees it, and handling a change without replacement still requires the existing UI to reflect the new resource environment."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider a document app with these string definitions. Both French entries and default entries use the same resource names; the filenames organize declarations but do not create separate identities for each locale."
+                },
+                {
+                  "type": "code",
+                  "code": "<!-- res/values/strings.xml -->\n<resources>\n    <string name=\"document_title\">Documents</string>\n    <string name=\"empty_documents\">No documents yet</string>\n</resources>\n\n<!-- res/values-fr/strings.xml -->\n<resources>\n    <string name=\"document_title\">Documents enregistrés</string>\n</resources>",
+                  "language": "xml"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "With French as the selected language in this simple example, document_title uses the French value and empty_documents uses the default. The second string does not vanish because the French file exists. In a locale with no supplied matching translation, both use defaults. Real locale matching also considers language, script, region and locale preferences; a partial translation should preserve the fallback set rather than depend on a single tested device language."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Night mode is another independent configuration condition. Suppose paper_surface is a direct color value of #FFFFFF in values/colors.xml and #202124 in values-night/colors.xml. When the Resources configuration is night, the same R.color.paper_surface resolves to the latter alternative. Changing a user preference alone is not a qualifier: the preference must produce the corresponding resource configuration. Theme attributes may then resolve other values through the selected theme; a direct color lookup and theme-attribute resolution are related but different operations."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a View-based document list, choose a spacing dimension by the width its environment can provide. Assume these are the only alternatives for page_margin:"
+                },
+                {
+                  "type": "code",
+                  "code": "<!-- res/values/dimens.xml -->\n<resources>\n    <dimen name=\"page_margin\">16dp</dimen>\n</resources>\n\n<!-- res/values-w600dp/dimens.xml -->\n<resources>\n    <dimen name=\"page_margin\">24dp</dimen>\n</resources>\n\n<!-- res/values-w840dp/dimens.xml -->\n<resources>\n    <dimen name=\"page_margin\">32dp</dimen>\n</resources>",
+                  "language": "xml"
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Configured available width",
+                    "Selected declaration",
+                    "Reason"
+                  ],
+                  "rows": [
+                    [
+                      "420dp",
+                      "values/: 16dp",
+                      "Neither minimum width fits."
+                    ],
+                    [
+                      "700dp",
+                      "values-w600dp/: 24dp",
+                      "600 fits; 840 requires more room."
+                    ],
+                    [
+                      "900dp",
+                      "values-w840dp/: 32dp",
+                      "The largest applicable width threshold fits."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "This choice follows the configured available width, not a permanent phone/tablet identity. A large device in a narrow window can need the default. Smallest-width qualifiers express a different constraint: a minimum for the smaller available dimension across orientations. Orientation qualifiers such as land express orientation itself. Choose the condition that describes the layout requirement; landscape alone does not promise room for a two-pane design."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Resolve the dimension through the current View environment when applying it. getDimensionPixelSize performs the conversion from the declared unit to an integer size in pixels:"
+                },
+                {
+                  "type": "code",
+                  "code": "val marginPx = documentList.resources\n    .getDimensionPixelSize(R.dimen.page_margin)\ndocumentList.setPadding(marginPx, marginPx, marginPx, marginPx)",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The fragment assumes documentList is a current View and executes on its UI thread. dp preserves a density-independent size while pixel conversion accounts for that environment’s density. A drawable-mdpi bitmap and a drawable-xhdpi bitmap instead supply different source pixel counts for the same logical image. If the exact density is absent, Android can choose another supplied density and scale it; it does not necessarily abandon all qualified versions for drawable/."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A resource ID can safely continue to name the entry after a configuration change, while a String or pixel size already resolved from it is a value from an earlier environment. A cached English label will not become French by itself. Resolve again when presenting in the changed environment, and reapply properties of UI that remains alive. This also explains why testing only orientation on one locale and density leaves missing-default and stale-value failures undiscovered."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Competing qualifiers make the declarative model more useful than a longest-name heuristic. Suppose an illustration has default, French, and landscape-night alternatives, all for the same drawable entry. In a French landscape-night configuration, locale takes precedence over orientation and night, so the French alternative can win despite having fewer qualifiers. The desired French night illustration needs its own applicable combination; adding unrelated suffixes to another alternative cannot outweigh locale precedence."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Selection happens for each requested entry, not by choosing one directory for the whole screen. French strings, a night color and a width-qualified dimension can all contribute to one UI. This avoids copying every resource into every combination of directories. It also means a directory’s existence proves little about an individual missing entry: inspect the alternatives and defaults for the resource actually being requested."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A scattered branch such as if tablet then 32 else 16 embeds a device classification into each call site. A dimension entry with width alternatives centralizes the relationship between configuration and value while callers request page_margin. Qualifiers fit configuration-derived choices; they do not express account state, document permissions or arbitrary product preferences. Those need application logic, which can then choose a resource entry or configure the environment where appropriate."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Build-time merging determines the resource entries and alternatives packaged into an artifact. Runtime selection chooses among that artifact’s available alternatives. A value replaced during source-set or variant merging is not a runtime fallback candidate simply because another source directory once contained it. Likewise, activity-instance retention changes how existing UI is updated; it does not rewrite the qualifier-selection algorithm."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Keep the logical resource identity distinct from its selected value.",
+                    "Supply fallback entries for unsupported configurations and partial translations.",
+                    "Reason from the current Context/Resources environment, including window size.",
+                    "Account for qualifier precedence and density scaling instead of counting matches.",
+                    "Re-resolve and apply configuration-derived values when their environment changes."
+                  ]
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "App resources overview: alternatives, defaults and best-match selection",
+              "url": "https://developer.android.com/guide/topics/resources/providing-resources"
+            },
+            {
+              "title": "Localization: complete defaults and entry-by-entry fallback",
+              "url": "https://developer.android.com/guide/topics/resources/localization"
+            },
+            {
+              "title": "Resources: configuration and dimension conversion",
+              "url": "https://developer.android.com/reference/android/content/res/Resources"
+            },
+            {
+              "title": "Support different pixel densities",
+              "url": "https://developer.android.com/training/multiscreen/screendensities"
+            },
+            {
+              "title": "Handle configuration changes: resources and existing UI",
+              "url": "https://developer.android.com/guide/topics/resources/runtime-changes"
+            },
+            {
+              "title": "Context: configured resource environments",
+              "url": "https://developer.android.com/reference/android/content/Context"
+            },
+            {
+              "title": "Configuration: available width, smallest width and night mode",
+              "url": "https://developer.android.com/reference/android/content/res/Configuration"
+            }
+          ]
+        },
+        {
+          "id": "lesson_android_main_thread_looper_and_handler",
+          "title": "The Main Thread Is a Looper Processing a Queue",
+          "primarySubtopicIds": [
+            "android_main_thread"
+          ],
+          "supportingSubtopicIds": [
+            "coroutine_dispatchers",
+            "main_thread_performance",
+            "anr",
+            "strictmode"
+          ],
+          "relatedLessonIds": [
+            "lesson_dispatchers",
+            "lesson_with_context_and_main_safety"
+          ],
+          "summary": "The main Looper dispatches queued work on the main thread. A Handler schedules work for its chosen Looper, so a main-thread post preserves UI affinity while any long callback delays subsequent UI work.",
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A tap arrives while a document import is running. If the import occupies the UI thread, the application cannot respond to the tap promptly even if the tap’s handling code is trivial. The main thread is a shared execution resource: input, UI updates and framework callbacks need turns on it. Responsiveness depends on keeping those turns available."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android creates a main thread for an application process and provides its main Looper. In ordinary Android UI applications this is also the UI thread. The Looper drives a message loop on its owning thread. Its MessageQueue holds pending work; when work can be dispatched, the Looper delivers it and that thread executes the callback. The queue holds work, rather than creating a worker for each item."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A Handler is associated with one Looper. It can enqueue Messages or Runnable callbacks for that Looper’s queue, including a request to run after a delay. The Handler performs the scheduling, the queue holds pending entries, and the Looper dispatches them on its thread. Several Handlers associated with the main Looper share the same main execution thread; creating another Handler gives no extra execution capacity."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Posting is scheduling, and its thread effect depends on the destination. A worker posting to a main Handler hands execution to main. Main posting to that same Handler schedules another main-thread callback. The posting thread does not run the Runnable as part of the post call, and the Handler does not automatically select a background thread."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A callback executing on the main thread occupies it until that callback returns. Waiting synchronously for disk, network or a lock can prevent later input and UI work from progressing. A long calculation has the same queue consequence even without any IO. Shorter stalls can delay frames; prolonged unresponsiveness can contribute to an ANR. The exact outcome depends on which system work is waiting, rather than one universal time limit for every callback."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Android’s View toolkit has UI-thread affinity. Doing a read on a worker is useful, but modifying a View from that worker violates the UI contract. Background execution and UI delivery are two separate steps. Thread-safe access to an application data object does not make the View that displays it thread-safe."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A plain thread does not automatically have a Looper. A Handler requires a destination Looper, and explicit construction makes that destination clear. Looper.getMainLooper obtains the platform-provided main loop; application code does not prepare or start that loop itself."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider this attempted fix for a slow file import. The code runs from an Activity button callback, and renderImportSummary is a short UI method. reportFile is a file the app can read."
+                },
+                {
+                  "type": "code",
+                  "code": "val main = Handler(Looper.getMainLooper())\nmain.post {\n    val text = reportFile.readText()\n    renderImportSummary(text)\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The button callback can return after posting, which may make this code look asynchronous. The file read still executes on main when the queued Runnable begins. Once inside readText, the main Looper cannot progress through later queued callbacks until the blocking call returns. Moving the same body into postDelayed changes when this problem becomes eligible to occur, not which thread performs it."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A real handoff puts the blocking region on a worker and delivers only its result to main. The following helper uses an ExecutorService with an actual worker thread. Call load and close on main, and let the screen close the helper when it stops owning the destination UI. File size is assumed bounded enough for a whole-file read, and success displays a short summary rather than performing expensive parsing."
+                },
+                {
+                  "type": "code",
+                  "code": "import android.os.Handler\nimport android.os.Looper\nimport java.io.File\nimport java.io.IOException\nimport java.util.concurrent.Executors\n\nclass ReportPreviewLoader {\n    private val worker = Executors.newSingleThreadExecutor()\n    private val main = Handler(Looper.getMainLooper())\n    private var closed = false\n    private var generation = 0\n\n    fun load(file: File, show: (String?) -> Unit) {\n        check(Looper.myLooper() == Looper.getMainLooper())\n        check(!closed)\n        val request = ++generation\n        worker.execute {\n            val text = try {\n                file.readText()\n            } catch (failure: IOException) {\n                null\n            }\n            main.post {\n                if (!closed && request == generation) {\n                    show(text)\n                }\n            }\n        }\n    }\n\n    fun close() {\n        check(Looper.myLooper() == Looper.getMainLooper())\n        closed = true\n        generation++\n        worker.shutdownNow()\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The worker reads the bytes and handles an IO failure without touching Views. The posted callback checks ownership and request relevance on main before calling show; null lets the screen display an unavailable state. closed and generation are read and written only on main, while request is the worker’s captured immutable value. A newer load invalidates an older result even if that earlier read finishes successfully."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "close prevents subsequent UI delivery; shutdownNow attempts to interrupt worker execution, but does not guarantee that a blocking read stops immediately. Pending work can also temporarily retain show and anything it captures until it completes or is discarded. This is a small scheduling example, not a persistent-work mechanism. A screen needs an owner that invokes close, and work needed after that owner ends requires a different lifetime arrangement."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A delayed post means the callback becomes eligible after the requested uptime delay. If main is busy at that point, execution waits longer. Deep sleep also extends wall-clock waiting because Handler timing uses uptime. A main Handler therefore cannot guarantee that a banner disappears at an exact wall-clock instant or that a network timeout is enforced while main is blocked. A successful post reports enqueueing, not successful completion or durability across process removal."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "For a concrete queue trace, suppose a main callback starts a synchronous 500 ms calculation. A small main post becomes eligible after 100 ms. The delay does not interrupt the calculation: the small callback must wait for main to return to dispatching work, at least until the calculation ends in this simplified case. Adding a second main Handler would leave the same wait. Moving the calculation to a worker would free main, provided main does not then block waiting for that worker’s result."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Queue latency includes both the work executing now and work waiting ahead. Ten modest callbacks can collectively delay input even when no single callback seems enormous. Posting more finely divided work may allow other work to progress between callbacks, but it does not remove the computation or guarantee a desired ordering among all framework events. Substantial work generally needs another execution resource, with short results applied to UI."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The location of the wait matters as much as the location of the computation. Starting a worker and immediately calling a blocking wait for it on main can freeze the UI despite the worker doing the expensive body. Holding a lock on main while a worker needs that lock can create further stalls. The event loop can only dispatch additional work when the current main callback releases the thread."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "On Android, Dispatchers.Main targets main-thread coroutine execution through the Android coroutine integration. Code running there still shares main’s execution capacity. Suspension can release the thread while a coroutine waits; a synchronous read or uninterrupted computation inside that coroutine cannot. The API’s async or suspend label does not establish which parts occupy the thread."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Incoming code also needs an actual thread contract. An executor callback follows its executor, and a remote Binder call can enter on a Binder-managed thread. A main-thread handoff is required before those paths manipulate ordinary UI. It addresses affinity, while result relevance and the destination’s remaining lifetime need their own checks. A correctly dispatched result can still be obsolete."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "StrictMode can help detect accidental disk or network work under a configured policy during development. It does not automatically relocate the operation or protect all release UI paths. Responsiveness follows from where the implementation runs and how long it occupies that thread, even when no diagnostic reports a violation."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Identify the Looper a Handler targets before predicting the execution thread.",
+                    "Keep blocking work outside the main callback and avoid waiting for a worker on main.",
+                    "Treat delay as eligibility rather than a guaranteed execution deadline.",
+                    "Hand short results to UI on main, then check whether the destination and request are still valid."
+                  ]
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "Looper: thread-owned message loop and main Looper",
+              "url": "https://developer.android.com/reference/android/os/Looper"
+            },
+            {
+              "title": "MessageQueue: pending messages dispatched by a Looper",
+              "url": "https://developer.android.com/reference/android/os/MessageQueue"
+            },
+            {
+              "title": "Handler: scheduling, affinity, delayed timing and enqueue result",
+              "url": "https://developer.android.com/reference/android/os/Handler"
+            },
+            {
+              "title": "Processes and threads: UI affinity and worker handoff",
+              "url": "https://developer.android.com/guide/components/processes-and-threads"
+            },
+            {
+              "title": "Executors: single-worker execution",
+              "url": "https://developer.android.com/reference/java/util/concurrent/Executors"
+            },
+            {
+              "title": "ExecutorService: shutdownNow interruption limits",
+              "url": "https://developer.android.com/reference/java/util/concurrent/ExecutorService"
+            },
+            {
+              "title": "Dispatchers.Main: Android main-thread integration",
+              "url": "https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-dispatchers/-main.html"
+            },
+            {
+              "title": "StrictMode: configured development diagnostics",
+              "url": "https://developer.android.com/reference/android/os/StrictMode"
+            }
+          ]
+        }
+      ],
+      "summary": "Android selects component targets and resource values from declared contracts and the current environment. Queued work then executes on the thread that owns its event loop.",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "unit_android_cross_process_boundaries",
+      "topicId": "android_platform",
+      "title": "Cross-Process Boundaries",
+      "lessons": [
+        {
+          "id": "lesson_android_binder_ipc_and_remote_calls",
+          "title": "Binder IPC: Remote Calls Are Not Local Object Calls",
+          "primarySubtopicIds": [
+            "android_ipc"
+          ],
+          "supportingSubtopicIds": [
+            "android_components",
+            "android_main_thread",
+            "bound_services",
+            "content_provider_security"
+          ],
+          "relatedLessonIds": [
+            "lesson_shared_state_and_coordination"
+          ],
+          "summary": "A remote Binder call crosses separate heaps and changes data, execution-thread and failure assumptions. Typed interfaces make the call convenient without removing transport costs, concurrent server access or remote process loss.",
+          "status": "ACTIVE",
+          "sections": [
+            {
+              "depth": "CORE",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A reading screen asks a service for the current bookmark. The expression bookmarks.read() can look identical whether the service lives beside the screen or in another process. That placement changes what the call means: another process has its own heap, its own threads and its own chance of disappearing while the screen remains alive."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "An ordinary local reference points to an object within one address space. Two processes cannot use an ordinary Kotlin reference to access the same mutable object. Binder provides Android’s interprocess communication and remote procedure call infrastructure: a client represents supported arguments, sends a transaction to an endpoint, and receives represented results or a failure. The receiving process executes its own implementation against its own memory."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Parcelable describes how a value can be written into a transport representation and constructed from it. A remote result containing a bookmark’s page and revision supplies those values to a new object in the client. Editing that object does not edit the server’s bookmark. A later update requires another operation defined by the contract. Parcelable does not make an arbitrary object graph, its methods or its mutable identity shared."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Binder interfaces are a special kind of transported handle. A handle can identify a remote endpoint and let its holder invoke that endpoint’s protocol through a proxy. It is a capability to address that interface, subject to the endpoint’s access checks; it is not a pointer that lets the client read the server’s fields. Passing a callback interface similarly gives the server an endpoint to call in the client process."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "AIDL defines a typed interface that client and server agree on. Android generates Binder code to represent calls and dispatch them to an implementation. For a bound service, onBind returns the endpoint, and the client uses the received IBinder through the generated Stub.asInterface helper. This removes repetitive transport code while leaving the process contract visible: which values are accepted, which results mean success and which failures the caller handles."
+                },
+                {
+                  "type": "comparison",
+                  "headers": [
+                    "Call path",
+                    "Execution and data consequences"
+                  ],
+                  "rows": [
+                    [
+                      "Same-process generated AIDL interface call",
+                      "The implementation executes directly on the calling thread. There is no remote marshalling boundary; local object arguments can retain local identity."
+                    ],
+                    [
+                      "Call to an AIDL endpoint in another process",
+                      "Arguments/results cross as supported representations. The receiving method executes on a platform-maintained Binder thread pool in that process; different incoming calls can overlap."
+                    ]
+                  ]
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Ordinary remote IPC calls are synchronous: the calling thread can wait for the remote method and its response. Receiving work on a Binder pool does not free the client’s main thread if main is waiting for that call. A remote oneway method removes the wait for a result, but a local oneway call remains synchronous. Neither keyword nor interface name establishes UI affinity or durable delivery."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "These rules concern interface-method dispatch. Service lifecycle callbacks such as onCreate and onBind ordinarily run on the hosting process’s main thread. A Service is not inherently a worker. An incoming remote interface method can therefore execute concurrently with other interface methods and with main-thread component work. Shared state and UI access need their actual thread contracts."
+                }
+              ]
+            },
+            {
+              "depth": "PRACTICAL",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "Consider an internal bookmark service explicitly placed in another process of the same app. It tracks one document with pages 0 through 999. IBookmarks is a generated AIDL interface with read() returning BookmarkSnapshot and move(expectedRevision, newPage) returning Boolean. BookmarkSnapshot is a supported Parcelable value with immutable page and revision properties. The declaration, binding code, imports and Parcelable implementation are omitted so the example can focus on server behavior."
+                },
+                {
+                  "type": "code",
+                  "code": "class BookmarkService : Service() {\n    private val lock = Any()\n    private var page = 0\n    private var revision = 0L\n\n    private val endpoint = object : IBookmarks.Stub() {\n        override fun read(): BookmarkSnapshot = synchronized(lock) {\n            BookmarkSnapshot(page, revision)\n        }\n\n        override fun move(expectedRevision: Long, newPage: Int): Boolean {\n            require(newPage in 0..999)\n            return synchronized(lock) {\n                if (revision != expectedRevision) {\n                    false\n                } else {\n                    page = newPage\n                    revision++\n                    true\n                }\n            }\n        }\n    }\n\n    override fun onBind(intent: Intent): IBinder = endpoint\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Every access to page and revision uses the same lock. A read returns one consistent pair, and move checks the revision and changes both fields in one protected operation. There is no disk access, remote call or UI work inside the lock. These are short in-memory operations; the fields still disappear with the server process."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Suppose two clients read revision 7 and then request different page changes. One move accepts revision 7 and advances it to 8. The other sees the mismatch and returns false, so it can refresh and decide whether its change is still relevant. Separately locking getRevision and setPage would protect each method while leaving this check-then-change race. Transporting a snapshot never makes the later decision atomic with its read."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The caller invokes potentially slow remote operations on a worker and handles RemoteException there, then delivers a short result to main. Even a small request can wait behind server work or a contended lock. Posting bookmarks.read() to a main Handler would still make main wait. A local-only test can miss the remote transport and concurrency assumptions, so exercise the intended process placement as well as the direct-call path."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A callback sent back from the server is also an incoming remote call in the client. This screen-owned fragment implements an independently declared IBookmarkListener callback. Each screen attachment or new server session uses a fresh instance of the whole state holder shown below, including its listener, screenActive and displayedRevision; screenActive and displayedRevision are accessed only on main, and renderBookmark is a short View update. Registration and unregistration are managed by that screen’s owner."
+                },
+                {
+                  "type": "code",
+                  "code": "private val main = Handler(Looper.getMainLooper())\nprivate var screenActive = true\nprivate var displayedRevision = -1L\n\nprivate val listener = object : IBookmarkListener.Stub() {\n    override fun onChanged(page: Int, revision: Long) {\n        main.post {\n            if (screenActive && revision > displayedRevision) {\n                displayedRevision = revision\n                renderBookmark(page)\n            }\n        }\n    }\n}",
+                  "language": "kotlin"
+                },
+                {
+                  "type": "paragraph",
+                  "text": "The Binder method captures primitive values and posts them; it never touches Views or reads the main-confined fields. Main checks the destination and revision before rendering. When the screen stops owning the UI or a new server session replaces the old one, its owner sets the old holder’s screenActive=false on main before replacement and unregisters its listener. That holder is never reactivated. A callback already in flight can still arrive, but the main-thread check prevents delivery to that ended screen. Revision comparison applies within one server session; reconnection requires a fresh whole holder and refreshed state because a restarted server can reset its counter."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Binder transactions have bounded space. The documented buffer is currently 1 MB per process, shared among transactions in flight, rather than 1 MB reserved for each request. A request or its response can fail to fit, including under concurrent moderate traffic. TransactionTooLargeException does not reveal which side failed, so the caller must allow for partial failure. Keep both directions small: bounded bookmark metadata is suitable; a whole document or a large bitmap should use an appropriate file/content access mechanism instead."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "ContentResolver presents a URI-oriented boundary to a ContentProvider and handles underlying IPC when the provider is in another process. It does not give the caller a reference to the provider’s internal data objects or require the provider to use a database. For a shared report, a content URI names the item and a narrow read grant delegates access under its mode and lifetime. The URI text alone supplies no read permission. This also separates small control metadata from opening file content through the provider."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A server can die after binding or while a call is running. RemoteException covers IPC failures; DeadObjectException specifically includes endpoint process loss and some low-level Binder failures. For an app endpoint, drop the unusable handle, clear connection-dependent state and let the connection owner recover within a bounded policy. An earlier liveness check cannot guarantee the next call succeeds. Repeatedly calling a dead handle or retrying forever on main cannot repair the connection."
+                }
+              ]
+            },
+            {
+              "depth": "SENIOR",
+              "blocks": [
+                {
+                  "type": "paragraph",
+                  "text": "A remote contract should express a useful operation at the server’s consistency boundary. A sequence such as getPage(), getRevision(), checkRevision() and setPage() multiplies waits and lets other calls interleave. The single move operation combines the decision that must be atomic. Coarser operations reduce transport overhead, but returning an unbounded library of documents in one response trades chatty calls for an oversized transaction. Prefer a meaningful bounded operation, with paging or content handles when the result grows."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Moving code into a separate process creates isolation at the cost of transport, independent failure and additional coordination. The proxy’s familiar method syntax hides those costs from call sites. A useful review asks how many crossings one user action causes, where the caller waits, what can overlap on the server and how much data each direction carries. Changing from local to remote binding without revisiting those assumptions can turn a formerly cheap getter into a UI stall or expose previously unsynchronized state."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "Thread safety and latency interact. A coarse lock is adequate for the short bookmark operation, but placing storage work or a client callback inside it can block unrelated incoming calls. A callback is another remote operation whose receiver can be slow or unavailable. Capture the required state under the lock, then perform external work after releasing it, with explicit ordering or revision semantics where needed. Protecting individual fields is insufficient when a multi-field invariant must hold."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A failed response also creates uncertainty about effects. If a remote operation changes data and the reply cannot be delivered, the client may observe failure after the server applied the change. Blindly repeating a non-idempotent operation can duplicate an effect. A contract can use request identities, conditional revisions or a status read to resolve that uncertainty; the appropriate choice depends on the operation. The in-memory revision example coordinates live clients but does not provide durable deduplication across server restart."
+                },
+                {
+                  "type": "paragraph",
+                  "text": "A typed interface validates the transport vocabulary, not a caller’s entitlement to an operation. At a remote Binder entry, Binder.getCallingUid supplies the transaction sender’s UID for authorization checks; a package name supplied as an argument is only caller-controlled data. Check access and validate inputs at the entry. If work is handed to another thread, capture the needed caller identity while handling the transaction: getCallingUid on a later ordinary worker call returns that process’s own UID. Possession of a Binder handle does not exempt a request from the endpoint’s policy."
+                },
+                {
+                  "type": "bullet_list",
+                  "items": [
+                    "Identify whether the call is local or remote before predicting object identity and execution thread.",
+                    "Keep synchronous remote waits away from main and hand incoming UI results to main explicitly.",
+                    "Protect server invariants against overlapping calls, rather than assume a Service serializes them.",
+                    "Bound arguments and results, and distinguish a remote handle from a transported value.",
+                    "Design failure and retry semantics for an endpoint that can disappear or apply work before a reply fails."
+                  ]
+                }
+              ]
+            }
+          ],
+          "sources": [
+            {
+              "title": "AIDL: local and remote dispatch, synchronous calls and generated contracts",
+              "url": "https://developer.android.com/develop/background-work/services/aidl"
+            },
+            {
+              "title": "Bound services: local Binder and remote interface boundaries",
+              "url": "https://developer.android.com/develop/background-work/services/bound-services"
+            },
+            {
+              "title": "Parcel: Parcelable values and active Binder handles",
+              "url": "https://developer.android.com/reference/android/os/Parcel"
+            },
+            {
+              "title": "Parcelable: transport representation",
+              "url": "https://developer.android.com/reference/android/os/Parcelable"
+            },
+            {
+              "title": "Service: lifecycle thread and returned Binder interface",
+              "url": "https://developer.android.com/reference/android/app/Service"
+            },
+            {
+              "title": "Handler: dispatch to a chosen Looper thread",
+              "url": "https://developer.android.com/reference/android/os/Handler"
+            },
+            {
+              "title": "TransactionTooLargeException: shared buffer and partial failure",
+              "url": "https://developer.android.com/reference/android/os/TransactionTooLargeException"
+            },
+            {
+              "title": "DeadObjectException: endpoint loss and connection reset",
+              "url": "https://developer.android.com/reference/android/os/DeadObjectException"
+            },
+            {
+              "title": "Binder: remote endpoints, caller UID and liveness races",
+              "url": "https://developer.android.com/reference/android/os/Binder"
+            },
+            {
+              "title": "Content provider basics: ContentResolver and IPC",
+              "url": "https://developer.android.com/guide/topics/providers/content-provider-basics"
+            },
+            {
+              "title": "Sharing a file: narrow temporary URI access",
+              "url": "https://developer.android.com/training/secure-file-sharing/share-file"
+            },
+            {
+              "title": "Kotlin synchronized: one monitor around a protected operation",
+              "url": "https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/synchronized.html"
+            },
+            {
+              "title": "Processes and threads: View UI affinity and IPC dispatch",
+              "url": "https://developer.android.com/guide/components/processes-and-threads"
+            }
+          ]
+        }
+      ],
+      "summary": "Communication across processes uses represented data and remote handles. Correct contracts account for independent memory, concurrent execution, bounded transactions and endpoints that can disappear.",
+      "status": "ACTIVE"
+    },
+    {
       "id": "unit_kmp_shared_viewmodels_and_host_lifecycles",
       "topicId": "kmp",
       "title": "Shared ViewModels and Host Lifecycles",

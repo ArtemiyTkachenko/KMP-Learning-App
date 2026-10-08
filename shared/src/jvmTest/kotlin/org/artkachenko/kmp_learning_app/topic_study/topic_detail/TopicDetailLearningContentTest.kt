@@ -104,6 +104,32 @@ internal class TopicDetailLearningContentTest {
     }
 
     @Test
+    fun theProductionPlatformTopicMapsItsThreeUnitsAndSevenLessonsToStudyRows() = runTest {
+        val repository: LearningContentRepository = BundledLearningContentRepository()
+
+        val items = repository.getActiveUnitsByTopic("android_platform").toLearningUnitItems()
+
+        assertEquals(
+            listOf(
+                "unit_android_processes_components_and_environment",
+                "unit_android_runtime_selection_and_dispatch",
+                "unit_android_cross_process_boundaries",
+            ),
+            items.map { it.unitId },
+        )
+        assertEquals(
+            listOf(
+                "Processes, Components and Android Environment",
+                "Runtime Selection and Dispatch",
+                "Cross-Process Boundaries",
+            ),
+            items.map { it.title },
+        )
+        assertEquals(listOf(3, 3, 1), items.map { it.activeLessonCount })
+        assertTrue(items.all { it.summary.isNotBlank() })
+    }
+
+    @Test
     fun aTopicWithNoAuthoredLearningContentMapsToAnEmptyStudySection() = runTest {
         val repository: LearningContentRepository = BundledLearningContentRepository()
 

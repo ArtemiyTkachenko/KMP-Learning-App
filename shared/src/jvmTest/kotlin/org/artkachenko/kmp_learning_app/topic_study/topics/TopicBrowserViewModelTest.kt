@@ -1475,10 +1475,11 @@ internal class TopicBrowserViewModelTest {
         val androidUi = Topic("android_ui", "UI — Views & Jetpack Compose")
         val kotlin = Topic("kotlin_language", "Kotlin Language")
         val lifecycle = Topic("lifecycle_navigation", "Lifecycle, State & Navigation")
+        val platform = Topic("android_platform", "Android Platform")
         val testing = Topic("testing", "Testing")
         val viewModel = viewModel(
             repository = FakeCurriculumRepository(
-                topicResults = resultsOf(listOf(androidUi, kotlin, lifecycle, testing)),
+                topicResults = resultsOf(listOf(androidUi, kotlin, lifecycle, platform, testing)),
             ),
             learningContent = BundledLearningContentRepository(),
         )
@@ -1489,6 +1490,7 @@ internal class TopicBrowserViewModelTest {
             val authoredUnitCount = learningContent.getActiveUnitsByTopic(topicId).size
             assertEquals(authoredUnitCount, topic(viewModel, topicId).learningUnitCount)
         }
+        assertEquals(3, topic(viewModel, "android_platform").learningUnitCount)
         // A successfully loaded Topic with no authored Units still reports zero availability.
         assertEquals(0, topic(viewModel, "testing").learningUnitCount)
     }

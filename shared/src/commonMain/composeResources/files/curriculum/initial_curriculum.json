@@ -21301,6 +21301,162 @@
         }
       ],
       "status": "ACTIVE"
+    },
+    {
+      "id": "android_resource_partial_translation_fallback",
+      "topicId": "android_platform",
+      "subtopicId": "android_resources",
+      "text": "An app defines title=\"Reports\" and empty_message=\"No reports\" in res/values/strings.xml. Its res/values-fr/strings.xml defines only title=\"Rapports\". These are the only alternatives for those entries, and the Resources configuration has French as its only locale. What do fresh lookups of R.string.title and R.string.empty_message return?",
+      "answers": [
+        {
+          "id": "android_resource_partial_translation_fallback_a",
+          "text": "\"Reports\" and \"No reports\", because an incomplete translation file is ignored."
+        },
+        {
+          "id": "android_resource_partial_translation_fallback_b",
+          "text": "\"Rapports\" and a resource-not-found error, because the French file lacks empty_message."
+        },
+        {
+          "id": "android_resource_partial_translation_fallback_c",
+          "text": "\"Rapports\" and \"No reports\", because the missing French entry falls back to its default."
+        },
+        {
+          "id": "android_resource_partial_translation_fallback_d",
+          "text": "\"Reports\" and a resource-not-found error, because the two files must define the same entries."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "FOUNDATION",
+      "correctAnswerIds": [
+        "android_resource_partial_translation_fallback_c"
+      ],
+      "explanation": "Android selects an alternative for each requested resource entry. The French title exists, so that lookup returns \"Rapports\"; empty_message has no French alternative, so it uses \"No reports\" from the default set. A partial translation does not discard its translated entries or hide the corresponding defaults. Keep the default set complete even when localized sets contain only some entries.",
+      "sources": [
+        {
+          "title": "Localize your app: default resources and partial translations",
+          "url": "https://developer.android.com/guide/topics/resources/localization"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_intent_resolution_action_category_type",
+      "topicId": "android_platform",
+      "subtopicId": "android_intents",
+      "text": "A viewer must accept normal implicit startActivity requests with ACTION_VIEW, a content URI, MIME type application/pdf, and CATEGORY_BROWSABLE. Access permission is already satisfied. Its current filters accept VIEW with image/* and SEND with application/pdf; both include DEFAULT but neither includes BROWSABLE. Each option lists a complete filter with a MIME type as its only data declaration. Which additional filter admits the requested viewing capability?",
+      "answers": [
+        {
+          "id": "android_intent_resolution_action_category_type_a",
+          "text": "A filter with VIEW, DEFAULT and BROWSABLE, and MIME type application/pdf."
+        },
+        {
+          "id": "android_intent_resolution_action_category_type_b",
+          "text": "A filter with VIEW and DEFAULT, and MIME type application/pdf."
+        },
+        {
+          "id": "android_intent_resolution_action_category_type_c",
+          "text": "A filter with VIEW, DEFAULT and BROWSABLE, and MIME type image/*."
+        },
+        {
+          "id": "android_intent_resolution_action_category_type_d",
+          "text": "A filter with SEND, DEFAULT and BROWSABLE, and MIME type application/pdf."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "FOUNDATION",
+      "correctAnswerIds": [
+        "android_intent_resolution_action_category_type_a"
+      ],
+      "explanation": "The request must pass the action, category and data tests within one whole filter. VIEW selects the operation, every carried category must be declared, and normal implicit Activity launching also requires DEFAULT. The application/pdf MIME declaration accepts this type with its content URI. Existing filters cannot combine their separate capabilities to cover the request; a PDF filter without BROWSABLE still fails the category test.",
+      "sources": [
+        {
+          "title": "Intents and intent filters: receiving implicit intents and resolution",
+          "url": "https://developer.android.com/guide/components/intents-filters"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_main_worker_result_without_wait",
+      "topicId": "android_platform",
+      "subtopicId": "android_main_thread",
+      "text": "An Activity click callback submits a slow file read to an ExecutorService that uses a real worker thread, then calls Future.get() on main and renders the result. The screen remains the valid destination until completion, and rendering is short. Which revision keeps input responsive during the read while obeying ordinary View thread affinity?",
+      "answers": [
+        {
+          "id": "android_main_worker_result_without_wait_a",
+          "text": "Submit the read, then post Future.get() and rendering to a Handler for the main Looper."
+        },
+        {
+          "id": "android_main_worker_result_without_wait_b",
+          "text": "Run the read on the worker, post rendering to main, and return the click callback without waiting."
+        },
+        {
+          "id": "android_main_worker_result_without_wait_c",
+          "text": "Run the read and rendering together on the worker, and return the click callback without waiting."
+        },
+        {
+          "id": "android_main_worker_result_without_wait_d",
+          "text": "Submit the read, poll isDone() in a loop on main, and render when the result becomes available."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "android_main_worker_result_without_wait_b"
+      ],
+      "explanation": "Offloading the read is insufficient if main synchronously waits for it: Future.get() blocks until an unfinished result is ready. A main-thread polling loop also occupies the thread that must process input. Let the worker finish the read and enqueue only the short rendering step on main, then let the click callback return. Posting a blocking get() to main moves the wait to a later main callback; rendering on the worker instead violates View thread affinity.",
+      "sources": [
+        {
+          "title": "Processes and threads: worker execution and UI handoff",
+          "url": "https://developer.android.com/guide/components/processes-and-threads"
+        },
+        {
+          "title": "Future: blocking result retrieval",
+          "url": "https://developer.android.com/reference/java/util/concurrent/Future"
+        },
+        {
+          "title": "Handler: execution on its chosen Looper",
+          "url": "https://developer.android.com/reference/android/os/Handler"
+        }
+      ],
+      "status": "ACTIVE"
+    },
+    {
+      "id": "android_component_independent_entry_dependency",
+      "topicId": "android_platform",
+      "subtopicId": "android_components",
+      "text": "OpenReportActivity is correctly declared and externally launchable. It uses a catalog loaded into a process-local field only by LauncherActivity. An allowed external caller can open OpenReportActivity in a fresh process, and the product requires opening the report without showing the launcher. The catalog can be loaded without a UI. Which change removes the invalid startup dependency?",
+      "answers": [
+        {
+          "id": "android_component_independent_entry_dependency_a",
+          "text": "Route OpenReportActivity's catalog access through Application Context, with initialization in LauncherActivity."
+        },
+        {
+          "id": "android_component_independent_entry_dependency_b",
+          "text": "Place the catalog field in a process-wide singleton, with initialization performed by LauncherActivity."
+        },
+        {
+          "id": "android_component_independent_entry_dependency_c",
+          "text": "Start LauncherActivity to initialize the catalog when OpenReportActivity finds its catalog field empty."
+        },
+        {
+          "id": "android_component_independent_entry_dependency_d",
+          "text": "Place catalog initialization in a UI-independent loader, invoked when OpenReportActivity needs the catalog."
+        }
+      ],
+      "selectionMode": "SINGLE",
+      "level": "APPLIED",
+      "correctAnswerIds": [
+        "android_component_independent_entry_dependency_d"
+      ],
+      "explanation": "Android can start the requested Activity directly and create its process if necessary; it does not require a prior visit to the launcher. The report entry therefore needs a dependency path that works without launcher execution. Changing the Context or the field holder does not execute the launcher-only loading code, and showing the launcher violates the stated entry requirement. Independent entry is a startup contract, separate from whether the caller may access the component.",
+      "sources": [
+        {
+          "title": "Application fundamentals: independent components and system activation",
+          "url": "https://developer.android.com/guide/components/fundamentals"
+        }
+      ],
+      "status": "ACTIVE"
     }
   ]
 }

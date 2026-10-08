@@ -52,8 +52,8 @@ invalidate the snapshot, but changing what it says does.
 
 | Input | Path | Fingerprint (SHA-256 of canonical JSON) |
 |---|---|---|
-| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `1a9e711515a71dd2b11107f22f85ddf17c00dae0ef0ee95cba4daf428cf0c43d` |
-| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `5ce2d06641e57f8de71d9ac8cbd1f419e572085a2bde6e28e2d39c99c1971caf` |
+| Learning curriculum (whole document) | `shared/src/commonMain/composeResources/files/curriculum/learning_curriculum.json` | `e95c65c9b9eabd3318f3169fc10974ed8b22c77da14283a36500e9ab7de8d97f` |
+| Question curriculum (topics, subtopics, ACTIVE questions) | `shared/src/commonMain/composeResources/files/curriculum/initial_curriculum.json` | `f67c499914f807bdbe070727415a9c2bd930ead8f9d65cf877e666e7ecce1e8d` |
 
 The learning fingerprint covers the whole document rather than the mappings alone,
 because editing lesson content can change whether the material still teaches an
@@ -68,14 +68,14 @@ Deprecated units, lessons and questions are excluded throughout.
 
 | Measure | Count |
 |---|---:|
-| Active learning units | 40 |
-| Active lessons in those units | 157 |
-| Distinct primary subtopics | 109 |
-| Distinct supporting subtopics | 131 |
-| Unique active questions reached through primary mappings | 235 |
-| Primary subtopics with at least one active question | 109 |
+| Active learning units | 43 |
+| Active lessons in those units | 164 |
+| Distinct primary subtopics | 117 |
+| Distinct supporting subtopics | 146 |
+| Unique active questions reached through primary mappings | 255 |
+| Primary subtopics with at least one active question | 117 |
 | Primary subtopics with no active question | 0 |
-| Active questions in the bank | 452 |
+| Active questions in the bank | 456 |
 | Deprecated questions excluded from this report | 41 |
 
 The two bank-size rows are context, not a target. The learning curriculum is
@@ -129,6 +129,9 @@ lesson tables further down will therefore overcount a unit on purpose.
 | Recreation, Retention and Restoration (`unit_recreation_retention_and_restoration`) | 3 | 4 | 7 | 3 | 0 | 10 |
 | Navigation State and Destination Lifetime (`unit_navigation_state_and_destination_lifetime`) | 2 | 2 | 4 | 2 | 0 | 6 |
 | External Entry and Back Navigation (`unit_external_entry_and_back_navigation`) | 2 | 2 | 4 | 1 | 0 | 5 |
+| Processes, Components and Android Environment (`unit_android_processes_components_and_environment`) | 3 | 4 | 4 | 4 | 0 | 8 |
+| Runtime Selection and Dispatch (`unit_android_runtime_selection_and_dispatch`) | 3 | 3 | 8 | 1 | 0 | 9 |
+| Cross-Process Boundaries (`unit_android_cross_process_boundaries`) | 1 | 1 | 2 | 1 | 0 | 3 |
 | Shared ViewModels and Host Lifecycles (`unit_kmp_shared_viewmodels_and_host_lifecycles`) | 2 | 2 | 1 | 2 | 0 | 3 |
 | Koin and Dependency Injection in KMP (`unit_koin_and_dependency_injection_in_kmp`) | 2 | 2 | 1 | 2 | 1 | 4 |
 
@@ -1002,7 +1005,7 @@ Supporting context — not primary coverage:
 |---|---:|---|
 | `coroutine_dispatchers` — Dispatchers | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
 | `jvm_fundamentals` — JVM fundamentals relevant to Android | 1 | `kotlin_language` — Kotlin Language & JVM Fundamentals |
-| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 3 | `android_platform` — Android Platform & Application Model |
+| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 4 | `android_platform` — Android Platform & Application Model |
 
 #### Starting Coroutines: `launch`, `async` and `runBlocking` (`lesson_coroutine_builders`)
 
@@ -1113,7 +1116,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `coroutine_context` — CoroutineContext | 2 | `async_reactive` — Coroutines, Flow & Reactive Programming |
-| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 3 | `android_platform` — Android Platform & Application Model |
+| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 4 | `android_platform` — Android Platform & Application Model |
 | `main_thread_performance` — Main-thread performance | 1 | `performance` — Performance, Memory & Debugging |
 | `anr` — ANRs | 1 | `performance` — Performance, Memory & Debugging |
 
@@ -2990,7 +2993,7 @@ Supporting context — not primary coverage:
 | `lifecycle_aware_apis` — Lifecycle-aware APIs | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `process_death` — Process death and recreation | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
-| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 3 | `android_platform` — Android Platform & Application Model |
+| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 4 | `android_platform` — Android Platform & Application Model |
 
 #### A Fragment Has an Instance Lifecycle and a View Lifecycle (`lesson_fragment_and_view_lifecycles`)
 
@@ -3120,8 +3123,8 @@ Supporting context — not primary coverage:
 | `viewmodel_lifecycle` — ViewModel lifecycle | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `back_handling` — Back handling and predictive back | 3 | `lifecycle_navigation` — Lifecycle, State & Navigation |
-| `android_intents` — Intents | 2 | `android_platform` — Android Platform & Application Model |
-| `android_components` — Android application components | 2 | `android_platform` — Android Platform & Application Model |
+| `android_intents` — Intents | 3 | `android_platform` — Android Platform & Application Model |
+| `android_components` — Android application components | 3 | `android_platform` — Android Platform & Application Model |
 
 #### Navigation 2 and Navigation 3: Who Owns the Stack? (`lesson_navigation_2_vs_3_state_ownership`)
 
@@ -3166,7 +3169,7 @@ Supporting context — not primary coverage:
 | Supporting subtopic | Active questions | Owning topic |
 |---|---:|---|
 | `navigation_fundamentals` — Navigation and back-stack fundamentals | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
-| `android_intents` — Intents | 2 | `android_platform` — Android Platform & Application Model |
+| `android_intents` — Intents | 3 | `android_platform` — Android Platform & Application Model |
 | `saved_state` — Saved-state mechanisms | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 
 #### Back Is a Navigation Transition, Including Predictive Back (`lesson_back_navigation_and_predictive_back`)
@@ -3184,6 +3187,167 @@ Supporting context — not primary coverage:
 | `navigation_fundamentals` — Navigation and back-stack fundamentals | 4 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `lifecycle_aware_apis` — Lifecycle-aware APIs | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
 | `coroutine_cancellation` — Cancellation | 5 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+
+### Processes, Components and Android Environment (`unit_android_processes_components_and_environment`)
+
+Home topic: `android_platform` — Android Platform & Application Model.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 4 | `android_component_process_lifetime`, `android_manifest_component_exported`, `android_process_model_001`, `process_importance_reclaim_order` |
+| APPLIED | 4 | `android_component_independent_entry_dependency`, `android_context_001`, `android_context_theme_inflation`, `content_provider_uri_permission_grant` |
+| ADVANCED | 0 | — |
+
+#### Your App Is Not Its Process (`lesson_android_process_model_and_importance`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `android_process_model` — Application and process model | 2 | 0 | 0 | 2 | `android_process_model_001`, `process_importance_reclaim_order` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `android_components` — Android application components | 3 | `android_platform` — Android Platform & Application Model |
+| `process_death` — Process death and recreation | 1 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `background_process_death` — Process-death implications | 0 | `background_work` — Background Work & OS Constraints |
+| `android_memory_model` — Android/JVM memory fundamentals | 1 | `performance` — Performance, Memory & Debugging |
+
+#### Android Components and the Manifest Form the System Entry Surface (`lesson_android_components_and_manifest_contract`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `android_components` — Android application components | 1 | 2 | 0 | 3 | `android_component_independent_entry_dependency`, `android_component_process_lifetime`, `content_provider_uri_permission_grant` |
+| `android_manifest` — Manifest and application configuration | 1 | 0 | 0 | 1 | `android_manifest_component_exported` |
+| **Lesson total (unique)** | 2 | 2 | 0 | 4 | `android_component_independent_entry_dependency`, `android_component_process_lifetime`, `android_manifest_component_exported`, `content_provider_uri_permission_grant` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `android_intents` — Intents | 3 | `android_platform` — Android Platform & Application Model |
+| `android_ipc` — Android IPC fundamentals | 3 | `android_platform` — Android Platform & Application Model |
+| `exported_components` — Exported components | 1 | `security` — Security, Privacy & Permissions |
+| `content_provider_security` — ContentProvider security | 0 | `security` — Security, Privacy & Permissions |
+| `services` — Services | 1 | `background_work` — Background Work & OS Constraints |
+| `bound_services` — Bound services | 1 | `background_work` — Background Work & OS Constraints |
+
+#### Context Is an Environment Handle, Not a Lifetime-Free Utility Object (`lesson_android_context_lifetime_theme_and_services`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `android_context` — Context | 0 | 2 | 0 | 2 | `android_context_001`, `android_context_theme_inflation` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `android_resources` — Android resources and qualifiers | 2 | `android_platform` — Android Platform & Application Model |
+| `context_leaks` — Context leaks | 1 | `performance` — Performance, Memory & Debugging |
+| `activity_lifecycle` — Activity lifecycle | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+### Runtime Selection and Dispatch (`unit_android_runtime_selection_and_dispatch`)
+
+Home topic: `android_platform` — Android Platform & Application Model.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 8 | `android_intent_filter_matching`, `android_intent_resolution_action_category_type`, `android_intents_001`, `android_looper_message_queue`, `android_main_thread_001`, `android_resource_partial_translation_fallback`, `android_resources_001`, `handler_looper_message_queue_roles` |
+| APPLIED | 1 | `android_main_worker_result_without_wait` |
+| ADVANCED | 0 | — |
+
+#### Intents Describe Work; Resolution Chooses a Component (`lesson_android_intents_filters_and_resolution`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `android_intents` — Intents | 3 | 0 | 0 | 3 | `android_intent_filter_matching`, `android_intent_resolution_action_category_type`, `android_intents_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `android_manifest` — Manifest and application configuration | 1 | `android_platform` — Android Platform & Application Model |
+| `android_components` — Android application components | 3 | `android_platform` — Android Platform & Application Model |
+| `intent_security` — Intent security | 1 | `security` — Security, Privacy & Permissions |
+| `deep_links` — Deep links | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+
+#### Resources Are Selected From the Current Configuration (`lesson_android_resources_qualifiers_and_selection`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `android_resources` — Android resources and qualifiers | 2 | 0 | 0 | 2 | `android_resource_partial_translation_fallback`, `android_resources_001` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `android_context` — Context | 2 | `android_platform` — Android Platform & Application Model |
+| `configuration_changes` — Configuration changes | 2 | `lifecycle_navigation` — Lifecycle, State & Navigation |
+| `build_variants` — Build variants | 1 | `build_delivery` — Build System, Modularization & Delivery |
+| `source_sets` — Source sets | 1 | `build_delivery` — Build System, Modularization & Delivery |
+
+#### The Main Thread Is a Looper Processing a Queue (`lesson_android_main_thread_looper_and_handler`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 3 | 1 | 0 | 4 | `android_looper_message_queue`, `android_main_thread_001`, `android_main_worker_result_without_wait`, `handler_looper_message_queue_roles` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `coroutine_dispatchers` — Dispatchers | 3 | `async_reactive` — Coroutines, Flow & Reactive Programming |
+| `main_thread_performance` — Main-thread performance | 1 | `performance` — Performance, Memory & Debugging |
+| `anr` — ANRs | 1 | `performance` — Performance, Memory & Debugging |
+| `strictmode` — StrictMode | 1 | `performance` — Performance, Memory & Debugging |
+
+### Cross-Process Boundaries (`unit_android_cross_process_boundaries`)
+
+Home topic: `android_platform` — Android Platform & Application Model.
+
+Unique active questions reached through this unit's primary concepts, counted
+once each however many lessons share the concept.
+
+| Level | Count | Question IDs |
+|---|---:|---|
+| FOUNDATION | 2 | `android_ipc_binder_contract`, `binder_ipc_marshalling_boundary` |
+| APPLIED | 1 | `binder_thread_pool_ui_handoff` |
+| ADVANCED | 0 | — |
+
+#### Binder IPC: Remote Calls Are Not Local Object Calls (`lesson_android_binder_ipc_and_remote_calls`)
+
+Primary concepts:
+
+| Primary subtopic | Foundation | Applied | Advanced | Total | Active question IDs |
+|---|---:|---:|---:|---:|---|
+| `android_ipc` — Android IPC fundamentals | 2 | 1 | 0 | 3 | `android_ipc_binder_contract`, `binder_ipc_marshalling_boundary`, `binder_thread_pool_ui_handoff` |
+
+Supporting context — not primary coverage:
+
+| Supporting subtopic | Active questions | Owning topic |
+|---|---:|---|
+| `android_components` — Android application components | 3 | `android_platform` — Android Platform & Application Model |
+| `android_main_thread` — Main thread, Looper, and Handler fundamentals | 4 | `android_platform` — Android Platform & Application Model |
+| `bound_services` — Bound services | 1 | `background_work` — Background Work & OS Constraints |
+| `content_provider_security` — ContentProvider security | 0 | `security` — Security, Privacy & Permissions |
 
 ### Shared ViewModels and Host Lifecycles (`unit_kmp_shared_viewmodels_and_host_lifecycles`)
 

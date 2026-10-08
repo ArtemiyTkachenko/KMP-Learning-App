@@ -372,7 +372,7 @@ internal class LearningUnitPracticeIntegrationTest {
                     }
                 }
             }
-            // Lifecycle learning is the final Android core Topic before the optional KMP tail.
+            // Lifecycle learning precedes the Android Platform program and optional KMP tail.
             val lifecycleUnits = BundledLearningContentRepository().getActiveUnitsByTopic("lifecycle_navigation")
             assertEquals(
                 listOf(
@@ -420,7 +420,54 @@ internal class LearningUnitPracticeIntegrationTest {
                     }
                 }
             }
-            // KMP Units are authored after every core Unit, so exhausting the Lifecycle Units hands
+            // Continue Learning enters the Platform program after Lifecycle and before KMP.
+            val platformUnits = BundledLearningContentRepository().getActiveUnitsByTopic("android_platform")
+            assertEquals(
+                listOf(
+                    "unit_android_processes_components_and_environment",
+                    "unit_android_runtime_selection_and_dispatch",
+                    "unit_android_cross_process_boundaries",
+                ),
+                platformUnits.map { it.id },
+            )
+            assertEquals(listOf(3, 3, 1), platformUnits.map { it.lessons.size })
+            val platformTopic = topic("android_platform")
+            val platformParents = platformUnits.associate { it.id to unit(it.id) }
+            val platformLessonCount = platformUnits.sumOf { it.lessons.size }
+            suspend fun awaitPlatformTopic(count: Int) {
+                platformTopic.uiState.await { state ->
+                    state is TopicDetailUiState.Content &&
+                        (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                        StudyProgressSummary.Progress(count, platformLessonCount)
+                }
+            }
+            awaitPlatformTopic(0)
+            var platformStudiedCount = 0
+            platformUnits.forEach { platformUnit ->
+                platformUnit.lessons.forEachIndexed { index, lesson ->
+                    awaitNext(platformUnit.id, lesson.id)
+                    val platformReader = lesson(platformUnit.id, lesson.id)
+                    platformReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.isStudied == false
+                    }
+                    platformReader.toggleStudied()
+                    platformReader.uiState.await { state ->
+                        state is LearningLessonUiState.Content &&
+                            (state.studyState as? StudyProgressUiState.Available)?.value?.let {
+                                it.isStudied && !it.isPending
+                            } == true
+                    }
+                    platformStudiedCount += 1
+                    awaitPlatformTopic(platformStudiedCount)
+                    platformParents.getValue(platformUnit.id).uiState.await { state ->
+                        state is LearningUnitUiState.Content &&
+                            (state.studyProgress as? StudyProgressUiState.Available)?.value?.summary ==
+                            StudyProgressSummary.Progress(index + 1, platformUnit.lessons.size)
+                    }
+                }
+            }
+            // KMP Units are authored after every core Unit, so exhausting the Platform Units hands
             // over to the KMP Units rather than to Complete.
             val kmpUnits = BundledLearningContentRepository().getActiveUnitsByTopic("kmp")
             assertEquals(
@@ -497,12 +544,57 @@ internal class LearningUnitPracticeIntegrationTest {
             assertFalse(rebuilt.isStudied(earlierLesson.id))
             // 43 `android_ui` Lessons, 29 in the coroutines and Flow Units, 29 in the six
             // architecture Units, 33 in the six dependency-injection Units, 9 in the four Kotlin
-            // Units, 10 in the four Lifecycle Units and 4 in the two KMP Units, less the one
-            // that was just un-studied.
-            assertEquals(156, rebuilt.getStudiedLessons().size)
+            // Units, 10 in the four Lifecycle Units, 7 in the three Platform Units and 4 in the
+            // two KMP Units, less the one that was just un-studied.
+            assertEquals(163, rebuilt.getStudiedLessons().size)
             assertEquals(originalRecords, rebuilt.getStudiedLessons().filter { it.lessonId in publishedIds })
             assertEquals(0, attemptCount())
             assertEquals(null, assertIs<TopicBrowserUiState.Content>(browser.uiState.value).continueStudying)
+        }
+
+    @Test
+    fun platformUnitsPractiseExactlyTheirPrimaryConceptsThroughTheProductionGraph() =
+        runUnitPracticeTest {
+            val expectedConcepts = mapOf(
+                "unit_android_processes_components_and_environment" to setOf(
+                    "android_process_model",
+                    "android_components",
+                    "android_manifest",
+                    "android_context",
+                ),
+                "unit_android_runtime_selection_and_dispatch" to setOf(
+                    "android_intents",
+                    "android_resources",
+                    "android_main_thread",
+                ),
+                "unit_android_cross_process_boundaries" to setOf("android_ipc"),
+            )
+            val content = BundledLearningContentRepository()
+            expectedConcepts.forEach { (unitId, concepts) ->
+                val unit = assertNotNull(content.getUnitById(unitId))
+                val expectedQuestions = concepts.flatMap { activeQuestionsBySubtopic(it) }
+                    .map { it.id }.toSet()
+                assertTrue(expectedQuestions.isNotEmpty(), unitId)
+                val builder = builder(PracticeBuilderTarget.LearningUnit(unitId))
+                val state = builder.settled()
+                assertEquals(unit.title, state.scope.name)
+                assertEquals(
+                    expectedQuestions.size,
+                    assertIs<PracticeAvailability.Available>(state.availability).eligibleQuestionCount,
+                    unitId,
+                )
+                builder.selectQuestionCount(expectedQuestions.size)
+                builder.settled()
+                val config = builder.start()
+                assertEquals(AssessmentScope.Subtopics(concepts), config.scope, unitId)
+                val questions = selectedQuestions(config)
+                assertEquals(expectedQuestions, questions.map { it.id }.toSet(), unitId)
+                assertEquals(expectedQuestions.size, questions.size, unitId)
+                assertEquals(concepts, questions.map { it.subtopicId }.toSet(), unitId)
+                val supportingOnly = unit.lessons.flatMap { it.supportingSubtopicIds }.toSet() - concepts
+                assertTrue(questions.none { it.subtopicId in supportingOnly }, unitId)
+            }
+            assertEquals(0, attemptCount())
         }
 
     @Test
@@ -2226,6 +2318,9 @@ private class UnitPracticeGraph(
 
     /** The ordinary focused result, addressed the only way the shell addresses it: by attempt ID. */
     fun result(attemptId: String): FocusedResultViewModel = koin.get { parametersOf(attemptId) }
+
+    suspend fun activeQuestionsBySubtopic(subtopicId: String) =
+        curriculumRepository.getActiveQuestionsBySubtopic(subtopicId)
 
     suspend fun attemptCount(): Int = database.assessmentAttemptDao().countTestAttempts()
 

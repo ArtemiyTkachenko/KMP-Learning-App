@@ -30,14 +30,14 @@ internal class InitialCurriculumSmokeTest {
         assertEquals(361, initialCurriculum.subtopics.size)
         // ACTIVE and DEPRECATED are the only statuses, so together they are the total.
         assertEquals(
-            452,
+            456,
             initialCurriculum.questions.count { it.status == ContentStatus.ACTIVE },
         )
         assertEquals(
             41,
             initialCurriculum.questions.count { it.status == ContentStatus.DEPRECATED },
         )
-        assertEquals(446, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
+        assertEquals(450, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.SINGLE })
         assertEquals(47, initialCurriculum.questions.count { it.selectionMode == AnswerSelectionMode.MULTIPLE })
     }
 
@@ -47,7 +47,7 @@ internal class InitialCurriculumSmokeTest {
 
         // The all-status distribution is the sum of these two and is not pinned separately.
         assertEquals(
-            LevelDistribution(foundation = 209, applied = 215, advanced = 28),
+            LevelDistribution(foundation = 211, applied = 217, advanced = 28),
             initialCurriculum.questions
                 .filter { it.status == ContentStatus.ACTIVE }
                 .levelDistribution(),
@@ -60,7 +60,7 @@ internal class InitialCurriculumSmokeTest {
         )
         assertEquals(
             mapOf(
-                "android_platform" to LevelDistribution(13, 4, 0),
+                "android_platform" to LevelDistribution(15, 6, 0),
                 "lifecycle_navigation" to LevelDistribution(23, 8, 0),
                 "android_ui" to LevelDistribution(24, 26, 5),
                 "kotlin_language" to LevelDistribution(26, 10, 0),
@@ -94,7 +94,7 @@ internal class InitialCurriculumSmokeTest {
 
         assertEquals(
             mapOf(
-                "android_platform" to 16,
+                "android_platform" to 20,
                 "lifecycle_navigation" to 27,
                 "android_ui" to 49,
                 "kotlin_language" to 34,

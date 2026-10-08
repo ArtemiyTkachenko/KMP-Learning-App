@@ -20,6 +20,17 @@ internal class MetricComponentsTest {
         assertEquals("100%", formatAccuracy(100.0))
     }
 
+    /** List rows use whole percentages, without rounding into a claim of "all" or "none" right. */
+    @Test
+    fun wholeAccuracyRoundsButNeverClaimsAPerfectOrZeroScoreItDidNotGet() {
+        assertEquals("21%", formatWholeAccuracy(21.1))
+        assertEquals("67%", formatWholeAccuracy(66.666))
+        assertEquals("100%", formatWholeAccuracy(100.0))
+        assertEquals("99%", formatWholeAccuracy(99.6))
+        assertEquals("0%", formatWholeAccuracy(0.0))
+        assertEquals("1%", formatWholeAccuracy(0.4))
+    }
+
     @Test
     fun accuracyColourTracksTheDomainWeaknessThreshold() {
         // Below the threshold the domain calls an area weak, so the figure reads as incorrect;

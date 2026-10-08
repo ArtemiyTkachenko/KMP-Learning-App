@@ -358,11 +358,24 @@ Presentation keeps the two figures visibly different concepts. Coverage is alway
 a count ("12 of 28 explored"), never a bare percentage that could be mistaken for
 accuracy, and stays in neutral theme colours throughout: a learner at 10% coverage
 has not done anything wrong, so the correct/incorrect palette would misread as a
-bad score. Accuracy keeps `accuracyColor` and carries its own label. The weak badge
-is driven only by `TopicPerformance.isWeak` / `SubtopicPerformance.isWeak`, and
+bad score. Accuracy keeps `accuracyColor` and carries its own label. The weak
+verdict is driven only by `TopicPerformance.isWeak` / `SubtopicPerformance.isWeak`, and
 accuracy colour is never treated as the weak-state source of truth. Below the
 evidence minimum neither appears; see
 [the accuracy evidence minimum](#the-accuracy-evidence-minimum).
+
+On the Learn Topic cards and Topic Detail's Subtopic rows that presentation is one
+fixed shape, drawn by `LearningContextAccuracy`. The name, then one supporting line
+in one style — "12 units · 15 of 49 explored", or "Not started · 23 questions" for
+an untouched scope — and a trailing figure whose label always describes its value:
+a whole percentage over "accuracy", the same percentage over "⚠ weak area" when the
+domain calls the scope weak, or a neutral "—" over "accuracy" below the evidence
+minimum. The weak verdict and the unit count used to be two differently coloured
+pills under the text, so neighbouring cards looked unrelated and a weak card was
+taller than the rest; both are now part of the shape, and nothing they said was
+dropped. These two list surfaces show whole percentages (`formatWholeAccuracy`,
+which never rounds up to 100% or down to 0%), because a column of one-decimal
+figures scans worse than it informs; every other surface keeps `formatAccuracy`.
 
 ## The mistake review schedule
 
@@ -494,8 +507,8 @@ The surfaces, and what each states below the minimum:
 
 | Surface | Below the minimum |
 | --- | --- |
-| Learn Topic cards (`TopicBrowserScreen`) | "N answered" in `onSurfaceVariant` in the figure slot, still labelled "accuracy" |
-| Topic Detail Subtopic rows (`TopicSubtopicsPage`) | the same "N answered" figure; both use `LearningContextAccuracy` |
+| Learn Topic cards (`TopicBrowserScreen`) | a neutral "—" over "accuracy" in the figure slot, announced as "Accuracy shown after 5 answers, N so far" (the number is `WeakAreaMinimumAnswered`) |
+| Topic Detail Subtopic rows (`TopicSubtopicsPage`) | the same "—"; both use `LearningContextAccuracy` |
 | Topic Detail Practice summary (`TopicPracticePage`) | `AccuracyHeroCard(percentage = null)` captioned "not enough data"; coverage and the action stay |
 | Progress dashboard Topic rows (`ProgressScreen`) | `AccuracyRow(percentage = null)` keeping "x / y correct", captioned "not enough data" |
 | Progress Topic drill-down hero and Subtopic rows (`ProgressTopicScreen`) | counts and "not enough data"; no ring, no meter |
@@ -503,8 +516,11 @@ The surfaces, and what each states below the minimum:
 
 The interview breakdown is the case most often affected: an ordinary interview
 spreads its questions across many Topics, so most rows carry counts alone. That
-is intended — two questions do not measure a Topic. The weak badge needs no
-change, because the weak verdict already required the same minimum. Two figures
+is intended — two questions do not measure a Topic. The weak verdict needs no
+change, because it already required the same minimum. The Learn cards and
+Subtopic rows once printed the answer count ("4 answered") in the figure slot,
+over the "accuracy" label, which described nothing; the dash keeps the slot's
+shape and the label true. Two figures
 are deliberately outside this rule: a finished run's own hero, which withholds
 its percentage below five questions under its own run-size constant in
 `AssessmentCompletionHero`, and the Interview record row on the Interview start

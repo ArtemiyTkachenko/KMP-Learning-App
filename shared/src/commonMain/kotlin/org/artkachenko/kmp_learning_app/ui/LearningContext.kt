@@ -31,9 +31,10 @@ import org.artkachenko.kmp_learning_app.learning_progress.TopicPerformance
  *
  * - **never answered** — [accuracyPercentage] is `null`, and a surface shows no accuracy at all;
  * - **answered, below the evidence minimum** — [accuracyPercentage] is set but
- *   [hasAccuracyEvidence] is false. A surface states the evidence instead ("2 answered", "Not
- *   enough data") and draws no percentage, accuracy colour, ring or meter: two answers do not
- *   measure a scope, and a "100%" from one of them is a claim the learner never earned;
+ *   [hasAccuracyEvidence] is false. A surface says so instead — a neutral "—" over "accuracy" on
+ *   the Learn cards and Subtopic rows, "Not enough data" elsewhere — and draws no percentage,
+ *   accuracy colour, ring or meter: two answers do not measure a scope, and a "100%" from one of
+ *   them is a claim the learner never earned;
  * - **at or above the minimum** — [hasAccuracyEvidence] is true and [accuracyPercentage] is the
  *   figure to show.
  */
@@ -54,7 +55,7 @@ internal data class LearningContextUiModel(
     /**
      * The domain's weak-area verdict, copied verbatim. Presentation never re-derives it from
      * [accuracyPercentage]. Below the evidence minimum the policy never calls a scope weak, so such a
-     * scope shows neither a figure nor a badge.
+     * scope shows neither a figure nor a weak marker.
      */
     val isWeak: Boolean,
 ) {

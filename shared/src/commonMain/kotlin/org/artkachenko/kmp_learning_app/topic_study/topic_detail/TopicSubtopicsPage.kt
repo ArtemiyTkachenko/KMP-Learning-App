@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import kmp_learning_app.shared.generated.resources.Res
 import kmp_learning_app.shared.generated.resources.learning_context_explored
 import kmp_learning_app.shared.generated.resources.learning_context_not_studied
-import kmp_learning_app.shared.generated.resources.progress_weak_label
 import kmp_learning_app.shared.generated.resources.topic_detail_available_questions
 import kmp_learning_app.shared.generated.resources.topic_detail_practice_this_topic
 import kmp_learning_app.shared.generated.resources.topic_detail_subtopics_empty
@@ -38,11 +37,9 @@ import org.artkachenko.kmp_learning_app.ui.AppIcons
 import org.artkachenko.kmp_learning_app.ui.LearningContextAccuracy
 import org.artkachenko.kmp_learning_app.ui.LearningContextUiModel
 import org.artkachenko.kmp_learning_app.ui.ScreenAction
-import org.artkachenko.kmp_learning_app.ui.StatusBadge
 import org.artkachenko.kmp_learning_app.ui.TrailingFigureRow
 import org.artkachenko.kmp_learning_app.ui.theme.AppIconSize
 import org.artkachenko.kmp_learning_app.ui.theme.AppSpacing
-import org.artkachenko.kmp_learning_app.ui.theme.AppThemeExtras
 import org.artkachenko.kmp_learning_app.ui.theme.LocalAppContentMargin
 import org.artkachenko.kmp_learning_app.ui.theme.appListContentPadding
 import org.jetbrains.compose.resources.stringResource
@@ -167,8 +164,8 @@ private fun SubtopicRow(
             TrailingFigureRow(
                 modifier = Modifier.weight(1f),
                 // Absent rather than 0% for a Subtopic with no recorded answer, and the row then
-                // has no reflow question to ask. Below the evidence minimum it states the answer
-                // count instead of a percentage.
+                // has no reflow question to ask. Below the evidence minimum it is a neutral dash,
+                // still labelled "accuracy"; a weak Subtopic's label reads "weak area".
                 figure = {
                     context?.let { LearningContextAccuracy(it) }
                 },
@@ -239,8 +236,10 @@ private fun SubtopicRow(
 
 /**
  * A Subtopic row's supporting line. Compact by design: this list can run to a dozen rows, so a
- * Subtopic gets its coverage count, a neutral note when nothing has been studied, and a weak badge
- * only when the domain says so.
+ * Subtopic gets its coverage count, or a neutral note when nothing has been studied, and nothing
+ * else. A weak Subtopic is marked by its trailing figure's "weak area" label, as a Topic card is
+ * (see [LearningContextAccuracy]), rather than by a pill under this line that made weak rows taller
+ * and repeated the coloured figure beside it.
  */
 @Composable
 private fun SubtopicLearningContext(context: LearningContextUiModel) {
@@ -264,14 +263,6 @@ private fun SubtopicLearningContext(context: LearningContextUiModel) {
             text = stringResource(Res.string.learning_context_not_studied),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-    if (context.isWeak) {
-        StatusBadge(
-            text = stringResource(Res.string.progress_weak_label),
-            contentColor = AppThemeExtras.semanticColors.onPartiallyCorrectContainer,
-            containerColor = AppThemeExtras.semanticColors.partiallyCorrectContainer,
-            icon = AppIcons.Warning,
         )
     }
 }

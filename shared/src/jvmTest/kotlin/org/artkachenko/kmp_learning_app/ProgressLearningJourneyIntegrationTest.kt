@@ -124,7 +124,8 @@ internal class ProgressLearningJourneyIntegrationTest {
                     onNodeWithTag(TopicBrowserContinueStudyingTag).assertIsDisplayed()
                     onNodeWithText("40%").assertIsDisplayed()
                     onNodeWithText("Not studied yet").assertDoesNotExist()
-                    assertTrue(onAllNodesWithText("Weak area").fetchSemanticsNodes().isNotEmpty())
+                    // The Learn card states the verdict as its figure's label.
+                    assertTrue(onAllNodesWithText("weak area").fetchSemanticsNodes().isNotEmpty())
 
                     onNodeWithTag(appNavigationBarItemTag(AppTopLevelDestination.PROGRESS))
                         .performClick()
